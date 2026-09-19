@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CocAssistant.Api/CocAssistant.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CocAssistant.Api.Tests/CocAssistant.Api.Tests.csproj" />
+  </Folder>
+</Solution>
