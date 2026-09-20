@@ -2,6 +2,12 @@
 
 This context describes the shared language for preparing and running Call of Cthulhu 7th Edition campaigns. It keeps the persistent story, individual game nights, participants, characters, scenario material, and play record distinct.
 
+## Identity and Access
+
+**Account**:
+The authenticated identity issued by Entra ID for a person, existing independently of any Campaign. A person has exactly one Account. An Account becomes a Keeper by creating a Campaign, and becomes a Player by joining one.
+_Avoid_: User, profile, login
+
 ## Campaign Structure
 
 **Campaign**:

@@ -7,11 +7,11 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
 
 ### Architecture
 - **Domain relationships:** A Campaign has one Keeper, multiple Players, zero or more approved or pending Investigators, and multiple Play Sessions. A Player joins through a Campaign Invite and controls at most one Investigator in that Campaign.
-- **Identity and access:** Microsoft Entra External ID federates Google and Microsoft sign-in. Campaign permissions distinguish the Keeper from Players and protect Keeper-only information.
+- **Identity and access:** Account authentication is defined in [specs/identity-and-access/spec.md](../identity-and-access/spec.md). Campaign permissions distinguish the Keeper from Players and protect Keeper-only information.
 - **Persistence:** Campaign state is stored in Azure SQL Database.
 - **Live collaboration:** Wall Entry changes, the connected Player's own Investigator stat changes, and Presence changes are delivered through Azure SignalR Service.
 - **Hosting:** The API runs on Azure Container Apps and the React experience runs on Azure Static Web Apps.
-- **Dependencies:** Depends on external identity, persistent Campaign storage, and a live collaboration channel. Scenario Preparation depends on Campaign membership and authorization defined here.
+- **Dependencies:** Depends on Identity and Access, persistent Campaign storage, and a live collaboration channel. Scenario Preparation depends on Campaign membership and authorization defined here.
 
 ### Constraints
 - The ruleset is Call of Cthulhu 7th Edition.
