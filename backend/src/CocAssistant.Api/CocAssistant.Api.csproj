@@ -8,6 +8,16 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Identity.Web" Version="4.14.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Identity\CocAssistant.Identity.Controllers\CocAssistant.Identity.Controllers.csproj" />
+    <ProjectReference Include="..\Identity\CocAssistant.Identity.Infrastructure\CocAssistant.Identity.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

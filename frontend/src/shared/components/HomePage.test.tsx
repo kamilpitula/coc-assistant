@@ -1,11 +1,17 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { HomePage } from '@/shared/components/HomePage'
 
 describe('HomePage', () => {
   it('renders the header, description, and illustration', () => {
-    render(<HomePage />)
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HomePage />
+      </QueryClientProvider>,
+    )
 
     expect(screen.getByText('CoC Assistant')).toBeInTheDocument()
     expect(

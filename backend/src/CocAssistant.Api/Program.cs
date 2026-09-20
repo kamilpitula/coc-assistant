@@ -1,10 +1,21 @@
+using CocAssistant.Identity.Controllers;
+using CocAssistant.Identity.Infrastructure;
+using Microsoft.Identity.Web;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddApplicationPart(typeof(AccountController).Assembly);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+builder.Services.AddIdentityInfrastructure(builder.Configuration);
+
+builder.Services
+    .AddAuthentication(Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("EntraId"));
 
 var app = builder.Build();
 
@@ -16,8 +27,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
 app.Run();
+
+public partial class Program;

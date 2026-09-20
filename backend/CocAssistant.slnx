@@ -2,7 +2,17 @@
   <Folder Name="/src/">
     <Project Path="src/CocAssistant.Api/CocAssistant.Api.csproj" />
   </Folder>
+  <Folder Name="/src/Identity/">
+    <Project Path="src/Identity/CocAssistant.Identity.Domain/CocAssistant.Identity.Domain.csproj" />
+    <Project Path="src/Identity/CocAssistant.Identity.Application/CocAssistant.Identity.Application.csproj" />
+    <Project Path="src/Identity/CocAssistant.Identity.Infrastructure/CocAssistant.Identity.Infrastructure.csproj" />
+    <Project Path="src/Identity/CocAssistant.Identity.Controllers/CocAssistant.Identity.Controllers.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CocAssistant.Api.Tests/CocAssistant.Api.Tests.csproj" />
+    <Project Path="tests/CocAssistant.Api.IntegrationTests/CocAssistant.Api.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Identity/">
+    <Project Path="tests/Identity/CocAssistant.Identity.Tests/CocAssistant.Identity.Tests.csproj" />
   </Folder>
 </Solution>
