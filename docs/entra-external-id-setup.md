@@ -20,14 +20,45 @@ Grant it API permission for the API app's `access_as_user` scope.
 ## 4. Add Google as an identity provider
 Create a Google Cloud OAuth 2.0 Client ID (Google Cloud Console > APIs & Services >
 Credentials) for a Web application. The authorized redirect URI must be copied exactly from
-the Entra portal's "add Google identity provider" screen (do not guess it) - typically
-`https://<tenant>.ciamlogin.com/<tenant-id>/federation/oauth2`. Add Google as an identity
-provider in Entra External ID > External Identities > All identity providers using that
-Client ID/secret.
+the Entra portal's Google federation setup (do not guess it). In Entra External ID, open
+External Identities > All identity providers, select the Google provider, enter the Google
+Client ID and secret, and save it.
 
-## 5. Create the user flow
-Create (or edit) a "Sign up and sign in" user flow, attach the SPA app registration, and
-enable both Microsoft and Google as sign-in options.
+## 5. Add Microsoft personal accounts as an OIDC identity provider
+Microsoft personal accounts are not shown on the initial user-flow creation screen. Create
+the user flow first with Email Accounts, then add Microsoft account as a provider.
+
+1. Create an app registration in any Entra tenant. Under Supported account types, select
+  `Accounts in any organizational directory (Any Microsoft Entra ID tenant - Multitenant)
+  and personal Microsoft accounts`.
+2. Add a **Web** redirect URI using the exact federation URI for this external tenant:
+  `https://<tenant-subdomain>.ciamlogin.com/<tenant-id>/federation/oauth2`
+3. Create a client secret for that application and copy its **Value** immediately.
+4. In the external tenant, open External Identities > All identity providers.
+5. Select the Custom tab, then Add new > OpenID Connect.
+6. Enter these values:
+  - Display name: `Microsoft account`
+  - Well-known endpoint: `https://login.microsoftonline.com/consumers/v2.0/.well-known/openid-configuration`
+  - OpenID Issuer URI: `https://login.live.com`
+  - Client ID: the Microsoft account application's **Application (client) ID**
+  - Client secret: the Microsoft account application's secret **Value**
+  - Client authentication: `client_secret`
+  - Scope: `openid profile email`
+  - Response type: `code`
+7. Select Review + create. Claims mapping can remain at its defaults initially.
+
+Do not use the `CocAssistant.Web` SPA client ID or the `CocAssistant.Api` client ID in these
+two fields. Do not put the Microsoft account application secret in this repository.
+
+## 6. Add the providers to the user flow
+If you have not created the flow yet, create a "Sign up and sign in" flow with Email Accounts
+and attach the SPA app registration. Then:
+
+1. Go to External Identities > User flows.
+2. Select the flow.
+3. Under Settings, select Identity providers.
+4. Under Other identity providers, select Google and Microsoft account.
+5. Select Save.
 
 ## 6. Record the values
 - Tenant subdomain: `<tenant>.ciamlogin.com`

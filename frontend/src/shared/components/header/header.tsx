@@ -8,7 +8,7 @@ import { useAccountSync } from '@/shared/hooks/useAccountSync'
 export function Header() {
   const isAuthenticated = useIsAuthenticated()
   const { instance } = useMsal()
-  const { data: account } = useAccountSync()
+  const { data: account, isError: accountSyncFailed } = useAccountSync()
 
   const signIn = () => instance.loginRedirect({ scopes: [apiScope] })
   const signOut = () => instance.logoutRedirect()
@@ -20,6 +20,16 @@ export function Header() {
         {isAuthenticated && account ? (
           <>
             <span className="text-sm font-medium">{account.displayName}</span>
+            <Button variant="outline" onClick={signOut}>
+              <LogOut aria-hidden="true" />
+              Sign Out
+            </Button>
+          </>
+        ) : isAuthenticated && accountSyncFailed ? (
+          <>
+            <span role="status" className="text-sm text-destructive">
+              Account unavailable
+            </span>
             <Button variant="outline" onClick={signOut}>
               <LogOut aria-hidden="true" />
               Sign Out
