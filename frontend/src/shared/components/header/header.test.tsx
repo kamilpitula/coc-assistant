@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
-import { Header } from '@/shared/components/Header'
+import { Header } from './header'
 
 const { mockLoginRedirect, mockLogoutRedirect, mockUseIsAuthenticated, mockUseAccountSync } = vi.hoisted(() => ({
   mockLoginRedirect: vi.fn(),

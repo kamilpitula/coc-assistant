@@ -1,8 +1,3 @@
-using System.Security.Claims;
-using CocAssistant.Identity.Application;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-
 namespace CocAssistant.Identity.Controllers;
 
 [ApiController]

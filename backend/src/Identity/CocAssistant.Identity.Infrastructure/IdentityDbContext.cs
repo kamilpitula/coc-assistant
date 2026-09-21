@@ -1,6 +1,3 @@
-using CocAssistant.Identity.Domain;
-using Microsoft.EntityFrameworkCore;
-
 namespace CocAssistant.Identity.Infrastructure;
 
 public class IdentityDbContext : DbContext

@@ -1,5 +1,5 @@
-import { Header } from '@/shared/components/Header'
-import { HeroIllustration } from '@/shared/components/HeroIllustration'
+import { Header } from '@/shared/components/header/header'
+import { HeroIllustration } from '@/shared/components/hero-illustration/hero-illustration'
 
 export function HomePage() {
   return (

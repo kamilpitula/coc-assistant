@@ -1,11 +1,3 @@
-using System.Net;
-using System.Net.Http.Json;
-using CocAssistant.Identity.Controllers;
-using CocAssistant.Identity.Infrastructure;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Respawn;
-
 namespace CocAssistant.Api.IntegrationTests;
 
 /// <summary>Integration tests for GET /api/account/me against a real LocalDB database, reset between tests via Respawn.</summary>

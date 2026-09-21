@@ -1,12 +1,3 @@
-using CocAssistant.Identity.Infrastructure;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace CocAssistant.Api.IntegrationTests;
 
 /// <summary>Runs the real Api pipeline against a dedicated LocalDB database, swapping real JWT validation for TestAuthHandler.</summary>

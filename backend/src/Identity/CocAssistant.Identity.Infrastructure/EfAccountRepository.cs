@@ -1,7 +1,3 @@
-using CocAssistant.Identity.Application;
-using CocAssistant.Identity.Domain;
-using Microsoft.EntityFrameworkCore;
-
 namespace CocAssistant.Identity.Infrastructure;
 
 public class EfAccountRepository : IAccountRepository

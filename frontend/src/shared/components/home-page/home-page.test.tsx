@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-import { HomePage } from '@/shared/components/HomePage'
+import { HomePage } from './home-page'
 
 describe('HomePage', () => {
   it('renders the header, description, and illustration', () => {

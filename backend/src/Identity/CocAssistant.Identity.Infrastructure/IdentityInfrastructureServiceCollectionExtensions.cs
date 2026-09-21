@@ -1,8 +1,3 @@
-using CocAssistant.Identity.Application;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace CocAssistant.Identity.Infrastructure;
 
 public static class IdentityInfrastructureServiceCollectionExtensions

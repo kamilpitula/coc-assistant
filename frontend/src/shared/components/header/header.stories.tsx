@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-import { Header } from '@/shared/components/Header'
+import { Header } from './header'
 
 const queryClient = new QueryClient()
 

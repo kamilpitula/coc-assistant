@@ -19,6 +19,7 @@ applyTo: "frontend/**/*"
 - Name slices after the matching `specs/*` folder where one exists (e.g. `campaign-play`, `scenario-preparation`).
 - No forced barrel `index.ts` re-exports; import directly from the file that defines the symbol.
 - Centralize routing under `src/routes/` using TanStack Router file-based routing; keep route files thin and delegate logic to slice components/hooks.
+- each component should live in its own folder under the corresponding slice, folder and component file name should follow the kebab-case convention. Folder should colocate all related files (e.g., component, styles, tests, stories) within the same folder.
 
 ## Domain vocabulary
 

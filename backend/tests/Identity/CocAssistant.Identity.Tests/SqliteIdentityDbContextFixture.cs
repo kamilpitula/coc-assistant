@@ -1,8 +1,3 @@
-using CocAssistant.Identity.Application;
-using CocAssistant.Identity.Infrastructure;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-
 namespace CocAssistant.Identity.Tests;
 
 /// <summary>Opens an in-memory SQLite connection per test so the EF Core model is exercised against a real provider.</summary>

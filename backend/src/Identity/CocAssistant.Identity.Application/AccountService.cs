@@ -1,5 +1,3 @@
-using CocAssistant.Identity.Domain;
-
 namespace CocAssistant.Identity.Application;
 
 /// <summary>JIT-provisions an Account: creates it on first sign-in, refreshes its snapshot on later ones.</summary>

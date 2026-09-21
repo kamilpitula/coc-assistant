@@ -19,3 +19,4 @@ applyTo: "backend/**/*.cs"
 - Add integration tests in the shared `CocAssistant.Api.IntegrationTests` project, organized by functionality. Launch the assembled ASP.NET Core application and make HTTP calls through its configured pipeline; replace only external infrastructure at the composition boundary.
 - Use framework-neutral BDD tests where practical, named `Given_<context>_When_<action>_Then_<outcome>`. Provide entity builders and use-case builders or helpers that use domain vocabulary.
 - Do not place secrets or connection strings in source files.
+- Do not place using directives at the top of the files; use global using directives in a separate file instead.

@@ -1,7 +1,3 @@
-using CocAssistant.Identity.Controllers;
-using CocAssistant.Identity.Infrastructure;
-using Microsoft.Identity.Web;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.

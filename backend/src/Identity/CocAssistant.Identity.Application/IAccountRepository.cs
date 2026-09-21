@@ -1,5 +1,3 @@
-using CocAssistant.Identity.Domain;
-
 namespace CocAssistant.Identity.Application;
 
 /// <summary>Application port for Account persistence, implemented by Infrastructure.</summary>

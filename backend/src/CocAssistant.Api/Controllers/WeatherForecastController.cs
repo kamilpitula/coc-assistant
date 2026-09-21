@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-
 namespace CocAssistant.Api.Controllers;
 
 [ApiController]

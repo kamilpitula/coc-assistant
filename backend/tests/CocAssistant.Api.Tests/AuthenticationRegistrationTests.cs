@@ -1,7 +1,3 @@
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace CocAssistant.Api.Tests;
 
 public class AuthenticationRegistrationTests
