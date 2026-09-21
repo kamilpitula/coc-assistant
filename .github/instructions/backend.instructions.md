@@ -20,3 +20,5 @@ applyTo: "backend/**/*.cs"
 - Use framework-neutral BDD tests where practical, named `Given_<context>_When_<action>_Then_<outcome>`. Provide entity builders and use-case builders or helpers that use domain vocabulary.
 - Do not place secrets or connection strings in source files.
 - Do not place using directives at the top of the files; use global using directives in a separate file instead.
+- Prefer testable code - avoid side effects unless absolutely necessary. It should be possible to test these services in isolation without relying on external infrastructure or side effects. It should reduce the neccessity for mocking.
+- Follow the principle of dependency inversion: high-level modules should not depend on low-level modules; both should depend on abstractions.
