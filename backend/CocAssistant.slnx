@@ -8,11 +8,20 @@
     <Project Path="src/Identity/CocAssistant.Identity.Infrastructure/CocAssistant.Identity.Infrastructure.csproj" />
     <Project Path="src/Identity/CocAssistant.Identity.Controllers/CocAssistant.Identity.Controllers.csproj" />
   </Folder>
+  <Folder Name="/src/CampaignPlay/">
+    <Project Path="src/CampaignPlay/CocAssistant.CampaignPlay.Domain/CocAssistant.CampaignPlay.Domain.csproj" />
+    <Project Path="src/CampaignPlay/CocAssistant.CampaignPlay.Application/CocAssistant.CampaignPlay.Application.csproj" />
+    <Project Path="src/CampaignPlay/CocAssistant.CampaignPlay.Infrastructure/CocAssistant.CampaignPlay.Infrastructure.csproj" />
+    <Project Path="src/CampaignPlay/CocAssistant.CampaignPlay.Controllers/CocAssistant.CampaignPlay.Controllers.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CocAssistant.Api.Tests/CocAssistant.Api.Tests.csproj" />
     <Project Path="tests/CocAssistant.Api.IntegrationTests/CocAssistant.Api.IntegrationTests.csproj" />
   </Folder>
   <Folder Name="/tests/Identity/">
     <Project Path="tests/Identity/CocAssistant.Identity.Tests/CocAssistant.Identity.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/CampaignPlay/">
+    <Project Path="tests/CampaignPlay/CocAssistant.CampaignPlay.Tests/CocAssistant.CampaignPlay.Tests.csproj" />
   </Folder>
 </Solution>

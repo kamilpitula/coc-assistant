@@ -4,6 +4,8 @@ global using System.Security.Claims;
 global using System.Text.Encodings.Web;
 global using CocAssistant.Identity.Controllers;
 global using CocAssistant.Identity.Infrastructure;
+global using CocAssistant.CampaignPlay.Controllers;
+global using CocAssistant.CampaignPlay.Infrastructure;
 global using Microsoft.AspNetCore.Authentication;
 global using Microsoft.AspNetCore.Authentication.JwtBearer;
 global using Microsoft.AspNetCore.Hosting;

@@ -13,6 +13,7 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:IdentityDb"] = ConnectionString,
+                ["ConnectionStrings:CampaignPlayDb"] = ConnectionString,
             });
         });
 
@@ -36,5 +37,8 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
         using var scope = Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
         await dbContext.Database.MigrateAsync();
+
+        var campaignPlayDbContext = scope.ServiceProvider.GetRequiredService<CampaignPlayDbContext>();
+        await campaignPlayDbContext.Database.MigrateAsync();
     }
 }

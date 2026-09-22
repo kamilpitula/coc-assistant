@@ -71,4 +71,24 @@ describe('Header', () => {
 
     expect(mockLogoutRedirect).toHaveBeenCalledTimes(1)
   })
+
+  it('links to the Campaigns page when signed in', () => {
+    mockUseIsAuthenticated.mockReturnValue(true)
+    mockUseAccountSync.mockReturnValue({
+      data: { id: '1', displayName: 'Keeper One', email: 'keeper@example.com' },
+    })
+
+    render(<Header />)
+
+    expect(screen.getByRole('link', { name: /campaigns/i })).toHaveAttribute('href', '/campaigns')
+  })
+
+  it('does not link to the Campaigns page when signed out', () => {
+    mockUseIsAuthenticated.mockReturnValue(false)
+    mockUseAccountSync.mockReturnValue({ data: undefined })
+
+    render(<Header />)
+
+    expect(screen.queryByRole('link', { name: /campaigns/i })).not.toBeInTheDocument()
+  })
 })

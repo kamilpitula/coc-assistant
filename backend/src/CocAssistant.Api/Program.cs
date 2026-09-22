@@ -3,11 +3,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers()
-    .AddApplicationPart(typeof(AccountController).Assembly);
+    .AddApplicationPart(typeof(AccountController).Assembly)
+    .AddApplicationPart(typeof(CampaignController).Assembly);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 builder.Services.AddIdentityInfrastructure(builder.Configuration);
+builder.Services.AddCampaignPlayInfrastructure(builder.Configuration);
 
 builder.Services
     .AddAuthentication(Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)

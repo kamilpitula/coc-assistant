@@ -1,7 +1,7 @@
 import { LogIn, LogOut, UserPlus } from 'lucide-react'
 import { useIsAuthenticated, useMsal } from '@azure/msal-react'
 
-import { Button } from '@/shared/components/ui/button'
+import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { apiScope } from '@/shared/services/msalConfig'
 import { useAccountSync } from '@/shared/hooks/useAccountSync'
 
@@ -19,6 +19,9 @@ export function Header() {
       <div className="flex items-center gap-3">
         {isAuthenticated && account ? (
           <>
+            <a href="/campaigns" className={buttonVariants({ variant: 'link' })}>
+              Campaigns
+            </a>
             <span className="text-sm font-medium">{account.displayName}</span>
             <Button variant="outline" onClick={signOut}>
               <LogOut aria-hidden="true" />

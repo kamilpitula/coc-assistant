@@ -19,7 +19,7 @@ public class AccountApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
         _respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
         {
             DbAdapter = DbAdapter.SqlServer,
-            TablesToIgnore = ["__EFMigrationsHistory"],
+            TablesToIgnore = ["__EFMigrationsHistory", "__CampaignPlayMigrationsHistory"],
         });
         await _respawner.ResetAsync(connection);
     }
