@@ -91,11 +91,70 @@ starting context. Treat it as reliable but not infallible:
 
 Before touching any file, lay out your approach: which files need to
 change, in what order, and why. Cross-reference the Reuse Candidates and
-Dependency Map here — this is where you decide what to reuse vs. build new,
-and where a genuinely non-obvious architectural choice gets a one-line
-justification. Keep this proportional to the task: a one-file bug fix needs
-a sentence, not a section; a multi-file feature deserves an actual numbered
-plan. Don't produce a formal planning document for its own sake.
+Dependency Map here — this is where you decide what to reuse vs. build new.
+Keep this proportional to the task: a one-file bug fix needs a sentence, not
+a section; a multi-file feature deserves an actual numbered plan. Don't
+produce a formal planning document for its own sake.
+
+**Consult existing ADRs before deciding anything.** If this repo has an ADR
+directory (commonly `docs/adr/`, `docs/decisions/`, or similar — check for
+one; don't assume there isn't one just because Explorer didn't mention it),
+treat any ADR that covers this area as a constraint, not a suggestion.
+Agents drift from established decisions specifically under ambiguity, and
+an ADR exists to remove that ambiguity — if your plan would contradict one,
+that's a stop-and-flag situation, not a judgment call to make silently.
+
+**For any genuinely non-obvious decision, show your work — briefly.** Not
+every choice needs this (don't force a trade-off analysis onto a decision
+that only has one sane answer), but when there's a real fork — which
+pattern to extend, whether to add a dependency, how to shape a shared
+interface — lay out 2-3 realistic options, the trade-off each involves, and
+which you're picking and why. One or two sentences per option is enough;
+the point is making the reasoning visible to whoever approves this at the
+gate, not writing an essay.
+
+**Write a short ADR for decisions that are significant and hard to
+reverse** — a new dependency, a change to a shared interface or data model,
+a pattern likely to get copied elsewhere — if nothing already covers it.
+Use the standard shape: Status, Context, Decision, Consequences (including
+what you're giving up, not just what you're gaining). Skip this for
+anything small or easily reversible; not every decision earns a permanent
+record, and padding routine choices into ADRs just trains people to ignore
+them.
+
+**Consistency beats personal preference.** If your planned approach
+conflicts with an established pattern elsewhere in the codebase (per
+Explorer's findings or what you see directly), that needs a stated reason.
+"It's how I'd normally do it" isn't sufficient justification for
+introducing a second way of doing something the codebase already does one
+way.
+
+Present the plan in this shape so it's easy to approve, adjust, or push
+back on at a glance:
+
+```markdown
+## Plan: <one-line task restatement>
+
+### Approach
+
+1. <file/change, in order> — <why>
+2. ...
+
+### Reuse
+
+- Using: <candidate> for <what> / Not using: <candidate> — <why>
+
+### Architectural decisions
+
+_(omit if nothing here rises above routine)_
+
+- <decision>: considered [option A, option B] — chose A because <trade-off>.
+  <Governed by ADR-NNNN / no existing ADR — will write one if approved.>
+
+### Risks / open questions
+
+- <anything the plan depends on that you're not fully sure of>
+```
 
 ## 2. Stop and wait for plan approval
 
@@ -139,13 +198,12 @@ per individually verifiable piece of behavior):
    it's green.
 3. **Refactor (optional).** Clean up if needed while staying green.
 4. Move to the next unit of behavior and repeat.
-
-**Do not write implementation code ahead of its test**, and don't batch
-several units of behavior before verifying each one green individually —
-that's the same "looks done" risk the loop exists to close, just deferred
-by a few steps instead of skipped outright. If the plan turns out to be
-wrong partway through (a unit doesn't decompose the way you expected),
-adjust and note the deviation rather than forcing it.
+   **Do not write implementation code ahead of its test**, and don't batch
+   several units of behavior before verifying each one green individually —
+   that's the same "looks done" risk the loop exists to close, just deferred
+   by a few steps instead of skipped outright. If the plan turns out to be
+   wrong partway through (a unit doesn't decompose the way you expected),
+   adjust and note the deviation rather than forcing it.
 
 ## 4. Verify — full suite, not just what you just wrote
 
@@ -177,6 +235,11 @@ transcript.
 - Used: <existing symbol/utility> for <what>
 - Considered but not used: <candidate> — <one-line reason>
   _(omit this section only if the Explorer report had no reuse candidates to consider)_
+
+### Architectural decisions
+
+- <carried over from the approved plan, plus the ADR file path if one was written>
+  _(omit if the plan had none)_
 
 ### Verification
 
