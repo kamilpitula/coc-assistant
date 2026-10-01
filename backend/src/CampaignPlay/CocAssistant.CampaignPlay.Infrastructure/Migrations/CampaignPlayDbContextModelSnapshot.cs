@@ -34,16 +34,104 @@ namespace CocAssistant.CampaignPlay.Infrastructure.Migrations
                     b.Property<Guid>("KeeperAccountId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("MembershipVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("PlayerLimit")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("KeeperAccountId");
 
                     b.ToTable("Campaigns");
+                });
+
+            modelBuilder.Entity("CocAssistant.CampaignPlay.Domain.CampaignInvite", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CampaignId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampaignId");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.ToTable("CampaignInvite");
+                });
+
+            modelBuilder.Entity("CocAssistant.CampaignPlay.Domain.CampaignPlayer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CampaignId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("InviteId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("JoinedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampaignId", "AccountId")
+                        .IsUnique();
+
+                    b.ToTable("CampaignPlayer");
+                });
+
+            modelBuilder.Entity("CocAssistant.CampaignPlay.Domain.CampaignInvite", b =>
+                {
+                    b.HasOne("CocAssistant.CampaignPlay.Domain.Campaign", null)
+                        .WithMany("Invites")
+                        .HasForeignKey("CampaignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CocAssistant.CampaignPlay.Domain.CampaignPlayer", b =>
+                {
+                    b.HasOne("CocAssistant.CampaignPlay.Domain.Campaign", null)
+                        .WithMany("Players")
+                        .HasForeignKey("CampaignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CocAssistant.CampaignPlay.Domain.Campaign", b =>
+                {
+                    b.Navigation("Invites");
+
+                    b.Navigation("Players");
                 });
 #pragma warning restore 612, 618
         }

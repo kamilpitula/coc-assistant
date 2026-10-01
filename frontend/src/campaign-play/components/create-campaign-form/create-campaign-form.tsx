@@ -61,7 +61,14 @@ export function CreateCampaignForm() {
 
       {isSuccess && data && (
         <p role="status" className="text-sm">
-          Campaign &ldquo;{data.name}&rdquo; created. You are its Keeper.
+          Campaign &ldquo;{data.name}&rdquo; created. You are its Keeper.{' '}
+          <a
+            href={`/campaigns/${data.id}`}
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            Manage its invite
+          </a>
+          .
         </p>
       )}
 

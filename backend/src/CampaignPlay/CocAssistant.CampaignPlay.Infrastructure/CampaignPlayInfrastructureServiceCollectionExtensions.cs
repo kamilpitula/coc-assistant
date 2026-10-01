@@ -11,6 +11,7 @@ public static class CampaignPlayInfrastructureServiceCollectionExtensions
 
         services.AddScoped<ICampaignRepository, EfCampaignRepository>();
         services.AddScoped<CampaignService>();
+        services.AddScoped<CampaignMembershipService>();
         services.TryAddSingleton(TimeProvider.System);
 
         return services;

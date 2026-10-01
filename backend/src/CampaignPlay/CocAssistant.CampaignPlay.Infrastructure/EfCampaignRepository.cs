@@ -12,7 +12,28 @@ public class EfCampaignRepository : ICampaignRepository
     public void Add(Campaign campaign) => _dbContext.Campaigns.Add(campaign);
 
     public Task<Campaign?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
-        _dbContext.Campaigns.SingleOrDefaultAsync(campaign => campaign.Id == id, cancellationToken);
+        _dbContext.Campaigns
+            .Include(campaign => campaign.Invites)
+            .Include(campaign => campaign.Players)
+            .SingleOrDefaultAsync(campaign => campaign.Id == id, cancellationToken);
 
-    public Task SaveChangesAsync(CancellationToken cancellationToken) => _dbContext.SaveChangesAsync(cancellationToken);
+    public Task<Campaign?> FindByInviteTokenAsync(string token, CancellationToken cancellationToken) =>
+        _dbContext.Campaigns
+            .Include(campaign => campaign.Invites)
+            .Include(campaign => campaign.Players)
+            .SingleOrDefaultAsync(campaign => campaign.Invites.Any(invite => invite.Token == token), cancellationToken);
+
+    public void DiscardPendingChanges() => _dbContext.ChangeTracker.Clear();
+
+    public async Task SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            throw new CampaignMembershipConflictException(exception);
+        }
+    }
 }

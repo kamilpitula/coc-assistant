@@ -1,24 +1,21 @@
 namespace CocAssistant.CampaignPlay.Controllers;
 
-[ApiController]
 [Route("api/campaigns")]
-[Authorize]
-public class CampaignController : ControllerBase
+public class CampaignController : CampaignPlayControllerBase
 {
     private readonly CampaignService _campaignService;
-    private readonly AccountService _accountService;
 
     public CampaignController(CampaignService campaignService, AccountService accountService)
+        : base(accountService)
     {
         _campaignService = campaignService;
-        _accountService = accountService;
     }
 
     /// <summary>Creates a Campaign owned by the authenticated caller as its Keeper.</summary>
     [HttpPost]
     public async Task<ActionResult<CampaignResponse>> Create(CreateCampaignRequest request, CancellationToken cancellationToken)
     {
-        var keeperAccountId = await ResolveKeeperAccountIdAsync(cancellationToken);
+        var keeperAccountId = await ResolveCallerAccountIdAsync(cancellationToken);
         if (keeperAccountId is null)
         {
             return Unauthorized();
@@ -36,7 +33,7 @@ public class CampaignController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<CampaignResponse>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var accountId = await ResolveKeeperAccountIdAsync(cancellationToken);
+        var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
         if (accountId is null)
         {
             return Unauthorized();
@@ -49,20 +46,5 @@ public class CampaignController : ControllerBase
         }
 
         return Ok(new CampaignResponse(campaign.Id, campaign.Name, campaign.KeeperAccountId));
-    }
-
-    private async Task<Guid?> ResolveKeeperAccountIdAsync(CancellationToken cancellationToken)
-    {
-        var entraObjectId = User.FindFirstValue("oid") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(entraObjectId))
-        {
-            return null;
-        }
-
-        var displayName = User.FindFirstValue("name") ?? User.FindFirstValue(ClaimTypes.Name) ?? string.Empty;
-        var email = User.FindFirstValue("emails") ?? User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
-
-        var account = await _accountService.ProvisionAccountAsync(entraObjectId, displayName, email, cancellationToken);
-        return account.Id;
     }
 }
