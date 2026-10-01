@@ -1,0 +1,14 @@
+{
+  "allowedTools": [
+    "Bash(dotnet --version)",
+    "Bash(node --version*)",
+    "Bash(terraform*)",
+    "Bash(npm test*)",
+    "Bash(dotnet test*)",
+    "Bash(dotnet ef*)",
+    "Bash(dotnet build*)",
+    "Bash(git mv*)",
+    "Bash(npm run build*)",
+    "PowerShell(Set-Content*)"
+  ]
+}
