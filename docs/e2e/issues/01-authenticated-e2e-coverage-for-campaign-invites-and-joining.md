@@ -8,6 +8,17 @@ Establish an authenticated end-to-end test harness so business-critical authenti
 - Extend `e2e/tests/campaign-play.spec.ts` (or add new specs) to cover the authenticated Campaign Invite management and Player join workflows end-to-end, including authorization checks and over-limit rejection.
 - Do not touch backend domain, application, or infrastructure code beyond a test-only auth seam needed to support the harness, if any. This issue enables E2E coverage broadly; it does not re-implement Campaign Play logic.
 
+**Decided approach** (see `docs/adr/0002-authenticated-e2e-uses-local-mock-oidc-issuer.md`):
+- Identity provider: `mock-oauth2-server` (Docker) over HTTPS on `localhost:8443`, using the trusted ASP.NET dev certificate exported to a gitignored PFX. No real-tenant smoke test.
+- Backend seam is configuration only: committed `appsettings.E2E.json` points `EntraId` at the mock, which mimics the Entra issuer format (`.../<tenantId>/v2.0`, `tid` claim, `aud` = API client ID). If `Microsoft.Identity.Web` rejects it, stop and re-decide; no silent fallback.
+- Frontend: always set MSAL `knownAuthorities` to the authority host; make the Vite `/api` proxy target env-configurable (default `http://localhost:5058`); both with unit tests. Committed `frontend/.env.e2e` holds mock values only.
+- Playwright `webServer` starts the mock, the API (`ASPNETCORE_ENVIRONMENT=E2E`, own port, connection string via env var) and Vite (`--mode e2e`, own port). CI-ready, local-first.
+- Separate E2E LocalDB database; `globalSetup` runs `dotnet ef database update` with dotnet-ef pinned in `.config/dotnet-tools.json`. Never dropped; tests use unique data.
+- Fixtures (`e2e/fixtures/auth.ts`): `newAccount()` creates a unique Account identity per test; `signIn(page, account)` drives the real `loginRedirect` through the mock login page once per browser context. Keeper and Player relationships are established through the UI.
+- Replace the placeholder tests in `campaign-play.spec.ts`; migrate `home.spec.ts` from the `ciamlogin` route stub to asserting the redirect to the mock.
+- Document the harness in `docs/e2e/authenticated-harness.md` (prerequisites: Docker, trusted dev cert). Fixtures are test code and are exempt from unit tests.
+- Out of scope: configurable Player limit, the Presence assertion, a member-list API.
+
 ## Dependencies
 - Blocked by: None directly; informed by the gap found during PBI-CP-002 verification
 - Must unblock: PBI-CP-002, PBI-CP-003 through PBI-CP-006, and any future authenticated-flow work
@@ -25,6 +36,15 @@ As a result, the business-critical workflows - a Keeper issuing, revoking, or re
 - [ ] An authenticated Playwright harness can drive a signed-in Keeper and a signed-in Player without an insecure production auth bypass.
 - [ ] E2E tests cover a Keeper issuing, revoking, and replacing a Campaign Invite through the real UI.
 - [ ] E2E tests cover a Player joining through an active Invite, including authorization checks and over-limit rejection.
+- [ ] Scenarios covered, each traced to `specs/campaign-play/spec.md`:
+  1. Keeper creates a persistent Campaign (signed in).
+  2. Keeper issues an Invite and sees a shareable link.
+  3. Keeper revokes the Invite; a new Account following the old link is not admitted.
+  4. Keeper replaces the Invite; the old link is rejected and the new link admits a Player.
+  5. Player joins through an active Invite (Presence line excluded).
+  6. Eight Players join; the ninth sees "Campaign is full" (409 `LimitReached`).
+  7. A Player cannot manage the Keeper's Invite: asserted in the UI and by a `page.request` call with the Player's real token expecting 404.
+  8. The Keeper following their own Invite is refused (`KeeperCannotJoin`).
 - [ ] The harness is reusable for future authenticated-flow Campaign Play tickets.
 
 ## Refinement Protocol

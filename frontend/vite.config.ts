@@ -2,24 +2,41 @@ import { fileURLToPath, URL } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import react from '@vitejs/plugin-react'
+import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
 
+import { resolveViteProxyTarget } from './src/shared/services/resolveViteProxyTarget.ts'
+
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [tanstackRouter({ target: 'react', autoCodeSplitting: true }), tailwindcss(), react()],
-  server: {
-    proxy: {
-      '/api': 'http://localhost:5058',
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const proxyTarget = resolveViteProxyTarget(env)
+  const proxyIsHttps = proxyTarget.startsWith('https://')
+
+  return {
+    plugins: [
+      tanstackRouter({ target: 'react', autoCodeSplitting: true }),
+      tailwindcss(),
+      react(),
+    ],
+    server: {
+      proxy: {
+        '/api': {
+          target: proxyTarget,
+          changeOrigin: false,
+          secure: !proxyIsHttps ? undefined : false,
+        },
+      },
     },
-  },
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+      },
     },
-  },
-  test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: ['./src/setupTests.ts'],
-  },
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      setupFiles: ['./src/setupTests.ts'],
+    },
+  }
 })

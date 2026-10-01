@@ -10,8 +10,11 @@
 **/.vite/
 
 # Playwright
-E2E/playwright-report/
-E2E/test-results/
+e2e/playwright-report/
+e2e/test-results/
+
+# Authenticated-E2E harness: exported dev-cert PFX and its password file
+e2e/.certs/
 
 # Terraform
 **/.terraform/
@@ -24,6 +27,7 @@ E2E/test-results/
 .env
 .env.*
 !.env.example
+!frontend/.env.e2e
 
 # IDE
 .vscode/settings.json

@@ -1,0 +1,29 @@
+{
+  "interactiveLogin": true,
+  "httpServer": {
+    "type": "NettyWrapper",
+    "ssl": {
+      "keyPassword": "CocE2eDevCertP@ss1!",
+      "keystorePassword": "CocE2eDevCertP@ss1!",
+      "keystoreType": "PKCS12",
+      "keystoreFile": "/certs/dev-cert.pfx"
+    }
+  },
+  "tokenCallbacks": [
+    {
+      "issuerId": "00000000-0000-0000-0000-00000000e2e2/v2.0",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "scope",
+          "match": "*",
+          "claims": {
+            "aud": "00000000-0000-0000-0000-00000000e2e5",
+            "tid": "00000000-0000-0000-0000-00000000e2e2",
+            "scp": "access_as_user"
+          }
+        }
+      ]
+    }
+  ]
+}

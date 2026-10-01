@@ -1,29 +1,14 @@
-import { test, expect, type Route } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 
-const TENANT_ID = '00000000-0000-0000-0000-000000000000'
-const AUTHORITY_HOST = 'cocassistant.ciamlogin.com'
+/**
+ * Home page smoke + the sign-in redirect against the authenticated harness's mock OIDC issuer.
+ * No `ciamlogin` route stubbing: the mock, API, and Vite dev server are started by the
+ * Playwright webServer config, so clicking "Sign In" produces a real redirect to the mock
+ * authorize endpoint.
+ */
 
-/** Stubs Entra's OIDC discovery + authorize endpoints so MSAL can redirect without a real tenant. */
-async function stubEntraAuthority(route: Route) {
-  const url = route.request().url()
-
-  if (url.includes('openid-configuration')) {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        issuer: `https://${AUTHORITY_HOST}/${TENANT_ID}/v2.0`,
-        authorization_endpoint: `https://${AUTHORITY_HOST}/${TENANT_ID}/oauth2/v2.0/authorize`,
-        token_endpoint: `https://${AUTHORITY_HOST}/${TENANT_ID}/oauth2/v2.0/token`,
-        jwks_uri: `https://${AUTHORITY_HOST}/${TENANT_ID}/discovery/v2.0/keys`,
-        response_types_supported: ['code'],
-      }),
-    })
-    return
-  }
-
-  await route.fulfill({ status: 200, contentType: 'text/plain', body: 'stubbed authorize endpoint' })
-}
+const EXPECTED_AUTHORIZE_PATH =
+  /\/00000000-0000-0000-0000-00000000e2e2\/v2\.0\/authorize/
 
 test('home page shows header actions and two-column content', async ({ page }) => {
   await test.step('navigate to the home page', async () => {
@@ -44,24 +29,22 @@ test('home page shows header actions and two-column content', async ({ page }) =
   })
 })
 
-test('Sign In initiates the Entra redirect', async ({ page }) => {
-  await page.route(`**/${AUTHORITY_HOST}/**`, stubEntraAuthority)
+test('Sign In redirects to the mock OIDC authorize endpoint', async ({ page }) => {
   await page.goto('/')
 
-  const authorizeRequest = page.waitForRequest(/\.ciamlogin\.com\/.*\/oauth2\/v2\.0\/authorize/)
+  const authorizeRequest = page.waitForRequest(EXPECTED_AUTHORIZE_PATH)
   await page.getByRole('button', { name: /sign in/i }).click()
   const request = await authorizeRequest
 
-  expect(request.url()).toContain('client_id=')
+  expect(request.url()).toContain('client_id=00000000-0000-0000-0000-00000000e2e5')
 })
 
-test('Sign Up initiates the Entra redirect', async ({ page }) => {
-  await page.route(`**/${AUTHORITY_HOST}/**`, stubEntraAuthority)
+test('Sign Up redirects to the mock OIDC authorize endpoint', async ({ page }) => {
   await page.goto('/')
 
-  const authorizeRequest = page.waitForRequest(/\.ciamlogin\.com\/.*\/oauth2\/v2\.0\/authorize/)
+  const authorizeRequest = page.waitForRequest(EXPECTED_AUTHORIZE_PATH)
   await page.getByRole('button', { name: /sign up/i }).click()
   const request = await authorizeRequest
 
-  expect(request.url()).toContain('client_id=')
+  expect(request.url()).toContain('client_id=00000000-0000-0000-0000-00000000e2e5')
 })
