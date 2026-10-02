@@ -8,6 +8,8 @@ TDD is the red → green loop. This skill is the reference that makes that loop 
 
 When exploring the codebase, read `CONTEXT.md` (if it exists) so test names and interface vocabulary match the project's domain language, and respect ADRs in the area you're touching.
 
+When the behavior implements a Call of Cthulhu rule, take expected values from the relevant section of `docs/game-rules/` (worked examples, not formulas recomputed in the test) and name that section in the test, per `docs/game-rules/README.md`. If the section is missing or ambiguous, stop and flag it instead of choosing a rule yourself.
+
 ## What a good test is
 
 Tests verify behavior through public interfaces, not implementation details. Code can change entirely; tests shouldn't. A good test reads like a specification: "user can checkout with valid cart" tells you exactly what capability exists, and it survives refactors because it doesn't care about internal structure.

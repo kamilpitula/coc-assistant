@@ -19,6 +19,9 @@ Read: `specs/campaign-play/spec.md`
 - Contract: Investigator submission and approval.
 - Regression Guardrails: Investigators never cross Campaign boundaries and unapproved Investigators are not ready for play.
 
+Read: `docs/game-rules/coc7_character_creation_and_development_rules.md`
+- Section 1: Investigator data model, which defines the Character Sheet content.
+
 ## Verification
 - [ ] A Player can submit a Character Sheet for an Investigator in the Player's Campaign.
 - [ ] The Keeper can approve the submitted Character Sheet and the Investigator becomes ready for play.
@@ -26,4 +29,4 @@ Read: `specs/campaign-play/spec.md`
 - [ ] Unit, integration, and E2E tests cover submission, approval, authorization, and readiness state.
 
 ## Refinement Protocol
-If the Character Sheet vocabulary or readiness states change, update the domain state transition and acceptance scenarios together. Keep Investigator ownership exclusive to one Campaign and one Player.
+If the Character Sheet needs a rule or field not covered by `docs/game-rules/`, add it there first and reference it; do not define it in the spec or code. If the Character Sheet vocabulary or readiness states change, update the domain state transition and acceptance scenarios together. Keep Investigator ownership exclusive to one Campaign and one Player.

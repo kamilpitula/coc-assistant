@@ -35,6 +35,10 @@ benefit downstream disappears with it.
   report). Restate the task in your own words when delegating — don't just
   forward the user's message verbatim, since it may be ambiguous in ways
   you're expected to resolve before handing it off.
+- **Pass game-rule references, not rules.** When the task touches Call of
+  Cthulhu game rules, include links to the governing `docs/game-rules/`
+  sections in each delegation. Never paraphrase a rule into the delegation
+  itself; the subagents read the source.
 - **Never skip, auto-approve, or paraphrase away a human gate.** The Builder
   pauses for plan approval; the Verifier pauses for a merge decision.
   Relay what they produce to the human close to verbatim — summarizing

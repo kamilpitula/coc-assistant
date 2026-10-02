@@ -15,7 +15,8 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 ### Constraints
 - v1 requires manual Scenario preparation; PDF and text extraction is deferred to a later version.
 - Each Scene has a title, Keeper-facing description or read-aloud text, an order, optional Handouts, and links to relevant Non-Player Entities.
-- Human NPCs and Mythos Creatures are distinct profiles. A Human NPC uses relevant human characteristics and skills; a Mythos Creature may have attacks, armor, special abilities, and sanity loss.
+- Human NPCs and Mythos Creatures are distinct profiles. A Human NPC uses relevant human [characteristics](../../docs/game-rules/coc7_character_creation_and_development_rules.md#2-characteristics) and [skills](../../docs/game-rules/coc7_character_creation_and_development_rules.md#6-skills); a Mythos Creature may have attacks, armor, special abilities, and sanity loss.
+- Non-Player Entity profile rules are taken from [docs/game-rules](../../docs/game-rules/README.md). Mythos Creature profile rules are not yet documented there and are added to `docs/game-rules/` before Mythos Creature profiles are implemented.
 - Non-Player Entities are scoped to one Campaign and are not reusable across Campaigns in v1.
 - Handouts may be player-facing or Keeper-facing; Keeper-facing material must not be exposed to Players before the Keeper reveals it.
 - Later model extraction uses structured output and direct model calls rather than an agentic orchestration layer.

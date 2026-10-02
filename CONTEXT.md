@@ -2,6 +2,8 @@
 
 This context describes the shared language for preparing and running Call of Cthulhu 7th Edition campaigns. It keeps the persistent story, individual game nights, participants, characters, scenario material, and play record distinct.
 
+Game rules are defined only in [docs/game-rules](docs/game-rules/README.md). This glossary names concepts and links to the rules that govern them; it does not restate rules.
+
 ## Identity and Access
 
 **Account**:
@@ -37,7 +39,7 @@ A player-controlled human character in a Campaign, represented by a Call of Cthu
 _Avoid_: Player character, character, PC
 
 **Human NPC**:
-A human entity controlled by the Keeper rather than a Player. It uses human characteristics and only the skills and details relevant to that entity's role in the Campaign.
+A human entity controlled by the Keeper rather than a Player. It uses human [characteristics](docs/game-rules/coc7_character_creation_and_development_rules.md#2-characteristics) and only the [skills](docs/game-rules/coc7_character_creation_and_development_rules.md#6-skills) and details relevant to that entity's role in the Campaign.
 _Avoid_: NPC character, enemy
 
 **Mythos Creature**:
@@ -83,7 +85,7 @@ _Avoid_: Availability, status
 ## Character Readiness
 
 **Character Sheet**:
-The complete Call of Cthulhu 7th Edition record for an Investigator, including characteristics, derived values, skills, and personal details.
+The complete Call of Cthulhu 7th Edition record for an Investigator, as defined by the [investigator data model](docs/game-rules/coc7_character_creation_and_development_rules.md#1-investigator-data-model).
 _Avoid_: Player card, stat block
 
 **Character Approval**:

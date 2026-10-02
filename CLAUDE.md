@@ -6,6 +6,7 @@
 - Authentication uses Microsoft Entra ID, with Microsoft and Google SSO federated through Entra. Apply this consistently across frontend and backend code, with authorization enforced server-side.
 - Use SignalR for user-visible real-time updates.
 - Follow DDD principles and use the authoritative vocabulary from the root `CONTEXT.md` and applicable nested context files. The nearest context file takes precedence for its subtree; surface terminology conflicts instead of silently ignoring them.
+- Call of Cthulhu 7th Edition game rules live only in `docs/game-rules/`, which is the source of truth for them. Reference the relevant document section instead of restating rules anywhere else, and follow the conventions in `docs/game-rules/README.md`. Flag missing or conflicting rules instead of inventing them.
 - Add unit tests for all new behavior and logic. Exceptions are limited to generated code, declarative-only configuration, migrations, and trivial dependency wiring.
 - Add E2E coverage for every user-visible functionality change. Use specification files as the source of truth and Gherkin scenarios as guidance for Playwright tests, with clear traceability between them. Document exceptions for internal-only changes that cannot affect external workflows.
 - Follow SOLID and DRY by default. Document deliberate exceptions when strict application would reduce clarity or correctness.

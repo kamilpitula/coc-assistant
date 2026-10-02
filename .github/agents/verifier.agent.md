@@ -135,6 +135,13 @@ for it (or, if untestable, a clear note that it was handled another way).
 An implementation with no test for a stated edge case is a gap even if
 every existing test passes.
 
+If the diff implements Call of Cthulhu game rules, check the behavior and
+the tests' expected values against the cited sections of `docs/game-rules/`
+yourself, not against the Builder's description of the rule. A rule
+implemented without a section reference, a rule that contradicts the
+document, or a rule restated outside `docs/game-rules/` (in code comments,
+specs, tickets, or ADRs) is a blocking finding.
+
 ## 4. Check scope
 
 Confirm the changed files match what the plan and task called for. Flag

@@ -93,6 +93,13 @@ Agents drift from established decisions specifically under ambiguity, and
 an ADR exists to remove that ambiguity — if your plan would contradict one,
 that's a stop-and-flag situation, not a judgment call to make silently.
 
+**Treat `docs/game-rules/` the same way for game rules.** It is the only
+source of truth for Call of Cthulhu 7th Edition rules. Cite the sections
+your plan implements, and follow `docs/game-rules/README.md` for how code
+and tests reference them. Never restate a rule in code comments, specs, or
+ADRs, and never fill a gap in the rules from memory: a missing, ambiguous,
+or conflicting rule is a stop-and-flag situation.
+
 **For any genuinely non-obvious decision, show your work — briefly.** Not
 every choice needs this (don't force a trade-off analysis onto a decision
 that only has one sane answer), but when there's a real fork — which
@@ -139,6 +146,12 @@ _(omit if nothing here rises above routine)_
 
 - <decision>: considered [option A, option B] — chose A because <trade-off>.
   <Governed by ADR-NNNN / no existing ADR — will write one if approved.>
+
+### Game rules
+
+_(omit if the task implements no game rule)_
+
+- <behavior> — `docs/game-rules/<document>.md#<section-anchor>`
 
 ### Risks / open questions
 

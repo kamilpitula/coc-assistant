@@ -45,6 +45,12 @@ Given a task description, work through these steps in order:
 Find the files, classes, functions, and interfaces directly relevant to the task.
 For each, note _why_ it's relevant (don't just list paths).
 
+If the task touches Call of Cthulhu game rules, also locate the governing
+sections in `docs/game-rules/` and list each one in Relevant Files & Symbols
+(document path plus section anchor in the Symbol column). Report them as
+references only; do not summarize the rule itself. If a rule the task needs
+is not covered there, record that under Gaps / Open Questions.
+
 ## 2. Map dependencies — only what you can verify
 
 For the relevant code, trace what it depends on and what depends on it — imports,
