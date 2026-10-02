@@ -2,6 +2,13 @@ namespace CocAssistant.CampaignPlay.Infrastructure;
 
 public class EfCampaignRepository : ICampaignRepository
 {
+    // SQL Server names the violated index; SQLite names the constrained column.
+    private static readonly string[] ActiveInviteViolationMarkers =
+    [
+        CampaignPlayDbContext.ActiveInviteIndexName,
+        "CampaignInvite.CampaignId",
+    ];
+
     private readonly CampaignPlayDbContext _dbContext;
 
     public EfCampaignRepository(CampaignPlayDbContext dbContext)
@@ -35,5 +42,15 @@ public class EfCampaignRepository : ICampaignRepository
         {
             throw new CampaignMembershipConflictException(exception);
         }
+        catch (DbUpdateException exception) when (IsActiveInviteViolation(exception))
+        {
+            throw new CampaignMembershipConflictException(exception);
+        }
+    }
+
+    private static bool IsActiveInviteViolation(DbUpdateException exception)
+    {
+        var message = exception.InnerException?.Message ?? string.Empty;
+        return ActiveInviteViolationMarkers.Any(marker => message.Contains(marker, StringComparison.Ordinal));
     }
 }

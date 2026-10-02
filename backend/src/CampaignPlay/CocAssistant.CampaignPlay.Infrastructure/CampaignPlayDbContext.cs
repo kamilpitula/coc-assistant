@@ -2,6 +2,8 @@ namespace CocAssistant.CampaignPlay.Infrastructure;
 
 public class CampaignPlayDbContext : DbContext
 {
+    public const string ActiveInviteIndexName = "IX_CampaignInvite_CampaignId_Active";
+
     public CampaignPlayDbContext(DbContextOptions<CampaignPlayDbContext> options)
         : base(options)
     {
@@ -42,6 +44,12 @@ public class CampaignPlayDbContext : DbContext
             builder.Property(invite => invite.Token).IsRequired().HasMaxLength(64);
             builder.Property(invite => invite.Status).IsRequired().HasConversion<string>().HasMaxLength(20);
             builder.HasIndex(invite => invite.Token).IsUnique();
+            builder.HasIndex(invite => invite.CampaignId, "IX_CampaignInvite_CampaignId");
+
+            // Enforces exactly one active Campaign Invite per Campaign, even under concurrent issue/replace.
+            builder.HasIndex(invite => invite.CampaignId, ActiveInviteIndexName)
+                .IsUnique()
+                .HasFilter($"[Status] = '{nameof(CampaignInviteStatus.Active)}'");
         });
 
         modelBuilder.Entity<CampaignPlayer>(builder =>

@@ -54,6 +54,48 @@ public class CampaignApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetim
     }
 
     [Fact]
+    public async Task Given_a_configured_player_limit_When_creating_a_campaign_Then_the_limit_is_returned()
+    {
+        var client = _factory.CreateClient();
+        var request = BuildKeeperRequest(HttpMethod.Post, "/api/campaigns", "campaign-keeper-limit-1");
+        request.Content = JsonContent.Create(new { name = "The Haunting", playerLimit = 3 });
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var campaign = await response.Content.ReadFromJsonAsync<CampaignResponse>();
+        Assert.Equal(3, campaign!.PlayerLimit);
+    }
+
+    [Fact]
+    public async Task Given_no_player_limit_When_creating_a_campaign_Then_the_default_of_eight_is_returned()
+    {
+        var client = _factory.CreateClient();
+        var request = BuildKeeperRequest(HttpMethod.Post, "/api/campaigns", "campaign-keeper-limit-2");
+        request.Content = JsonContent.Create(new { name = "The Haunting" });
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var campaign = await response.Content.ReadFromJsonAsync<CampaignResponse>();
+        Assert.Equal(8, campaign!.PlayerLimit);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(17)]
+    public async Task Given_an_out_of_range_player_limit_When_creating_a_campaign_Then_it_is_a_bad_request(int playerLimit)
+    {
+        var client = _factory.CreateClient();
+        var request = BuildKeeperRequest(HttpMethod.Post, "/api/campaigns", "campaign-keeper-limit-3");
+        request.Content = JsonContent.Create(new { name = "The Haunting", playerLimit });
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Given_a_campaign_When_its_keeper_requests_it_Then_the_campaign_is_returned()
     {
         var client = _factory.CreateClient();

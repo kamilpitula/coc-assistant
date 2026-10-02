@@ -29,6 +29,45 @@ public class CampaignTests
     }
 
     [Fact]
+    public void Given_no_player_limit_When_creating_a_campaign_Then_it_admits_eight_players()
+    {
+        var campaign = new Campaign("The Haunting", KeeperAccountId, CreatedAt);
+
+        Assert.Equal(8, campaign.PlayerLimit);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(16)]
+    public void Given_a_configured_player_limit_When_creating_a_campaign_Then_it_keeps_that_limit(int playerLimit)
+    {
+        var campaign = new Campaign("The Haunting", KeeperAccountId, CreatedAt, playerLimit);
+
+        Assert.Equal(playerLimit, campaign.PlayerLimit);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(17)]
+    public void Given_an_out_of_range_player_limit_When_creating_a_campaign_Then_it_is_rejected(int playerLimit)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new Campaign("The Haunting", KeeperAccountId, CreatedAt, playerLimit));
+    }
+
+    [Fact]
+    public void Given_a_campaign_with_a_limit_of_two_When_a_third_account_joins_Then_the_limit_is_reached()
+    {
+        var campaign = new Campaign("The Haunting", KeeperAccountId, CreatedAt, playerLimit: 2);
+        var invite = campaign.IssueInvite("token-1", CreatedAt);
+
+        Assert.Equal(JoinCampaignOutcome.Joined, campaign.Join(Guid.NewGuid(), invite.Token, CreatedAt));
+        Assert.Equal(JoinCampaignOutcome.Joined, campaign.Join(Guid.NewGuid(), invite.Token, CreatedAt));
+        Assert.Equal(JoinCampaignOutcome.LimitReached, campaign.Join(Guid.NewGuid(), invite.Token, CreatedAt));
+    }
+
+    [Fact]
     public void Given_a_campaign_When_asked_about_its_keeper_Then_only_the_owning_account_is_the_keeper()
     {
         var campaign = new Campaign("The Haunting", KeeperAccountId, CreatedAt);

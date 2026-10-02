@@ -21,12 +21,13 @@ public class CampaignController : CampaignPlayControllerBase
             return Unauthorized();
         }
 
-        var campaign = await _campaignService.CreateCampaignAsync(request.Name, keeperAccountId.Value, cancellationToken);
+        var campaign = await _campaignService.CreateCampaignAsync(
+            request.Name,
+            keeperAccountId.Value,
+            request.PlayerLimit,
+            cancellationToken);
 
-        return CreatedAtAction(
-            nameof(GetById),
-            new { id = campaign.Id },
-            new CampaignResponse(campaign.Id, campaign.Name, campaign.KeeperAccountId));
+        return CreatedAtAction(nameof(GetById), new { id = campaign.Id }, ToResponse(campaign));
     }
 
     /// <summary>Returns the Campaign only when the caller is its Keeper; otherwise 404 to keep it invisible.</summary>
@@ -45,6 +46,9 @@ public class CampaignController : CampaignPlayControllerBase
             return NotFound();
         }
 
-        return Ok(new CampaignResponse(campaign.Id, campaign.Name, campaign.KeeperAccountId));
+        return Ok(ToResponse(campaign));
     }
+
+    private static CampaignResponse ToResponse(Campaign campaign) =>
+        new(campaign.Id, campaign.Name, campaign.KeeperAccountId, campaign.PlayerLimit);
 }

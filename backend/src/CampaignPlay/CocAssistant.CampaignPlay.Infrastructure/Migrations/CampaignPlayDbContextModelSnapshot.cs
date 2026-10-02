@@ -76,10 +76,14 @@ namespace CocAssistant.CampaignPlay.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CampaignId");
-
                     b.HasIndex("Token")
                         .IsUnique();
+
+                    b.HasIndex(new[] { "CampaignId" }, "IX_CampaignInvite_CampaignId");
+
+                    b.HasIndex(new[] { "CampaignId" }, "IX_CampaignInvite_CampaignId_Active")
+                        .IsUnique()
+                        .HasFilter("[Status] = 'Active'");
 
                     b.ToTable("CampaignInvite");
                 });

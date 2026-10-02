@@ -6,6 +6,12 @@ public class Campaign
     /// <summary>The default number of Players a Campaign admits before the limit is reached.</summary>
     public const int DefaultPlayerLimit = 8;
 
+    /// <summary>The smallest Player limit a Keeper may configure.</summary>
+    public const int MinPlayerLimit = 1;
+
+    /// <summary>The largest Player limit a Keeper may configure.</summary>
+    public const int MaxPlayerLimit = 16;
+
     private readonly List<CampaignInvite> _invites = [];
     private readonly List<CampaignPlayer> _players = [];
 
@@ -23,7 +29,7 @@ public class Campaign
         Name = string.Empty;
     }
 
-    public Campaign(string name, Guid keeperAccountId, DateTimeOffset createdAt)
+    public Campaign(string name, Guid keeperAccountId, DateTimeOffset createdAt, int playerLimit = DefaultPlayerLimit)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -35,11 +41,19 @@ public class Campaign
             throw new ArgumentException("Keeper account is required.", nameof(keeperAccountId));
         }
 
+        if (playerLimit is < MinPlayerLimit or > MaxPlayerLimit)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(playerLimit),
+                playerLimit,
+                $"Player limit must be between {MinPlayerLimit} and {MaxPlayerLimit}.");
+        }
+
         Id = Guid.NewGuid();
         Name = name.Trim();
         KeeperAccountId = keeperAccountId;
         CreatedAt = createdAt;
-        PlayerLimit = DefaultPlayerLimit;
+        PlayerLimit = playerLimit;
     }
 
     public IReadOnlyCollection<CampaignInvite> Invites => _invites;
