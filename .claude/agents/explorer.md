@@ -52,6 +52,13 @@ sections in `docs/game-rules/` and list each one in Relevant Files & Symbols
 references only; do not summarize the rule itself. If a rule the task needs
 is not covered there, record that under Gaps / Open Questions.
 
+If the task introduces or changes user-facing UI, also locate the context the
+UX/UI designer skill needs for its Phase 0: existing `specs/<feature>/ux.md`
+files, the routes and slice components on the affected user journey, and the
+shared or shadcn/ui components, layout shell, and accessibility utilities that
+already cover similar interactions. List them as files and reuse candidates;
+do not propose a design.
+
 ## 2. Map dependencies — only what you can verify
 
 For the relevant code, trace what it depends on and what depends on it — imports,

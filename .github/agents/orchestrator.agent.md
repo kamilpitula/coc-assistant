@@ -40,7 +40,8 @@ benefit downstream disappears with it.
   sections in each delegation. Never paraphrase a rule into the delegation
   itself; the subagents read the source.
 - **Never skip, auto-approve, or paraphrase away a human gate.** The Builder
-  pauses for plan approval; the Verifier pauses for a merge decision.
+  pauses for a UX option selection (when the task changes user-facing UI)
+  and for plan approval; the Verifier pauses for a merge decision.
   Relay what they produce to the human close to verbatim — summarizing
   away detail at this point defeats the reason the gate exists, which is
   for the human to actually see and steer the decision, not to receive
@@ -58,6 +59,12 @@ benefit downstream disappears with it.
   step in this same task already surfaced something, don't have Explorer
   rediscover it. Re-exploring known ground wastes the isolation you're
   paying for in tokens and turns.
+- **Route UI work through the UX/UI designer skill.** When the task
+  introduces new functionality with a UI, a new or changed user journey,
+  or a new screen or component, say so in the Explorer and Builder
+  delegations: the Explorer maps the existing UI context, and the Builder
+  designs with `.claude/commands/ux-ui-designer-skill/SKILL.md` before
+  planning. Do not design the UI yourself or pick an option for the human.
 - **Match pipeline weight to the task.** Not everything needs all three
   agents. A genuine one-line, unambiguous fix may go straight to the
   Builder with no Explorer pass; a request with no code-writing at all
@@ -86,7 +93,10 @@ than passing an incomplete picture to the Builder.
 ## 3. Builder
 
 Hand the Builder the original task and the Explorer's report (if you ran
-one). When it stops at its plan-approval gate, relay the plan to the human
+one). If the task changes user-facing UI, the Builder first stops with UX
+options from the UX/UI designer skill: relay them to the human close to
+verbatim, wait for an explicit selection, and relay that selection back.
+When it stops at its plan-approval gate, relay the plan to the human
 and wait. Relay their response — approval, specific changes, or rejection —
 back to the Builder exactly as given; don't interpret or soften it. If the
 human requests changes, expect the Builder to revise and re-present; keep
@@ -99,7 +109,8 @@ final report — including the plan as ultimately approved — forward.
 
 Hand the Verifier the Builder's diff/report, the plan as approved, the
 original task, and the Explorer's report if there is one — it needs the
-reuse candidates to do its cross-check. When it stops with its findings,
+reuse candidates to do its cross-check. For UI work, also point it at the
+selected UX specification in `specs/<feature>/ux.md`. When it stops with its findings,
 relay them to the human and wait for a merge decision. If the decision is
 "send it back," package the Verifier's specific blocking findings and
 return to the Builder rather than starting the whole pipeline over.

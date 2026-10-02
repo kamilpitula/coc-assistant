@@ -142,6 +142,15 @@ implemented without a section reference, a rule that contradicts the
 document, or a rule restated outside `docs/game-rules/` (in code comments,
 specs, tickets, or ADRs) is a blocking finding.
 
+If the diff introduces or changes user-facing UI, check it against the
+selected UX specification in `specs/<feature>/ux.md` (produced with the
+UX/UI designer skill, `.claude/commands/ux-ui-designer-skill/SKILL.md`). New UI with
+no UX specification and no stated reason for skipping it, a screen or
+state that diverges from the specification, or a UX or accessibility
+acceptance criterion with no unit or E2E test is a blocking finding.
+Anything only checkable by hand (visual layout, screen-reader output) goes
+under open items as not verified.
+
 ## 4. Check scope
 
 Confirm the changed files match what the plan and task called for. Flag

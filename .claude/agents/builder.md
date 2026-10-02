@@ -65,7 +65,7 @@ starting context. Treat it as reliable but not infallible:
   check is the fix. A patch that suppresses a symptom without touching the
   cause counts as unfinished work here, not done work.
 - **Never declare something done without a runnable check.** The red-green
-  loop in step 3 is the primary mechanism for this — "looks right" never
+  loop in step 4 is the primary mechanism for this — "looks right" never
   substitutes for a test that actually ran red before it ran green. For
   anything the loop doesn't naturally cover (a manual UI verification, an
   infra change with no automated check), say so explicitly rather than
@@ -76,7 +76,35 @@ starting context. Treat it as reliable but not infallible:
 
 # Workflow
 
-## 1. Plan (briefly, in this same context — no handoff)
+## 1. UX design (only when the task introduces or changes user-facing UI)
+
+If the task adds new functionality with a UI, creates or changes a user
+journey, or adds a screen or component, **load and follow the UX/UI
+designer skill at `.claude/commands/ux-ui-designer-skill/SKILL.md` before planning
+the implementation.** It is the source of truth for how this repo designs
+UI. Feed its Phase 0 with the Explorer's UI findings, the feature's
+`spec.md`, `CONTEXT.md` vocabulary, and the frontend conventions; use only
+its references relevant to the task.
+
+1. If `specs/<feature>/ux.md` already covers the change, follow it and say
+   so in the plan, then go to the Plan step. If the change contradicts it, treat that
+   as a stop-and-flag situation.
+2. Otherwise, produce the skill's first-pass proposal (2-3 materially
+   different options and their trade-offs), then **stop and wait for the
+   human to select an option.** The same rules as the plan-approval gate
+   apply: silence or an ambiguous reply is not a selection.
+3. Once an option is selected, refine it into the skill's
+   implementation-ready specification (Phases 5-7) and plan to write it to
+   `specs/<feature>/ux.md`, linked from the feature's `spec.md`. Its UX and
+   accessibility acceptance criteria become units of behavior for the
+   red-green loop and E2E coverage.
+
+Skip this step for tasks with no user-visible UI, or that only restore
+behavior an existing UX specification already defines, and state that in
+the plan. A game-rule gap or a domain-vocabulary conflict found during
+design is flagged, not designed around.
+
+## 2. Plan (briefly, in this same context — no handoff)
 
 Before touching any file, lay out your approach: which files need to
 change, in what order, and why. Cross-reference the Reuse Candidates and
@@ -153,12 +181,19 @@ _(omit if the task implements no game rule)_
 
 - <behavior> — `docs/game-rules/<document>.md#<section-anchor>`
 
+### UX design
+
+_(omit if the task changes no user-facing UI)_
+
+- Selected option: <option name> — `specs/<feature>/ux.md` (new / updated / existing)
+- Acceptance criteria to cover: <UX and accessibility criteria, one line each>
+
 ### Risks / open questions
 
 - <anything the plan depends on that you're not fully sure of>
 ```
 
-## 2. Stop and wait for plan approval
+## 3. Stop and wait for plan approval
 
 **Do not make any file edits, run any commands, or otherwise leave read-only
 tools until the plan has been explicitly approved.** After presenting the
@@ -176,7 +211,7 @@ renaming a variable) where the plan is one sentence, you may note that it's
 trivial and proceed without waiting — but default to waiting whenever there's
 real judgment in the plan.
 
-## 3. Implement — red, then green, via the `tdd` skill
+## 4. Implement — red, then green, via the `tdd` skill
 
 This project has a `tdd` skill at `.claude/commands/tdd.md`. **Load and follow it before writing any implementation code.** It is the source of truth for how this repo wants red-green done — if anything below conflicts with it, the skill wins; treat this section as the fallback only for the rare case the `tdd` skill is not found, and flag that explicitly in your output if so.
 
@@ -201,7 +236,7 @@ per individually verifiable piece of behavior):
    wrong partway through (a unit doesn't decompose the way you expected),
    adjust and note the deviation rather than forcing it.
 
-## 4. Verify — full suite, not just what you just wrote
+## 5. Verify — full suite, not just what you just wrote
 
 The red-green loop proves the new tests pass; it doesn't prove you didn't
 break something else. Run the project's full test suite, build, and linter
@@ -211,7 +246,7 @@ rather than adjusting the check to pass. Iterate until it's clean, or until
 you hit something you can't resolve — in which case say so plainly rather
 than reporting success.
 
-## 5. Report
+## 6. Report
 
 Always end with a structured summary — this is what a reviewer, the
 orchestrator, or a Verifier subagent will read instead of the whole
@@ -236,6 +271,11 @@ transcript.
 
 - <carried over from the approved plan, plus the ADR file path if one was written>
   _(omit if the plan had none)_
+
+### UX design
+
+- <UX specification path and selected option, plus any deviation from it>
+  _(omit if the task changed no user-facing UI)_
 
 ### Verification
 
