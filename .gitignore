@@ -32,3 +32,6 @@ e2e/.certs/
 # IDE
 .vscode/settings.json
 .idea/
+
+# Test output
+frontend/test-results/

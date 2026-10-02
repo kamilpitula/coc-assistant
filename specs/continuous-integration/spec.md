@@ -17,7 +17,7 @@ The existing integration tests and E2E harness were written local-first against 
     | `changes` | always | `dorny/paths-filter` computes which areas changed |
     | `backend` | `backend/**` changed | restore, build, `dotnet format --verify-no-changes`, unit tests (`CocAssistant.Api.Tests`, `CocAssistant.Identity.Tests`, `CocAssistant.CampaignPlay.Tests`) with trx results in the job summary |
     | `backend-integration` | `backend/**` changed | `CocAssistant.Api.IntegrationTests` against a `mcr.microsoft.com/mssql/server:2022-latest` service container |
-    | `frontend` | `frontend/**` changed | `npm ci`, `lint`, `build` (includes `tsc -b`), `test`, `build-storybook` |
+    | `frontend` | `frontend/**` changed | `npm ci`, `generate-routes` (the gitignored TanStack route tree), `lint`, `build` (includes `tsc -b`), `test`, `build-storybook` |
     | `e2e` | `backend/**`, `frontend/**`, or `e2e/**` changed | SQL Server service container, per-run dev certificate, Playwright chromium suite |
     | `terraform` | `infrastructure/**` changed | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate` |
     | `ci-success` | always | aggregates the results of all jobs above; the only required status check |
