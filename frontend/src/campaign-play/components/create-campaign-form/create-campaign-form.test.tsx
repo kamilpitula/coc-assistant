@@ -123,6 +123,7 @@ describe('CreateCampaignForm', () => {
           playerLimit: 5,
           era: '1920s',
           allowedCreationMethods: ALL_CREATION_METHODS,
+          role: 'Keeper',
         },
       }),
     )

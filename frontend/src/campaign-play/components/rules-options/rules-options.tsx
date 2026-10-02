@@ -44,7 +44,7 @@ export function RulesOptions({ campaignId }: RulesOptionsProps) {
     )
   }
 
-  if (!campaign.data) {
+  if (campaign.data?.role !== 'Keeper') {
     return null
   }
 

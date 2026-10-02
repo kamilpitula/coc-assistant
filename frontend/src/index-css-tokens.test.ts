@@ -50,6 +50,14 @@ describe('index.css colour tokens', () => {
     expect(contrastRatio(readToken('destructive'), readToken('background'))).toBeGreaterThanOrEqual(4.5)
   })
 
+  it('maps --warning into the Tailwind theme so text-warning resolves', () => {
+    expect(indexCss).toMatch(/--color-warning:\s*var\(--warning\)/)
+  })
+
+  it('gives --warning at least 4.5:1 contrast against --background (WCAG 2.2 AA text)', () => {
+    expect(contrastRatio(readToken('warning'), readToken('background'))).toBeGreaterThanOrEqual(4.5)
+  })
+
   it('computes the known 21:1 contrast of black on white', () => {
     const white = { lightness: 1, chroma: 0, hue: 0 }
     const black = { lightness: 0, chroma: 0, hue: 0 }

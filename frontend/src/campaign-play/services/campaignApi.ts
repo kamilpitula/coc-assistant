@@ -1,9 +1,11 @@
 import { z } from 'zod'
 
+import { authHeaders } from '@/campaign-play/services/authHeaders'
 import {
   CREATION_METHODS,
   ERAS,
   type Campaign,
+  type CampaignView,
   type CreateCampaignInput,
   type CreationMethod,
 } from '@/campaign-play/types/Campaign'
@@ -21,7 +23,18 @@ const campaignResponseSchema = z.object({
   playerLimit: z.number().int(),
   era: eraSchema,
   allowedCreationMethods: z.array(creationMethodSchema).min(1),
+  role: z.literal('Keeper'),
 })
+
+const playerCampaignResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  era: eraSchema,
+  allowedCreationMethods: z.array(creationMethodSchema).min(1),
+  role: z.literal('Player'),
+})
+
+const campaignViewSchema = z.discriminatedUnion('role', [campaignResponseSchema, playerCampaignResponseSchema])
 
 const inviteResponseSchema = z.object({
   campaignId: z.string(),
@@ -38,13 +51,12 @@ export const campaignQueryKeys = {
   all: ['campaigns'] as const,
   detail: (campaignId: string) => ['campaigns', campaignId] as const,
   invite: (campaignId: string) => ['campaigns', campaignId, 'invite'] as const,
-}
-
-function authHeaders(accessToken: string): HeadersInit {
-  return {
-    Authorization: `Bearer ${accessToken}`,
-    'Content-Type': 'application/json',
-  }
+  investigators: (campaignId: string) => ['campaigns', campaignId, 'investigators'] as const,
+  investigator: (campaignId: string, investigatorId: string) =>
+    ['campaigns', campaignId, 'investigators', investigatorId] as const,
+  myInvestigator: (campaignId: string) => ['campaigns', campaignId, 'investigators', 'mine'] as const,
+  myCharacterSheet: (campaignId: string) =>
+    ['campaigns', campaignId, 'investigators', 'mine', 'character-sheet'] as const,
 }
 
 /** Calls POST /api/campaigns, which records the authenticated caller as the new Campaign's Keeper. */
@@ -70,8 +82,11 @@ export async function createCampaign(
   return campaignResponseSchema.parse(await response.json())
 }
 
-/** Calls GET /api/campaigns/{id}; returns null when the caller is not the Campaign's Keeper (404). */
-export async function getCampaign(accessToken: string, campaignId: string): Promise<Campaign | null> {
+/**
+ * Calls GET /api/campaigns/{id}: the Keeper view for the Keeper, the reduced view for a Player, and null for anyone
+ * who is not a member (404).
+ */
+export async function getCampaign(accessToken: string, campaignId: string): Promise<CampaignView | null> {
   const response = await fetch(`/api/campaigns/${campaignId}`, {
     headers: authHeaders(accessToken),
   })
@@ -84,7 +99,7 @@ export async function getCampaign(accessToken: string, campaignId: string): Prom
     throw new Error(`Failed to load the campaign (${response.status})`)
   }
 
-  return campaignResponseSchema.parse(await response.json())
+  return campaignViewSchema.parse(await response.json())
 }
 
 /** Calls PUT /api/campaigns/{id}/allowed-creation-methods (Keeper only) and returns the updated Campaign. */

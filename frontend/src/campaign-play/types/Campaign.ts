@@ -11,6 +11,10 @@ export const CREATION_METHODS = ['StandardRolling', 'PointBuy', 'QuickFire'] as 
 
 export type CreationMethod = (typeof CREATION_METHODS)[number]
 
+/** The caller's role in a Campaign (CONTEXT.md: Keeper, Player). */
+export type CampaignRole = 'Keeper' | 'Player'
+
+/** The Keeper's view of a Campaign. */
 export interface Campaign {
   id: string
   name: string
@@ -18,7 +22,20 @@ export interface Campaign {
   playerLimit: number
   era: Era
   allowedCreationMethods: CreationMethod[]
+  role: 'Keeper'
 }
+
+/** A Player's reduced view of a Campaign; it carries no Keeper-only data. */
+export interface PlayerCampaign {
+  id: string
+  name: string
+  era: Era
+  allowedCreationMethods: CreationMethod[]
+  role: 'Player'
+}
+
+/** What GET /api/campaigns/{id} returns to a member, depending on their role. */
+export type CampaignView = Campaign | PlayerCampaign
 
 /** What a Keeper supplies to create a Campaign. */
 export interface CreateCampaignInput {

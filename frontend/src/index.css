@@ -16,6 +16,8 @@
   --ring: oklch(0.708 0 0);
   /* About 6.4:1 against --background (WCAG 2.2 AA text); always paired with text or an icon. */
   --destructive: oklch(0.505 0.213 27.518);
+  /* Dark amber, at least 4.5:1 against --background (WCAG 2.2 AA text); always paired with text or an icon. */
+  --warning: oklch(0.47 0.11 70);
 }
 
 @theme inline {
@@ -33,6 +35,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
 }
 
 body {

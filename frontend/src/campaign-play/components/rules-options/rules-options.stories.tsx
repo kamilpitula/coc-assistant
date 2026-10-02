@@ -13,6 +13,7 @@ const campaign: Campaign = {
   playerLimit: 8,
   era: '1920s',
   allowedCreationMethods: ['StandardRolling', 'PointBuy', 'QuickFire'],
+  role: 'Keeper',
 }
 
 // Seeds the Keeper's Campaign so the story renders without calling the API.

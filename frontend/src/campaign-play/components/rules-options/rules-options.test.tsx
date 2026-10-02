@@ -24,6 +24,7 @@ const campaign: Campaign = {
   playerLimit: 8,
   era: '1920s',
   allowedCreationMethods: ['StandardRolling', 'PointBuy', 'QuickFire'],
+  role: 'Keeper',
 }
 
 function campaignQuery(overrides: Record<string, unknown> = {}) {
@@ -55,6 +56,18 @@ describe('RulesOptions', () => {
 
   it('renders nothing for a caller who is not the Keeper', () => {
     mockUseCampaign.mockReturnValue(campaignQuery({ data: null }))
+
+    const { container } = render(<RulesOptions campaignId="c1" />)
+
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it("renders nothing for a Player's reduced Campaign view", () => {
+    mockUseCampaign.mockReturnValue(
+      campaignQuery({
+        data: { id: 'c1', name: 'The Haunting', era: '1920s', allowedCreationMethods: ['PointBuy'], role: 'Player' },
+      }),
+    )
 
     const { container } = render(<RulesOptions campaignId="c1" />)
 
