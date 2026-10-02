@@ -8,3 +8,5 @@ global using Microsoft.AspNetCore.Authorization;
 global using Microsoft.AspNetCore.Mvc;
 global using System.Text.Json;
 global using System.Text.Json.Serialization;
+global using CocAssistant.CampaignPlay.Domain.CharacterSheets;
+global using CocAssistant.CampaignPlay.Domain.Investigators;

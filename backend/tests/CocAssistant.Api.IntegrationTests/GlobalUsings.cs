@@ -23,3 +23,5 @@ global using Respawn;
 global using System.Text.Json;
 global using CocAssistant.CampaignPlay.Application;
 global using static CocAssistant.Api.IntegrationTests.CampaignPlayApiRequests;
+global using CocAssistant.CampaignPlay.Domain.CharacterSheets;
+global using CocAssistant.CampaignPlay.Domain.Investigators;

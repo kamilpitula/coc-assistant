@@ -24,5 +24,7 @@ public sealed class SqliteCampaignPlayDbContextFixture : IDisposable
 
     public ICampaignRepository CreateRepository(CampaignPlayDbContext dbContext) => new EfCampaignRepository(dbContext);
 
+    public IInvestigatorRepository CreateInvestigatorRepository(CampaignPlayDbContext dbContext) => new EfInvestigatorRepository(dbContext);
+
     public void Dispose() => _connection.Dispose();
 }

@@ -9,3 +9,6 @@ global using System.Text.Json;
 global using System.Text.Json.Serialization;
 global using CocAssistant.CampaignPlay.Infrastructure.RuleData;
 global using CocAssistant.Identity.Application;
+global using CocAssistant.CampaignPlay.Domain.CharacterSheets;
+global using CocAssistant.CampaignPlay.Domain.Investigators;
+global using Microsoft.EntityFrameworkCore.ChangeTracking;

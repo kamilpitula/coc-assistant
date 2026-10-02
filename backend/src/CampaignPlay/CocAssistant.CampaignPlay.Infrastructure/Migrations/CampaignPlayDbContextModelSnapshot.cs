@@ -123,6 +123,48 @@ namespace CocAssistant.CampaignPlay.Infrastructure.Migrations
                     b.ToTable("CampaignPlayer");
                 });
 
+            modelBuilder.Entity("CocAssistant.CampaignPlay.Domain.Investigators.Investigator", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CampaignId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ChangeRequestComment")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("CharacterSheet")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("PlayerAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "CampaignId", "PlayerAccountId" }, "IX_Investigator_CampaignId_PlayerAccountId")
+                        .IsUnique();
+
+                    b.ToTable("Investigators");
+                });
+
             modelBuilder.Entity("CocAssistant.CampaignPlay.Domain.CampaignInvite", b =>
                 {
                     b.HasOne("CocAssistant.CampaignPlay.Domain.Campaign", null)
@@ -136,6 +178,15 @@ namespace CocAssistant.CampaignPlay.Infrastructure.Migrations
                 {
                     b.HasOne("CocAssistant.CampaignPlay.Domain.Campaign", null)
                         .WithMany("Players")
+                        .HasForeignKey("CampaignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CocAssistant.CampaignPlay.Domain.Investigators.Investigator", b =>
+                {
+                    b.HasOne("CocAssistant.CampaignPlay.Domain.Campaign", null)
+                        .WithMany()
                         .HasForeignKey("CampaignId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
