@@ -1,0 +1,88 @@
+{
+  "catalog": "CharacteristicsRules",
+  "schemaVersion": 1,
+  "verificationStatus": "damage bonus and build table moved unchanged from section 5.8 on 2026-10-02; awaiting project owner verification; pageReference values still to be added",
+  "damageBonusAndBuild": [
+    {
+      "id": "strength-size-2-64",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": { "minimumStrengthSize": 2, "maximumStrengthSize": 64, "damageBonus": "-2", "build": -2 }
+    },
+    {
+      "id": "strength-size-65-84",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": { "minimumStrengthSize": 65, "maximumStrengthSize": 84, "damageBonus": "-1", "build": -1 }
+    },
+    {
+      "id": "strength-size-85-124",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": { "minimumStrengthSize": 85, "maximumStrengthSize": 124, "damageBonus": "0", "build": 0 }
+    },
+    {
+      "id": "strength-size-125-164",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": { "minimumStrengthSize": 125, "maximumStrengthSize": 164, "damageBonus": "+1D4", "build": 1 }
+    },
+    {
+      "id": "strength-size-165-204",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": { "minimumStrengthSize": 165, "maximumStrengthSize": 204, "damageBonus": "+1D6", "build": 2 }
+    },
+    {
+      "id": "strength-size-205-284",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": { "minimumStrengthSize": 205, "maximumStrengthSize": 284, "damageBonus": "+2D6", "build": 3 }
+    },
+    {
+      "id": "strength-size-285-364",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": { "minimumStrengthSize": 285, "maximumStrengthSize": 364, "damageBonus": "+3D6", "build": 4 }
+    },
+    {
+      "id": "strength-size-365-444",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": { "minimumStrengthSize": 365, "maximumStrengthSize": 444, "damageBonus": "+4D6", "build": 5 }
+    },
+    {
+      "id": "strength-size-445-524",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": { "minimumStrengthSize": 445, "maximumStrengthSize": 524, "damageBonus": "+5D6", "build": 6 }
+    }
+  ]
+}

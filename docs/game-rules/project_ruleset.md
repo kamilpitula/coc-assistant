@@ -59,3 +59,20 @@ are offered as suggestions only.
 Dice results are rolled at the table and entered by the Player. The rules do
 not specify who rolls, so this is a project choice rather than a deviation;
 each result is kept as a Roll Record for the Keeper to review.
+
+## 4.4 Characteristic floor after age effects
+
+**House rule.** The core rules do not say how low a characteristic may fall
+when the age modifiers of
+[section 3.1](coc7_character_creation_and_development_rules.md#31-character-creation-age-brackets)
+are applied. In this project the floor is **0** for every characteristic:
+
+- The APP modifier may not take APP below 0.
+- The physical deduction may not take any characteristic it is taken from
+  below 0. The Player distributes the deduction across the named
+  characteristics as section 3.1 describes.
+
+A Character Sheet whose age effects would take a characteristic below the floor
+is invalid; it is reported as a validation error and is not corrected
+automatically
+([section 15](coc7_character_creation_and_development_rules.md#15-character-creation-validation-rules)).

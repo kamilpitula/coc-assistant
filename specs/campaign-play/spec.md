@@ -17,10 +17,11 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
 - **Investigator visibility:** A Player reads only their own Investigator. The Keeper reads every Investigator in Submitted, Changes Requested, or Approved; a Draft is shown to the Keeper only as "In progress" with the Player's name. Requests for an Investigator outside the caller's visibility, including any in another Campaign, return 404.
 - **Player and Keeper experience:** The Campaign page renders by role. A Player sees a read-only Campaign view with a "Your Investigator" card showing the status and one primary action (Create, Continue, View, or Edit with the Keeper's Change Request comment). The Keeper sees the Investigator list with statuses and a review screen that uses the shared read-only Character Sheet view with Approve and Request changes actions. UX specification: [specs/character-sheet/ux.md](../character-sheet/ux.md).
 - **API Contracts:**
-  - `POST /api/campaigns` - accepts `era` and `allowedCreationMethods` in addition to the existing fields.
+  - `POST /api/campaigns` - accepts `era` and `allowedCreationMethods` in addition to the existing fields; the response is the Keeper view below.
+  - `GET /api/campaigns/{campaignId}` - Campaign members only; the response depends on the caller's role. The Keeper gets the Keeper view `{id, name, keeperAccountId, playerLimit, era, allowedCreationMethods, role: "Keeper"}`. A Player gets the reduced Player view `{id, name, era, allowedCreationMethods, role: "Player"}`, which carries no Keeper-only data. Non-members get 404.
   - `PUT /api/campaigns/{campaignId}/allowed-creation-methods` - Keeper only; replaces the allowed Creation Methods (at least one).
   - `GET /api/campaigns/{campaignId}/rules/occupations` - Campaign members (Keeper or Player) only; returns the Occupation catalog for the Campaign's Era.
-  - `POST /api/campaigns/{campaignId}/investigators` - Player only; creates the caller's Draft Investigator; 409 when one already exists.
+  - `POST /api/campaigns/{campaignId}/investigators` - Player only; creates the caller's Draft Investigator; 409 when one already exists, and 409 when the Campaign allows no Creation Method the application supports yet (PBI-CP-003 supports Point Buy only).
   - `GET /api/campaigns/{campaignId}/investigators/mine` - Player only; returns the caller's Investigator status and Change Request comment, or 404.
   - `DELETE /api/campaigns/{campaignId}/investigators/mine` - Player only; deletes a Draft Investigator.
   - `POST /api/campaigns/{campaignId}/investigators/mine/submit` - Player only; submits a Draft or Changes Requested Investigator; 422 with `ValidationError` items when errors remain.
@@ -28,6 +29,13 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
   - `GET /api/campaigns/{campaignId}/investigators/{investigatorId}` - Keeper only; returns a non-Draft Investigator with its Character Sheet, warnings, and Roll Records.
   - `POST /api/campaigns/{campaignId}/investigators/{investigatorId}/approve` - Keeper only; Submitted -> Approved.
   - `POST /api/campaigns/{campaignId}/investigators/{investigatorId}/request-changes` - Keeper only; Submitted -> Changes Requested; the body carries the required comment of at most 2000 characters.
+- **Investigator API shapes:** JSON properties are camelCase; status and Creation Method values use their PascalCase names (`Draft`, `Submitted`, `ChangesRequested`, `Approved`; `PointBuy`).
+  - Investigator summary, returned by `POST .../investigators` (201), `GET .../investigators/mine`, and `POST .../investigators/mine/submit` (200): `{id, status, name, changeRequestComment, updatedAt}`. `name` is the Investigator name or null. `changeRequestComment` is the latest Change Request comment or null.
+  - Keeper list item, returned as an array by `GET .../investigators`: `{playerAccountId, playerName, status, investigatorId, investigatorName, updatedAt}`. For a Draft, `investigatorId` and `investigatorName` are null, because the Keeper sees a Draft only as "In progress" with the Player's name.
+  - Keeper Investigator, returned by `GET .../investigators/{investigatorId}`: `{id, status, playerName, changeRequestComment, updatedAt, characterSheet, warnings}`, where `characterSheet` is the Character Sheet view defined in [specs/character-sheet/spec.md](../character-sheet/spec.md) (it includes the Roll Records) and `warnings` is its `ValidationError` list with severity `Warning`.
+  - `DELETE .../investigators/mine` returns 204. `POST .../approve` and `POST .../request-changes` return the Keeper Investigator.
+  - Errors use RFC 9457 problem details. An action the Investigator's status does not allow, a second Investigator, or a Campaign without a supported Creation Method returns 409. A submission with errors returns 422 with a `validationErrors` array of `ValidationError` items. A missing or too long Change Request comment returns 400.
+  - Player names come from the caller's Account display name through an Identity read port; Campaign Play does not store a copy.
 - **Identity and access:** Account authentication is defined in [specs/identity-and-access/spec.md](../identity-and-access/spec.md). Campaign permissions distinguish the Keeper from Players and protect Keeper-only information.
 - **Persistence:** Campaign state is stored in Azure SQL Database.
 - **Live collaboration:** Wall Entry changes, the connected Player's own Investigator stat changes, and Presence changes are delivered through Azure SignalR Service.
@@ -171,6 +179,23 @@ Scenario: Player starts over from a Draft
   Given a Player has a Draft Investigator
   When the Player chooses to start over
   Then the Player has no Investigator in the Campaign
+
+Scenario: Player reads the Campaign without Keeper-only data
+  Given a Player has joined a Campaign
+  When the Player opens the Campaign
+  Then the Player sees its name, Era, and allowed Creation Methods
+  And the response carries no Campaign Invite or other Keeper-only data
+
+Scenario: Player cannot create an Investigator without a supported Creation Method
+  Given a Campaign allows only Creation Methods the application does not support yet
+  When a Player of that Campaign attempts to create an Investigator
+  Then the request is rejected
+  And the Player has no Investigator in the Campaign
+
+Scenario: Keeper cannot open a Draft Investigator
+  Given a Player has a Draft Investigator
+  When the Keeper requests that Investigator
+  Then the response is not found
 
 Scenario: Keeper-only Wall Entry stays hidden
   Given a Keeper has created a Keeper-only Wall Entry

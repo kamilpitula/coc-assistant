@@ -46,8 +46,13 @@ jobs:
               - 'backend/**'
               # Game-rule catalogs are embedded in the backend build (ADR 0006).
               - 'docs/game-rules/**'
+              # Validator parity fixtures run in both backend and frontend tests.
+              - 'specs/character-sheet/validation-fixtures.json'
             frontend:
               - 'frontend/**'
+              - 'specs/character-sheet/validation-fixtures.json'
+              # The frontend parity tests read the age rules catalog.
+              - 'docs/game-rules/catalogs/age-rules.json'
             e2e:
               - 'e2e/**'
             infrastructure:
