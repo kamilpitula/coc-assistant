@@ -35,3 +35,5 @@ e2e/.certs/
 
 # Test output
 frontend/test-results/
+e2e/e2e-out.txt
+e2e/*.log

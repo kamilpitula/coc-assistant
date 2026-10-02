@@ -32,6 +32,9 @@ jobs:
       backend: ${{ steps.scope.outputs.run-all == 'true' || steps.filter.outputs.backend == 'true' }}
       frontend: ${{ steps.scope.outputs.run-all == 'true' || steps.filter.outputs.frontend == 'true' }}
       infrastructure: ${{ steps.scope.outputs.run-all == 'true' || steps.filter.outputs.infrastructure == 'true' }}
+      e2e: >-
+        ${{ steps.scope.outputs.run-all == 'true' || steps.filter.outputs.backend == 'true'
+        || steps.filter.outputs.frontend == 'true' || steps.filter.outputs.e2e == 'true' }}
     steps:
       - name: Filter changed paths
         id: filter
@@ -101,7 +104,7 @@ jobs:
     permissions:
       contents: read
       checks: write
-    services:
+    services: &sql-service
       sql:
         image: mcr.microsoft.com/mssql/server:2022-latest
         env:
@@ -158,6 +161,80 @@ jobs:
       - name: Build Storybook
         run: npm run build-storybook
 
+  e2e:
+    name: E2E
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Committed mock-only keystore password, see e2e/docker/mock-oauth2-config.json.
+      COC_E2E_CERT_PASSWORD: CocE2eDevCertP@ss1!
+    services: *sql-service
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-dotnet
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+      # The mock issuer and Kestrel serve this PFX; the API validates tokens by fetching the
+      # mock's OIDC metadata over HTTPS, so the same certificate must be trusted by OpenSSL.
+      - name: Generate and trust the dev certificate
+        run: |
+          mkdir -p e2e/.certs
+          dotnet dev-certs https --export-path e2e/.certs/dev-cert.pfx --password "$COC_E2E_CERT_PASSWORD" --format Pfx
+          chmod 644 e2e/.certs/dev-cert.pfx
+          dotnet dev-certs https --export-path "$RUNNER_TEMP/coc-dev-cert.crt" --format PEM --no-password
+          sudo cp "$RUNNER_TEMP/coc-dev-cert.crt" /usr/local/share/ca-certificates/coc-dev-cert.crt
+          sudo update-ca-certificates
+      - name: Build the API
+        run: dotnet build backend/src/CocAssistant.Api
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Install E2E dependencies
+        working-directory: e2e
+        run: npm ci
+      - name: Resolve Playwright version
+        id: playwright
+        working-directory: e2e
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - name: Install Chromium with system dependencies
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+      - name: Install Chromium system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        working-directory: e2e
+        run: npx playwright install-deps chromium
+      - name: Run E2E suite
+        working-directory: e2e
+        run: npm test 2>&1 | tee playwright-output.log
+      - name: Collect mock issuer logs
+        if: failure()
+        run: docker logs coc-mock-oauth2 > e2e/mock-oauth2.log 2>&1 || true
+      - name: Upload E2E diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-diagnostics
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+            e2e/*.log
+          retention-days: 7
+          if-no-files-found: ignore
+
   terraform:
     name: Terraform
     needs: changes
@@ -180,7 +257,7 @@ jobs:
 
   ci-success:
     name: ci-success
-    needs: [changes, backend, backend-integration, frontend, terraform]
+    needs: [changes, backend, backend-integration, frontend, e2e, terraform]
     if: always()
     runs-on: ubuntu-latest
     steps:

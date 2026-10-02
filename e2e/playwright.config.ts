@@ -41,7 +41,8 @@ export default defineConfig({
   // container's thread pool from saturating under full-suite load; 2 is the sweet spot
   // between parallelism and stability on a typical dev workstation.
   workers: process.env.CI ? 2 : 2,
-  reporter: process.env.CI ? 'line' : 'html',
+  // CI keeps the line output for logs and writes the HTML report for the failure artifact.
+  reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'html',
   globalSetup: './globalSetup.ts',
   use: {
     baseURL: process.env.BASE_URL ?? 'http://localhost:5174',

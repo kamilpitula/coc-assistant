@@ -21,7 +21,7 @@ The existing integration tests and E2E harness were written local-first against 
     | `e2e` | `backend/**`, `frontend/**`, or `e2e/**` changed | SQL Server service container, per-run dev certificate, Playwright chromium suite |
     | `terraform` | `infrastructure/**` changed | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate` |
     | `ci-success` | always | aggregates the results of all jobs above; the only required status check |
-  - A change to `.github/workflows/**`, `global.json`, or `.nvmrc` runs every job. A `push` to `master` runs every job.
+  - A change to `.github/workflows/**`, `.github/actions/**`, `global.json`, `.nvmrc`, or `.config/dotnet-tools.json` runs every job. A `push` to `master` runs every job.
   - Caches: NuGet packages, npm for `frontend/package-lock.json` and `e2e/package-lock.json`, Playwright browsers keyed on the Playwright version.
 - **SQL Server connection configuration:**
   - Environment variable `COC_SQLSERVER_CONNECTION` holds the server portion of a connection string (server, credentials, `TrustServerCertificate`) without a database.
@@ -29,7 +29,7 @@ The existing integration tests and E2E harness were written local-first against 
   - When the variable is unset, each consumer uses `Server=(localdb)\mssqllocaldb;Trusted_Connection=True;MultipleActiveResultSets=true` with its database name, matching current local behavior.
   - The .NET connection-string helper lives in `backend/tests/CocAssistant.Api.IntegrationTests` and is built on `SqlConnectionStringBuilder`. A TypeScript helper in `e2e/` serves `playwright.config.ts` and `globalSetup.ts`.
 - **E2E in CI:**
-  - The dev certificate is generated per run with `dotnet dev-certs https --export-path e2e/.certs/dev-cert.pfx --password <committed password> --format Pfx`, and `COC_E2E_CERT_PASSWORD` is set from the same value. The password is the one committed in `e2e/docker/mock-oauth2-config.json`.
+  - The dev certificate is generated per run with `dotnet dev-certs https --export-path e2e/.certs/dev-cert.pfx --password <committed password> --format Pfx`, and `COC_E2E_CERT_PASSWORD` is set from the same value. The password is the one committed in `e2e/docker/mock-oauth2-config.json`. The same certificate is added to the runner's OpenSSL trust store, because the API fetches the mock issuer's OIDC metadata over HTTPS; the browser relies on Playwright's `ignoreHTTPSErrors`.
   - The mock OIDC issuer is started by Playwright's `webServer` via `docker compose -f e2e/docker/docker-compose.e2e.yml up`.
   - Under `CI`, Playwright uses the `line` and `html` reporters.
   - On failure, the Playwright report, traces, and webServer logs are uploaded as artifacts with 7-day retention.
