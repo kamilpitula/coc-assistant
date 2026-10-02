@@ -33,7 +33,7 @@ The existing integration tests and E2E harness were written local-first against 
   - The mock OIDC issuer is started by Playwright's `webServer` via `docker compose -f e2e/docker/docker-compose.e2e.yml up`.
   - Under `CI`, Playwright uses the `line` and `html` reporters.
   - On failure, the Playwright report, traces, and webServer logs are uploaded as artifacts with 7-day retention.
-- **Toolchain versions:** `global.json` (.NET SDK 10.0.x, `rollForward: latestFeature`) and `.nvmrc` (Node 22) at the repo root are the single source of truth. The workflow reads them through `global-json-file` and `node-version-file`.
+- **Toolchain versions:** `global.json` (.NET SDK 10.0.x, `rollForward: latestFeature`) and `.nvmrc` (Node 24) at the repo root are the single source of truth. The workflow reads them through `global-json-file` and `node-version-file`.
 - **Workflow supply chain:** `.github/dependabot.yml` updates the `github-actions` ecosystem.
 - **Branch protection on `master`:** a pull request is required before merging, `ci-success` is a required status check, and zero approvals are required.
 - **Dependencies:**

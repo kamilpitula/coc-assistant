@@ -1,0 +1,107 @@
+# Spec: specs/continuous-integration/spec.md
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Pull request runs share a group per PR and cancel each other; master runs get a group per
+# commit, so they are never cancelled.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.scope.outputs.run-all == 'true' || steps.filter.outputs.backend == 'true' }}
+    steps:
+      - name: Filter changed paths
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            e2e:
+              - 'e2e/**'
+            infrastructure:
+              - 'infrastructure/**'
+            toolchain:
+              - '.github/workflows/**'
+              - 'global.json'
+              - '.nvmrc'
+      - name: Decide whether every job runs
+        id: scope
+        env:
+          RUN_ALL: ${{ github.event_name != 'pull_request' || steps.filter.outputs.toolchain == 'true' }}
+        run: echo "run-all=$RUN_ALL" >> "$GITHUB_OUTPUT"
+
+  backend:
+    name: Backend
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj', 'global.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - name: Restore
+        run: dotnet restore backend/CocAssistant.slnx
+      - name: Build
+        run: dotnet build backend/CocAssistant.slnx --no-restore --configuration Release
+      - name: Verify formatting
+        run: dotnet format backend/CocAssistant.slnx --verify-no-changes --no-restore
+      - name: Unit tests
+        run: |
+          for project in \
+            backend/tests/CocAssistant.Api.Tests \
+            backend/tests/Identity/CocAssistant.Identity.Tests \
+            backend/tests/CampaignPlay/CocAssistant.CampaignPlay.Tests; do
+            dotnet test "$project" --no-build --configuration Release \
+              --logger trx --results-directory TestResults
+          done
+      - name: Report unit test results
+        if: success() || failure()
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        with:
+          name: Backend unit tests
+          path: TestResults/*.trx
+          reporter: dotnet-trx
+
+  ci-success:
+    name: ci-success
+    needs: [changes, backend]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail when any job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "One or more CI jobs failed or were cancelled."
+          exit 1
+      - name: All jobs passed or were skipped
+        run: echo "CI passed."
