@@ -32,9 +32,11 @@ public class CampaignController : CampaignPlayControllerBase
         return CreatedAtAction(nameof(GetById), new { id = campaign.Id }, ToResponse(campaign));
     }
 
-    /// <summary>Returns the Campaign only when the caller is its Keeper; otherwise 404 to keep it invisible.</summary>
+    /// <summary>
+    /// Returns the Keeper view to the Keeper and the reduced Player view to a Player; 404 for everyone else.
+    /// </summary>
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<CampaignResponse>> GetById(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
         if (accountId is null)
@@ -42,13 +44,13 @@ public class CampaignController : CampaignPlayControllerBase
             return Unauthorized();
         }
 
-        var campaign = await _campaignService.GetForKeeperAsync(id, accountId.Value, cancellationToken);
-        if (campaign is null)
+        var member = await _campaignService.GetForMemberAsync(id, accountId.Value, cancellationToken);
+        return member switch
         {
-            return NotFound();
-        }
-
-        return Ok(ToResponse(campaign));
+            null => NotFound(),
+            { Role: CampaignRole.Keeper } => Ok(ToResponse(member.Campaign)),
+            _ => Ok(ToPlayerResponse(member.Campaign)),
+        };
     }
 
     /// <summary>Replaces the allowed Creation Methods; only the Keeper may, so everyone else gets 404.</summary>
@@ -80,5 +82,14 @@ public class CampaignController : CampaignPlayControllerBase
             campaign.KeeperAccountId,
             campaign.PlayerLimit,
             campaign.Era.Code,
-            RulesOptionsWireFormat.ToNames(campaign.AllowedCreationMethods));
+            RulesOptionsWireFormat.ToNames(campaign.AllowedCreationMethods),
+            nameof(CampaignRole.Keeper));
+
+    private static PlayerCampaignResponse ToPlayerResponse(Campaign campaign) =>
+        new(
+            campaign.Id,
+            campaign.Name,
+            campaign.Era.Code,
+            RulesOptionsWireFormat.ToNames(campaign.AllowedCreationMethods),
+            nameof(CampaignRole.Player));
 }

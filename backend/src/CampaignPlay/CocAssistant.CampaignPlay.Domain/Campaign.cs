@@ -87,6 +87,17 @@ public class Campaign
     public bool IsMember(Guid accountId) =>
         IsKeeper(accountId) || (accountId != Guid.Empty && _players.Any(player => player.AccountId == accountId));
 
+    /// <summary>The Account's role in this Campaign, or null when it is not a member.</summary>
+    public CampaignRole? RoleOf(Guid accountId)
+    {
+        if (IsKeeper(accountId))
+        {
+            return CampaignRole.Keeper;
+        }
+
+        return IsMember(accountId) ? CampaignRole.Player : null;
+    }
+
     /// <summary>Replaces the Creation Methods Players may use; the Era stays fixed.</summary>
     public void ChangeAllowedCreationMethods(AllowedCreationMethods allowedCreationMethods)
     {

@@ -38,6 +38,14 @@ public class CampaignService
         return campaign;
     }
 
+    /// <summary>Returns the Campaign with the caller's role when the caller is a member; otherwise null.</summary>
+    public async Task<MemberCampaign?> GetForMemberAsync(Guid campaignId, Guid accountId, CancellationToken cancellationToken)
+    {
+        var campaign = await _campaigns.FindByIdAsync(campaignId, cancellationToken);
+        var role = campaign?.RoleOf(accountId);
+        return role is null ? null : new MemberCampaign(campaign!, role.Value);
+    }
+
     /// <summary>Returns the Campaign only when the requesting Account is its Keeper; otherwise null.</summary>
     public async Task<Campaign?> GetForKeeperAsync(Guid campaignId, Guid accountId, CancellationToken cancellationToken)
     {

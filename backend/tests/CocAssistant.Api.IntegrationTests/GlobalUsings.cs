@@ -22,3 +22,4 @@ global using Microsoft.Extensions.Options;
 global using Respawn;
 global using System.Text.Json;
 global using CocAssistant.CampaignPlay.Application;
+global using static CocAssistant.Api.IntegrationTests.CampaignPlayApiRequests;

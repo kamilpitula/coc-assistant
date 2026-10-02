@@ -8,3 +8,4 @@ global using Microsoft.Extensions.DependencyInjection.Extensions;
 global using System.Text.Json;
 global using System.Text.Json.Serialization;
 global using CocAssistant.CampaignPlay.Infrastructure.RuleData;
+global using CocAssistant.Identity.Application;

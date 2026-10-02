@@ -5,6 +5,8 @@ public interface IAccountRepository
 {
     Task<Account?> FindByEntraObjectIdAsync(string entraObjectId, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<Account>> FindByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken);
+
     void Add(Account account);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);

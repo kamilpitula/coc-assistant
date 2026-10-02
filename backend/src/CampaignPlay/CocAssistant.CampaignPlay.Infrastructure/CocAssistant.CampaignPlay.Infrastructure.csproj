@@ -24,6 +24,8 @@
   <ItemGroup>
     <ProjectReference Include="..\CocAssistant.CampaignPlay.Domain\CocAssistant.CampaignPlay.Domain.csproj" />
     <ProjectReference Include="..\CocAssistant.CampaignPlay.Application\CocAssistant.CampaignPlay.Application.csproj" />
+    <!-- Adapter for Campaign Play's IAccountDisplayNames port (ADR 0008). -->
+    <ProjectReference Include="..\..\Identity\CocAssistant.Identity.Application\CocAssistant.Identity.Application.csproj" />
   </ItemGroup>
 
 </Project>

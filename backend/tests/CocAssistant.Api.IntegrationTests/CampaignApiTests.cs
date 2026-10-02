@@ -111,6 +111,44 @@ public class CampaignApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetim
         Assert.Equal(created.Id, fetched!.Id);
     }
 
+    // specs/campaign-play/spec.md API Contracts: GET /api/campaigns/{campaignId} is role-aware.
+    [Fact]
+    public async Task Given_a_campaign_When_its_keeper_requests_it_Then_the_keeper_view_carries_the_keeper_role()
+    {
+        var client = _factory.CreateClient();
+        var created = await CreateCampaignAsync(client, "campaign-keeper-role-1");
+
+        var response = await client.SendAsync(BuildRequest(HttpMethod.Get, $"/api/campaigns/{created.Id}", "campaign-keeper-role-1"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("Keeper", body.RootElement.GetProperty("role").GetString());
+        Assert.Equal(created.KeeperAccountId, body.RootElement.GetProperty("keeperAccountId").GetGuid());
+        Assert.Equal(8, body.RootElement.GetProperty("playerLimit").GetInt32());
+    }
+
+    // Scenario: Player reads the Campaign without Keeper-only data
+    [Fact]
+    public async Task Given_a_player_has_joined_When_the_player_requests_the_campaign_Then_the_reduced_player_view_is_returned()
+    {
+        var client = _factory.CreateClient();
+        var created = await CreateCampaignAsync(client, "campaign-keeper-role-2");
+        await JoinAsPlayerAsync(client, created.Id, "campaign-keeper-role-2", "campaign-player-role-2");
+
+        var response = await client.SendAsync(BuildRequest(HttpMethod.Get, $"/api/campaigns/{created.Id}", "campaign-player-role-2"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = body.RootElement;
+        Assert.Equal(
+            ["allowedCreationMethods", "era", "id", "name", "role"],
+            root.EnumerateObject().Select(property => property.Name).Order());
+        Assert.Equal("Player", root.GetProperty("role").GetString());
+        Assert.Equal("The Haunting", root.GetProperty("name").GetString());
+        Assert.Equal("1920s", root.GetProperty("era").GetString());
+        Assert.Equal(3, root.GetProperty("allowedCreationMethods").GetArrayLength());
+    }
+
     [Fact]
     public async Task Given_a_campaign_When_an_unrelated_account_requests_it_Then_it_is_not_found()
     {

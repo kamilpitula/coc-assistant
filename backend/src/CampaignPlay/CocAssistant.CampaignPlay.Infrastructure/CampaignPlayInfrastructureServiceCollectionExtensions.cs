@@ -13,6 +13,7 @@ public static class CampaignPlayInfrastructureServiceCollectionExtensions
         services.AddScoped<CampaignService>();
         services.AddScoped<CampaignMembershipService>();
         services.AddScoped<CampaignRuleDataService>();
+        services.AddScoped<IAccountDisplayNames, IdentityAccountDisplayNames>();
         services.AddSingleton<IEraRuleData>(EmbeddedResourceEraRuleData.For1920s());
         services.TryAddSingleton(TimeProvider.System);
 
