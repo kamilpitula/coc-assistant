@@ -1,7 +1,7 @@
 ---
 name: explorer
 description: Read-only codebase exploration. Maps relevant files/symbols, dependency relationships, and reuse candidates before any planning or implementation happens.
-model: claude-sonnet-4-6
+model: sonnet
 tools:
   - Grep
   - Glob

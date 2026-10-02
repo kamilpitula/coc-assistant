@@ -1,7 +1,7 @@
 ---
 name: verifier
 description: Independent, fresh-context review of a Builder diff against the approved plan and stated requirements. Re-runs verification itself rather than trusting Builder's report. Recommends but does not authorize merge.
-model: claude-sonnet-4-6
+model: sonnet
 tools:
   - Grep
   - Glob

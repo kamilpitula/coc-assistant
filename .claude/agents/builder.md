@@ -1,7 +1,7 @@
 ---
 name: builder
 description: Designs and implements a feature or fix in one continuous context via red-green TDD, gated by human plan approval. Consumes the Explorer's report as its starting context.
-model: claude-opus-4-7
+model: opus
 tools:
   - Grep
   - Glob
