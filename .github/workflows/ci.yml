@@ -217,8 +217,13 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         working-directory: e2e
         run: npx playwright install-deps chromium
+      # Explicit bash enables pipefail so tee cannot mask a failing suite; pw:webserver
+      # forwards API and Vite output into the log.
       - name: Run E2E suite
         working-directory: e2e
+        shell: bash
+        env:
+          DEBUG: pw:webserver
         run: npm test 2>&1 | tee playwright-output.log
       - name: Collect mock issuer logs
         if: failure()
