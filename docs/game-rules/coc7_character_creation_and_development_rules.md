@@ -360,56 +360,10 @@ Skill {
 
 ## 6.1 Standard 1920s investigator-sheet skill base values
 
-The standard Chaosium 1920s sheet contains the following main skill bases:
-
-| Skill | Base |
-|---|---:|
-| Accounting | 5 |
-| Anthropology | 1 |
-| Archaeology | 1 |
-| Appraise | 5 |
-| Art/Craft | 5 |
-| Charm | 15 |
-| Climb | 20 |
-| Credit Rating | 0 |
-| Cthulhu Mythos | 0 |
-| Disguise | 5 |
-| Dodge | half DEX |
-| Drive Auto | 20 |
-| Electrical Repair | 10 |
-| Fast Talk | 5 |
-| Fighting (Brawl) | 25 |
-| Firearms (Handgun) | 20 |
-| Firearms (Rifle/Shotgun) | 25 |
-| First Aid | 30 |
-| History | 5 |
-| Intimidate | 15 |
-| Jump | 20 |
-| Language (Other) | 1 |
-| Language (Own) | EDU |
-| Law | 5 |
-| Library Use | 20 |
-| Listen | 20 |
-| Locksmith | 1 |
-| Mechanical Repair | 10 |
-| Medicine | 1 |
-| Natural World | 10 |
-| Navigate | 10 |
-| Occult | 5 |
-| Operate Heavy Machinery | 1 |
-| Persuade | 10 |
-| Pilot | 1 |
-| Psychoanalysis | 1 |
-| Psychology | 10 |
-| Ride | 5 |
-| Science | 1 |
-| Sleight of Hand | 10 |
-| Spot Hidden | 25 |
-| Stealth | 20 |
-| Survival | 10 |
-| Swim | 20 |
-| Throw | 20 |
-| Track | 10 |
+The standard Chaosium 1920s sheet's main skill bases are maintained as data in
+[catalogs/skills.1920s.json](catalogs/skills.1920s.json) (a `SkillCatalog` with
+provenance per [section 20](#20-canonical-data-sources-the-implementation-should-maintain)).
+That catalog is the single source for these values; do not copy them here.
 
 Source: official Chaosium 1920s investigator sheet and 7th Edition skill list.
 

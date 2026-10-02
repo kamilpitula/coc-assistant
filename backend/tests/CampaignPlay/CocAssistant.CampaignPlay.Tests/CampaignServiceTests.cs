@@ -13,7 +13,7 @@ public class CampaignServiceTests : IDisposable
         using var dbContext = _fixture.CreateContext();
         var service = new CampaignService(_fixture.CreateRepository(dbContext), _timeProvider);
 
-        var campaign = await service.CreateCampaignAsync("The Haunting", KeeperAccountId, null, CancellationToken.None);
+        var campaign = await service.CreateCampaignAsync("The Haunting", KeeperAccountId, null, null, null, CancellationToken.None);
 
         Assert.Equal("The Haunting", campaign.Name);
         Assert.Equal(KeeperAccountId, campaign.KeeperAccountId);
@@ -31,7 +31,7 @@ public class CampaignServiceTests : IDisposable
         using (var dbContext = _fixture.CreateContext())
         {
             var service = new CampaignService(_fixture.CreateRepository(dbContext), _timeProvider);
-            campaignId = (await service.CreateCampaignAsync("The Haunting", KeeperAccountId, 3, CancellationToken.None)).Id;
+            campaignId = (await service.CreateCampaignAsync("The Haunting", KeeperAccountId, 3, null, null, CancellationToken.None)).Id;
         }
 
         using var verifyContext = _fixture.CreateContext();
@@ -46,7 +46,7 @@ public class CampaignServiceTests : IDisposable
         using (var dbContext = _fixture.CreateContext())
         {
             var service = new CampaignService(_fixture.CreateRepository(dbContext), _timeProvider);
-            campaignId = (await service.CreateCampaignAsync("The Haunting", KeeperAccountId, null, CancellationToken.None)).Id;
+            campaignId = (await service.CreateCampaignAsync("The Haunting", KeeperAccountId, null, null, null, CancellationToken.None)).Id;
         }
 
         using var verifyContext = _fixture.CreateContext();
@@ -61,7 +61,7 @@ public class CampaignServiceTests : IDisposable
         using (var createContext = _fixture.CreateContext())
         {
             var createService = new CampaignService(_fixture.CreateRepository(createContext), _timeProvider);
-            campaignId = (await createService.CreateCampaignAsync("The Haunting", KeeperAccountId, null, CancellationToken.None)).Id;
+            campaignId = (await createService.CreateCampaignAsync("The Haunting", KeeperAccountId, null, null, null, CancellationToken.None)).Id;
         }
 
         using var readContext = _fixture.CreateContext();
@@ -80,7 +80,7 @@ public class CampaignServiceTests : IDisposable
         using (var createContext = _fixture.CreateContext())
         {
             var createService = new CampaignService(_fixture.CreateRepository(createContext), _timeProvider);
-            campaignId = (await createService.CreateCampaignAsync("The Haunting", KeeperAccountId, null, CancellationToken.None)).Id;
+            campaignId = (await createService.CreateCampaignAsync("The Haunting", KeeperAccountId, null, null, null, CancellationToken.None)).Id;
         }
 
         using var readContext = _fixture.CreateContext();

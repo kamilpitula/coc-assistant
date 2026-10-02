@@ -20,6 +20,16 @@ public class CampaignPlayDbContext : DbContext
             builder.Property(campaign => campaign.KeeperAccountId).IsRequired();
             builder.Property(campaign => campaign.PlayerLimit).IsRequired();
             builder.Property(campaign => campaign.MembershipVersion).IsConcurrencyToken();
+            builder.Property(campaign => campaign.Era)
+                .IsRequired()
+                .HasMaxLength(CampaignRulesOptionsStorage.EraMaxLength)
+                .HasConversion(era => CampaignRulesOptionsStorage.ToStorage(era), code => CampaignRulesOptionsStorage.ToEra(code));
+            builder.Property(campaign => campaign.AllowedCreationMethods)
+                .IsRequired()
+                .HasMaxLength(CampaignRulesOptionsStorage.AllowedCreationMethodsMaxLength)
+                .HasConversion(
+                    methods => CampaignRulesOptionsStorage.ToStorage(methods),
+                    stored => CampaignRulesOptionsStorage.ToAllowedCreationMethods(stored));
             builder.HasIndex(campaign => campaign.KeeperAccountId);
 
             builder.HasMany(campaign => campaign.Invites)

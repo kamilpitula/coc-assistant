@@ -44,6 +44,8 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
+              # Game-rule catalogs are embedded in the backend build (ADR 0006).
+              - 'docs/game-rules/**'
             frontend:
               - 'frontend/**'
             e2e:

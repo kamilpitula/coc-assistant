@@ -1,6 +1,10 @@
 global using CocAssistant.CampaignPlay.Application;
 global using CocAssistant.CampaignPlay.Domain;
+global using CocAssistant.CampaignPlay.Domain.RuleData;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.DependencyInjection.Extensions;
+global using System.Text.Json;
+global using System.Text.Json.Serialization;
+global using CocAssistant.CampaignPlay.Infrastructure.RuleData;
