@@ -14,6 +14,8 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
+  /* About 6.4:1 against --background (WCAG 2.2 AA text); always paired with text or an icon. */
+  --destructive: oklch(0.505 0.213 27.518);
 }
 
 @theme inline {
@@ -30,6 +32,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
 }
 
 body {

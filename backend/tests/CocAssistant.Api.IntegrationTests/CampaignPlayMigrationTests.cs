@@ -11,6 +11,8 @@ public class CampaignPlayMigrationTests : IAsyncLifetime
 
     private const string CreateCampaignMigration = "20260922072759_CreateCampaign";
     private const string AddCampaignInviteAndMembershipMigration = "20261001110509_AddCampaignInviteAndMembership";
+    private const string FixCampaignPlayerLimitAndActiveInviteUniquenessMigration =
+        "20261002070813_FixCampaignPlayerLimitAndActiveInviteUniqueness";
 
     private static readonly DateTimeOffset CreatedAt = new(2026, 9, 22, 12, 0, 0, TimeSpan.Zero);
 
@@ -56,6 +58,30 @@ public class CampaignPlayMigrationTests : IAsyncLifetime
             .SqlQuery<int>($"SELECT [PlayerLimit] AS [Value] FROM [Campaigns] WHERE [Id] = {campaignId}")
             .SingleAsync();
         Assert.Equal(8, playerLimit);
+    }
+
+    // specs/campaign-play/spec.md "Campaign rules options": existing Campaigns migrate to the 1920s with all Creation Methods.
+    [Fact]
+    public async Task Given_a_campaign_created_before_rules_options_When_migrating_to_latest_Then_it_is_1920s_with_all_creation_methods()
+    {
+        var campaignId = Guid.NewGuid();
+        await MigrateToAsync(FixCampaignPlayerLimitAndActiveInviteUniquenessMigration);
+        await InsertCampaignAsync(campaignId);
+
+        await MigrateToAsync(null);
+
+        var era = await _dbContext.Database
+            .SqlQuery<string>($"SELECT [Era] AS [Value] FROM [Campaigns] WHERE [Id] = {campaignId}")
+            .SingleAsync();
+        var allowedCreationMethods = await _dbContext.Database
+            .SqlQuery<string>($"SELECT [AllowedCreationMethods] AS [Value] FROM [Campaigns] WHERE [Id] = {campaignId}")
+            .SingleAsync();
+        Assert.Equal("1920s", era);
+        Assert.Equal("StandardRolling,PointBuy,QuickFire", allowedCreationMethods);
+
+        var campaign = await _dbContext.Campaigns.AsNoTracking().SingleAsync(c => c.Id == campaignId);
+        Assert.Equal(Era.The1920s, campaign.Era);
+        Assert.Equal(AllowedCreationMethods.All, campaign.AllowedCreationMethods);
     }
 
     [Fact]

@@ -12,6 +12,8 @@ public static class CampaignPlayInfrastructureServiceCollectionExtensions
         services.AddScoped<ICampaignRepository, EfCampaignRepository>();
         services.AddScoped<CampaignService>();
         services.AddScoped<CampaignMembershipService>();
+        services.AddScoped<CampaignRuleDataService>();
+        services.AddSingleton<IEraRuleData>(EmbeddedResourceEraRuleData.For1920s());
         services.TryAddSingleton(TimeProvider.System);
 
         return services;

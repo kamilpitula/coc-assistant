@@ -1,0 +1,699 @@
+{
+  "catalog": "SkillCatalog",
+  "era": "1920s",
+  "schemaVersion": 1,
+  "verificationStatus": "moved unchanged from section 6.1 and verified by the project owner on 2026-10-02; pageReference values still to be added",
+  "entries": [
+    {
+      "id": "accounting",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Accounting",
+        "base": {
+          "kind": "fixed",
+          "value": 5
+        }
+      }
+    },
+    {
+      "id": "anthropology",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Anthropology",
+        "base": {
+          "kind": "fixed",
+          "value": 1
+        }
+      }
+    },
+    {
+      "id": "archaeology",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Archaeology",
+        "base": {
+          "kind": "fixed",
+          "value": 1
+        }
+      }
+    },
+    {
+      "id": "appraise",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Appraise",
+        "base": {
+          "kind": "fixed",
+          "value": 5
+        }
+      }
+    },
+    {
+      "id": "art-craft",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Art/Craft",
+        "base": {
+          "kind": "fixed",
+          "value": 5
+        }
+      }
+    },
+    {
+      "id": "charm",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Charm",
+        "base": {
+          "kind": "fixed",
+          "value": 15
+        }
+      }
+    },
+    {
+      "id": "climb",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Climb",
+        "base": {
+          "kind": "fixed",
+          "value": 20
+        }
+      }
+    },
+    {
+      "id": "credit-rating",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Credit Rating",
+        "base": {
+          "kind": "fixed",
+          "value": 0
+        }
+      }
+    },
+    {
+      "id": "cthulhu-mythos",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Cthulhu Mythos",
+        "base": {
+          "kind": "fixed",
+          "value": 0
+        }
+      }
+    },
+    {
+      "id": "disguise",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Disguise",
+        "base": {
+          "kind": "fixed",
+          "value": 5
+        }
+      }
+    },
+    {
+      "id": "dodge",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Dodge",
+        "base": {
+          "kind": "characteristic",
+          "characteristic": "DEX",
+          "divisor": 2
+        }
+      }
+    },
+    {
+      "id": "drive-auto",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Drive Auto",
+        "base": {
+          "kind": "fixed",
+          "value": 20
+        }
+      }
+    },
+    {
+      "id": "electrical-repair",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Electrical Repair",
+        "base": {
+          "kind": "fixed",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": "fast-talk",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Fast Talk",
+        "base": {
+          "kind": "fixed",
+          "value": 5
+        }
+      }
+    },
+    {
+      "id": "fighting-brawl",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Fighting (Brawl)",
+        "base": {
+          "kind": "fixed",
+          "value": 25
+        }
+      }
+    },
+    {
+      "id": "firearms-handgun",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Firearms (Handgun)",
+        "base": {
+          "kind": "fixed",
+          "value": 20
+        }
+      }
+    },
+    {
+      "id": "firearms-rifle-shotgun",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Firearms (Rifle/Shotgun)",
+        "base": {
+          "kind": "fixed",
+          "value": 25
+        }
+      }
+    },
+    {
+      "id": "first-aid",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "First Aid",
+        "base": {
+          "kind": "fixed",
+          "value": 30
+        }
+      }
+    },
+    {
+      "id": "history",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "History",
+        "base": {
+          "kind": "fixed",
+          "value": 5
+        }
+      }
+    },
+    {
+      "id": "intimidate",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Intimidate",
+        "base": {
+          "kind": "fixed",
+          "value": 15
+        }
+      }
+    },
+    {
+      "id": "jump",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Jump",
+        "base": {
+          "kind": "fixed",
+          "value": 20
+        }
+      }
+    },
+    {
+      "id": "language-other",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Language (Other)",
+        "base": {
+          "kind": "fixed",
+          "value": 1
+        }
+      }
+    },
+    {
+      "id": "language-own",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Language (Own)",
+        "base": {
+          "kind": "characteristic",
+          "characteristic": "EDU"
+        }
+      }
+    },
+    {
+      "id": "law",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Law",
+        "base": {
+          "kind": "fixed",
+          "value": 5
+        }
+      }
+    },
+    {
+      "id": "library-use",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Library Use",
+        "base": {
+          "kind": "fixed",
+          "value": 20
+        }
+      }
+    },
+    {
+      "id": "listen",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Listen",
+        "base": {
+          "kind": "fixed",
+          "value": 20
+        }
+      }
+    },
+    {
+      "id": "locksmith",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Locksmith",
+        "base": {
+          "kind": "fixed",
+          "value": 1
+        }
+      }
+    },
+    {
+      "id": "mechanical-repair",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Mechanical Repair",
+        "base": {
+          "kind": "fixed",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": "medicine",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Medicine",
+        "base": {
+          "kind": "fixed",
+          "value": 1
+        }
+      }
+    },
+    {
+      "id": "natural-world",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Natural World",
+        "base": {
+          "kind": "fixed",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": "navigate",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Navigate",
+        "base": {
+          "kind": "fixed",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": "occult",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Occult",
+        "base": {
+          "kind": "fixed",
+          "value": 5
+        }
+      }
+    },
+    {
+      "id": "operate-heavy-machinery",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Operate Heavy Machinery",
+        "base": {
+          "kind": "fixed",
+          "value": 1
+        }
+      }
+    },
+    {
+      "id": "persuade",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Persuade",
+        "base": {
+          "kind": "fixed",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": "pilot",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Pilot",
+        "base": {
+          "kind": "fixed",
+          "value": 1
+        }
+      }
+    },
+    {
+      "id": "psychoanalysis",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Psychoanalysis",
+        "base": {
+          "kind": "fixed",
+          "value": 1
+        }
+      }
+    },
+    {
+      "id": "psychology",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Psychology",
+        "base": {
+          "kind": "fixed",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": "ride",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Ride",
+        "base": {
+          "kind": "fixed",
+          "value": 5
+        }
+      }
+    },
+    {
+      "id": "science",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Science",
+        "base": {
+          "kind": "fixed",
+          "value": 1
+        }
+      }
+    },
+    {
+      "id": "sleight-of-hand",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Sleight of Hand",
+        "base": {
+          "kind": "fixed",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": "spot-hidden",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Spot Hidden",
+        "base": {
+          "kind": "fixed",
+          "value": 25
+        }
+      }
+    },
+    {
+      "id": "stealth",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Stealth",
+        "base": {
+          "kind": "fixed",
+          "value": 20
+        }
+      }
+    },
+    {
+      "id": "survival",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Survival",
+        "base": {
+          "kind": "fixed",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": "swim",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Swim",
+        "base": {
+          "kind": "fixed",
+          "value": 20
+        }
+      }
+    },
+    {
+      "id": "throw",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Throw",
+        "base": {
+          "kind": "fixed",
+          "value": 20
+        }
+      }
+    },
+    {
+      "id": "track",
+      "sourceBook": "Chaosium 1920s Investigator Sheet",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Track",
+        "base": {
+          "kind": "fixed",
+          "value": 10
+        }
+      }
+    }
+  ]
+}

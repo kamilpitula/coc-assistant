@@ -1,5 +1,9 @@
 global using CocAssistant.CampaignPlay.Application;
 global using CocAssistant.CampaignPlay.Domain;
+global using CocAssistant.CampaignPlay.Domain.RuleData;
 global using CocAssistant.CampaignPlay.Infrastructure;
 global using Microsoft.Data.Sqlite;
 global using Microsoft.EntityFrameworkCore;
+global using System.Text;
+global using CocAssistant.CampaignPlay.Infrastructure.RuleData;
+global using System.Text.Json;

@@ -19,6 +19,7 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
 - **API Contracts:**
   - `POST /api/campaigns` - accepts `era` and `allowedCreationMethods` in addition to the existing fields.
   - `PUT /api/campaigns/{campaignId}/allowed-creation-methods` - Keeper only; replaces the allowed Creation Methods (at least one).
+  - `GET /api/campaigns/{campaignId}/rules/occupations` - Campaign members (Keeper or Player) only; returns the Occupation catalog for the Campaign's Era.
   - `POST /api/campaigns/{campaignId}/investigators` - Player only; creates the caller's Draft Investigator; 409 when one already exists.
   - `GET /api/campaigns/{campaignId}/investigators/mine` - Player only; returns the caller's Investigator status and Change Request comment, or 404.
   - `DELETE /api/campaigns/{campaignId}/investigators/mine` - Player only; deletes a Draft Investigator.
@@ -106,6 +107,18 @@ Scenario: Keeper creates a Campaign with default rules options
   When the user creates a Campaign without changing the rules options
   Then the Campaign's Era is 1920s
   And the Campaign allows Standard Rolling, Point Buy, and Quick Fire
+
+Scenario: Keeper changes the allowed Creation Methods
+  Given a Keeper's Campaign allows Standard Rolling, Point Buy, and Quick Fire
+  When the Keeper changes the allowed Creation Methods to Standard Rolling and Point Buy
+  Then the Campaign allows Standard Rolling and Point Buy
+  And the Campaign's Era is unchanged
+
+Scenario: Player cannot change the allowed Creation Methods
+  Given a Player has joined a Campaign
+  When the Player attempts to change the allowed Creation Methods
+  Then the request is rejected
+  And the allowed Creation Methods are unchanged
 
 Scenario: Player starts a Draft Investigator
   Given a Player has joined a Campaign and has no Investigator

@@ -1,14 +1,26 @@
 import { z } from 'zod'
 
-import type { Campaign, CreateCampaignInput } from '@/campaign-play/types/Campaign'
+import {
+  CREATION_METHODS,
+  ERAS,
+  type Campaign,
+  type CreateCampaignInput,
+  type CreationMethod,
+} from '@/campaign-play/types/Campaign'
 import type { CampaignInvite } from '@/campaign-play/types/CampaignInvite'
 import type { JoinOutcome, JoinResult } from '@/campaign-play/types/JoinResult'
+
+export const eraSchema = z.enum(ERAS)
+
+export const creationMethodSchema = z.enum(CREATION_METHODS)
 
 const campaignResponseSchema = z.object({
   id: z.string(),
   name: z.string(),
   keeperAccountId: z.string(),
   playerLimit: z.number().int(),
+  era: eraSchema,
+  allowedCreationMethods: z.array(creationMethodSchema).min(1),
 })
 
 const inviteResponseSchema = z.object({
@@ -24,6 +36,7 @@ const joinResponseSchema = z.object({
 
 export const campaignQueryKeys = {
   all: ['campaigns'] as const,
+  detail: (campaignId: string) => ['campaigns', campaignId] as const,
   invite: (campaignId: string) => ['campaigns', campaignId, 'invite'] as const,
 }
 
@@ -42,11 +55,52 @@ export async function createCampaign(
   const response = await fetch('/api/campaigns', {
     method: 'POST',
     headers: authHeaders(accessToken),
-    body: JSON.stringify({ name: input.name, playerLimit: input.playerLimit }),
+    body: JSON.stringify({
+      name: input.name,
+      playerLimit: input.playerLimit,
+      era: input.era,
+      allowedCreationMethods: input.allowedCreationMethods,
+    }),
   })
 
   if (!response.ok) {
     throw new Error(`Failed to create the campaign (${response.status})`)
+  }
+
+  return campaignResponseSchema.parse(await response.json())
+}
+
+/** Calls GET /api/campaigns/{id}; returns null when the caller is not the Campaign's Keeper (404). */
+export async function getCampaign(accessToken: string, campaignId: string): Promise<Campaign | null> {
+  const response = await fetch(`/api/campaigns/${campaignId}`, {
+    headers: authHeaders(accessToken),
+  })
+
+  if (response.status === 404) {
+    return null
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to load the campaign (${response.status})`)
+  }
+
+  return campaignResponseSchema.parse(await response.json())
+}
+
+/** Calls PUT /api/campaigns/{id}/allowed-creation-methods (Keeper only) and returns the updated Campaign. */
+export async function changeAllowedCreationMethods(
+  accessToken: string,
+  campaignId: string,
+  allowedCreationMethods: CreationMethod[],
+): Promise<Campaign> {
+  const response = await fetch(`/api/campaigns/${campaignId}/allowed-creation-methods`, {
+    method: 'PUT',
+    headers: authHeaders(accessToken),
+    body: JSON.stringify({ allowedCreationMethods }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to change the creation methods (${response.status})`)
   }
 
   return campaignResponseSchema.parse(await response.json())

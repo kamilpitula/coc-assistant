@@ -15,6 +15,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Game-rule catalogs stay single-sourced in docs/game-rules/catalogs and ship inside this assembly (ADR 0006). -->
+    <EmbeddedResource Include="..\..\..\..\docs\game-rules\catalogs\occupations.1920s.json"
+                      LogicalName="GameRules.Catalogs.occupations.1920s.json"
+                      Link="RuleData\Catalogs\occupations.1920s.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\CocAssistant.CampaignPlay.Domain\CocAssistant.CampaignPlay.Domain.csproj" />
     <ProjectReference Include="..\CocAssistant.CampaignPlay.Application\CocAssistant.CampaignPlay.Application.csproj" />
   </ItemGroup>

@@ -12,7 +12,7 @@ public class CampaignMembershipServiceTests : IDisposable
     {
         using var context = _fixture.CreateContext();
         var service = new CampaignService(_fixture.CreateRepository(context), _timeProvider);
-        var campaign = await service.CreateCampaignAsync("The Haunting", KeeperAccountId, null, CancellationToken.None);
+        var campaign = await service.CreateCampaignAsync("The Haunting", KeeperAccountId, null, null, null, CancellationToken.None);
         return campaign.Id;
     }
 

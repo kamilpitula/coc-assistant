@@ -1,3 +1,9 @@
 namespace CocAssistant.CampaignPlay.Controllers;
 
-public record CampaignResponse(Guid Id, string Name, Guid KeeperAccountId, int PlayerLimit);
+public record CampaignResponse(
+    Guid Id,
+    string Name,
+    Guid KeeperAccountId,
+    int PlayerLimit,
+    string Era,
+    IReadOnlyList<string> AllowedCreationMethods);

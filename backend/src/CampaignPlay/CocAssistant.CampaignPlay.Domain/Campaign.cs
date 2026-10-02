@@ -21,15 +21,28 @@ public class Campaign
     public DateTimeOffset CreatedAt { get; private set; }
     public int PlayerLimit { get; private set; }
 
+    /// <summary>Fixed at creation; selects the rule data for the Campaign's Character Sheets.</summary>
+    public Era Era { get; private set; }
+
+    public AllowedCreationMethods AllowedCreationMethods { get; private set; }
+
     /// <summary>Incremented on every membership change so concurrent joins cannot exceed the Player limit.</summary>
     public int MembershipVersion { get; private set; }
 
     private Campaign()
     {
         Name = string.Empty;
+        Era = Era.The1920s;
+        AllowedCreationMethods = AllowedCreationMethods.All;
     }
 
-    public Campaign(string name, Guid keeperAccountId, DateTimeOffset createdAt, int playerLimit = DefaultPlayerLimit)
+    public Campaign(
+        string name,
+        Guid keeperAccountId,
+        DateTimeOffset createdAt,
+        int playerLimit = DefaultPlayerLimit,
+        Era? era = null,
+        AllowedCreationMethods? allowedCreationMethods = null)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -54,6 +67,8 @@ public class Campaign
         KeeperAccountId = keeperAccountId;
         CreatedAt = createdAt;
         PlayerLimit = playerLimit;
+        Era = era ?? Era.The1920s;
+        AllowedCreationMethods = allowedCreationMethods ?? AllowedCreationMethods.All;
     }
 
     public IReadOnlyCollection<CampaignInvite> Invites => _invites;
@@ -67,6 +82,16 @@ public class Campaign
 
     /// <summary>True only for the Account that owns this Campaign as its Keeper.</summary>
     public bool IsKeeper(Guid accountId) => accountId != Guid.Empty && KeeperAccountId == accountId;
+
+    /// <summary>True for the Keeper and for every Player who joined the Campaign.</summary>
+    public bool IsMember(Guid accountId) =>
+        IsKeeper(accountId) || (accountId != Guid.Empty && _players.Any(player => player.AccountId == accountId));
+
+    /// <summary>Replaces the Creation Methods Players may use; the Era stays fixed.</summary>
+    public void ChangeAllowedCreationMethods(AllowedCreationMethods allowedCreationMethods)
+    {
+        AllowedCreationMethods = allowedCreationMethods;
+    }
 
     /// <summary>Issues a fresh active Invite, replacing any Invite that was previously active.</summary>
     public CampaignInvite IssueInvite(string token, DateTimeOffset now)

@@ -25,6 +25,8 @@ public class CampaignController : CampaignPlayControllerBase
             request.Name,
             keeperAccountId.Value,
             request.PlayerLimit,
+            RulesOptionsWireFormat.ToEra(request.Era),
+            RulesOptionsWireFormat.ToAllowedCreationMethods(request.AllowedCreationMethods),
             cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { id = campaign.Id }, ToResponse(campaign));
@@ -49,6 +51,34 @@ public class CampaignController : CampaignPlayControllerBase
         return Ok(ToResponse(campaign));
     }
 
+    /// <summary>Replaces the allowed Creation Methods; only the Keeper may, so everyone else gets 404.</summary>
+    [HttpPut("{campaignId:guid}/allowed-creation-methods")]
+    public async Task<ActionResult<CampaignResponse>> ChangeAllowedCreationMethods(
+        Guid campaignId,
+        ChangeAllowedCreationMethodsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
+        if (accountId is null)
+        {
+            return Unauthorized();
+        }
+
+        var campaign = await _campaignService.ChangeAllowedCreationMethodsAsync(
+            campaignId,
+            accountId.Value,
+            RulesOptionsWireFormat.ToAllowedCreationMethods(request.AllowedCreationMethods)!,
+            cancellationToken);
+
+        return campaign is null ? NotFound() : Ok(ToResponse(campaign));
+    }
+
     private static CampaignResponse ToResponse(Campaign campaign) =>
-        new(campaign.Id, campaign.Name, campaign.KeeperAccountId, campaign.PlayerLimit);
+        new(
+            campaign.Id,
+            campaign.Name,
+            campaign.KeeperAccountId,
+            campaign.PlayerLimit,
+            campaign.Era.Code,
+            RulesOptionsWireFormat.ToNames(campaign.AllowedCreationMethods));
 }

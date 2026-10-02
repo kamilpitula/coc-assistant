@@ -11,7 +11,7 @@ Anything not listed here follows that document unchanged.
 
 | Era | Status | Era-specific data |
 |---|---|---|
-| 1920s | Supported | [Skill bases](coc7_character_creation_and_development_rules.md#61-standard-1920s-investigator-sheet-skill-base-values), [wealth table](coc7_character_creation_and_development_rules.md#11-finances-gear-and-possessions), [occupation catalog](catalogs/occupations.1920s.json) |
+| 1920s | Supported | [Skill bases](catalogs/skills.1920s.json) ([section 6.1](coc7_character_creation_and_development_rules.md#61-standard-1920s-investigator-sheet-skill-base-values)), [wealth table](coc7_character_creation_and_development_rules.md#11-finances-gear-and-possessions), [occupation catalog](catalogs/occupations.1920s.json) |
 
 Adding an Era requires its skill bases, wealth table, and occupation catalog
 here before a Campaign can select it.
