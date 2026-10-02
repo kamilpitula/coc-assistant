@@ -10,6 +10,8 @@ instead of restating rules.
 | Document | Covers |
 | --- | --- |
 | [coc7_character_creation_and_development_rules.md](coc7_character_creation_and_development_rules.md) | Investigator data model, characteristics, age, derived attributes, skills, occupations, combat and weapon fields, finances, backstory, conditions, creation algorithm, validation, and development |
+| [project_ruleset.md](project_ruleset.md) | Supported Eras and Creation Methods, disabled optional rules, and project house rules |
+| [catalogs/occupations.1920s.json](catalogs/occupations.1920s.json) | 1920s Occupation catalog (section 7 data), with provenance per section 20. Verified 2026-10-02; page references still to be added |
 
 Not yet covered: Non-Player Entities (Human NPC and Mythos Creature profiles),
 Sanity loss and Sanity rolls during play, skill rolls and difficulty levels

@@ -40,6 +40,7 @@ applyTo: "frontend/**/*"
 - Use the shadcn/ui component library, built on Radix primitives, in preference to hand-rolled interactive elements.
 - New screens, user journeys, and components must trace to a selected UX specification in `specs/<feature>/ux.md`, produced with the UX/UI designer skill (`.claude/commands/ux-ui-designer-skill/SKILL.md`). Implement its component mapping, interaction states, and UX and accessibility acceptance criteria; if the specification is missing or no longer fits, flag it instead of improvising the design.
 - Components and their design must meet WCAG 2.2 AA. Enforce with the `eslint-plugin-jsx-a11y` recommended ruleset.
+- Define every colour token in `frontend/src/index.css` (in `:root` and mapped in `@theme inline`) before using its utility class, e.g. `--destructive` before `text-destructive`. Semantic status tokens (destructive, warning, success) must meet WCAG 2.2 AA contrast against `--background` (4.5:1 for text, 3:1 for icons and borders) and are always paired with text or an icon, never colour alone.
 - Add a colocated Storybook story (`Component.stories.tsx`) for each component.
 
 ## Testing

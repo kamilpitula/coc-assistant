@@ -464,6 +464,8 @@ Occupation {
 
 The occupation is **data**, not hardcoded logic. The same algorithm should work for all occupations.
 
+Catalog: [catalogs/occupations.1920s.json](catalogs/occupations.1920s.json) (1920s). Project restrictions on these rules are recorded in [project_ruleset.md](project_ruleset.md).
+
 ## 7.1 Occupation skill points
 
 The full 7th Edition rules calculate occupation points using the formula attached to the selected occupation.

@@ -16,6 +16,10 @@ _Avoid_: User, profile, login
 A persistent story container owned by one Keeper. It contains the scenario preparation, investigators, non-player entities, scenes, play sessions, and shared play record for an ongoing campaign.
 _Avoid_: Session, game
 
+**Era**:
+The historical period a Campaign is set in, such as the 1920s. It decides which [era-specific rule data](docs/game-rules/coc7_character_creation_and_development_rules.md#11-identity--sheet-fields) applies to the Campaign's Character Sheets and is fixed once the Campaign is created.
+_Avoid_: Setting, period, timeline
+
 **Play Session**:
 A dated instance of play within a Campaign. It is the boundary for one game night while the Campaign and its characters continue across multiple Play Sessions.
 _Avoid_: Campaign, session
@@ -91,6 +95,38 @@ _Avoid_: Player card, stat block
 **Character Approval**:
 The Keeper's decision that an Investigator's submitted Character Sheet is acceptable and ready for play. An Investigator remains unapproved until the Keeper explicitly approves it.
 _Avoid_: Activation, verification
+
+**Creation Method**:
+The official procedure used to generate an Investigator's characteristics: Standard Rolling, Point Buy, or Quick Fire, as defined in the [characteristics rules](docs/game-rules/coc7_character_creation_and_development_rules.md#2-characteristics). The Keeper decides which Creation Methods a Campaign allows.
+_Avoid_: Creation mode, generation type
+
+**Occupation**:
+The profession an Investigator follows, which determines their occupation skills, skill point formula, and Credit Rating range per the [occupation rules](docs/game-rules/coc7_character_creation_and_development_rules.md#7-occupation-creation-rules). It is either a catalog Occupation for the Campaign's Era or a custom Occupation defined by the Player and judged by the Keeper.
+_Avoid_: Job, class, profession
+
+**Roll Record**:
+A recorded dice result used to create or develop an Investigator, naming what it was rolled for, the dice, the result, and who produced it.
+_Avoid_: Dice log, roll history
+
+**Draft**:
+The status of an Investigator whose Character Sheet the Player is still building. A Draft is private to its Player.
+_Avoid_: Unsaved, pending
+
+**Submitted**:
+The status of an Investigator whose Character Sheet the Player has handed to the Keeper for Character Approval. The Player cannot change a Submitted Character Sheet.
+_Avoid_: Pending, in review
+
+**Changes Requested**:
+The status of an Investigator the Keeper has returned to its Player with a Change Request.
+_Avoid_: Rejected, declined
+
+**Approved**:
+The status of an Investigator that has received Character Approval and is ready for play.
+_Avoid_: Active, verified, ready
+
+**Change Request**:
+The Keeper's comment explaining why a Submitted Character Sheet is returned to its Player.
+_Avoid_: Rejection, review note
 
 **Monster Profile**:
 The Call of Cthulhu 7th Edition record for a Mythos Creature, including its characteristics where applicable, attacks, armor, special abilities, and sanity loss.

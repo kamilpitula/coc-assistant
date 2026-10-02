@@ -1,0 +1,654 @@
+{
+  "catalog": "OccupationCatalog",
+  "era": "1920s",
+  "schemaVersion": 1,
+  "verificationStatus": "verified by the project owner on 2026-10-02; pageReference values still to be added",
+  "skillGroups": {
+    "interpersonal": [
+      {
+        "kind": "skill",
+        "skill": "Charm"
+      },
+      {
+        "kind": "skill",
+        "skill": "Fast Talk"
+      },
+      {
+        "kind": "skill",
+        "skill": "Intimidate"
+      },
+      {
+        "kind": "skill",
+        "skill": "Persuade"
+      }
+    ]
+  },
+  "entries": [
+    {
+      "id": "antiquarian",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Antiquarian",
+        "creditRatingMin": 30,
+        "creditRatingMax": 70,
+        "occupationPointFormula": {
+          "terms": [
+            {
+              "characteristics": [
+                "EDU"
+              ],
+              "multiplier": 4
+            }
+          ]
+        },
+        "skillSlots": [
+          {
+            "kind": "skill",
+            "skill": "Appraise"
+          },
+          {
+            "kind": "skill",
+            "skill": "Art/Craft",
+            "specialization": "any"
+          },
+          {
+            "kind": "skill",
+            "skill": "History"
+          },
+          {
+            "kind": "skill",
+            "skill": "Library Use"
+          },
+          {
+            "kind": "skill",
+            "skill": "Language (Other)",
+            "specialization": "any"
+          },
+          {
+            "kind": "group",
+            "choose": 1,
+            "group": "interpersonal"
+          },
+          {
+            "kind": "skill",
+            "skill": "Spot Hidden"
+          },
+          {
+            "kind": "any",
+            "choose": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "author",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Author",
+        "creditRatingMin": 9,
+        "creditRatingMax": 30,
+        "occupationPointFormula": {
+          "terms": [
+            {
+              "characteristics": [
+                "EDU"
+              ],
+              "multiplier": 4
+            }
+          ]
+        },
+        "skillSlots": [
+          {
+            "kind": "skill",
+            "skill": "Art/Craft",
+            "specialization": "Literature"
+          },
+          {
+            "kind": "skill",
+            "skill": "History"
+          },
+          {
+            "kind": "skill",
+            "skill": "Library Use"
+          },
+          {
+            "kind": "choice",
+            "choose": 1,
+            "from": [
+              {
+                "kind": "skill",
+                "skill": "Natural World"
+              },
+              {
+                "kind": "skill",
+                "skill": "Occult"
+              }
+            ]
+          },
+          {
+            "kind": "skill",
+            "skill": "Language (Other)",
+            "specialization": "any"
+          },
+          {
+            "kind": "skill",
+            "skill": "Language (Own)"
+          },
+          {
+            "kind": "skill",
+            "skill": "Psychology"
+          },
+          {
+            "kind": "any",
+            "choose": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "dilettante",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Dilettante",
+        "creditRatingMin": 50,
+        "creditRatingMax": 99,
+        "occupationPointFormula": {
+          "terms": [
+            {
+              "characteristics": [
+                "EDU"
+              ],
+              "multiplier": 2
+            },
+            {
+              "characteristics": [
+                "APP"
+              ],
+              "multiplier": 2
+            }
+          ]
+        },
+        "skillSlots": [
+          {
+            "kind": "skill",
+            "skill": "Art/Craft",
+            "specialization": "any"
+          },
+          {
+            "kind": "skill",
+            "skill": "Firearms",
+            "specialization": "any"
+          },
+          {
+            "kind": "skill",
+            "skill": "Language (Other)",
+            "specialization": "any"
+          },
+          {
+            "kind": "skill",
+            "skill": "Ride"
+          },
+          {
+            "kind": "group",
+            "choose": 1,
+            "group": "interpersonal"
+          },
+          {
+            "kind": "any",
+            "choose": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "doctor-of-medicine",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Doctor of Medicine",
+        "creditRatingMin": 30,
+        "creditRatingMax": 80,
+        "occupationPointFormula": {
+          "terms": [
+            {
+              "characteristics": [
+                "EDU"
+              ],
+              "multiplier": 4
+            }
+          ]
+        },
+        "skillSlots": [
+          {
+            "kind": "skill",
+            "skill": "First Aid"
+          },
+          {
+            "kind": "skill",
+            "skill": "Language (Other)",
+            "specialization": "Latin"
+          },
+          {
+            "kind": "skill",
+            "skill": "Medicine"
+          },
+          {
+            "kind": "skill",
+            "skill": "Psychology"
+          },
+          {
+            "kind": "skill",
+            "skill": "Science",
+            "specialization": "Biology"
+          },
+          {
+            "kind": "skill",
+            "skill": "Science",
+            "specialization": "Pharmacy"
+          },
+          {
+            "kind": "any",
+            "choose": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "journalist",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Journalist",
+        "creditRatingMin": 9,
+        "creditRatingMax": 30,
+        "occupationPointFormula": {
+          "terms": [
+            {
+              "characteristics": [
+                "EDU"
+              ],
+              "multiplier": 4
+            }
+          ]
+        },
+        "skillSlots": [
+          {
+            "kind": "skill",
+            "skill": "Art/Craft",
+            "specialization": "Photography"
+          },
+          {
+            "kind": "skill",
+            "skill": "History"
+          },
+          {
+            "kind": "skill",
+            "skill": "Library Use"
+          },
+          {
+            "kind": "skill",
+            "skill": "Language (Own)"
+          },
+          {
+            "kind": "group",
+            "choose": 1,
+            "group": "interpersonal"
+          },
+          {
+            "kind": "skill",
+            "skill": "Psychology"
+          },
+          {
+            "kind": "any",
+            "choose": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "lawyer",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Lawyer",
+        "creditRatingMin": 30,
+        "creditRatingMax": 80,
+        "occupationPointFormula": {
+          "terms": [
+            {
+              "characteristics": [
+                "EDU"
+              ],
+              "multiplier": 4
+            }
+          ]
+        },
+        "skillSlots": [
+          {
+            "kind": "skill",
+            "skill": "Accounting"
+          },
+          {
+            "kind": "skill",
+            "skill": "Law"
+          },
+          {
+            "kind": "skill",
+            "skill": "Library Use"
+          },
+          {
+            "kind": "group",
+            "choose": 2,
+            "group": "interpersonal"
+          },
+          {
+            "kind": "skill",
+            "skill": "Psychology"
+          },
+          {
+            "kind": "any",
+            "choose": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "police-detective",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Police Detective",
+        "creditRatingMin": 20,
+        "creditRatingMax": 50,
+        "occupationPointFormula": {
+          "terms": [
+            {
+              "characteristics": [
+                "EDU"
+              ],
+              "multiplier": 2
+            },
+            {
+              "characteristics": [
+                "DEX",
+                "STR"
+              ],
+              "multiplier": 2
+            }
+          ]
+        },
+        "skillSlots": [
+          {
+            "kind": "choice",
+            "choose": 1,
+            "from": [
+              {
+                "kind": "skill",
+                "skill": "Art/Craft",
+                "specialization": "Acting"
+              },
+              {
+                "kind": "skill",
+                "skill": "Disguise"
+              }
+            ]
+          },
+          {
+            "kind": "skill",
+            "skill": "Firearms",
+            "specialization": "any"
+          },
+          {
+            "kind": "skill",
+            "skill": "Law"
+          },
+          {
+            "kind": "skill",
+            "skill": "Listen"
+          },
+          {
+            "kind": "group",
+            "choose": 1,
+            "group": "interpersonal"
+          },
+          {
+            "kind": "skill",
+            "skill": "Psychology"
+          },
+          {
+            "kind": "skill",
+            "skill": "Spot Hidden"
+          },
+          {
+            "kind": "any",
+            "choose": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "private-investigator",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Private Investigator",
+        "creditRatingMin": 9,
+        "creditRatingMax": 30,
+        "occupationPointFormula": {
+          "terms": [
+            {
+              "characteristics": [
+                "EDU"
+              ],
+              "multiplier": 2
+            },
+            {
+              "characteristics": [
+                "DEX",
+                "STR"
+              ],
+              "multiplier": 2
+            }
+          ]
+        },
+        "skillSlots": [
+          {
+            "kind": "skill",
+            "skill": "Art/Craft",
+            "specialization": "Photography"
+          },
+          {
+            "kind": "skill",
+            "skill": "Disguise"
+          },
+          {
+            "kind": "skill",
+            "skill": "Law"
+          },
+          {
+            "kind": "skill",
+            "skill": "Library Use"
+          },
+          {
+            "kind": "group",
+            "choose": 1,
+            "group": "interpersonal"
+          },
+          {
+            "kind": "skill",
+            "skill": "Psychology"
+          },
+          {
+            "kind": "skill",
+            "skill": "Spot Hidden"
+          },
+          {
+            "kind": "any",
+            "choose": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "professor",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Professor",
+        "creditRatingMin": 20,
+        "creditRatingMax": 70,
+        "occupationPointFormula": {
+          "terms": [
+            {
+              "characteristics": [
+                "EDU"
+              ],
+              "multiplier": 4
+            }
+          ]
+        },
+        "skillSlots": [
+          {
+            "kind": "skill",
+            "skill": "Library Use"
+          },
+          {
+            "kind": "skill",
+            "skill": "Language (Other)",
+            "specialization": "any"
+          },
+          {
+            "kind": "skill",
+            "skill": "Language (Own)"
+          },
+          {
+            "kind": "skill",
+            "skill": "Psychology"
+          },
+          {
+            "kind": "any",
+            "choose": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "soldier",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": "2026-10-02",
+      "data": {
+        "name": "Soldier",
+        "creditRatingMin": 9,
+        "creditRatingMax": 30,
+        "occupationPointFormula": {
+          "terms": [
+            {
+              "characteristics": [
+                "EDU"
+              ],
+              "multiplier": 2
+            },
+            {
+              "characteristics": [
+                "DEX",
+                "STR"
+              ],
+              "multiplier": 2
+            }
+          ]
+        },
+        "skillSlots": [
+          {
+            "kind": "choice",
+            "choose": 1,
+            "from": [
+              {
+                "kind": "skill",
+                "skill": "Climb"
+              },
+              {
+                "kind": "skill",
+                "skill": "Swim"
+              }
+            ]
+          },
+          {
+            "kind": "skill",
+            "skill": "Dodge"
+          },
+          {
+            "kind": "skill",
+            "skill": "Fighting",
+            "specialization": "any"
+          },
+          {
+            "kind": "skill",
+            "skill": "Firearms",
+            "specialization": "any"
+          },
+          {
+            "kind": "skill",
+            "skill": "Stealth"
+          },
+          {
+            "kind": "skill",
+            "skill": "Survival",
+            "specialization": "any"
+          },
+          {
+            "kind": "choice",
+            "choose": 2,
+            "from": [
+              {
+                "kind": "skill",
+                "skill": "First Aid"
+              },
+              {
+                "kind": "skill",
+                "skill": "Mechanical Repair"
+              },
+              {
+                "kind": "skill",
+                "skill": "Language (Other)",
+                "specialization": "any"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
