@@ -10,3 +10,4 @@ global using System.Text.Json;
 global using System.Text.Json.Serialization;
 global using CocAssistant.CampaignPlay.Domain.CharacterSheets;
 global using CocAssistant.CampaignPlay.Domain.Investigators;
+global using Microsoft.AspNetCore.Http;

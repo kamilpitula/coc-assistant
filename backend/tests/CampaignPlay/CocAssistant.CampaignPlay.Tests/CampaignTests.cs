@@ -76,4 +76,17 @@ public class CampaignTests
         Assert.True(campaign.IsKeeper(KeeperAccountId));
         Assert.False(campaign.IsKeeper(otherAccountId));
     }
+
+    [Fact]
+    public void Given_a_campaign_with_a_joined_player_When_asked_who_is_a_player_Then_only_the_joined_account_is()
+    {
+        var campaign = new Campaign("The Haunting", KeeperAccountId, CreatedAt);
+        var invite = campaign.IssueInvite("token-1", CreatedAt);
+        var playerAccountId = Guid.NewGuid();
+        campaign.Join(playerAccountId, invite.Token, CreatedAt);
+
+        Assert.True(campaign.IsPlayer(playerAccountId));
+        Assert.False(campaign.IsPlayer(KeeperAccountId));
+        Assert.False(campaign.IsPlayer(Guid.NewGuid()));
+    }
 }

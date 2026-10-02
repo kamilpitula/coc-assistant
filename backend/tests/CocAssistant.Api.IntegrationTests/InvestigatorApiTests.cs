@@ -1,0 +1,391 @@
+namespace CocAssistant.Api.IntegrationTests;
+
+/// <summary>
+/// Integration tests for the Investigator and Character Sheet endpoints (specs/campaign-play/spec.md API Contracts and
+/// Investigator API shapes; specs/character-sheet/spec.md API Contracts), covering the Investigator scenarios and
+/// Regression Guardrails over HTTP against SQL Server.
+/// </summary>
+public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
+{
+    private const string Keeper = "inv-keeper";
+    private const string Player = "inv-player";
+    private const string OtherPlayer = "inv-other-player";
+
+    private readonly IdentityApiFactory _factory;
+    private HttpClient _client = null!;
+    private Guid _campaignId;
+
+    public InvestigatorApiTests(IdentityApiFactory factory) => _factory = factory;
+
+    public async Task InitializeAsync()
+    {
+        await ResetDatabaseAsync(_factory);
+        _client = _factory.CreateClient();
+        _campaignId = (await CreateCampaignAsync(_client, Keeper)).Id;
+        await JoinAsPlayerAsync(_client, _campaignId, Keeper, Player);
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
+
+    private string Investigators => $"/api/campaigns/{_campaignId}/investigators";
+
+    private Task<HttpResponseMessage> SendAsync(HttpMethod method, string uri, string oid, object? body = null) =>
+        _client.SendAsync(BuildRequest(method, uri, oid, body));
+
+    private static async Task<JsonElement> JsonAsync(HttpResponseMessage response)
+    {
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.Clone();
+    }
+
+    private static object ValidSheet(string name = "Harvey Walters") => new
+    {
+        identity = new { name, age = 25, gender = (string?)null, residence = "Boston", birthplace = (string?)null },
+        creationMethod = "PointBuy",
+        characteristics = new Dictionary<string, int?>
+        {
+            ["STR"] = 60,
+            ["CON"] = 60,
+            ["DEX"] = 60,
+            ["APP"] = 50,
+            ["POW"] = 60,
+            ["SIZ"] = 60,
+            ["INT"] = 60,
+            ["EDU"] = 50,
+        },
+        ageEffects = new { deductions = new Dictionary<string, int?>(), eduImprovementChecks = new[] { new { check = (int?)30, gain = (int?)null } } },
+        luckRolls = new int?[] { 11 },
+    };
+
+    private async Task<Guid> CreateDraftAsync(string playerOid = Player)
+    {
+        var response = await SendAsync(HttpMethod.Post, Investigators, playerOid);
+        response.EnsureSuccessStatusCode();
+        return (await JsonAsync(response)).GetProperty("id").GetGuid();
+    }
+
+    private async Task<Guid> CreateSubmittedAsync(string playerOid = Player)
+    {
+        var id = await CreateDraftAsync(playerOid);
+        (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", playerOid, ValidSheet())).EnsureSuccessStatusCode();
+        (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/submit", playerOid)).EnsureSuccessStatusCode();
+        return id;
+    }
+
+    private async Task<string> StatusOfMineAsync(string playerOid = Player) =>
+        (await JsonAsync(await SendAsync(HttpMethod.Get, $"{Investigators}/mine", playerOid))).GetProperty("status").GetString()!;
+
+    // Scenario: Player starts a Draft Investigator
+    [Fact]
+    public async Task Given_a_player_When_creating_an_investigator_Then_a_draft_summary_is_returned()
+    {
+        var response = await SendAsync(HttpMethod.Post, Investigators, Player);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await JsonAsync(response);
+        Assert.Equal(
+            ["changeRequestComment", "id", "name", "status", "updatedAt"],
+            body.EnumerateObject().Select(property => property.Name).Order());
+        Assert.Equal("Draft", body.GetProperty("status").GetString());
+        Assert.Equal(JsonValueKind.Null, body.GetProperty("name").ValueKind);
+        Assert.Equal("Draft", await StatusOfMineAsync());
+    }
+
+    // Scenario: Player cannot create a second Investigator
+    [Fact]
+    public async Task Given_a_player_with_an_investigator_When_creating_another_Then_it_is_a_conflict()
+    {
+        await CreateDraftAsync();
+
+        var response = await SendAsync(HttpMethod.Post, Investigators, Player);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    // Regression Guardrail: A Player controls at most one Investigator per Campaign (database unique index).
+    [Fact]
+    public async Task Given_two_concurrent_creations_for_one_player_When_both_complete_Then_exactly_one_succeeds()
+    {
+        var responses = await Task.WhenAll(
+            SendAsync(HttpMethod.Post, Investigators, Player),
+            SendAsync(HttpMethod.Post, Investigators, Player),
+            SendAsync(HttpMethod.Post, Investigators, Player));
+
+        Assert.Single(responses, response => response.StatusCode == HttpStatusCode.Created);
+        Assert.All(
+            responses.Where(response => response.StatusCode != HttpStatusCode.Created),
+            response => Assert.Equal(HttpStatusCode.Conflict, response.StatusCode));
+    }
+
+    [Theory]
+    [InlineData(Keeper)]
+    [InlineData("inv-stranger")]
+    public async Task Given_a_keeper_or_non_member_When_creating_an_investigator_Then_it_is_not_found(string oid)
+    {
+        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Post, Investigators, oid)).StatusCode);
+    }
+
+    // Scenario: Player cannot create an Investigator without a supported Creation Method
+    [Fact]
+    public async Task Given_a_campaign_without_a_supported_creation_method_When_creating_an_investigator_Then_it_is_a_conflict()
+    {
+        (await SendAsync(HttpMethod.Put, $"/api/campaigns/{_campaignId}/allowed-creation-methods", Keeper, new { allowedCreationMethods = new[] { "QuickFire" } }))
+            .EnsureSuccessStatusCode();
+
+        var response = await SendAsync(HttpMethod.Post, Investigators, Player);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Get, $"{Investigators}/mine", Player)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_a_draft_When_saving_a_valid_character_sheet_Then_the_recomputed_sheet_rules_and_no_errors_are_returned()
+    {
+        await CreateDraftAsync();
+
+        var response = await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, ValidSheet());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await JsonAsync(response);
+        Assert.Equal(DisplayNameFor(Player), body.GetProperty("playerName").GetString());
+        Assert.Equal("Draft", body.GetProperty("status").GetString());
+        Assert.Equal(0, body.GetProperty("validationErrors").GetArrayLength());
+        var sheet = body.GetProperty("characterSheet");
+        Assert.Equal(1, sheet.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("Boston", sheet.GetProperty("identity").GetProperty("residence").GetString());
+        var strength = sheet.GetProperty("characteristics").GetProperty("STR");
+        Assert.Equal((60, 60, 30, 12), (strength.GetProperty("assigned").GetInt32(), strength.GetProperty("value").GetInt32(), strength.GetProperty("hard").GetInt32(), strength.GetProperty("extreme").GetInt32()));
+        Assert.Equal(20, sheet.GetProperty("ageEffects").GetProperty("bracket").GetProperty("minimumAge").GetInt32());
+        Assert.Equal(50, sheet.GetProperty("ageEffects").GetProperty("eduImprovementChecks")[0].GetProperty("eduAfter").GetInt32());
+        Assert.Equal(55, sheet.GetProperty("derived").GetProperty("luck").GetInt32());
+        Assert.Equal(99, sheet.GetProperty("derived").GetProperty("sanity").GetProperty("maximum").GetInt32());
+        Assert.Equal("PlayerEntered", sheet.GetProperty("rollRecords")[0].GetProperty("source").GetString());
+        Assert.Equal(460, body.GetProperty("rules").GetProperty("pointBuyBudget").GetInt32());
+        Assert.Equal("3D6", body.GetProperty("rules").GetProperty("luckDice").GetString());
+
+        var reread = await JsonAsync(await SendAsync(HttpMethod.Get, $"{Investigators}/mine/character-sheet", Player));
+        Assert.Equal("Harvey Walters", reread.GetProperty("characterSheet").GetProperty("identity").GetProperty("name").GetString());
+    }
+
+    [Fact]
+    public async Task Given_a_draft_When_saving_an_incomplete_sheet_Then_it_is_saved_with_its_validation_errors()
+    {
+        await CreateDraftAsync();
+        var incomplete = new
+        {
+            identity = new { name = "Harvey Walters", age = 14 },
+            creationMethod = "PointBuy",
+            characteristics = new Dictionary<string, int?>(),
+            ageEffects = new { deductions = new Dictionary<string, int?>(), eduImprovementChecks = Array.Empty<object>() },
+            luckRolls = Array.Empty<int?>(),
+        };
+
+        var response = await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, incomplete);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var errors = (await JsonAsync(response)).GetProperty("validationErrors");
+        var ageError = errors.EnumerateArray().Single(error => error.GetProperty("code").GetString() == "AgeOutOfRange");
+        Assert.Equal("identity.age", ageError.GetProperty("field").GetString());
+        Assert.Equal("Error", ageError.GetProperty("severity").GetString());
+        Assert.Equal("15-89", ageError.GetProperty("expected").GetString());
+    }
+
+    [Fact]
+    public async Task Given_a_creation_method_this_version_does_not_support_When_saving_the_sheet_Then_it_is_a_bad_request()
+    {
+        await CreateDraftAsync();
+        var body = new { identity = new { name = "Harvey" }, creationMethod = "QuickFire", characteristics = new Dictionary<string, int?>() };
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_a_draft_with_errors_When_submitting_Then_422_lists_the_validation_errors_and_it_stays_a_draft()
+    {
+        await CreateDraftAsync();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/mine/submit", Player);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        var codes = (await JsonAsync(response)).GetProperty("validationErrors").EnumerateArray()
+            .Select(error => error.GetProperty("code").GetString()).ToList();
+        Assert.Contains("InvestigatorNameRequired", codes);
+        Assert.Contains("LuckRollRequired", codes);
+        Assert.Equal("Draft", await StatusOfMineAsync());
+    }
+
+    // Scenario: Player submits a valid Character Sheet
+    [Fact]
+    public async Task Given_a_valid_draft_When_submitting_Then_it_is_submitted_and_the_sheet_can_no_longer_be_edited()
+    {
+        await CreateSubmittedAsync();
+
+        Assert.Equal("Submitted", await StatusOfMineAsync());
+        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, ValidSheet())).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(HttpMethod.Delete, $"{Investigators}/mine", Player)).StatusCode);
+    }
+
+    // Scenario: Player starts over from a Draft
+    [Fact]
+    public async Task Given_a_draft_When_starting_over_Then_it_is_deleted()
+    {
+        await CreateDraftAsync();
+
+        Assert.Equal(HttpStatusCode.NoContent, (await SendAsync(HttpMethod.Delete, $"{Investigators}/mine", Player)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Get, $"{Investigators}/mine", Player)).StatusCode);
+    }
+
+    // Scenario: Player starts a Draft Investigator (the Keeper sees it only as "In progress")
+    [Fact]
+    public async Task Given_a_draft_and_a_submitted_investigator_When_the_keeper_lists_them_Then_the_draft_hides_its_id_and_name()
+    {
+        await JoinAsPlayerAsync(_client, _campaignId, Keeper, OtherPlayer);
+        await CreateDraftAsync(Player);
+        (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, ValidSheet("Secret Name"))).EnsureSuccessStatusCode();
+        var submittedId = await CreateSubmittedAsync(OtherPlayer);
+
+        var response = await SendAsync(HttpMethod.Get, Investigators, Keeper);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var rows = (await JsonAsync(response)).EnumerateArray().ToList();
+        var draft = rows.Single(row => row.GetProperty("status").GetString() == "Draft");
+        Assert.Equal(DisplayNameFor(Player), draft.GetProperty("playerName").GetString());
+        Assert.Equal(JsonValueKind.Null, draft.GetProperty("investigatorId").ValueKind);
+        Assert.Equal(JsonValueKind.Null, draft.GetProperty("investigatorName").ValueKind);
+        var submitted = rows.Single(row => row.GetProperty("status").GetString() == "Submitted");
+        Assert.Equal(submittedId, submitted.GetProperty("investigatorId").GetGuid());
+        Assert.Equal("Harvey Walters", submitted.GetProperty("investigatorName").GetString());
+        Assert.Equal(DisplayNameFor(OtherPlayer), submitted.GetProperty("playerName").GetString());
+    }
+
+    [Fact]
+    public async Task Given_a_player_When_listing_investigators_Then_it_is_not_found()
+    {
+        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Get, Investigators, Player)).StatusCode);
+    }
+
+    // Scenario: Keeper cannot open a Draft Investigator; Player cannot read another Player's Investigator
+    [Fact]
+    public async Task Given_a_draft_When_the_keeper_or_another_player_opens_it_Then_it_is_not_found()
+    {
+        await JoinAsPlayerAsync(_client, _campaignId, Keeper, OtherPlayer);
+        var draftId = await CreateDraftAsync();
+        var submittedId = await CreateSubmittedAsync(OtherPlayer);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Get, $"{Investigators}/{draftId}", Keeper)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Get, $"{Investigators}/{submittedId}", Player)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_a_submitted_investigator_When_the_keeper_opens_it_Then_the_sheet_warnings_and_roll_records_are_returned()
+    {
+        var id = await CreateSubmittedAsync();
+
+        var response = await SendAsync(HttpMethod.Get, $"{Investigators}/{id}", Keeper);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await JsonAsync(response);
+        Assert.Equal(
+            ["changeRequestComment", "characterSheet", "id", "playerName", "status", "updatedAt", "warnings"],
+            body.EnumerateObject().Select(property => property.Name).Order());
+        Assert.Equal("Submitted", body.GetProperty("status").GetString());
+        Assert.Equal(DisplayNameFor(Player), body.GetProperty("playerName").GetString());
+        Assert.Equal(0, body.GetProperty("warnings").GetArrayLength());
+        Assert.Equal(2, body.GetProperty("characterSheet").GetProperty("rollRecords").GetArrayLength());
+    }
+
+    // Scenario: Investigator is not reachable from another Campaign
+    [Fact]
+    public async Task Given_an_investigator_in_campaign_a_When_the_keeper_of_campaign_b_requests_it_through_campaign_b_Then_it_is_not_found()
+    {
+        var id = await CreateSubmittedAsync();
+        var campaignB = (await CreateCampaignAsync(_client, "inv-keeper-b")).Id;
+
+        var read = await SendAsync(HttpMethod.Get, $"/api/campaigns/{campaignB}/investigators/{id}", "inv-keeper-b");
+        var approve = await SendAsync(HttpMethod.Post, $"/api/campaigns/{campaignB}/investigators/{id}/approve", "inv-keeper-b");
+
+        Assert.Equal(HttpStatusCode.NotFound, read.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, approve.StatusCode);
+        Assert.Equal("Submitted", await StatusOfMineAsync());
+    }
+
+    // Scenario: Keeper approves an Investigator
+    [Fact]
+    public async Task Given_a_submitted_investigator_When_the_keeper_approves_it_Then_it_is_approved_and_a_second_approval_conflicts()
+    {
+        var id = await CreateSubmittedAsync();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/{id}/approve", Keeper);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Approved", (await JsonAsync(response)).GetProperty("status").GetString());
+        Assert.Equal("Approved", await StatusOfMineAsync());
+        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(HttpMethod.Post, $"{Investigators}/{id}/approve", Keeper)).StatusCode);
+    }
+
+    // Scenario: Player cannot approve their own Investigator
+    [Fact]
+    public async Task Given_a_submitted_investigator_When_its_player_approves_or_requests_changes_Then_it_is_not_found_and_remains_submitted()
+    {
+        var id = await CreateSubmittedAsync();
+
+        var approve = await SendAsync(HttpMethod.Post, $"{Investigators}/{id}/approve", Player);
+        var requestChanges = await SendAsync(HttpMethod.Post, $"{Investigators}/{id}/request-changes", Player, new { comment = "Looks fine" });
+
+        Assert.Equal(HttpStatusCode.NotFound, approve.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, requestChanges.StatusCode);
+        Assert.Equal("Submitted", await StatusOfMineAsync());
+    }
+
+    // Scenario: Request changes requires a comment
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    public async Task Given_a_submitted_investigator_When_requesting_changes_without_a_comment_Then_it_is_a_bad_request_and_remains_submitted(string? comment)
+    {
+        var id = await CreateSubmittedAsync();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/{id}/request-changes", Keeper, new { comment });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("Submitted", await StatusOfMineAsync());
+    }
+
+    [Fact]
+    public async Task Given_a_submitted_investigator_When_requesting_changes_with_a_comment_over_2000_characters_Then_it_is_a_bad_request()
+    {
+        var id = await CreateSubmittedAsync();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/{id}/request-changes", Keeper, new { comment = new string('a', 2001) });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    // Scenario: Keeper requests changes
+    [Fact]
+    public async Task Given_a_submitted_investigator_When_the_keeper_requests_changes_Then_the_player_sees_the_comment_edits_and_resubmits()
+    {
+        var id = await CreateSubmittedAsync();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/{id}/request-changes", Keeper, new { comment = "Credit Rating seems high for this Occupation" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var mine = await JsonAsync(await SendAsync(HttpMethod.Get, $"{Investigators}/mine", Player));
+        Assert.Equal("ChangesRequested", mine.GetProperty("status").GetString());
+        Assert.Equal("Credit Rating seems high for this Occupation", mine.GetProperty("changeRequestComment").GetString());
+        Assert.Equal(HttpStatusCode.OK, (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, ValidSheet("Harvey W."))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/submit", Player)).StatusCode);
+        Assert.Equal("Submitted", await StatusOfMineAsync());
+    }
+
+    [Fact]
+    public async Task Given_another_campaigns_player_When_reading_this_campaigns_mine_endpoints_Then_they_are_not_found()
+    {
+        await CreateDraftAsync();
+
+        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Get, $"{Investigators}/mine", "inv-stranger")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Get, $"{Investigators}/mine/character-sheet", Keeper)).StatusCode);
+    }
+}

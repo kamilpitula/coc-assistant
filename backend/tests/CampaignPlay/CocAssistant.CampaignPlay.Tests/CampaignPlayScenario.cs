@@ -42,5 +42,56 @@ public sealed class CampaignPlayScenario : IDisposable
         await service.ChangeAllowedCreationMethodsAsync(campaignId, KeeperAccountId, allowedCreationMethods, CancellationToken.None);
     }
 
+    public static readonly ICreationRuleData RuleData = new EmbeddedResourceCreationRuleData();
+
+    public PlayerInvestigatorService PlayerService(CampaignPlayDbContext context, IInvestigatorRepository? investigators = null) =>
+        new(
+            Fixture.CreateRepository(context),
+            investigators ?? Fixture.CreateInvestigatorRepository(context),
+            new InMemoryAccountDisplayNames(),
+            new CharacterSheetEvaluator(RuleData),
+            new PlayerEnteredRollSource(),
+            TimeProvider);
+
+    public KeeperInvestigatorService KeeperService(CampaignPlayDbContext context) =>
+        new(
+            Fixture.CreateRepository(context),
+            Fixture.CreateInvestigatorRepository(context),
+            new InMemoryAccountDisplayNames(),
+            new CharacterSheetEvaluator(RuleData),
+            TimeProvider);
+
+    /// <summary>Creates the Player's Draft Investigator and returns its id.</summary>
+    public async Task<Guid> CreateDraftAsync(Guid campaignId, Guid playerAccountId)
+    {
+        using var context = Fixture.CreateContext();
+        var result = await PlayerService(context).CreateAsync(campaignId, playerAccountId, CancellationToken.None);
+        return result.Investigator!.Id;
+    }
+
+    /// <summary>Saves the Character Sheet inputs as the Player.</summary>
+    public async Task<CharacterSheetResult> SaveCharacterSheetAsync(Guid campaignId, Guid playerAccountId, CharacterSheetInputs inputs)
+    {
+        using var context = Fixture.CreateContext();
+        return await PlayerService(context).ReplaceMyCharacterSheetAsync(campaignId, playerAccountId, inputs, CancellationToken.None);
+    }
+
+    /// <summary>Creates a Draft with a valid Point Buy sheet and submits it; returns the Investigator id.</summary>
+    public async Task<Guid> CreateSubmittedAsync(Guid campaignId, Guid playerAccountId)
+    {
+        var investigatorId = await CreateDraftAsync(campaignId, playerAccountId);
+        await SaveCharacterSheetAsync(campaignId, playerAccountId, new CharacterSheetBuilder().BuildInputs());
+        using var context = Fixture.CreateContext();
+        await PlayerService(context).SubmitMineAsync(campaignId, playerAccountId, CancellationToken.None);
+        return investigatorId;
+    }
+
+    /// <summary>Reads the Investigator as stored.</summary>
+    public async Task<Investigator?> LoadInvestigatorAsync(Guid campaignId, Guid investigatorId)
+    {
+        using var context = Fixture.CreateContext();
+        return await Fixture.CreateInvestigatorRepository(context).FindByIdAsync(campaignId, investigatorId, CancellationToken.None);
+    }
+
     public void Dispose() => Fixture.Dispose();
 }

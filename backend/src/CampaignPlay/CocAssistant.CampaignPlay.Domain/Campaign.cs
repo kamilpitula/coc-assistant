@@ -87,6 +87,9 @@ public class Campaign
     public bool IsMember(Guid accountId) =>
         IsKeeper(accountId) || (accountId != Guid.Empty && _players.Any(player => player.AccountId == accountId));
 
+    /// <summary>True for an Account that joined the Campaign as a Player; the Keeper is never a Player.</summary>
+    public bool IsPlayer(Guid accountId) => !IsKeeper(accountId) && IsMember(accountId);
+
     /// <summary>The Account's role in this Campaign, or null when it is not a member.</summary>
     public CampaignRole? RoleOf(Guid accountId)
     {
