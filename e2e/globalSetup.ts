@@ -3,14 +3,15 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { resolveE2eConnectionString } from './sqlServerConnection'
+
 const E2E_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(E2E_DIR, '..')
 const CERTS_DIR = resolve(REPO_ROOT, 'e2e/.certs')
 const PFX_PATH = resolve(CERTS_DIR, 'dev-cert.pfx')
 const PFX_PASSWORD_FILE = resolve(CERTS_DIR, 'dev-cert.password')
 
-const E2E_CONNECTION_STRING =
-  'Server=(localdb)\\mssqllocaldb;Database=CocAssistantE2E;Trusted_Connection=True;MultipleActiveResultSets=true'
+const E2E_CONNECTION_STRING = resolveE2eConnectionString()
 
 function abortWithGuidance(message: string): never {
   const guidance =

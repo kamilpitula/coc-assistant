@@ -1,6 +1,6 @@
 namespace CocAssistant.Api.IntegrationTests;
 
-/// <summary>Integration tests for Campaign Invite management and the Player join workflow against a real LocalDB database.</summary>
+/// <summary>Integration tests for Campaign Invite management and the Player join workflow against a real SQL Server database.</summary>
 public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
 {
     private readonly IdentityApiFactory _factory;

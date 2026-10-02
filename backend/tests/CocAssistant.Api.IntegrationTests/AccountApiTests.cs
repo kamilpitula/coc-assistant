@@ -1,6 +1,6 @@
 namespace CocAssistant.Api.IntegrationTests;
 
-/// <summary>Integration tests for GET /api/account/me against a real LocalDB database, reset between tests via Respawn.</summary>
+/// <summary>Integration tests for GET /api/account/me against a real SQL Server database, reset between tests via Respawn.</summary>
 public class AccountApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
 {
     private readonly IdentityApiFactory _factory;

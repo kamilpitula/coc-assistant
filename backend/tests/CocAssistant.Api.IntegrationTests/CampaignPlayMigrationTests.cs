@@ -1,13 +1,13 @@
 namespace CocAssistant.Api.IntegrationTests;
 
 /// <summary>
-/// Verifies CampaignPlay migrations against data written under earlier schema versions. Uses its own LocalDB
+/// Verifies CampaignPlay migrations against data written under earlier schema versions. Uses its own SQL Server
 /// database because each test migrates down and up, which would disturb the shared Respawn-managed database.
 /// </summary>
 public class CampaignPlayMigrationTests : IAsyncLifetime
 {
-    private const string ConnectionString =
-        "Server=(localdb)\\mssqllocaldb;Database=CocAssistantCampaignPlayMigrationTests;Trusted_Connection=True;MultipleActiveResultSets=true";
+    private static readonly string ConnectionString =
+        SqlServerTestConnection.ForDatabase("CocAssistantCampaignPlayMigrationTests");
 
     private const string CreateCampaignMigration = "20260922072759_CreateCampaign";
     private const string AddCampaignInviteAndMembershipMigration = "20261001110509_AddCampaignInviteAndMembership";

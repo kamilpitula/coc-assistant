@@ -16,7 +16,8 @@ Install once per workstation:
 - **ASP.NET dev certificate**: `dotnet dev-certs https --trust`. The browser, the API's
   Kestrel endpoint, and the mock OIDC issuer all serve the same cert over `localhost`.
 - **SQL Server LocalDB** (`(localdb)\mssqllocaldb`). The harness uses a dedicated
-  `CocAssistantE2E` database that is never dropped.
+  `CocAssistantE2E` database that is never dropped. To use another SQL Server instead, see
+  "Using a non-LocalDB SQL Server" below.
 - **.NET 10 SDK and Node 20+** (same versions the rest of the repo uses).
 
 ## One-time setup
@@ -92,6 +93,18 @@ container and the API's Kestrel endpoint both use the trusted dev cert.
 `playwright.config.ts` sets `use.ignoreHTTPSErrors: true` and the Vite proxy sets
 `secure: false` for the API target so the dev cert is accepted by Node's HTTP agent (the
 browser trusts it anyway after `dotnet dev-certs https --trust`).
+
+## Using a non-LocalDB SQL Server
+
+Set `COC_SQLSERVER_CONNECTION` to the server part of a connection string, without a database:
+
+```powershell
+$env:COC_SQLSERVER_CONNECTION = "Server=localhost,1433;User Id=sa;Password=<password>;TrustServerCertificate=True"
+```
+
+`e2e/sqlServerConnection.ts` appends `Database=CocAssistantE2E`; when the variable is unset it
+falls back to LocalDB. The backend integration tests honor the same variable through
+`SqlServerTestConnection`, each with its own database name.
 
 ## Adding new Accounts
 

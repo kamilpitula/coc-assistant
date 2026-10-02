@@ -3,12 +3,13 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { resolveE2eConnectionString } from './sqlServerConnection'
+
 const E2E_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(E2E_DIR, '..')
 const PFX_PATH = resolve(E2E_DIR, '.certs/dev-cert.pfx')
 const PFX_PASSWORD_FILE = resolve(E2E_DIR, '.certs/dev-cert.password')
-const E2E_CONNECTION_STRING =
-  'Server=(localdb)\\mssqllocaldb;Database=CocAssistantE2E;Trusted_Connection=True;MultipleActiveResultSets=true'
+const E2E_CONNECTION_STRING = resolveE2eConnectionString()
 
 /**
  * Resolves the dev-cert PFX password at config load time so the webServer env captures the

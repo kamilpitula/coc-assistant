@@ -1,6 +1,6 @@
 namespace CocAssistant.Api.IntegrationTests;
 
-/// <summary>Integration tests for the Campaign API against a real LocalDB database, reset between tests via Respawn.</summary>
+/// <summary>Integration tests for the Campaign API against a real SQL Server database, reset between tests via Respawn.</summary>
 public class CampaignApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
 {
     private readonly IdentityApiFactory _factory;
