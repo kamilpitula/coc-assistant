@@ -17,6 +17,11 @@ concurrency:
   group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Throwaway credentials for the ephemeral SQL Server service container; not a secret.
+env:
+  MSSQL_SA_PASSWORD: CiOnly_Passw0rd!
+  COC_SQLSERVER_CONNECTION: Server=localhost,1433;User Id=sa;Password=CiOnly_Passw0rd!;TrustServerCertificate=True
+
 jobs:
   changes:
     name: Detect changes
@@ -44,8 +49,10 @@ jobs:
               - 'infrastructure/**'
             toolchain:
               - '.github/workflows/**'
+              - '.github/actions/**'
               - 'global.json'
               - '.nvmrc'
+              - '.config/dotnet-tools.json'
       - name: Decide whether every job runs
         id: scope
         env:
@@ -62,15 +69,7 @@ jobs:
       checks: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-        with:
-          global-json-file: global.json
-      - name: Cache NuGet packages
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj', 'global.json') }}
-          restore-keys: nuget-${{ runner.os }}-
+      - uses: ./.github/actions/setup-dotnet
       - name: Restore
         run: dotnet restore backend/CocAssistant.slnx
       - name: Build
@@ -91,6 +90,42 @@ jobs:
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         with:
           name: Backend unit tests
+          path: TestResults/*.trx
+          reporter: dotnet-trx
+
+  backend-integration:
+    name: Backend integration
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    services:
+      sql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: ${{ env.MSSQL_SA_PASSWORD }}
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $MSSQL_SA_PASSWORD -C -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-dotnet
+      - name: Integration tests
+        run: >-
+          dotnet test backend/tests/CocAssistant.Api.IntegrationTests --configuration Release
+          --logger trx --results-directory TestResults
+      - name: Report integration test results
+        if: success() || failure()
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        with:
+          name: Backend integration tests
           path: TestResults/*.trx
           reporter: dotnet-trx
 
@@ -145,7 +180,7 @@ jobs:
 
   ci-success:
     name: ci-success
-    needs: [changes, backend, frontend, terraform]
+    needs: [changes, backend, backend-integration, frontend, terraform]
     if: always()
     runs-on: ubuntu-latest
     steps:
