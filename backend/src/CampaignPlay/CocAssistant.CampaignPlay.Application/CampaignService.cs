@@ -12,9 +12,18 @@ public class CampaignService
         _timeProvider = timeProvider;
     }
 
-    public async Task<Campaign> CreateCampaignAsync(string name, Guid keeperAccountId, CancellationToken cancellationToken)
+    /// <summary>Creates a Campaign for the Keeper; a null Player limit falls back to the Campaign default.</summary>
+    public async Task<Campaign> CreateCampaignAsync(
+        string name,
+        Guid keeperAccountId,
+        int? playerLimit,
+        CancellationToken cancellationToken)
     {
-        var campaign = new Campaign(name, keeperAccountId, _timeProvider.GetUtcNow());
+        var campaign = new Campaign(
+            name,
+            keeperAccountId,
+            _timeProvider.GetUtcNow(),
+            playerLimit ?? Campaign.DefaultPlayerLimit);
         _campaigns.Add(campaign);
         await _campaigns.SaveChangesAsync(cancellationToken);
         return campaign;

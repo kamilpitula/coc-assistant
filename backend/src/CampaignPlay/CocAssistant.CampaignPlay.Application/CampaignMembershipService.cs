@@ -3,6 +3,8 @@ namespace CocAssistant.CampaignPlay.Application;
 /// <summary>Manages the active Campaign Invite for the Keeper and admits Players who join through it.</summary>
 public class CampaignMembershipService
 {
+    private const int MaxInviteChangeAttempts = 3;
+
     private readonly ICampaignRepository _campaigns;
     private readonly TimeProvider _timeProvider;
 
@@ -13,37 +15,20 @@ public class CampaignMembershipService
     }
 
     /// <summary>Returns the active Invite, issuing a fresh one only when none is active; null when not the Keeper.</summary>
-    public async Task<CampaignInvite?> IssueInviteAsync(Guid campaignId, Guid keeperAccountId, CancellationToken cancellationToken)
-    {
-        var campaign = await _campaigns.FindByIdAsync(campaignId, cancellationToken);
-        if (campaign is null || !campaign.IsKeeper(keeperAccountId))
-        {
-            return null;
-        }
-
-        if (campaign.ActiveInvite is not null)
-        {
-            return campaign.ActiveInvite;
-        }
-
-        var invite = campaign.IssueInvite(NewToken(), _timeProvider.GetUtcNow());
-        await _campaigns.SaveChangesAsync(cancellationToken);
-        return invite;
-    }
+    public Task<CampaignInvite?> IssueInviteAsync(Guid campaignId, Guid keeperAccountId, CancellationToken cancellationToken) =>
+        ChangeActiveInviteAsync(
+            campaignId,
+            keeperAccountId,
+            campaign => campaign.ActiveInvite ?? campaign.IssueInvite(NewToken(), _timeProvider.GetUtcNow()),
+            cancellationToken);
 
     /// <summary>Replaces any active Invite with a freshly issued one bearing a new token; null when not the Keeper.</summary>
-    public async Task<CampaignInvite?> ReplaceInviteAsync(Guid campaignId, Guid keeperAccountId, CancellationToken cancellationToken)
-    {
-        var campaign = await _campaigns.FindByIdAsync(campaignId, cancellationToken);
-        if (campaign is null || !campaign.IsKeeper(keeperAccountId))
-        {
-            return null;
-        }
-
-        var invite = campaign.IssueInvite(NewToken(), _timeProvider.GetUtcNow());
-        await _campaigns.SaveChangesAsync(cancellationToken);
-        return invite;
-    }
+    public Task<CampaignInvite?> ReplaceInviteAsync(Guid campaignId, Guid keeperAccountId, CancellationToken cancellationToken) =>
+        ChangeActiveInviteAsync(
+            campaignId,
+            keeperAccountId,
+            campaign => campaign.IssueInvite(NewToken(), _timeProvider.GetUtcNow()),
+            cancellationToken);
 
     /// <summary>Returns the Campaign's active Invite for its Keeper; null when not the Keeper or none is active.</summary>
     public async Task<CampaignInvite?> GetActiveInviteAsync(Guid campaignId, Guid keeperAccountId, CancellationToken cancellationToken)
@@ -114,6 +99,37 @@ public class CampaignMembershipService
                     return new JoinCampaignResult(JoinCampaignOutcome.Joined, true, null);
                 }
 
+                _campaigns.DiscardPendingChanges();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Applies an active-Invite change for the Keeper. The database admits only one active Invite per Campaign,
+    /// so a lost race re-reads fresh state and reapplies the change against the Invite that won.
+    /// </summary>
+    private async Task<CampaignInvite?> ChangeActiveInviteAsync(
+        Guid campaignId,
+        Guid keeperAccountId,
+        Func<Campaign, CampaignInvite> change,
+        CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            var campaign = await _campaigns.FindByIdAsync(campaignId, cancellationToken);
+            if (campaign is null || !campaign.IsKeeper(keeperAccountId))
+            {
+                return null;
+            }
+
+            var invite = change(campaign);
+            try
+            {
+                await _campaigns.SaveChangesAsync(cancellationToken);
+                return invite;
+            }
+            catch (CampaignMembershipConflictException) when (attempt < MaxInviteChangeAttempts)
+            {
                 _campaigns.DiscardPendingChanges();
             }
         }

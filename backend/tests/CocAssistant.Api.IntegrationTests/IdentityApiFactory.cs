@@ -1,10 +1,9 @@
 namespace CocAssistant.Api.IntegrationTests;
 
-/// <summary>Runs the real Api pipeline against a dedicated LocalDB database, swapping real JWT validation for TestAuthHandler.</summary>
+/// <summary>Runs the real Api pipeline against a dedicated SQL Server database (LocalDB by default), swapping real JWT validation for TestAuthHandler.</summary>
 public class IdentityApiFactory : WebApplicationFactory<Program>
 {
-    public const string ConnectionString =
-        "Server=(localdb)\\mssqllocaldb;Database=CocAssistantIdentityTests;Trusted_Connection=True;MultipleActiveResultSets=true";
+    public static readonly string ConnectionString = SqlServerTestConnection.ForDatabase("CocAssistantIdentityTests");
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

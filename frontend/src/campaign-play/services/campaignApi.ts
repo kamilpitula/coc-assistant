@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import type { Campaign } from '@/campaign-play/types/Campaign'
+import type { Campaign, CreateCampaignInput } from '@/campaign-play/types/Campaign'
 import type { CampaignInvite } from '@/campaign-play/types/CampaignInvite'
 import type { JoinOutcome, JoinResult } from '@/campaign-play/types/JoinResult'
 
@@ -8,6 +8,7 @@ const campaignResponseSchema = z.object({
   id: z.string(),
   name: z.string(),
   keeperAccountId: z.string(),
+  playerLimit: z.number().int(),
 })
 
 const inviteResponseSchema = z.object({
@@ -34,11 +35,14 @@ function authHeaders(accessToken: string): HeadersInit {
 }
 
 /** Calls POST /api/campaigns, which records the authenticated caller as the new Campaign's Keeper. */
-export async function createCampaign(accessToken: string, name: string): Promise<Campaign> {
+export async function createCampaign(
+  accessToken: string,
+  input: CreateCampaignInput,
+): Promise<Campaign> {
   const response = await fetch('/api/campaigns', {
     method: 'POST',
     headers: authHeaders(accessToken),
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name: input.name, playerLimit: input.playerLimit }),
   })
 
   if (!response.ok) {

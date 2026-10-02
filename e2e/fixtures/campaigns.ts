@@ -1,9 +1,19 @@
 import { expect, type Page } from '@playwright/test'
 
-/** Creates a Campaign through the real UI and returns its id (parsed from the "Manage its invite" link). */
-export async function createCampaignViaUi(page: Page, name: string): Promise<string> {
+/**
+ * Creates a Campaign through the real UI and returns its id (parsed from the "Manage its invite" link).
+ * Leaves the Player limit at its default unless `playerLimit` is given.
+ */
+export async function createCampaignViaUi(
+  page: Page,
+  name: string,
+  options: { playerLimit?: number } = {},
+): Promise<string> {
   await page.goto('/campaigns')
   await page.getByLabel(/campaign name/i).fill(name)
+  if (options.playerLimit !== undefined) {
+    await page.getByLabel(/player limit/i).fill(String(options.playerLimit))
+  }
   await page.getByRole('button', { name: /create campaign/i }).click()
 
   const manageLink = page.getByRole('link', { name: /manage its invite/i })

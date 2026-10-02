@@ -13,7 +13,7 @@ public class CampaignServiceTests : IDisposable
         using var dbContext = _fixture.CreateContext();
         var service = new CampaignService(_fixture.CreateRepository(dbContext), _timeProvider);
 
-        var campaign = await service.CreateCampaignAsync("The Haunting", KeeperAccountId, CancellationToken.None);
+        var campaign = await service.CreateCampaignAsync("The Haunting", KeeperAccountId, null, CancellationToken.None);
 
         Assert.Equal("The Haunting", campaign.Name);
         Assert.Equal(KeeperAccountId, campaign.KeeperAccountId);
@@ -25,13 +25,43 @@ public class CampaignServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Given_a_configured_player_limit_When_creating_a_campaign_Then_the_limit_is_persisted()
+    {
+        Guid campaignId;
+        using (var dbContext = _fixture.CreateContext())
+        {
+            var service = new CampaignService(_fixture.CreateRepository(dbContext), _timeProvider);
+            campaignId = (await service.CreateCampaignAsync("The Haunting", KeeperAccountId, 3, CancellationToken.None)).Id;
+        }
+
+        using var verifyContext = _fixture.CreateContext();
+        var stored = await verifyContext.Campaigns.SingleAsync(c => c.Id == campaignId);
+        Assert.Equal(3, stored.PlayerLimit);
+    }
+
+    [Fact]
+    public async Task Given_no_player_limit_When_creating_a_campaign_Then_the_default_of_eight_is_persisted()
+    {
+        Guid campaignId;
+        using (var dbContext = _fixture.CreateContext())
+        {
+            var service = new CampaignService(_fixture.CreateRepository(dbContext), _timeProvider);
+            campaignId = (await service.CreateCampaignAsync("The Haunting", KeeperAccountId, null, CancellationToken.None)).Id;
+        }
+
+        using var verifyContext = _fixture.CreateContext();
+        var stored = await verifyContext.Campaigns.SingleAsync(c => c.Id == campaignId);
+        Assert.Equal(8, stored.PlayerLimit);
+    }
+
+    [Fact]
     public async Task Given_a_campaign_When_its_keeper_requests_it_Then_the_campaign_is_returned()
     {
         Guid campaignId;
         using (var createContext = _fixture.CreateContext())
         {
             var createService = new CampaignService(_fixture.CreateRepository(createContext), _timeProvider);
-            campaignId = (await createService.CreateCampaignAsync("The Haunting", KeeperAccountId, CancellationToken.None)).Id;
+            campaignId = (await createService.CreateCampaignAsync("The Haunting", KeeperAccountId, null, CancellationToken.None)).Id;
         }
 
         using var readContext = _fixture.CreateContext();
@@ -50,7 +80,7 @@ public class CampaignServiceTests : IDisposable
         using (var createContext = _fixture.CreateContext())
         {
             var createService = new CampaignService(_fixture.CreateRepository(createContext), _timeProvider);
-            campaignId = (await createService.CreateCampaignAsync("The Haunting", KeeperAccountId, CancellationToken.None)).Id;
+            campaignId = (await createService.CreateCampaignAsync("The Haunting", KeeperAccountId, null, CancellationToken.None)).Id;
         }
 
         using var readContext = _fixture.CreateContext();

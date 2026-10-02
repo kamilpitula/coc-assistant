@@ -1,6 +1,6 @@
 namespace CocAssistant.Api.IntegrationTests;
 
-/// <summary>Integration tests for Campaign Invite management and the Player join workflow against a real LocalDB database.</summary>
+/// <summary>Integration tests for Campaign Invite management and the Player join workflow against a real SQL Server database.</summary>
 public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
 {
     private readonly IdentityApiFactory _factory;
@@ -246,6 +246,72 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         var result = await response.Content.ReadFromJsonAsync<JoinCampaignResponse>();
         Assert.Equal("LimitReached", result!.Outcome);
+    }
+
+    [Fact]
+    public async Task Given_a_campaign_with_a_configured_limit_of_two_When_a_third_account_joins_Then_the_limit_is_reached()
+    {
+        var client = _factory.CreateClient();
+        var createRequest = BuildRequest(HttpMethod.Post, "/api/campaigns", "limit-keeper-2");
+        createRequest.Content = JsonContent.Create(new { name = "The Haunting", playerLimit = 2 });
+        var createResponse = await client.SendAsync(createRequest);
+        createResponse.EnsureSuccessStatusCode();
+        var campaignId = (await createResponse.Content.ReadFromJsonAsync<CampaignResponse>())!.Id;
+        var token = await IssueInviteAsync(client, campaignId, "limit-keeper-2");
+
+        for (var i = 0; i < 2; i++)
+        {
+            var joinResponse = await client.SendAsync(BuildJoinRequest(token, $"configured-limit-player-{i}"));
+            joinResponse.EnsureSuccessStatusCode();
+        }
+
+        var response = await client.SendAsync(BuildJoinRequest(token, "configured-limit-player-overflow"));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<JoinCampaignResponse>();
+        Assert.Equal("LimitReached", result!.Outcome);
+    }
+
+    private async Task<int> CountActiveInvitesAsync(Guid campaignId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<CampaignPlayDbContext>();
+        return await dbContext.Campaigns
+            .Where(campaign => campaign.Id == campaignId)
+            .SelectMany(campaign => campaign.Invites)
+            .CountAsync(invite => invite.Status == CampaignInviteStatus.Active);
+    }
+
+    [Fact]
+    public async Task Given_no_active_invite_When_the_keeper_issues_several_invites_at_once_Then_all_receive_the_single_active_invite()
+    {
+        var client = _factory.CreateClient();
+        var campaignId = await CreateCampaignAsync(client, "invite-race-keeper-1");
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, 4)
+            .Select(_ => client.SendAsync(
+                BuildRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/invite", "invite-race-keeper-1"))));
+
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+        var tokens = await Task.WhenAll(responses.Select(async response =>
+            (await response.Content.ReadFromJsonAsync<InviteResponse>())!.Token));
+        Assert.Single(tokens.Distinct());
+        Assert.Equal(1, await CountActiveInvitesAsync(campaignId));
+    }
+
+    [Fact]
+    public async Task Given_an_active_invite_When_the_keeper_replaces_it_twice_at_once_Then_exactly_one_invite_stays_active()
+    {
+        var client = _factory.CreateClient();
+        var campaignId = await CreateCampaignAsync(client, "invite-race-keeper-2");
+        await IssueInviteAsync(client, campaignId, "invite-race-keeper-2");
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, 2)
+            .Select(_ => client.SendAsync(
+                BuildRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/invite/replace", "invite-race-keeper-2"))));
+
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+        Assert.Equal(1, await CountActiveInvitesAsync(campaignId));
     }
 
     [Fact]

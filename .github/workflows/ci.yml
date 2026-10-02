@@ -1,0 +1,275 @@
+# Spec: specs/continuous-integration/spec.md
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Pull request runs share a group per PR and cancel each other; master runs get a group per
+# commit, so they are never cancelled.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Throwaway credentials for the ephemeral SQL Server service container; not a secret.
+env:
+  MSSQL_SA_PASSWORD: CiOnly_Passw0rd!
+  COC_SQLSERVER_CONNECTION: Server=localhost,1433;User Id=sa;Password=CiOnly_Passw0rd!;TrustServerCertificate=True
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.scope.outputs.run-all == 'true' || steps.filter.outputs.backend == 'true' }}
+      frontend: ${{ steps.scope.outputs.run-all == 'true' || steps.filter.outputs.frontend == 'true' }}
+      infrastructure: ${{ steps.scope.outputs.run-all == 'true' || steps.filter.outputs.infrastructure == 'true' }}
+      e2e: >-
+        ${{ steps.scope.outputs.run-all == 'true' || steps.filter.outputs.backend == 'true'
+        || steps.filter.outputs.frontend == 'true' || steps.filter.outputs.e2e == 'true' }}
+    steps:
+      - name: Filter changed paths
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            e2e:
+              - 'e2e/**'
+            infrastructure:
+              - 'infrastructure/**'
+            toolchain:
+              - '.github/workflows/**'
+              - '.github/actions/**'
+              - 'global.json'
+              - '.nvmrc'
+              - '.config/dotnet-tools.json'
+      - name: Decide whether every job runs
+        id: scope
+        env:
+          RUN_ALL: ${{ github.event_name != 'pull_request' || steps.filter.outputs.toolchain == 'true' }}
+        run: echo "run-all=$RUN_ALL" >> "$GITHUB_OUTPUT"
+
+  backend:
+    name: Backend
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-dotnet
+      - name: Restore
+        run: dotnet restore backend/CocAssistant.slnx
+      - name: Build
+        run: dotnet build backend/CocAssistant.slnx --no-restore --configuration Release
+      - name: Verify formatting
+        run: dotnet format backend/CocAssistant.slnx --verify-no-changes --no-restore
+      - name: Unit tests
+        run: |
+          for project in \
+            backend/tests/CocAssistant.Api.Tests \
+            backend/tests/Identity/CocAssistant.Identity.Tests \
+            backend/tests/CampaignPlay/CocAssistant.CampaignPlay.Tests; do
+            dotnet test "$project" --no-build --configuration Release \
+              --logger trx --results-directory TestResults
+          done
+      - name: Report unit test results
+        if: success() || failure()
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        with:
+          name: Backend unit tests
+          path: TestResults/*.trx
+          reporter: dotnet-trx
+
+  backend-integration:
+    name: Backend integration
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    services: &sql-service
+      sql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: ${{ env.MSSQL_SA_PASSWORD }}
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $MSSQL_SA_PASSWORD -C -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-dotnet
+      - name: Integration tests
+        run: >-
+          dotnet test backend/tests/CocAssistant.Api.IntegrationTests --configuration Release
+          --logger trx --results-directory TestResults
+      - name: Report integration test results
+        if: success() || failure()
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        with:
+          name: Backend integration tests
+          path: TestResults/*.trx
+          reporter: dotnet-trx
+
+  frontend:
+    name: Frontend
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      # routeTree.gen.ts is gitignored; tsc and ESLint need it before Vite would generate it.
+      - name: Generate route tree
+        run: npm run generate-routes
+      - name: Lint
+        run: npm run lint
+      - name: Type check and build
+        run: npm run build
+      - name: Unit tests
+        run: npm test
+      - name: Build Storybook
+        run: npm run build-storybook
+
+  e2e:
+    name: E2E
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Committed mock-only keystore password, see e2e/docker/mock-oauth2-config.json.
+      COC_E2E_CERT_PASSWORD: CocE2eDevCertP@ss1!
+    services: *sql-service
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-dotnet
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+      # The mock issuer and Kestrel serve this PFX; the API validates tokens by fetching the
+      # mock's OIDC metadata over HTTPS, so the same certificate must be trusted by OpenSSL.
+      - name: Generate and trust the dev certificate
+        run: |
+          mkdir -p e2e/.certs
+          dotnet dev-certs https --export-path e2e/.certs/dev-cert.pfx --password "$COC_E2E_CERT_PASSWORD" --format Pfx
+          chmod 644 e2e/.certs/dev-cert.pfx
+          dotnet dev-certs https --export-path "$RUNNER_TEMP/coc-dev-cert.crt" --format PEM --no-password
+          sudo cp "$RUNNER_TEMP/coc-dev-cert.crt" /usr/local/share/ca-certificates/coc-dev-cert.crt
+          sudo update-ca-certificates
+      - name: Build the API
+        run: dotnet build backend/src/CocAssistant.Api
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Install E2E dependencies
+        working-directory: e2e
+        run: npm ci
+      - name: Resolve Playwright version
+        id: playwright
+        working-directory: e2e
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - name: Install Chromium with system dependencies
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+      - name: Install Chromium system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        working-directory: e2e
+        run: npx playwright install-deps chromium
+      # Explicit bash enables pipefail so tee cannot mask a failing suite; pw:webserver
+      # forwards API and Vite output into the log.
+      - name: Run E2E suite
+        working-directory: e2e
+        shell: bash
+        env:
+          DEBUG: pw:webserver
+        run: npm test 2>&1 | tee playwright-output.log
+      - name: Collect mock issuer logs
+        if: failure()
+        run: docker logs coc-mock-oauth2 > e2e/mock-oauth2.log 2>&1 || true
+      - name: Upload E2E diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-diagnostics
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+            e2e/*.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  terraform:
+    name: Terraform
+    needs: changes
+    if: needs.changes.outputs.infrastructure == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/terraform
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.3
+      - name: Check formatting
+        run: terraform fmt -check -recursive
+      - name: Initialize without backend
+        run: terraform init -backend=false -input=false
+      - name: Validate
+        run: terraform validate
+
+  ci-success:
+    name: ci-success
+    needs: [changes, backend, backend-integration, frontend, e2e, terraform]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail when any job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "One or more CI jobs failed or were cancelled."
+          exit 1
+      - name: All jobs passed or were skipped
+        run: echo "CI passed."

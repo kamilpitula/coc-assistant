@@ -16,7 +16,8 @@ Install once per workstation:
 - **ASP.NET dev certificate**: `dotnet dev-certs https --trust`. The browser, the API's
   Kestrel endpoint, and the mock OIDC issuer all serve the same cert over `localhost`.
 - **SQL Server LocalDB** (`(localdb)\mssqllocaldb`). The harness uses a dedicated
-  `CocAssistantE2E` database that is never dropped.
+  `CocAssistantE2E` database that is never dropped. To use another SQL Server instead, see
+  "Using a non-LocalDB SQL Server" below.
 - **.NET 10 SDK and Node 20+** (same versions the rest of the repo uses).
 
 ## One-time setup
@@ -92,6 +93,34 @@ container and the API's Kestrel endpoint both use the trusted dev cert.
 `playwright.config.ts` sets `use.ignoreHTTPSErrors: true` and the Vite proxy sets
 `secure: false` for the API target so the dev cert is accepted by Node's HTTP agent (the
 browser trusts it anyway after `dotnet dev-certs https --trust`).
+
+## Using a non-LocalDB SQL Server
+
+Set `COC_SQLSERVER_CONNECTION` to the server part of a connection string, without a database:
+
+```powershell
+$env:COC_SQLSERVER_CONNECTION = "Server=localhost,1433;User Id=sa;Password=<password>;TrustServerCertificate=True"
+```
+
+`e2e/sqlServerConnection.ts` appends `Database=CocAssistantE2E`; when the variable is unset it
+falls back to LocalDB. The backend integration tests honor the same variable through
+`SqlServerTestConnection`, each with its own database name.
+
+## Running in CI
+
+The `e2e` job in `.github/workflows/ci.yml` runs the same suite on `ubuntu-latest`
+(see `specs/continuous-integration/spec.md`):
+
+- SQL Server runs as a `mcr.microsoft.com/mssql/server:2022-latest` service container and
+  `COC_SQLSERVER_CONNECTION` points the harness at it.
+- The dev certificate is exported per run with the committed password above and added to the
+  runner's OpenSSL trust store, so the API can fetch the mock issuer's OIDC metadata over
+  HTTPS. The browser relies on `ignoreHTTPSErrors`.
+- Under `CI`, Playwright starts every server itself (`reuseExistingServer` is off), retries
+  failed tests twice, and writes both the line and HTML reporters.
+- When the job fails, the HTML report, traces, the Playwright console log (including API and
+  Vite output), and the mock issuer's container log are uploaded as the `e2e-diagnostics`
+  artifact for 7 days.
 
 ## Adding new Accounts
 
@@ -199,6 +228,3 @@ the `username` field in the mock login form must carry the Account's identifier.
 - Presence assertions, member-list API, and other authenticated Campaign Play features that
   do not yet exist.
 - A real-tenant smoke test. The ADR explicitly defers this to a possible future ticket.
-- A CI workflow. The harness is intentionally local-first; the config is CI-friendly
-  (`reuseExistingServer: !process.env.CI`, HTML reporter under local, line reporter under
-  CI) but no GitHub Action is wired up.

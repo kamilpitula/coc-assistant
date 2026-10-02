@@ -15,7 +15,8 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
 
 ### Constraints
 - The ruleset is Call of Cthulhu 7th Edition.
-- A Campaign Invite is open-join, has no default expiry, and can be revoked or replaced by the Keeper. The default Campaign limit is eight Players and the Keeper may configure it.
+- A Campaign Invite is open-join, has no default expiry, and can be revoked or replaced by the Keeper. The default Campaign limit is eight Players and the Keeper may configure it when creating the Campaign, between one and sixteen Players.
+- A Campaign has at most one active Campaign Invite at any time, including when the Keeper issues or replaces Invites concurrently.
 - An Investigator belongs to exactly one Campaign and cannot be shared across Campaigns.
 - A Player may submit a Character Sheet, but the Investigator is not ready for play until the Keeper approves it.
 - The Keeper is the primary Wall Entry author. Players may add lightweight Wall Entries representing their own actions or notes.
@@ -60,6 +61,11 @@ Scenario: Campaign Invite limit prevents another Player from joining
   When another authenticated user follows its Campaign Invite
   Then the user is not added as a Player
   And the Campaign membership remains unchanged
+
+Scenario: Keeper configures the Player limit when creating a Campaign
+  Given an authenticated user has no role in a Campaign
+  When the user creates a Campaign with a Player limit between one and sixteen
+  Then the Campaign admits Players through its Campaign Invite only until that limit is reached
 
 Scenario: Keeper approves an Investigator
   Given a Player has submitted an Investigator Character Sheet

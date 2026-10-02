@@ -12,7 +12,7 @@ public class CampaignMembershipServiceTests : IDisposable
     {
         using var context = _fixture.CreateContext();
         var service = new CampaignService(_fixture.CreateRepository(context), _timeProvider);
-        var campaign = await service.CreateCampaignAsync("The Haunting", KeeperAccountId, CancellationToken.None);
+        var campaign = await service.CreateCampaignAsync("The Haunting", KeeperAccountId, null, CancellationToken.None);
         return campaign.Id;
     }
 
@@ -221,6 +221,87 @@ public class CampaignMembershipServiceTests : IDisposable
         using var verifyContext = _fixture.CreateContext();
         var stored = await verifyContext.Campaigns.Include(c => c.Players).SingleAsync(c => c.Id == campaignId);
         Assert.Equal(Campaign.DefaultPlayerLimit, stored.Players.Count);
+    }
+
+    [Fact]
+    public async Task Given_two_keepers_sessions_loaded_together_When_both_issue_an_invite_Then_the_second_save_conflicts()
+    {
+        var campaignId = await CreateCampaignAsync();
+
+        // Both contexts see no active Invite before either persists, so each issues its own.
+        using var contextA = _fixture.CreateContext();
+        using var contextB = _fixture.CreateContext();
+        var repositoryA = _fixture.CreateRepository(contextA);
+        var repositoryB = _fixture.CreateRepository(contextB);
+        var campaignA = (await repositoryA.FindByIdAsync(campaignId, CancellationToken.None))!;
+        var campaignB = (await repositoryB.FindByIdAsync(campaignId, CancellationToken.None))!;
+
+        campaignA.IssueInvite("token-a", _timeProvider.GetUtcNow());
+        campaignB.IssueInvite("token-b", _timeProvider.GetUtcNow());
+
+        await repositoryA.SaveChangesAsync(CancellationToken.None);
+        await Assert.ThrowsAsync<CampaignMembershipConflictException>(() => repositoryB.SaveChangesAsync(CancellationToken.None));
+
+        using var verifyContext = _fixture.CreateContext();
+        var stored = await verifyContext.Campaigns.Include(c => c.Invites).SingleAsync(c => c.Id == campaignId);
+        Assert.Single(stored.Invites, invite => invite.IsActive);
+    }
+
+    private async Task<string> IssueInviteInOwnContextAsync(Guid campaignId)
+    {
+        using var context = _fixture.CreateContext();
+        return (await CreateMembershipService(context).IssueInviteAsync(campaignId, KeeperAccountId, CancellationToken.None))!.Token;
+    }
+
+    private async Task<string> ReplaceInviteInOwnContextAsync(Guid campaignId)
+    {
+        using var context = _fixture.CreateContext();
+        return (await CreateMembershipService(context).ReplaceInviteAsync(campaignId, KeeperAccountId, CancellationToken.None))!.Token;
+    }
+
+    private async Task<IReadOnlyList<CampaignInvite>> ActiveInvitesAsync(Guid campaignId)
+    {
+        using var context = _fixture.CreateContext();
+        var stored = await context.Campaigns.Include(c => c.Invites).SingleAsync(c => c.Id == campaignId);
+        return stored.Invites.Where(invite => invite.IsActive).ToList();
+    }
+
+    [Fact]
+    public async Task Given_a_concurrent_issue_wins_the_race_When_the_keeper_issues_an_invite_Then_the_winning_invite_is_returned()
+    {
+        var campaignId = await CreateCampaignAsync();
+        string? winningToken = null;
+        using var context = _fixture.CreateContext();
+        var repository = new RacingCampaignRepository(
+            _fixture.CreateRepository(context),
+            async () => winningToken = await IssueInviteInOwnContextAsync(campaignId));
+        var service = new CampaignMembershipService(repository, _timeProvider);
+
+        var invite = await service.IssueInviteAsync(campaignId, KeeperAccountId, CancellationToken.None);
+
+        Assert.Equal(winningToken, invite!.Token);
+        var active = Assert.Single(await ActiveInvitesAsync(campaignId));
+        Assert.Equal(winningToken, active.Token);
+    }
+
+    [Fact]
+    public async Task Given_a_concurrent_replace_wins_the_race_When_the_keeper_replaces_the_invite_Then_one_fresh_invite_remains_active()
+    {
+        var campaignId = await CreateCampaignAsync();
+        var originalToken = await IssueInviteInOwnContextAsync(campaignId);
+        string? competingToken = null;
+        using var context = _fixture.CreateContext();
+        var repository = new RacingCampaignRepository(
+            _fixture.CreateRepository(context),
+            async () => competingToken = await ReplaceInviteInOwnContextAsync(campaignId));
+        var service = new CampaignMembershipService(repository, _timeProvider);
+
+        var invite = await service.ReplaceInviteAsync(campaignId, KeeperAccountId, CancellationToken.None);
+
+        Assert.NotEqual(originalToken, invite!.Token);
+        Assert.NotEqual(competingToken, invite.Token);
+        var active = Assert.Single(await ActiveInvitesAsync(campaignId));
+        Assert.Equal(invite.Token, active.Token);
     }
 
     public void Dispose() => _fixture.Dispose();

@@ -12,6 +12,9 @@ public interface ICampaignRepository
     /// <summary>Drops pending tracked changes so the next read reflects fresh database state, used to retry a lost join race.</summary>
     void DiscardPendingChanges();
 
-    /// <summary>Persists pending changes, throwing <see cref="CampaignMembershipConflictException"/> on a concurrency conflict.</summary>
+    /// <summary>
+    /// Persists pending changes, throwing <see cref="CampaignMembershipConflictException"/> when a concurrent
+    /// join or a concurrent active Invite won the race.
+    /// </summary>
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }
