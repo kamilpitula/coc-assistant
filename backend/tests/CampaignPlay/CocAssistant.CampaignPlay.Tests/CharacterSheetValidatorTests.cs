@@ -9,8 +9,11 @@ public class CharacterSheetValidatorTests
 {
     private static readonly AllowedCreationMethods PointBuyAllowed = AllowedCreationMethods.Create([CreationMethod.PointBuy]);
 
+    private static readonly ICreationRuleData RuleData = new EmbeddedResourceCreationRuleData();
+    private static readonly CharacterSheetCalculator Calculator = new(RuleData.AgeRules, RuleData.CharacteristicsRules);
+
     private static IReadOnlyList<ValidationError> Validate(CharacterSheet sheet, AllowedCreationMethods? allowed = null) =>
-        CharacterSheetValidator.Validate(sheet, allowed ?? PointBuyAllowed);
+        CharacterSheetValidator.Validate(sheet, allowed ?? PointBuyAllowed, Calculator.Calculate(sheet));
 
     private static CharacterSheetBuilder APointBuySheet() => new();
 
@@ -146,6 +149,29 @@ public class CharacterSheetValidatorTests
                 new ValidationError("PointBuyBelowRecommendation", "characteristics.SIZ", "SIZ is below the recommended 40. Check with your Keeper.", "40", "35", ValidationSeverity.Warning),
             ],
             problems.OrderBy(problem => problem.Field).ToList());
+    }
+
+    [Fact]
+    public void Project_ruleset_4_4_Given_a_deduction_that_takes_a_characteristic_exactly_to_the_floor_When_validating_Then_it_is_accepted()
+    {
+        var sheet = APointBuySheet()
+            .WithAge(65)
+            .WithAssigned(Characteristic.Strength, 20)
+            .WithAssigned(Characteristic.Constitution, 90)
+            .WithAssigned(Characteristic.Dexterity, 90)
+            .WithAssigned(Characteristic.Appearance, 60)
+            .WithAssigned(Characteristic.Intelligence, 50)
+            .WithAssigned(Characteristic.Education, 30)
+            .WithDeduction(Characteristic.Strength, 20)
+            .WithEduImprovementChecks(
+                new EduImprovementCheckInput(10, null),
+                new EduImprovementCheckInput(20, null),
+                new EduImprovementCheckInput(5, null),
+                new EduImprovementCheckInput(25, null))
+            .Build();
+
+        Assert.Empty(Validate(sheet));
+        Assert.Equal(0, Calculator.Calculate(sheet).FinalCharacteristics[Characteristic.Strength]);
     }
 
     [Fact]

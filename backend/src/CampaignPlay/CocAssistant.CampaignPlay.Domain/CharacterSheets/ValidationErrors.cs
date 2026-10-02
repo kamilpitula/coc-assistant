@@ -60,7 +60,81 @@ public static class ValidationErrors
             Text(value),
             ValidationSeverity.Warning);
 
+    public static ValidationError LuckRollRequired() => Error("LuckRollRequired", LuckRollField(0), "Enter your Luck roll.");
+
+    public static ValidationError LuckSecondRollRequired() =>
+        Error("LuckSecondRollRequired", LuckRollField(1), "Enter your second Luck roll.");
+
+    public static ValidationError LuckSecondRollNotAllowed() =>
+        Error("LuckSecondRollNotAllowed", LuckRollField(1), "Only one Luck roll is used at this age.");
+
+    public static ValidationError DiceResultOutOfRange(string field, DiceExpression dice, int result) =>
+        Error(
+            "DiceResultOutOfRange",
+            field,
+            $"Enter a {dice} result between {dice.Minimum} and {dice.Maximum}.",
+            $"{dice.Minimum}-{dice.Maximum}",
+            Text(result));
+
+    public static ValidationError AgeDeductionTotalMismatch(int total, int deducted) =>
+        Error(
+            "AgeDeductionTotalMismatch",
+            "ageEffects.deductions",
+            $"Deduct exactly {total} points in total. You have deducted {deducted}.",
+            Text(total),
+            Text(deducted));
+
+    public static ValidationError AgeDeductionNotAllowed(Characteristic characteristic) =>
+        Error(
+            "AgeDeductionNotAllowed",
+            AgeDeductionField(characteristic),
+            $"{characteristic.ToCode()} can't take the age deduction at this age.");
+
+    public static ValidationError AgeDeductionNegative(Characteristic characteristic, int deduction) =>
+        Error("AgeDeductionNegative", AgeDeductionField(characteristic), $"Enter 0 or more for {characteristic.ToCode()}.", null, Text(deduction));
+
+    public static ValidationError CharacteristicBelowFloor(Characteristic characteristic, string field, int value) =>
+        Error(
+            "CharacteristicBelowFloor",
+            field,
+            $"{characteristic.ToCode()} can't go below {CharacteristicFloor.Value} after age effects.",
+            Text(CharacteristicFloor.Value),
+            Text(value));
+
+    public static ValidationError EduImprovementCheckRequired(int index) =>
+        Error(
+            "EduImprovementCheckRequired",
+            EduCheckRollField(index),
+            $"Enter the {CreationDice.EduImprovementCheck} roll for EDU check {index + 1}.");
+
+    public static ValidationError EduImprovementCheckNotRequired(int index) =>
+        Error("EduImprovementCheckNotRequired", EduCheckField(index), $"EDU check {index + 1} isn't needed at this age.");
+
+    public static ValidationError EduImprovementGainRequired(int index) =>
+        Error(
+            "EduImprovementGainRequired",
+            EduGainField(index),
+            $"Enter the {CreationDice.EduImprovementGain} gain for EDU check {index + 1}.");
+
+    public static ValidationError EduImprovementGainNotAllowed(int index, int gain) =>
+        Error(
+            "EduImprovementGainNotAllowed",
+            EduGainField(index),
+            $"EDU check {index + 1} has no gain because the roll isn't above EDU.",
+            null,
+            Text(gain));
+
     public static string CharacteristicField(Characteristic characteristic) => $"characteristics.{characteristic.ToCode()}";
+
+    public static string AgeDeductionField(Characteristic characteristic) => $"ageEffects.deductions.{characteristic.ToCode()}";
+
+    public static string LuckRollField(int index) => $"luckRolls[{index}]";
+
+    public static string EduCheckField(int index) => $"ageEffects.eduImprovementChecks[{index}]";
+
+    public static string EduCheckRollField(int index) => $"{EduCheckField(index)}.check";
+
+    public static string EduGainField(int index) => $"{EduCheckField(index)}.gain";
 
     private static ValidationError Error(string code, string field, string message, string? expected = null, string? actual = null) =>
         new(code, field, message, expected, actual, ValidationSeverity.Error);

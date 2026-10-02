@@ -19,6 +19,12 @@
     <EmbeddedResource Include="..\..\..\..\docs\game-rules\catalogs\occupations.1920s.json"
                       LogicalName="GameRules.Catalogs.occupations.1920s.json"
                       Link="RuleData\Catalogs\occupations.1920s.json" />
+    <EmbeddedResource Include="..\..\..\..\docs\game-rules\catalogs\age-rules.json"
+                      LogicalName="GameRules.Catalogs.age-rules.json"
+                      Link="RuleData\Catalogs\age-rules.json" />
+    <EmbeddedResource Include="..\..\..\..\docs\game-rules\catalogs\characteristics-rules.json"
+                      LogicalName="GameRules.Catalogs.characteristics-rules.json"
+                      Link="RuleData\Catalogs\characteristics-rules.json" />
   </ItemGroup>
 
   <ItemGroup>

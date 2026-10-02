@@ -32,17 +32,33 @@ public static class CharacterSheetJsonStorage
         int SchemaVersion,
         IdentityDocument Identity,
         CreationMethod? CreationMethod,
-        Dictionary<string, int> AssignedCharacteristics)
+        Dictionary<string, int> AssignedCharacteristics,
+        Dictionary<string, int>? AgeDeductions,
+        IReadOnlyList<RollRecordDocument>? RollRecords)
     {
         public static CharacterSheetDocument From(CharacterSheet sheet) =>
             new(
                 CharacterSheet.CurrentSchemaVersion,
                 IdentityDocument.From(sheet.Identity),
                 sheet.CreationMethod,
-                ToCodes(sheet.AssignedCharacteristics));
+                ToCodes(sheet.AssignedCharacteristics),
+                ToCodes(sheet.AgeDeductions),
+                sheet.RollRecords.Select(RollRecordDocument.From).ToList());
 
         public CharacterSheet ToCharacterSheet() =>
-            new(Identity.ToIdentity(), CreationMethod, FromCodes(AssignedCharacteristics));
+            new(
+                Identity.ToIdentity(),
+                CreationMethod,
+                FromCodes(AssignedCharacteristics),
+                FromCodes(AgeDeductions),
+                (RollRecords ?? []).Select(record => record.ToRollRecord()).ToList());
+    }
+
+    private sealed record RollRecordDocument(string Purpose, string Dice, int Result, RollSource Source)
+    {
+        public static RollRecordDocument From(RollRecord record) => new(record.Purpose, record.Dice, record.Result, record.Source);
+
+        public RollRecord ToRollRecord() => new(Purpose, Dice, Result, Source);
     }
 
     private sealed record IdentityDocument(string? Name, int? Age, string? Gender, string? Residence, string? Birthplace)

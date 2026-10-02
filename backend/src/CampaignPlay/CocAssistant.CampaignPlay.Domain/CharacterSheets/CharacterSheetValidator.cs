@@ -7,12 +7,25 @@ namespace CocAssistant.CampaignPlay.Domain.CharacterSheets;
 /// </summary>
 public static class CharacterSheetValidator
 {
-    public static IReadOnlyList<ValidationError> Validate(CharacterSheet sheet, AllowedCreationMethods allowedCreationMethods) =>
+    public static IReadOnlyList<ValidationError> Validate(
+        CharacterSheet sheet,
+        AllowedCreationMethods allowedCreationMethods,
+        CharacterSheetComputation computation) =>
         IdentityProblems(sheet.Identity)
             .Concat(CreationMethodProblems(sheet.CreationMethod, allowedCreationMethods))
             .Concat(CharacteristicPresenceProblems(sheet.AssignedCharacteristics))
             .Concat(sheet.CreationMethod == CreationMethod.PointBuy ? PointBuyProblems(sheet.AssignedCharacteristics) : [])
+            .Concat(AgeEffectsValidation.LuckProblems(sheet, computation.Bracket))
+            .Concat(AgeDependentProblems(sheet, computation))
             .ToList();
+
+    // Skipped while the age is missing or out of range: the age error already blocks submission.
+    private static IEnumerable<ValidationError> AgeDependentProblems(CharacterSheet sheet, CharacterSheetComputation computation) =>
+        computation.Bracket is not { } bracket
+            ? []
+            : AgeEffectsValidation.DeductionProblems(sheet, bracket)
+                .Concat(AgeEffectsValidation.EduImprovementProblems(sheet, bracket, computation.EduImprovementOutcomes))
+                .Concat(AgeEffectsValidation.FloorProblems(sheet, computation));
 
     // Identity fields: section 1.1; age range: project_ruleset.md section 4.1.
     private static IEnumerable<ValidationError> IdentityProblems(InvestigatorIdentity identity)
