@@ -135,6 +135,28 @@ describe('CreateCampaignForm', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/keeper/i)
   })
 
+  // Decision D7: Invite management lives on Settings (specs/campaign-overview/ux.md section 8).
+  it('links the new Campaign\'s Invite management on its Settings page', () => {
+    mockUseCreateCampaign.mockReturnValue(
+      mutationState({
+        isSuccess: true,
+        data: {
+          id: '1',
+          name: 'The Haunting',
+          keeperAccountId: 'keeper-1',
+          playerLimit: 5,
+          era: '1920s',
+          allowedCreationMethods: ALL_CREATION_METHODS,
+          role: 'Keeper',
+        },
+      }),
+    )
+
+    render(<CreateCampaignForm />)
+
+    expect(screen.getByRole('link', { name: 'Manage its invite' })).toHaveAttribute('href', '/campaigns/1/settings')
+  })
+
   describe('Rules options (specs/character-sheet/ux.md section 2)', () => {
     it('UX-1: submits the 1920s Era and all three creation methods when Rules options is never opened', async () => {
       mockUseCreateCampaign.mockReturnValue(mutationState())

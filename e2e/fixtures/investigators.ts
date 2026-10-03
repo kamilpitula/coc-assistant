@@ -1,6 +1,7 @@
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test'
 
 import { newAccount, signInNewContext, type MockAccount } from './auth'
+import { attentionList, ownRow } from './overview'
 
 /** The API origin the SPA proxies to; used for direct API calls with a captured bearer token. */
 export const API_ORIGIN = 'https://localhost:5059'
@@ -59,18 +60,11 @@ export async function fillPointBuy(page: Page, values: Record<string, string>): 
  * API reports it to the Player.
  */
 export async function submitValidInvestigatorViaUi(page: Page, campaignId: string, name: string): Promise<string> {
-  await page.goto(`/campaigns/${campaignId}`)
-  await page.getByRole('button', { name: 'Create Investigator' }).click()
-  await page.getByLabel('Investigator name').fill(name)
-  await page.getByLabel('Age').fill('25')
-  await pressWizardAction(page, 'Save and continue')
-  await fillPointBuy(page, VALID_POINT_BUY)
-  await page.getByLabel('Luck, 3D6 total').fill('11')
-  await pressWizardAction(page, 'Save and continue')
+  await saveDraftUpToAgeEffectsViaUi(page, campaignId, name)
   await page.getByRole('group', { name: 'EDU check 1 of 1' }).getByLabel('D100 roll').fill('30')
   await pressWizardAction(page, 'Save and continue')
   await page.getByRole('button', { name: 'Submit to Keeper' }).click()
-  await expect(page.getByText('Submitted - waiting for your Keeper')).toBeVisible()
+  await expect(ownRow(page)).toContainText('Submitted - waiting for your Keeper')
 
   const bearer = await openAndCaptureBearer(page, `/campaigns/${campaignId}`)
   const mine = await page.request.get(`${API_ORIGIN}/api/campaigns/${campaignId}/investigators/mine`, {
@@ -78,6 +72,22 @@ export async function submitValidInvestigatorViaUi(page: Page, campaignId: strin
   })
   expect(mine.status()).toBe(200)
   return ((await mine.json()) as { id: string }).id
+}
+
+/**
+ * Creates the Player's Draft from the overview and completes Identity (age 25) and Characteristics, leaving the wizard
+ * on Age effects, the third step.
+ */
+export async function saveDraftUpToAgeEffectsViaUi(page: Page, campaignId: string, name: string): Promise<void> {
+  await page.goto(`/campaigns/${campaignId}`)
+  await attentionList(page).getByRole('button', { name: 'Create Investigator' }).click()
+  await page.getByLabel('Investigator name').fill(name)
+  await page.getByLabel('Age').fill('25')
+  await pressWizardAction(page, 'Save and continue')
+  await fillPointBuy(page, VALID_POINT_BUY)
+  await page.getByLabel('Luck, 3D6 total').fill('11')
+  await pressWizardAction(page, 'Save and continue')
+  await expect(page.getByRole('heading', { level: 1, name: 'Age effects' })).toBeVisible()
 }
 
 /** Presses a wizard action and waits for the save to finish (the pressed button reads "Saving..." meanwhile). */

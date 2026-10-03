@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test'
 import { newAccount, signIn, signInNewContext } from '../fixtures/auth'
 import { createCampaignViaUi, issueInviteViaUi } from '../fixtures/campaigns'
 import { API_ORIGIN, joinAsNewPlayer, openAndCaptureBearer, submitValidInvestigatorViaUi } from '../fixtures/investigators'
+import { attentionList, ownRow } from '../fixtures/overview'
 
 /**
  * Traces to specs/campaign-play/spec.md Regression Guardrails ("Campaign data and Investigators never cross Campaign
@@ -21,7 +22,7 @@ test.describe('Investigator guardrails', () => {
     const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, campaignId))
     try {
       await player.page.goto(`/campaigns/${campaignId}`)
-      await player.page.getByRole('button', { name: 'Create Investigator' }).click()
+      await attentionList(player.page).getByRole('button', { name: 'Create Investigator' }).click()
       await expect(player.page.getByRole('heading', { level: 1, name: 'Identity' })).toBeVisible()
 
       await test.step('"Keep draft" is focused and keeps the Draft', async () => {
@@ -32,11 +33,11 @@ test.describe('Investigator guardrails', () => {
         await expect(player.page.getByRole('button', { name: 'Start over' })).toBeFocused()
       })
 
-      await test.step('"Delete draft" deletes it and the card offers "Create Investigator" again', async () => {
+      await test.step('"Delete draft" deletes it and the overview offers "Create Investigator" again', async () => {
         await player.page.getByRole('button', { name: 'Start over' }).click()
         await player.page.getByRole('alertdialog').getByRole('button', { name: 'Delete draft' }).click()
         await expect(player.page.getByRole('status').filter({ hasText: 'Draft deleted.' })).toBeVisible()
-        await expect(player.page.getByRole('button', { name: 'Create Investigator' })).toBeVisible()
+        await expect(attentionList(player.page).getByRole('button', { name: 'Create Investigator' })).toBeVisible()
       })
     } finally {
       await player.context.close()
@@ -72,7 +73,7 @@ test.describe('Investigator guardrails', () => {
 
       await test.step('the Investigator is still Submitted', async () => {
         await player.page.reload()
-        await expect(player.page.getByText('Submitted - waiting for your Keeper')).toBeVisible()
+        await expect(ownRow(player.page)).toContainText('Submitted - waiting for your Keeper')
       })
     } finally {
       await player.context.close()

@@ -76,7 +76,7 @@ Needs your attention                                         (h2)
 
 - **Rendering:** a `Card` containing a `ul`. Each item shows a decorative icon (`aria-hidden`), a sentence, and one action link or button on the right. Below 640px the action wraps under the sentence, left-aligned.
 - **No items:** the whole section, heading included, is not rendered. No "All caught up" message is shown.
-- **Order:** the order of the table below. Several Keeper review items are listed oldest submission first, matching the existing review order ([character-sheet ux](../character-sheet/ux.md) section 3.1).
+- **Order:** the order of the table below. Several Keeper review items follow the "At the table" roster order (decided 2026-10-03: items are derived from the roster, which carries no submission time).
 
 ### 4.1 Keeper items
 
@@ -91,7 +91,7 @@ Needs your attention                                         (h2)
 |---|---|---|
 | No Investigator, and no allowed Creation Method is available yet | The existing "You can't create your Investigator yet..." text ([character-sheet ux](../character-sheet/ux.md) section 3.2) | None |
 | No Investigator | "Create the Investigator you'll play in this Campaign." | Button "Create Investigator" (existing behavior: creates the Draft, opens `identity`) |
-| Draft | "Continue {name or 'your Investigator'}: step N of 7" | Link "Continue" |
+| Draft | "Continue {name or 'your Investigator'}: step N of M", where M is the number of wizard steps (4 today) | Link "Continue" |
 | Changes Requested | "Your Keeper asked for changes to {name}." followed by the Change Request comment in a quoted block (`whitespace-pre-line`) | Link "Edit Investigator" (opens `sheet`) |
 
 - Submitted and Approved create no Player item. The Player's own row in "At the table" carries the "View" link instead.
@@ -218,7 +218,7 @@ Open the Wall                                     (link -> /wall)
 | Attention heading | Needs your attention |
 | Keeper review item | {Investigator name} by {Player name} is ready for review |
 | Keeper no-Players item | No Players have joined yet. |
-| Player Draft item | Continue {name or "your Investigator"}: step {n} of 7 |
+| Player Draft item | Continue {name or "your Investigator"}: step {n} of {number of wizard steps} |
 | Player Changes Requested item | Your Keeper asked for changes to {name}. |
 | Attention error | We couldn't check what needs your attention. |
 | Table heading | At the table |
@@ -263,7 +263,7 @@ Stories cover:
 - **CO-UX-3** On the overview the Keeper sees no Invite link field and no Rules options. Both are on Settings.
 - **CO-UX-4** A Keeper with a Submitted Investigator sees "{name} by {Player} is ready for review" with "Review", which opens the review screen.
 - **CO-UX-5** A Keeper with no Players sees "No Players have joined yet." with "Invite Players". Once a Player joins, the item disappears without a reload.
-- **CO-UX-6** A Player sees exactly one attention item for each of: no Investigator, Draft (with step N of 7), Changes Requested (with the Keeper's comment), and creation methods unavailable. Once Submitted or Approved, the attention section is not shown.
+- **CO-UX-6** A Player sees exactly one attention item for each of: no Investigator, Draft (with step N of 4), Changes Requested (with the Keeper's comment), and creation methods unavailable. Once Submitted or Approved, the attention section is not shown.
 - **CO-UX-7** "At the table" lists every member once, in the fixed order. Each Player row shows the Investigator and status visible to the viewer as in section 5.1.
 - **CO-UX-8** A Player sees another Player's Investigator name only once it is Approved, and has no link to open it. Otherwise the row reads "Not ready yet".
 - **CO-UX-9** The Keeper never sees a Draft Investigator's name. The row reads "Not shown until submitted" and "In progress".

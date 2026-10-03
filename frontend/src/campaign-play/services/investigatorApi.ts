@@ -8,7 +8,6 @@ import {
 } from '@/campaign-play/types/CharacterSheet'
 import {
   INVESTIGATOR_STATUSES,
-  type InvestigatorListItem,
   type InvestigatorSummary,
   type KeeperInvestigator,
   type MyCharacterSheet,
@@ -32,15 +31,6 @@ const summarySchema = z.object({
   status: statusSchema,
   name: z.string().nullable(),
   changeRequestComment: z.string().nullable(),
-  updatedAt: z.string(),
-})
-
-const listItemSchema = z.object({
-  playerAccountId: z.string(),
-  playerName: z.string().nullable(),
-  status: statusSchema,
-  investigatorId: z.string().nullable(),
-  investigatorName: z.string().nullable(),
   updatedAt: z.string(),
 })
 
@@ -223,12 +213,6 @@ export async function saveMyCharacterSheet(
   })
   ensureOk(response, 'save your Investigator')
   return myCharacterSheetSchema.parse(await response.json())
-}
-
-/** GET .../investigators (Keeper only); null for anyone else. */
-export async function listInvestigators(accessToken: string, campaignId: string): Promise<InvestigatorListItem[] | null> {
-  const response = await send(accessToken, investigatorsUrl(campaignId))
-  return parseOrNull(response, z.array(listItemSchema), 'load the Investigators')
 }
 
 /** GET .../investigators/{id} (Keeper only, non-Draft); null outside the Keeper's visibility. */

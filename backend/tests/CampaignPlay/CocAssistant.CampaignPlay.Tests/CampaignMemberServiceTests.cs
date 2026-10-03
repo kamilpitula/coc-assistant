@@ -2,7 +2,8 @@ namespace CocAssistant.CampaignPlay.Tests;
 
 /// <summary>
 /// The Campaign roster (specs/campaign-play/spec.md, Campaign members API; ux.md section 5 order):
-/// the Keeper, then the caller, then other Players by display name; memberIds, never Account ids.
+/// the Keeper, then the caller, then other Players by display name; memberIds, never Account ids. Each entry carries
+/// the Investigator projected for the caller (specs/campaign-overview/spec.md, Roster with Investigators).
 /// </summary>
 public class CampaignMemberServiceTests : IDisposable
 {
@@ -15,7 +16,10 @@ public class CampaignMemberServiceTests : IDisposable
     private async Task<IReadOnlyList<CampaignMember>?> ListAsync(Guid campaignId, Guid callerAccountId)
     {
         using var context = _scenario.Fixture.CreateContext();
-        var service = new CampaignMemberService(_scenario.Fixture.CreateRepository(context), _displayNames);
+        var service = new CampaignMemberService(
+            _scenario.Fixture.CreateRepository(context),
+            _scenario.Fixture.CreateInvestigatorRepository(context),
+            _displayNames);
         return await service.ListAsync(campaignId, callerAccountId, CancellationToken.None);
     }
 
@@ -114,6 +118,163 @@ public class CampaignMemberServiceTests : IDisposable
         Assert.Equal(campaign.Id, CampaignMemberIds.Of(campaign, CampaignPlayScenario.KeeperAccountId));
         Assert.Equal(campaign.Players.Single().Id, CampaignMemberIds.Of(campaign, CampaignPlayScenario.PlayerAccountId));
         Assert.Null(CampaignMemberIds.Of(campaign, CampaignPlayScenario.StrangerAccountId));
+    }
+
+    private const string SheetName = "Harvey Walters";
+
+    /// <summary>Gives the Player an Investigator in the status: a Draft without a sheet, the others with a valid sheet.</summary>
+    private async Task<Guid?> CreateInvestigatorInStatusAsync(Guid campaignId, Guid playerAccountId, string status)
+    {
+        if (status == "None")
+        {
+            return null;
+        }
+
+        if (status == "Draft")
+        {
+            return await _scenario.CreateDraftAsync(campaignId, playerAccountId);
+        }
+
+        var investigatorId = await _scenario.CreateSubmittedAsync(campaignId, playerAccountId);
+        if (status == "Approved")
+        {
+            await _scenario.ApproveAsync(campaignId, investigatorId);
+        }
+        else if (status == "ChangesRequested")
+        {
+            await _scenario.RequestChangesAsync(campaignId, investigatorId, "Lower the STR.");
+        }
+
+        return investigatorId;
+    }
+
+    private async Task<RosterInvestigator?> InvestigatorOfAsync(Guid campaignId, Guid callerAccountId, Guid playerAccountId)
+    {
+        var campaign = await LoadAsync(campaignId);
+        var memberId = CampaignMemberIds.Of(campaign, playerAccountId);
+        var members = await ListAsync(campaignId, callerAccountId);
+        return members!.Single(member => member.MemberId == memberId).Investigator;
+    }
+
+    [Fact]
+    public async Task Given_a_player_with_an_investigator_When_anyone_lists_members_Then_the_keeper_entry_has_no_investigator()
+    {
+        var campaignId = await _scenario.CreateCampaignAsync();
+        await _scenario.JoinAsPlayerAsync(campaignId, CampaignPlayScenario.PlayerAccountId);
+        await _scenario.CreateSubmittedAsync(campaignId, CampaignPlayScenario.PlayerAccountId);
+
+        Assert.Null((await ListAsync(campaignId, CampaignPlayScenario.KeeperAccountId))![0].Investigator);
+        Assert.Null((await ListAsync(campaignId, CampaignPlayScenario.PlayerAccountId))![0].Investigator);
+    }
+
+    [Theory]
+    [MemberData(nameof(KeeperAndPlayerCallers))]
+    public async Task Given_a_player_without_an_investigator_When_the_keeper_or_that_player_lists_members_Then_the_entry_has_no_investigator(
+        Guid callerAccountId)
+    {
+        var campaignId = await _scenario.CreateCampaignAsync();
+        await _scenario.JoinAsPlayerAsync(campaignId, CampaignPlayScenario.PlayerAccountId);
+
+        Assert.Null(await InvestigatorOfAsync(campaignId, callerAccountId, CampaignPlayScenario.PlayerAccountId));
+    }
+
+    public static TheoryData<Guid> KeeperAndPlayerCallers =>
+        new() { CampaignPlayScenario.KeeperAccountId, CampaignPlayScenario.PlayerAccountId };
+
+    [Fact]
+    public async Task Given_a_named_draft_When_the_keeper_lists_members_Then_it_is_in_progress_without_a_name_or_id()
+    {
+        var campaignId = await _scenario.CreateCampaignAsync();
+        await _scenario.JoinAsPlayerAsync(campaignId, CampaignPlayScenario.PlayerAccountId);
+        await _scenario.CreateDraftAsync(campaignId, CampaignPlayScenario.PlayerAccountId);
+        await _scenario.SaveCharacterSheetAsync(
+            campaignId, CampaignPlayScenario.PlayerAccountId, new CharacterSheetBuilder().WithName("Secret Name").BuildInputs());
+
+        var investigator = await InvestigatorOfAsync(
+            campaignId, CampaignPlayScenario.KeeperAccountId, CampaignPlayScenario.PlayerAccountId);
+
+        Assert.Equal(new RosterInvestigator(InvestigatorVisibility.InProgress, null, null, null), investigator);
+    }
+
+    [Theory]
+    [InlineData("Submitted", InvestigatorStatus.Submitted)]
+    [InlineData("ChangesRequested", InvestigatorStatus.ChangesRequested)]
+    [InlineData("Approved", InvestigatorStatus.Approved)]
+    public async Task Given_a_non_draft_investigator_When_the_keeper_lists_members_Then_it_is_visible_with_id_name_and_status(
+        string status,
+        InvestigatorStatus expectedStatus)
+    {
+        var campaignId = await _scenario.CreateCampaignAsync();
+        await _scenario.JoinAsPlayerAsync(campaignId, CampaignPlayScenario.PlayerAccountId);
+        var investigatorId = await CreateInvestigatorInStatusAsync(campaignId, CampaignPlayScenario.PlayerAccountId, status);
+
+        var investigator = await InvestigatorOfAsync(
+            campaignId, CampaignPlayScenario.KeeperAccountId, CampaignPlayScenario.PlayerAccountId);
+
+        Assert.Equal(new RosterInvestigator(InvestigatorVisibility.Visible, investigatorId, SheetName, expectedStatus), investigator);
+    }
+
+    [Theory]
+    [InlineData("Submitted", InvestigatorStatus.Submitted)]
+    [InlineData("ChangesRequested", InvestigatorStatus.ChangesRequested)]
+    [InlineData("Approved", InvestigatorStatus.Approved)]
+    public async Task Given_a_player_with_an_investigator_When_that_player_lists_members_Then_it_is_visible_without_an_id(
+        string status,
+        InvestigatorStatus expectedStatus)
+    {
+        var campaignId = await _scenario.CreateCampaignAsync();
+        await _scenario.JoinAsPlayerAsync(campaignId, CampaignPlayScenario.PlayerAccountId);
+        await CreateInvestigatorInStatusAsync(campaignId, CampaignPlayScenario.PlayerAccountId, status);
+
+        var investigator = await InvestigatorOfAsync(
+            campaignId, CampaignPlayScenario.PlayerAccountId, CampaignPlayScenario.PlayerAccountId);
+
+        Assert.Equal(new RosterInvestigator(InvestigatorVisibility.Visible, null, SheetName, expectedStatus), investigator);
+    }
+
+    [Fact]
+    public async Task Given_an_unnamed_draft_When_its_player_lists_members_Then_it_is_visible_as_a_draft_with_no_name()
+    {
+        var campaignId = await _scenario.CreateCampaignAsync();
+        await _scenario.JoinAsPlayerAsync(campaignId, CampaignPlayScenario.PlayerAccountId);
+        await _scenario.CreateDraftAsync(campaignId, CampaignPlayScenario.PlayerAccountId);
+
+        var investigator = await InvestigatorOfAsync(
+            campaignId, CampaignPlayScenario.PlayerAccountId, CampaignPlayScenario.PlayerAccountId);
+
+        Assert.Equal(new RosterInvestigator(InvestigatorVisibility.Visible, null, null, InvestigatorStatus.Draft), investigator);
+    }
+
+    [Fact]
+    public async Task Given_another_players_approved_investigator_When_a_player_lists_members_Then_only_its_name_and_approved_status_are_visible()
+    {
+        var campaignId = await _scenario.CreateCampaignAsync();
+        await _scenario.JoinAsPlayerAsync(campaignId, CampaignPlayScenario.PlayerAccountId);
+        await _scenario.JoinAsPlayerAsync(campaignId, CampaignPlayScenario.OtherPlayerAccountId);
+        await CreateInvestigatorInStatusAsync(campaignId, CampaignPlayScenario.OtherPlayerAccountId, "Approved");
+
+        var investigator = await InvestigatorOfAsync(
+            campaignId, CampaignPlayScenario.PlayerAccountId, CampaignPlayScenario.OtherPlayerAccountId);
+
+        Assert.Equal(new RosterInvestigator(InvestigatorVisibility.Visible, null, SheetName, InvestigatorStatus.Approved), investigator);
+    }
+
+    [Theory]
+    [InlineData("None")]
+    [InlineData("Draft")]
+    [InlineData("Submitted")]
+    [InlineData("ChangesRequested")]
+    public async Task Given_another_players_investigator_that_is_not_approved_When_a_player_lists_members_Then_it_is_not_ready(string status)
+    {
+        var campaignId = await _scenario.CreateCampaignAsync();
+        await _scenario.JoinAsPlayerAsync(campaignId, CampaignPlayScenario.PlayerAccountId);
+        await _scenario.JoinAsPlayerAsync(campaignId, CampaignPlayScenario.OtherPlayerAccountId);
+        await CreateInvestigatorInStatusAsync(campaignId, CampaignPlayScenario.OtherPlayerAccountId, status);
+
+        var investigator = await InvestigatorOfAsync(
+            campaignId, CampaignPlayScenario.PlayerAccountId, CampaignPlayScenario.OtherPlayerAccountId);
+
+        Assert.Equal(new RosterInvestigator(InvestigatorVisibility.NotReady, null, null, null), investigator);
     }
 
     public void Dispose() => _scenario.Dispose();

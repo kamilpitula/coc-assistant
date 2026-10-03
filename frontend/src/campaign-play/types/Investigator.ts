@@ -18,16 +18,6 @@ export interface InvestigatorSummary {
   updatedAt: string
 }
 
-/** A row of the Keeper's list; a Draft has no id or name. */
-export interface InvestigatorListItem {
-  playerAccountId: string
-  playerName: string | null
-  status: InvestigatorStatus
-  investigatorId: string | null
-  investigatorName: string | null
-  updatedAt: string
-}
-
 /** The Keeper's review read of a non-Draft Investigator. */
 export interface KeeperInvestigator {
   id: string

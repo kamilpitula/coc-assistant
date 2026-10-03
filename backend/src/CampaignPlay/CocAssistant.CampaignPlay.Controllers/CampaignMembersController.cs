@@ -26,5 +26,10 @@ public class CampaignMembersController : CampaignPlayControllerBase
     }
 
     private static CampaignMemberResponse ToResponse(CampaignMember member) =>
-        new(member.MemberId.ToString(), member.DisplayName, member.Role.ToString(), member.IsYou);
+        new(
+            member.MemberId.ToString(),
+            member.DisplayName,
+            member.Role.ToString(),
+            member.IsYou,
+            RosterInvestigatorResponse.From(member.Investigator));
 }

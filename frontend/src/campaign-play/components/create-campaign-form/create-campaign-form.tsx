@@ -160,7 +160,7 @@ export function CreateCampaignForm() {
           Campaign &ldquo;{data.name}&rdquo; created for up to {data.playerLimit} Players. You are
           its Keeper.{' '}
           <a
-            href={`/campaigns/${data.id}`}
+            href={`/campaigns/${data.id}/settings`}
             className="text-primary underline-offset-4 hover:underline"
           >
             Manage its invite

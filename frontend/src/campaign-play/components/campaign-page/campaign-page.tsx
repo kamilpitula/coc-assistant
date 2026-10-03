@@ -1,88 +1,34 @@
-import { Link, useRouterState } from '@tanstack/react-router'
+import { useRouterState } from '@tanstack/react-router'
 
-import { CampaignPresence } from '@/campaign-play/components/campaign-presence/campaign-presence'
-import { InvestigatorList } from '@/campaign-play/components/investigator-list/investigator-list'
-import { InviteManagement } from '@/campaign-play/components/invite-management/invite-management'
-import { RulesOptions } from '@/campaign-play/components/rules-options/rules-options'
-import { YourInvestigatorCard } from '@/campaign-play/components/your-investigator-card/your-investigator-card'
+import { AttentionList } from '@/campaign-play/components/attention-list/attention-list'
+import { CampaignTable } from '@/campaign-play/components/campaign-table/campaign-table'
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
-import type { PlayerCampaign } from '@/campaign-play/types/Campaign'
 import '@/campaign-play/types/navigationState'
-import { Button, buttonVariants } from '@/shared/components/ui/button'
-import { Skeleton } from '@/shared/components/ui/skeleton'
 
 interface CampaignPageProps {
   campaignId: string
 }
 
 /**
- * The Campaign page, rendered by the caller's role (specs/character-sheet/ux.md section 3), with "At the table"
- * placed per specs/campaign-play/ux.md section 1.
+ * The Campaign overview, one layout for both roles (specs/campaign-overview/ux.md section 3): the status message,
+ * "Needs your attention", then "At the table". The layout route renders the Campaign header and handles loading,
+ * errors, and not-found, so the Campaign is already in the query cache here.
  */
 export function CampaignPage({ campaignId }: CampaignPageProps) {
   const campaign = useCampaign(campaignId)
-
-  if (campaign.isPending) {
-    return (
-      <div aria-busy="true" className="flex flex-col gap-4">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-40 w-full max-w-xl" />
-      </div>
-    )
-  }
-
-  if (campaign.isError) {
-    return (
-      <div className="flex flex-col items-start gap-3">
-        <p className="text-sm">We couldn&apos;t load this Campaign.</p>
-        <Button type="button" variant="outline" onClick={() => void campaign.refetch()}>
-          Try again
-        </Button>
-      </div>
-    )
-  }
-
-  if (!campaign.data) {
-    return <CampaignNotFound />
-  }
-
-  if (campaign.data.role === 'Player') {
-    return <PlayerCampaignView campaign={campaign.data} />
-  }
-
-  return (
-    <>
-      <CampaignPresence campaignId={campaignId} />
-      <InviteManagement campaignId={campaignId} />
-      <InvestigatorList campaignId={campaignId} />
-      <RulesOptions campaignId={campaignId} />
-    </>
-  )
-}
-
-function CampaignNotFound() {
-  return (
-    <section className="flex flex-col items-start gap-4">
-      <h1 className="text-2xl font-semibold">We couldn&apos;t find that Campaign</h1>
-      <Link to="/campaigns" className={buttonVariants({ variant: 'link', className: 'px-0' })}>
-        Back to Campaigns
-      </Link>
-    </section>
-  )
-}
-
-/** The Player's read-only Campaign view (ux.md section 3.2). */
-function PlayerCampaignView({ campaign }: { campaign: PlayerCampaign }) {
   const statusMessage = useRouterState({ select: (state) => state.location.state.statusMessage })
 
+  if (!campaign.data) {
+    return null
+  }
+
   return (
-    <section className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">{campaign.name}</h1>
+    <div className="flex w-full max-w-3xl flex-col gap-6">
       <p role="status" className="text-sm empty:hidden">
         {statusMessage}
       </p>
-      <CampaignPresence campaignId={campaign.id} />
-      <YourInvestigatorCard campaign={campaign} />
-    </section>
+      <AttentionList campaign={campaign.data} />
+      <CampaignTable campaignId={campaignId} />
+    </div>
   )
 }

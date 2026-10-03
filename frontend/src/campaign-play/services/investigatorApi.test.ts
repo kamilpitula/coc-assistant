@@ -10,7 +10,6 @@ import {
   getMyCharacterSheet,
   getMyInvestigator,
   InvestigatorConflictError,
-  listInvestigators,
   requestChanges,
   saveMyCharacterSheet,
   submitMyInvestigator,
@@ -200,21 +199,6 @@ describe('investigatorApi', () => {
     fetchMock.mockResolvedValue(jsonResponse(409, { status: 409 }))
 
     await expect(saveMyCharacterSheet('token', 'c1', inputs)).rejects.toBeInstanceOf(InvestigatorConflictError)
-  })
-
-  it("lists the Keeper's Investigators, or null for anyone else (404)", async () => {
-    const row = {
-      playerAccountId: 'p1',
-      playerName: 'Ada Lovelace',
-      status: 'Draft',
-      investigatorId: null,
-      investigatorName: null,
-      updatedAt: '2026-10-02T12:00:00+00:00',
-    }
-    fetchMock.mockResolvedValueOnce(jsonResponse(200, [row])).mockResolvedValueOnce(jsonResponse(404))
-
-    expect(await listInvestigators('token', 'c1')).toEqual([row])
-    expect(await listInvestigators('token', 'c1')).toBeNull()
   })
 
   it('reads an Investigator for the Keeper, or null outside their visibility', async () => {

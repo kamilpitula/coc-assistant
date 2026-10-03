@@ -37,7 +37,7 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
   - `DELETE .../investigators/mine` returns 204. `POST .../approve` and `POST .../request-changes` return the Keeper Investigator.
   - Errors use RFC 9457 problem details. An action the Investigator's status does not allow, a second Investigator, or a Campaign without a supported Creation Method returns 409. A submission with errors returns 422 with a `validationErrors` array of `ValidationError` items. A missing or too long Change Request comment returns 400.
   - Player names come from the caller's Account display name through an Identity read port; Campaign Play does not store a copy.
-- **Campaign members API:** `GET /api/campaigns/{campaignId}/members` - Campaign members (Keeper or Player) only; non-members get 404. Returns the roster in the UX order ([ux.md](ux.md) section 5) as an array of `{memberId, displayName, role, isYou}`.
+- **Campaign members API:** `GET /api/campaigns/{campaignId}/members` - Campaign members (Keeper or Player) only; non-members get 404. Returns the roster in the UX order ([ux.md](ux.md) section 5) as an array of `{memberId, displayName, role, isYou, investigator}`.
   - `memberId` is an opaque string, stable within the Campaign, that identifies a member in Presence events. It is not an Account id, so the roster exposes no Account ids to Players (consistent with the Player Campaign view). A Player's `memberId` is their `CampaignPlayer.Id`; the Keeper's is the `Campaign.Id`. The mapping from Account to `memberId` lives in one Application method.
   - `role` is `Keeper` or `Player`. `isYou` is true only on the caller's own entry. Each entry also has an `investigator` field, projected server-side for the caller as defined in [specs/campaign-overview/spec.md](../campaign-overview/spec.md) (Roster with Investigators).
 - **Live connection contract:** Architecture decision: [ADR 0009](../../docs/adr/0009-live-updates-through-campaign-hub-with-invalidation-topics.md). One authenticated, strongly typed SignalR hub (`Hub<ICampaignClient>`) at `/hubs/campaign`, in `CocAssistant.CampaignPlay.Controllers`. `AddSignalR()` always runs; Azure SignalR Service (Default mode) is added only when `Azure:SignalR:ConnectionString` is configured, so local development, integration tests, and E2E run SignalR in-process.
@@ -296,11 +296,11 @@ Scenario: Reconnecting gives up and offers a retry
   Then every member shows their current Presence
 
 Scenario: Keeper without Players is prompted to share the Invite
-  # PR-UX-10
+  # PR-UX-10, superseded by CO-UX-5 (specs/campaign-overview/ux.md section 4.1)
   Given a Campaign has no Players
   When the Keeper opens the Campaign page
   Then the roster shows only the Keeper as "Connected"
-  And the Keeper sees "No Players yet. Share the Invite to bring them in."
+  And "Needs your attention" shows "No Players have joined yet." with "Invite Players"
 
 Scenario: Non-member cannot subscribe to a Campaign's Presence
   # PR-UX-12

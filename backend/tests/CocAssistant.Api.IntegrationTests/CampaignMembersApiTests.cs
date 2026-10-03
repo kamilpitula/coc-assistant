@@ -2,7 +2,9 @@ namespace CocAssistant.Api.IntegrationTests;
 
 /// <summary>
 /// GET /api/campaigns/{campaignId}/members (specs/campaign-play/spec.md, Campaign members API; Scenario "Non-member
-/// cannot read a Campaign's roster"; Regression Guardrail: the roster never includes Account ids or Investigator data).
+/// cannot read a Campaign's roster"; specs/campaign-overview/spec.md, Roster with Investigators and Scenario "Roster
+/// API projects Investigators by caller"; Regression Guardrails: no Account ids, and no Investigator data beyond the
+/// caller's visibility).
 /// </summary>
 public class CampaignMembersApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
 {
@@ -36,7 +38,7 @@ public class CampaignMembersApiTests : IClassFixture<IdentityApiFactory>, IAsync
     }
 
     [Fact]
-    public async Task Given_a_campaign_When_the_members_are_read_Then_each_entry_has_only_memberId_displayName_role_and_isYou()
+    public async Task Given_a_campaign_When_the_members_are_read_Then_each_entry_has_only_memberId_displayName_role_isYou_and_investigator()
     {
         var client = _factory.CreateClient();
         var campaign = await CreateCampaignAsync(client, "members-keeper-2");
@@ -49,7 +51,7 @@ public class CampaignMembersApiTests : IClassFixture<IdentityApiFactory>, IAsync
         Assert.All(
             document.RootElement.EnumerateArray(),
             entry => Assert.Equal(
-                ["displayName", "isYou", "memberId", "role"],
+                ["displayName", "investigator", "isYou", "memberId", "role"],
                 entry.EnumerateObject().Select(property => property.Name).Order()));
         Assert.DoesNotContain(campaign.KeeperAccountId.ToString(), body, StringComparison.OrdinalIgnoreCase);
     }
@@ -75,5 +77,79 @@ public class CampaignMembersApiTests : IClassFixture<IdentityApiFactory>, IAsync
         var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    private const string RosterKeeper = "roster-keeper";
+    private const string DraftPlayer = "roster-a-draft";
+    private const string SubmittedPlayer = "roster-b-submitted";
+    private const string ApprovedPlayer = "roster-c-approved";
+
+    /// <summary>A Campaign whose three Players have a named Draft, a Submitted, and an Approved Investigator.</summary>
+    private async Task<(HttpClient Client, Guid CampaignId, Guid SubmittedId, Guid ApprovedId)> CreateRosterWithInvestigatorsAsync()
+    {
+        var client = _factory.CreateClient();
+        var campaignId = (await CreateCampaignAsync(client, RosterKeeper)).Id;
+        foreach (var player in new[] { DraftPlayer, SubmittedPlayer, ApprovedPlayer })
+        {
+            await JoinAsPlayerAsync(client, campaignId, RosterKeeper, player);
+        }
+
+        await CreateNamedDraftAsync(client, campaignId, DraftPlayer, "Secret Draft");
+        var submittedId = await CreateSubmittedAsync(client, campaignId, SubmittedPlayer, "Dr. Ames");
+        var approvedId = await CreateApprovedAsync(client, campaignId, RosterKeeper, ApprovedPlayer, "Mae Doyle");
+        return (client, campaignId, submittedId, approvedId);
+    }
+
+    private static async Task<(string Body, Dictionary<string, JsonElement> InvestigatorsByName)> ReadRosterAsync(
+        HttpClient client,
+        Guid campaignId,
+        string callerOid)
+    {
+        var response = await client.SendAsync(BuildRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/members", callerOid));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(body);
+        var investigators = document.RootElement.EnumerateArray().ToDictionary(
+            entry => entry.GetProperty("displayName").GetString()!,
+            entry => entry.GetProperty("investigator").Clone());
+        return (body, investigators);
+    }
+
+    private static string PropertiesOf(JsonElement investigator) =>
+        string.Join(",", investigator.EnumerateObject().Select(property => $"{property.Name}={property.Value}"));
+
+    // Scenario: Roster API projects Investigators by caller
+    [Fact]
+    public async Task Given_draft_submitted_and_approved_investigators_When_a_player_reads_the_members_Then_only_their_own_and_approved_ones_carry_a_name()
+    {
+        var (client, campaignId, submittedId, approvedId) = await CreateRosterWithInvestigatorsAsync();
+
+        var (body, investigators) = await ReadRosterAsync(client, campaignId, DraftPlayer);
+
+        Assert.Equal(JsonValueKind.Null, investigators[DisplayNameFor(RosterKeeper)].ValueKind);
+        Assert.Equal("visibility=Visible,name=Secret Draft,status=Draft", PropertiesOf(investigators[DisplayNameFor(DraftPlayer)]));
+        Assert.Equal("visibility=NotReady", PropertiesOf(investigators[DisplayNameFor(SubmittedPlayer)]));
+        Assert.Equal("visibility=Visible,name=Mae Doyle,status=Approved", PropertiesOf(investigators[DisplayNameFor(ApprovedPlayer)]));
+        Assert.DoesNotContain(submittedId.ToString(), body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(approvedId.ToString(), body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Dr. Ames", body);
+    }
+
+    // Regression Guardrail: the Keeper never sees a Draft Investigator's name.
+    [Fact]
+    public async Task Given_draft_submitted_and_approved_investigators_When_the_keeper_reads_the_members_Then_drafts_are_in_progress_and_others_carry_their_id()
+    {
+        var (client, campaignId, submittedId, approvedId) = await CreateRosterWithInvestigatorsAsync();
+
+        var (body, investigators) = await ReadRosterAsync(client, campaignId, RosterKeeper);
+
+        Assert.Equal("visibility=InProgress", PropertiesOf(investigators[DisplayNameFor(DraftPlayer)]));
+        Assert.Equal(
+            $"visibility=Visible,id={submittedId},name=Dr. Ames,status=Submitted",
+            PropertiesOf(investigators[DisplayNameFor(SubmittedPlayer)]));
+        Assert.Equal(
+            $"visibility=Visible,id={approvedId},name=Mae Doyle,status=Approved",
+            PropertiesOf(investigators[DisplayNameFor(ApprovedPlayer)]));
+        Assert.DoesNotContain("Secret Draft", body);
     }
 }

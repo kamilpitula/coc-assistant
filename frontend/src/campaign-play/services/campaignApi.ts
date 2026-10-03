@@ -11,6 +11,7 @@ import {
 } from '@/campaign-play/types/Campaign'
 import type { CampaignInvite } from '@/campaign-play/types/CampaignInvite'
 import type { CampaignMember } from '@/campaign-play/types/CampaignMember'
+import { INVESTIGATOR_STATUSES } from '@/campaign-play/types/Investigator'
 import type { JoinOutcome, JoinResult } from '@/campaign-play/types/JoinResult'
 
 export const eraSchema = z.enum(ERAS)
@@ -37,12 +38,28 @@ const playerCampaignResponseSchema = z.object({
 
 const campaignViewSchema = z.discriminatedUnion('role', [campaignResponseSchema, playerCampaignResponseSchema])
 
+/**
+ * A roster Investigator (specs/campaign-overview/spec.md, Roster with Investigators). Strict, so data beyond what the
+ * visibility allows is rejected instead of silently passed on; id is present for the Keeper only.
+ */
+const rosterInvestigatorSchema = z.discriminatedUnion('visibility', [
+  z.strictObject({
+    visibility: z.literal('Visible'),
+    id: z.string().optional(),
+    name: z.string().nullable(),
+    status: z.enum(INVESTIGATOR_STATUSES),
+  }),
+  z.strictObject({ visibility: z.literal('InProgress') }),
+  z.strictObject({ visibility: z.literal('NotReady') }),
+])
+
 const campaignMembersResponseSchema = z.array(
   z.object({
     memberId: z.string(),
     displayName: z.string(),
     role: z.enum(['Keeper', 'Player']),
     isYou: z.boolean(),
+    investigator: rosterInvestigatorSchema.nullable(),
   }),
 )
 

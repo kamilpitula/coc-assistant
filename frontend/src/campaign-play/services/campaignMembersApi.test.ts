@@ -22,8 +22,8 @@ describe('getCampaignMembers', () => {
 
   it('returns the roster in the order the server sends it', async () => {
     const roster = [
-      { memberId: 'c1', displayName: 'Eleanor Hart', role: 'Keeper', isYou: false },
-      { memberId: 'p1', displayName: 'Sam Okafor', role: 'Player', isYou: true },
+      { memberId: 'c1', displayName: 'Eleanor Hart', role: 'Keeper', isYou: false, investigator: null },
+      { memberId: 'p1', displayName: 'Sam Okafor', role: 'Player', isYou: true, investigator: null },
     ]
     fetchMock.mockResolvedValue(jsonResponse(200, roster))
 
@@ -34,6 +34,48 @@ describe('getCampaignMembers', () => {
       '/api/campaigns/c1/members',
       expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer token' }) }),
     )
+  })
+
+  // specs/campaign-overview/spec.md, Roster with Investigators: each projection shape the server sends.
+  it('parses every Investigator projection the server sends', async () => {
+    const roster = [
+      { memberId: 'c1', displayName: 'Eleanor Hart', role: 'Keeper', isYou: true, investigator: null },
+      {
+        memberId: 'p1',
+        displayName: 'Ana Ruiz',
+        role: 'Player',
+        isYou: false,
+        investigator: { visibility: 'Visible', id: 'i1', name: 'Dr. Ames', status: 'Submitted' },
+      },
+      {
+        memberId: 'p2',
+        displayName: 'Ben Cole',
+        role: 'Player',
+        isYou: false,
+        investigator: { visibility: 'Visible', name: null, status: 'Approved' },
+      },
+      { memberId: 'p3', displayName: 'Cleo Park', role: 'Player', isYou: false, investigator: { visibility: 'InProgress' } },
+      { memberId: 'p4', displayName: 'Dan Moss', role: 'Player', isYou: false, investigator: { visibility: 'NotReady' } },
+    ]
+    fetchMock.mockResolvedValue(jsonResponse(200, roster))
+
+    expect(await getCampaignMembers('token', 'c1')).toEqual(roster)
+  })
+
+  it('rejects an Investigator projection with data its visibility does not allow', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, [
+        {
+          memberId: 'p4',
+          displayName: 'Dan Moss',
+          role: 'Player',
+          isYou: false,
+          investigator: { visibility: 'NotReady', name: 'Leaked', status: 'Submitted' },
+        },
+      ]),
+    )
+
+    await expect(getCampaignMembers('token', 'c1')).rejects.toThrow()
   })
 
   it('returns null for someone who is not a Campaign Member (404)', async () => {
