@@ -83,4 +83,42 @@ public class AccountApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
         Assert.Single(matching);
         Assert.Equal("Second Name", matching[0].DisplayName);
     }
+
+    [Fact]
+    public async Task Given_an_existing_account_When_signing_in_with_the_entra_placeholder_name_Then_the_stored_name_is_kept()
+    {
+        var client = _factory.CreateClient();
+        (await client.SendAsync(MeRequest("integration-oid-3", "Real Name"))).EnsureSuccessStatusCode();
+
+        var response = await client.SendAsync(MeRequest("integration-oid-3", "unknown"));
+
+        response.EnsureSuccessStatusCode();
+        var account = await response.Content.ReadFromJsonAsync<AccountResponse>();
+        Assert.Equal("Real Name", account!.DisplayName);
+    }
+
+    [Fact]
+    public async Task Given_an_existing_account_When_calling_a_campaign_play_endpoint_Then_the_account_snapshot_is_not_refreshed()
+    {
+        var client = _factory.CreateClient();
+        (await client.SendAsync(MeRequest("integration-oid-4", "Real Name"))).EnsureSuccessStatusCode();
+
+        await CampaignPlayApiRequests.CreateCampaignAsync(client, "integration-oid-4");
+
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var account = await dbContext.Accounts.SingleAsync(a => a.EntraObjectId == "integration-oid-4");
+        Assert.Equal("Real Name", account.DisplayName);
+    }
+
+    private static HttpRequestMessage MeRequest(string oid, string name) =>
+        new(HttpMethod.Get, "/api/account/me")
+        {
+            Headers =
+            {
+                { "X-Test-Oid", oid },
+                { "X-Test-Name", name },
+                { "X-Test-Email", $"{oid}@example.com" },
+            },
+        };
 }

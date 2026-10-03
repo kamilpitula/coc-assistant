@@ -32,11 +32,19 @@ public class Account
         LastSignedInAt = signedInAt;
     }
 
-    /// <summary>Refreshes the display name/email snapshot on a subsequent sign-in.</summary>
+    /// <summary>Refreshes the display name/email snapshot on a subsequent sign-in; empty values keep the stored ones.</summary>
     public void Touch(string displayName, string email, DateTimeOffset signedInAt)
     {
-        DisplayName = displayName;
-        Email = email;
+        if (!string.IsNullOrWhiteSpace(displayName))
+        {
+            DisplayName = displayName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            Email = email;
+        }
+
         LastSignedInAt = signedInAt;
     }
 }

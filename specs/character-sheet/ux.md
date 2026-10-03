@@ -46,6 +46,8 @@ Added to `create-campaign-form` below the Player limit field.
 
 ## 3. Campaign page by role
 
+The Campaign page layout is superseded by [specs/campaign-overview/ux.md](../campaign-overview/ux.md): Invite management and Rules options move to Settings, the Investigators list merges into "At the table", and the Your Investigator card becomes an attention item. The interactions, copy, and states below still apply where that document references them.
+
 ### 3.1 Keeper
 The existing `InviteManagement` stays as is. Two sections are added below it, each with its own `h2`:
 

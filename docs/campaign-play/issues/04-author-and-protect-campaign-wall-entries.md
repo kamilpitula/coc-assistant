@@ -6,6 +6,7 @@ Build the end-to-end ability to create and read Campaign Wall Entries with Publi
 **Scope:**
 - Wall Entry domain behavior, Azure SQL persistence, API authorization and projections, Keeper and Player Campaign views, and focused unit, integration, and E2E coverage.
 - Keeper authoring, permitted Player Public entries, Public and Keeper-only visibility, and Campaign scoping.
+- The Campaign Wall page (`/campaigns/$campaignId/wall`), its "Wall" link in the Campaign navigation, and the overview's Wall preview ([specs/campaign-overview/ux.md](../../../specs/campaign-overview/ux.md) section 7, CO-UX-14).
 - Do not implement SignalR delivery or Presence.
 
 ## Dependencies

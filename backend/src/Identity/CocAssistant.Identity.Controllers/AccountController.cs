@@ -16,16 +16,13 @@ public class AccountController : ControllerBase
     [HttpGet("me")]
     public async Task<ActionResult<AccountResponse>> GetMe(CancellationToken cancellationToken)
     {
-        var entraObjectId = User.FindFirstValue("oid") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(entraObjectId))
+        var identity = EntraIdentity.FromClaims(User);
+        if (identity is null)
         {
             return Unauthorized();
         }
 
-        var displayName = User.FindFirstValue("name") ?? User.FindFirstValue(ClaimTypes.Name) ?? string.Empty;
-        var email = User.FindFirstValue("emails") ?? User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
-
-        var account = await _accountService.ProvisionAccountAsync(entraObjectId, displayName, email, cancellationToken);
+        var account = await _accountService.ProvisionAccountAsync(identity, cancellationToken);
 
         return Ok(new AccountResponse(account.Id, account.DisplayName, account.Email));
     }

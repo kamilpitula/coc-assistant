@@ -10,7 +10,7 @@ public class AccountDisplayNameQueryTests : IDisposable
     {
         using var dbContext = _fixture.CreateContext();
         var service = new AccountService(_fixture.CreateRepository(dbContext), _timeProvider);
-        var account = await service.ProvisionAccountAsync(entraObjectId, displayName, $"{entraObjectId}@example.com", CancellationToken.None);
+        var account = await service.ProvisionAccountAsync(new EntraIdentity(entraObjectId, displayName, $"{entraObjectId}@example.com"), CancellationToken.None);
         return account.Id;
     }
 

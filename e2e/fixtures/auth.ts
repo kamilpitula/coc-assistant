@@ -31,8 +31,15 @@ export function newAccount(label = 'Account'): MockAccount {
  * Header's "Sign In" button, fills the mock login form with the Account's claims, and waits
  * for the Header to confirm the Account is signed in (which only happens after
  * `GET /api/account/me` succeeds end-to-end).
+ *
+ * `tokenName` overrides the `name` claim the mock issues (for example Entra's "unknown"
+ * placeholder) while the Header is still expected to show `account.name`.
  */
-export async function signIn(page: Page, account: MockAccount): Promise<void> {
+export async function signIn(
+  page: Page,
+  account: MockAccount,
+  { tokenName = account.name }: { tokenName?: string } = {},
+): Promise<void> {
   await page.goto('/')
 
   await Promise.all([
@@ -46,8 +53,8 @@ export async function signIn(page: Page, account: MockAccount): Promise<void> {
     .fill(
       JSON.stringify({
         oid: account.oid,
-        name: account.name,
-        emails: account.email,
+        name: tokenName,
+        email: account.email,
       }),
     )
 
