@@ -102,6 +102,16 @@ describe('YourInvestigatorCard', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('UX-19: uses a singular verb when the Campaign allows a single unavailable method', () => {
+    render(<YourInvestigatorCard campaign={{ ...campaign, allowedCreationMethods: ['QuickFire'] }} />)
+
+    expect(
+      screen.getByText(
+        "You can't create your Investigator yet. This Campaign allows Quick fire, which isn't available yet. Ask your Keeper to also allow Point buy.",
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('shows a Draft with its name, status, the step to resume, and "Continue"', () => {
     mockUseMyInvestigator.mockReturnValue(query(investigator({ name: 'Harvey Walters' })))
     mockUseMyCharacterSheet.mockReturnValue(query(characterSheetWithName('Harvey Walters')))

@@ -75,7 +75,8 @@ function NoInvestigator({ campaign }: { campaign: PlayerCampaign }) {
           <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           <span>
             You can&apos;t create your Investigator yet. This Campaign allows{' '}
-            {formatCreationMethods(campaign.allowedCreationMethods)}, which aren&apos;t available yet. Ask your Keeper to
+            {formatCreationMethods(campaign.allowedCreationMethods)}, which{' '}
+            {campaign.allowedCreationMethods.length === 1 ? "isn't" : "aren't"} available yet. Ask your Keeper to
             also allow {formatCreationMethods(SUPPORTED_CREATION_METHODS)}.
           </span>
         </p>

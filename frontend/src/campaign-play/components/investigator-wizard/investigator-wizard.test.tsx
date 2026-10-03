@@ -171,6 +171,18 @@ describe('InvestigatorWizard', () => {
     )
   })
 
+  it('does not re-check on blur when focus moves to a wizard action, so the action is not shifted away mid-click', async () => {
+    withSheet(freshDraft)
+    mockSave.mockReturnValue(new Promise(() => {}))
+    render(<InvestigatorWizard campaignId="c1" step="identity" />)
+
+    await userEvent.type(screen.getByLabelText('Age'), '14')
+    await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }))
+
+    expect(screen.getByLabelText('Age')).not.toHaveAttribute('aria-invalid')
+    expect(mockSave).toHaveBeenCalled()
+  })
+
   it("shows the Keeper's comment on every step while changes are requested, without Start over", () => {
     withSheet(myCharacterSheet({ status: 'ChangesRequested', changeRequestComment: 'Lower the Credit Rating' }))
 

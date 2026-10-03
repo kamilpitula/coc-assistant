@@ -11,7 +11,8 @@ interface WizardFieldBaseProps {
   label: string
   help?: string
   error?: string
-  onBlur?: (field: string) => void
+  /** Called when the input loses focus, with the element receiving focus next (if any). */
+  onBlur?: (field: string, nextFocus: EventTarget | null) => void
   className?: string
 }
 
@@ -64,7 +65,7 @@ export function WizardField(props: WizardFieldProps) {
         inputMode={props.type === 'number' ? 'numeric' : undefined}
         value={props.value ?? ''}
         onChange={handleChange}
-        onBlur={() => onBlur?.(field)}
+        onBlur={(event) => onBlur?.(field, event.relatedTarget)}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
       />

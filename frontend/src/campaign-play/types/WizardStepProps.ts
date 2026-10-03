@@ -7,5 +7,6 @@ export interface WizardStepProps {
   /** Inline error message by ValidationError field path, for the errors the step should show now. */
   errors: Record<string, string>
   onAction: (action: CharacterSheetFormAction) => void
-  onBlur: (field: string) => void
+  /** Called when a field loses focus, with the element receiving focus next (if any). */
+  onBlur: (field: string, nextFocus: EventTarget | null) => void
 }

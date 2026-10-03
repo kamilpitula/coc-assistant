@@ -12,7 +12,7 @@ interface DiceRollInputProps {
   value: number | null
   error?: string
   onChange: (value: number | null) => void
-  onBlur?: (field: string) => void
+  onBlur?: (field: string, nextFocus: EventTarget | null) => void
 }
 
 /**

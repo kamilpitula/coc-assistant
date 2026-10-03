@@ -143,7 +143,12 @@ function WizardForm({ campaignId, step, sheet }: WizardFormProps) {
   const currentErrors = clientErrors ? mergeClientAndServerErrors(clientErrors, sheet.validationErrors) : sheet.validationErrors
   const inlineErrors = inlineErrorsForStep(currentErrors, step, (field) => showAllErrors || isFieldTouched(field, touched))
 
-  const handleBlur = (field: string) => {
+  const handleBlur = (field: string, nextFocus: EventTarget | null) => {
+    // Moving to a wizard action saves and validates on the server; showing or hiding errors now would shift the layout
+    // under the pointer between mousedown and mouseup, so the action's click would be lost.
+    if (nextFocus instanceof HTMLElement && nextFocus.dataset.wizardAction !== undefined) {
+      return
+    }
     setTouched((previous) => new Set(previous).add(field))
     setClientErrors(validateCharacterSheet(inputs, sheet.rules, bracket))
   }
@@ -242,19 +247,19 @@ function StepActions({ step, pending, onMove, onSubmit }: StepActionsProps) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       {step !== 'identity' && (
-        <Button type="button" variant="secondary" disabled={busy} onClick={() => onMove({ kind: 'back' })}>
+        <Button type="button" variant="secondary" data-wizard-action disabled={busy} onClick={() => onMove({ kind: 'back' })}>
           {label('back', 'Back')}
         </Button>
       )}
-      <Button type="button" variant="link" disabled={busy} onClick={() => onMove({ kind: 'exit' })}>
+      <Button type="button" variant="link" data-wizard-action disabled={busy} onClick={() => onMove({ kind: 'exit' })}>
         {label('exit', 'Save and exit')}
       </Button>
       {step === 'sheet' ? (
-        <Button type="button" disabled={busy} onClick={onSubmit}>
+        <Button type="button" data-wizard-action disabled={busy} onClick={onSubmit}>
           {label('submit', 'Submit to Keeper', 'Submitting...')}
         </Button>
       ) : (
-        <Button type="button" disabled={busy} onClick={() => onMove({ kind: 'continue' })}>
+        <Button type="button" data-wizard-action disabled={busy} onClick={() => onMove({ kind: 'continue' })}>
           {label('continue', 'Save and continue')}
         </Button>
       )}

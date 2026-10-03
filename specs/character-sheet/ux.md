@@ -66,7 +66,7 @@ The existing `InviteManagement` stays as is. Two sections are added below it, ea
 
 | State | Content | Primary action |
 |---|---|---|
-| No Investigator, and none of the Campaign's allowed creation methods is available yet | An Info icon (decorative) followed by "You can't create your Investigator yet. This Campaign allows {allowed methods}, which aren't available yet. Ask your Keeper to also allow {available methods}." Method lists use the existing creation-method labels, for example "Standard rolling, Quick fire" and "Point buy". | None. No disabled button is shown; the text explains why. |
+| No Investigator, and none of the Campaign's allowed creation methods is available yet | An Info icon (decorative) followed by "You can't create your Investigator yet. This Campaign allows {allowed methods}, which aren't available yet. Ask your Keeper to also allow {available methods}." With a single allowed method the verb is singular ("which isn't available yet"). Method lists use the existing creation-method labels, for example "Standard rolling, Quick fire" and "Point buy". | None. No disabled button is shown; the text explains why. |
 | No Investigator | "Create the Investigator you'll play in this Campaign." | "Create Investigator" (creates the Draft, then opens `identity`) |
 | Draft | Name (or "Unnamed Investigator"), "Draft", "Step N of 7" | "Continue" |
 | Submitted | Name, occupation, badge | "View" |

@@ -37,6 +37,7 @@ export function InvestigatorCreationStepper({ campaignId, current, states, onSel
               ) : (
                 <a
                   href={`/campaigns/${campaignId}/investigator/${step.id}`}
+                  data-wizard-action
                   className="flex items-center gap-1 underline underline-offset-4"
                   onClick={(event) => {
                     event.preventDefault()

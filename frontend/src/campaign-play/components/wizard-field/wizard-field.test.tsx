@@ -65,6 +65,6 @@ describe('WizardField', () => {
     await userEvent.click(screen.getByLabelText('Investigator name'))
     await userEvent.tab()
 
-    expect(onBlur).toHaveBeenCalledWith('identity.name')
+    expect(onBlur).toHaveBeenCalledWith('identity.name', null)
   })
 })
