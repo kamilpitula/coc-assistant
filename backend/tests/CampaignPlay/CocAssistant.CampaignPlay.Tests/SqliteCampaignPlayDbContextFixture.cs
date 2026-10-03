@@ -22,6 +22,16 @@ public sealed class SqliteCampaignPlayDbContextFixture : IDisposable
         return new CampaignPlayDbContext(options);
     }
 
+    /// <summary>Creates a context that dispatches domain events after commit, as the assembled API does.</summary>
+    public CampaignPlayDbContext CreateContext(IDomainEventDispatcher dispatcher)
+    {
+        var options = new DbContextOptionsBuilder<CampaignPlayDbContext>()
+            .UseSqlite(_connection)
+            .AddInterceptors(new DomainEventDispatchInterceptor(dispatcher))
+            .Options;
+        return new CampaignPlayDbContext(options);
+    }
+
     public ICampaignRepository CreateRepository(CampaignPlayDbContext dbContext) => new EfCampaignRepository(dbContext);
 
     public IInvestigatorRepository CreateInvestigatorRepository(CampaignPlayDbContext dbContext) => new EfInvestigatorRepository(dbContext);

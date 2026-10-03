@@ -21,6 +21,7 @@ public class CampaignPlayDbContext : DbContext
         modelBuilder.Entity<Campaign>(builder =>
         {
             builder.HasKey(campaign => campaign.Id);
+            builder.Ignore(campaign => campaign.DomainEvents);
             builder.Property(campaign => campaign.Name).IsRequired().HasMaxLength(200);
             builder.Property(campaign => campaign.KeeperAccountId).IsRequired();
             builder.Property(campaign => campaign.PlayerLimit).IsRequired();
@@ -79,6 +80,7 @@ public class CampaignPlayDbContext : DbContext
         modelBuilder.Entity<Investigator>(builder =>
         {
             builder.HasKey(investigator => investigator.Id);
+            builder.Ignore(investigator => investigator.DomainEvents);
             builder.Property(investigator => investigator.Id).ValueGeneratedNever();
             builder.Property(investigator => investigator.PlayerAccountId).IsRequired();
             builder.Property(investigator => investigator.Status).IsRequired().HasConversion<string>().HasMaxLength(20);

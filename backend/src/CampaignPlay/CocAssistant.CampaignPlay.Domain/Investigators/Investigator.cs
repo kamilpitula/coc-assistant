@@ -5,7 +5,7 @@ namespace CocAssistant.CampaignPlay.Domain.Investigators;
 /// Draft, Submitted, Changes Requested, and Approved (specs/campaign-play/spec.md, Investigator lifecycle).
 /// Each transition returns false and changes nothing when the current status does not allow it.
 /// </summary>
-public class Investigator
+public class Investigator : AggregateRoot
 {
     /// <summary>The longest Change Request comment a Keeper may send (specs/character-sheet/ux.md section 12).</summary>
     public const int ChangeRequestCommentMaxLength = 2000;
