@@ -15,8 +15,8 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
   - Submitted -> Approved (Character Approval by the Keeper; Approved means ready for play)
   - The Player edits the Character Sheet only in Draft or Changes Requested. Deleting the Investigator ("Start over") is available only in Draft. Editing after Approval is outside this feature.
 - **Investigator visibility:** A Player reads only their own Investigator. The Keeper reads every Investigator in Submitted, Changes Requested, or Approved; a Draft is shown to the Keeper only as "In progress" with the Player's name. Requests for an Investigator outside the caller's visibility, including any in another Campaign, return 404.
-- **Player and Keeper experience:** The Campaign page renders by role. A Player sees a read-only Campaign view with a "Your Investigator" card showing the status and one primary action (Create, Continue, View, or Edit with the Keeper's Change Request comment). The Keeper sees the Investigator list with statuses and a review screen that uses the shared read-only Character Sheet view with Approve and Request changes actions. UX specification: [specs/character-sheet/ux.md](../character-sheet/ux.md).
-- **Presence:** Each Campaign member is Connected or Not connected; the model allows adding further states later. Presence belongs to the member: they are Connected while any of their connections (tabs or devices) is open on any `/campaigns/{campaignId}` page, and Not connected immediately after the last one closes. Every member sees the full roster of their Campaign with each member's display name, role, and Presence, and no Investigator names. Only Campaign members can subscribe to a Campaign's Presence, and a Player who joins appears to connected members without a reload. UX specification: [ux.md](ux.md).
+- **Player and Keeper experience:** The Campaign page is the Campaign overview defined in [specs/campaign-overview/spec.md](../campaign-overview/spec.md); the rest of this bullet describes the Investigator interactions it hosts. The Campaign page renders by role. A Player sees a read-only Campaign view with a "Your Investigator" card showing the status and one primary action (Create, Continue, View, or Edit with the Keeper's Change Request comment). The Keeper sees the Investigator list with statuses and a review screen that uses the shared read-only Character Sheet view with Approve and Request changes actions. UX specification: [specs/character-sheet/ux.md](../character-sheet/ux.md).
+- **Presence:** Each Campaign member is Connected or Not connected; the model allows adding further states later. Presence belongs to the member: they are Connected while any of their connections (tabs or devices) is open on any `/campaigns/{campaignId}` page, and Not connected immediately after the last one closes. Every member sees the full roster of their Campaign with each member's display name, role, and Presence. The roster also carries each member's Investigator as projected for the caller in [specs/campaign-overview/spec.md](../campaign-overview/spec.md) (Roster with Investigators). Only Campaign members can subscribe to a Campaign's Presence, and a Player who joins appears to connected members without a reload. UX specification: [ux.md](ux.md).
 - **API Contracts:**
   - `POST /api/campaigns` - accepts `era` and `allowedCreationMethods` in addition to the existing fields; the response is the Keeper view below.
   - `GET /api/campaigns/{campaignId}` - Campaign members only; the response depends on the caller's role. The Keeper gets the Keeper view `{id, name, keeperAccountId, playerLimit, era, allowedCreationMethods, role: "Keeper"}`. A Player gets the reduced Player view `{id, name, era, allowedCreationMethods, role: "Player"}`, which carries no Keeper-only data. Non-members get 404.
@@ -39,7 +39,7 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
   - Player names come from the caller's Account display name through an Identity read port; Campaign Play does not store a copy.
 - **Campaign members API:** `GET /api/campaigns/{campaignId}/members` - Campaign members (Keeper or Player) only; non-members get 404. Returns the roster in the UX order ([ux.md](ux.md) section 5) as an array of `{memberId, displayName, role, isYou}`.
   - `memberId` is an opaque string, stable within the Campaign, that identifies a member in Presence events. It is not an Account id, so the roster exposes no Account ids to Players (consistent with the Player Campaign view). A Player's `memberId` is their `CampaignPlayer.Id`; the Keeper's is the `Campaign.Id`. The mapping from Account to `memberId` lives in one Application method.
-  - `role` is `Keeper` or `Player`. `isYou` is true only on the caller's own entry. The roster carries no Investigator data.
+  - `role` is `Keeper` or `Player`. `isYou` is true only on the caller's own entry. Each entry also has an `investigator` field, projected server-side for the caller as defined in [specs/campaign-overview/spec.md](../campaign-overview/spec.md) (Roster with Investigators).
 - **Live connection contract:** Architecture decision: [ADR 0009](../../docs/adr/0009-live-updates-through-campaign-hub-with-invalidation-topics.md). One authenticated, strongly typed SignalR hub (`Hub<ICampaignClient>`) at `/hubs/campaign`, in `CocAssistant.CampaignPlay.Controllers`. `AddSignalR()` always runs; Azure SignalR Service (Default mode) is added only when `Azure:SignalR:ConnectionString` is configured, so local development, integration tests, and E2E run SignalR in-process.
   - Authentication: the Entra bearer token is sent through the SignalR `accessTokenFactory` (the `access_token` query string on the hub path only). Connections without a valid token are rejected. Connections close when the token expires (`CloseOnAuthenticationExpiration`); the client reconnects with a token from MSAL `acquireTokenSilent` and subscribes again, which re-checks membership.
   - On connect, the hub resolves the caller's Account id once and adds the connection to `account:{accountId}`.
@@ -95,7 +95,7 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
 - A Player cannot read another Player's Investigator.
 - A Player cannot perform Keeper actions through a Player-authorized operation.
 - A revoked or replaced Campaign Invite cannot admit new Players.
-- A Campaign's roster and Presence are delivered only to members of that Campaign, and never include Account ids or Investigator data.
+- A Campaign's roster and Presence are delivered only to members of that Campaign, never include Account ids, and never include Investigator data beyond the caller's visibility ([specs/campaign-overview/spec.md](../campaign-overview/spec.md)).
 
 ### Scenarios
 ```gherkin
@@ -236,7 +236,7 @@ Scenario: Members see who is at the table
   Then the Player sees every member in the order Keeper, themselves, other Players
   And their own entry is marked "(you)" and the Keeper's entry is labelled "Keeper"
   And each member shows "Connected" or "Not connected"
-  And no Investigator name appears in the roster
+  And the roster shows only the Investigator data visible to the Player (specs/campaign-overview/spec.md)
 
 Scenario: A member connecting is shown without reloading
   # PR-UX-2

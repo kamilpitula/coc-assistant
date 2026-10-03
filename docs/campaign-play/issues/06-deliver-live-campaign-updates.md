@@ -9,6 +9,9 @@ Extend the live update foundation from PBI-CP-005 so that connected members rece
   - `wallEntries`: Public changes go to `campaign:{id}`, and Keeper-only changes go to `campaign:{id}:keeper`.
   - `investigators` goes to `campaign:{id}:keeper`, so the Keeper sees submissions and resubmissions.
   - `myInvestigator` goes to the owning Player's `account:{accountId}`, so the Player sees Approved and Changes Requested.
+- The Campaign overview's roster ([specs/campaign-overview/spec.md](../../../specs/campaign-overview/spec.md), Live updates):
+  - `investigators` and `myInvestigator` also invalidate the members query;
+  - an Investigator becoming Approved also publishes `members` to `campaign:{id}`.
 - Client mappings from these topics to their queries, the Campaign UI update handling, and focused unit, integration, and E2E coverage.
 - Reconnect behavior and Campaign scoping for the new topics.
 - Do not implement offline notifications, scheduling, dice automation, billing, in-play stat tracking, or unrelated real-time features.

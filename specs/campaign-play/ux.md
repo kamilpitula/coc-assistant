@@ -4,6 +4,8 @@ Selected direction: **Option A (stacked roster list)**, chosen 2026-10-03. Alter
 
 Behavior and rules: [spec.md](spec.md), Architecture, Presence. This document covers presentation only.
 
+Superseded in part by [specs/campaign-overview/ux.md](../campaign-overview/ux.md): placement (section 1), the Keeper empty hint (section 4), and PR-UX-11. "At the table" now also shows each member's Investigator as projected for the viewer. The indicator, states, order, and announcements here still apply.
+
 ## 1. Information architecture
 
 - Presence appears only on the Campaign page (`/campaigns/$campaignId`), as a section headed "At the table".
@@ -129,7 +131,7 @@ Stories cover: Live (mixed states), Connecting, Reconnecting, Reconnect failed, 
 - **PR-UX-8** When your connection drops, the notice appears and every row shows "Unknown". After reconnecting, the notice disappears and current states return.
 - **PR-UX-9** When reconnecting fails, the notice reads "Couldn't reconnect." with "Try again", which starts a new attempt.
 - **PR-UX-10** A Keeper with no Players sees only their own row and the hint about sharing the Invite. Players never see the hint.
-- **PR-UX-11** No Investigator name appears in the roster.
+- **PR-UX-11** (Superseded by [campaign-overview ux](../campaign-overview/ux.md) CO-UX-7 to CO-UX-9.) The roster shows only the Investigator data visible to the viewer.
 - **PR-UX-12** A non-member opening the Campaign URL sees "We couldn't find that Campaign" and no roster.
 
 ## 10. Accessibility acceptance criteria (WCAG 2.2 AA)

@@ -74,8 +74,12 @@ _Avoid_: Attachment, asset, file
 
 ## Play Record
 
+**Campaign Wall**:
+The chronological record of a Campaign's Wall Entries, shared by its Campaign Members within the limits of each entry's visibility.
+_Avoid_: Feed, log, timeline
+
 **Wall Entry**:
-A chronological record of an action, decision, discovery, consequence, or world event during a Play Session. It identifies its author and has a visibility of Public or Keeper-only.
+A chronological record of an action, decision, discovery, consequence, or world event in a Campaign, optionally tied to the Play Session in which it happened. It identifies its author and has a visibility of Public or Keeper-only.
 _Avoid_: Event, log message, note
 
 **Public Wall Entry**:
