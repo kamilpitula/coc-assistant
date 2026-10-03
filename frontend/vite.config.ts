@@ -37,6 +37,9 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       globals: true,
       setupFiles: ['./src/setupTests.ts'],
+      // The first test in each file also pays for cold jsdom and module transforms, which exceeds the 5s default
+      // when many component suites run in parallel workers; individual tests stay well under a second.
+      testTimeout: 20_000,
     },
   }
 })

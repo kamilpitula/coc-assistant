@@ -108,6 +108,10 @@ export interface CharacterSheetRules {
   luckDice: string
   eduImprovementCheckDice: string
   eduImprovementGainDice: string
+  /** EDU never improves past this value (section 3.2). */
+  eduMaximum: number
+  /** A raw Luck roll times this is the Luck value (section 5.5). */
+  luckMultiplier: number
 }
 
 export type ValidationSeverity = 'Error' | 'Warning'

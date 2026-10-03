@@ -119,6 +119,8 @@ const rulesSchema = z.object({
   luckDice: z.string(),
   eduImprovementCheckDice: z.string(),
   eduImprovementGainDice: z.string(),
+  eduMaximum: z.number().int(),
+  luckMultiplier: z.number().int(),
 })
 
 const myCharacterSheetSchema = z.object({

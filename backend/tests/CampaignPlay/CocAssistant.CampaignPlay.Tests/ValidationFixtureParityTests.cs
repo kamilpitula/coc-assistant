@@ -54,6 +54,8 @@ public class ValidationFixtureParityTests
         Assert.Equal(CreationDice.Luck.ToString(), rules.GetProperty("luckDice").GetString());
         Assert.Equal(CreationDice.EduImprovementCheck.ToString(), rules.GetProperty("eduImprovementCheckDice").GetString());
         Assert.Equal(CreationDice.EduImprovementGain.ToString(), rules.GetProperty("eduImprovementGainDice").GetString());
+        Assert.Equal(EduImprovement.MaximumEducation, rules.GetProperty("eduMaximum").GetInt32());
+        Assert.Equal(CreationDice.LuckMultiplier, rules.GetProperty("luckMultiplier").GetInt32());
     }
 
     private static List<ValidationError> Sorted(IEnumerable<ValidationError> errors) =>

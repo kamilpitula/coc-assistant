@@ -52,7 +52,7 @@ A Player builds the Character Sheet for their Investigator before the Keeper can
     | `EduImprovementGainNotAllowed` | `ageEffects.eduImprovementChecks[n].gain` | Error | section 3.2 | EDU check {n} has no gain because the roll isn't above EDU. | server |
 
     The `expected` and `actual` values are strings or null. Age-dependent checks are skipped while the age is missing or out of range, because the age error already blocks submission. `PointBuyTotalMismatch` is reported only once all eight values are present.
-  - **Rule parameters reach the frontend from the API.** Point Buy parameters, the age range, the characteristic floor, the dice expressions for Luck and EDU checks, and the Investigator's age bracket are returned by the character-sheet endpoints (`rules` and `ageEffects.bracket`), so the frontend validator never hard-codes a rule value.
+  - **Rule parameters reach the frontend from the API.** Point Buy parameters, the age range, the characteristic floor, the dice expressions for Luck and EDU checks, the EDU maximum of section 3.2, the Luck multiplier of section 5.5, and the Investigator's age bracket are returned by the character-sheet endpoints (`rules` and `ageEffects.bracket`), so the frontend validator never hard-codes a rule value.
   - **Parity fixtures.** `specs/character-sheet/validation-fixtures.json` lists Character Sheet inputs with their expected `ValidationError` items. The backend validator must produce exactly the expected items for every case; the frontend validator must do the same for every case with scope `shared`.
 - **User journey:** A hybrid flow.
   - A step wizard covers the mechanics in this order: Concept and Identity (including age), Creation Method and Characteristics, Age Effects, Occupation, Occupation Skills, Personal Interests. A progress indicator shows completed steps and the Player can return to any completed step.
@@ -73,7 +73,7 @@ A Player builds the Character Sheet for their Investigator before the Keeper can
       - `ageEffects`: `{bracket, deductions, eduImprovementChecks}`; `bracket` is `{minimumAge, maximumAge, physicalDeductionTotal, physicalDeductionCharacteristics, appearanceModifier, eduImprovementChecks, luckRolls}` or null while the age is missing or out of range; each EDU check is `{check, gain, eduBefore, eduAfter}`.
       - `derived`: `{luck, hitPoints, magicPoints, sanity: {current, maximum}, dodge, movementRate, damageBonus, build}`; a value is null until it can be calculated.
       - `rollRecords`: `[{purpose, dice, result, source}]`.
-    - `rules`: `{pointBuyBudget, pointBuyMinimum, pointBuyMaximum, pointBuyRecommendedMinimum, minimumAge, maximumAge, characteristicFloor, luckDice, eduImprovementCheckDice, eduImprovementGainDice}`.
+    - `rules`: `{pointBuyBudget, pointBuyMinimum, pointBuyMaximum, pointBuyRecommendedMinimum, minimumAge, maximumAge, characteristicFloor, luckDice, eduImprovementCheckDice, eduImprovementGainDice, eduMaximum, luckMultiplier}`.
     - `validationErrors`: `ValidationError` items `{code, field, message, expected, actual, severity}` with severity `Error` or `Warning`.
 - **Data Models:**
   - Backend: `backend/src/CampaignPlay/CocAssistant.CampaignPlay.Domain/CharacterSheets/` (Character Sheet value object, Roll Record, `IRollSource`, derived-value services, validator).

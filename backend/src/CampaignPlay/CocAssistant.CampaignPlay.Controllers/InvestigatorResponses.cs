@@ -87,6 +87,8 @@ public record RulesResponse(
     int CharacteristicFloor,
     string LuckDice,
     string EduImprovementCheckDice,
-    string EduImprovementGainDice);
+    string EduImprovementGainDice,
+    int EduMaximum,
+    int LuckMultiplier);
 
 public record ValidationErrorResponse(string Code, string Field, string Message, string? Expected, string? Actual, string Severity);

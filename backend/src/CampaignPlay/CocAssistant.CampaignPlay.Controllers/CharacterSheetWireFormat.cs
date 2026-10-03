@@ -13,7 +13,9 @@ public static class CharacterSheetWireFormat
         CharacteristicFloor.Value,
         CreationDice.Luck.ToString(),
         CreationDice.EduImprovementCheck.ToString(),
-        CreationDice.EduImprovementGain.ToString());
+        CreationDice.EduImprovementGain.ToString(),
+        EduImprovement.MaximumEducation,
+        CreationDice.LuckMultiplier);
 
     public static CharacterSheetInputs ToInputs(CharacterSheetRequest request) =>
         new(

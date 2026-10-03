@@ -268,6 +268,8 @@ In PBI-CP-003:
 - The summary rail shows HP, MP, SAN, Luck, MOV, Build, Damage Bonus, Dodge, and the problems line. Its values are the server's values from the latest save. The rail's live region has no budget to announce yet.
 - The Summary section of `sheet` shows identity, each characteristic's assigned value, its value after age effects with Hard and Extreme values, and the derived values from the rail. Its "Change" links go to Identity, Characteristics, and Age effects.
 - "Worth checking" lists the Point buy warnings only.
+- Before a valid age is saved, the Age effects step shows "Your age effects appear once a valid age is saved on the Identity step." instead of its inputs.
+- The Player's read-only View (Submitted or Approved) shows the Investigator name as `h1`, the status badge, the read-only `character-sheet-view`, and a "Back to Campaign" link.
 
 ## 10. UX acceptance criteria
 

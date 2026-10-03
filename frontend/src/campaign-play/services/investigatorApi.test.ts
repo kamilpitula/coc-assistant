@@ -78,6 +78,8 @@ const rules = {
   luckDice: '3D6',
   eduImprovementCheckDice: 'D100',
   eduImprovementGainDice: '1D10',
+  eduMaximum: 99,
+  luckMultiplier: 5,
 }
 
 const nameError = {

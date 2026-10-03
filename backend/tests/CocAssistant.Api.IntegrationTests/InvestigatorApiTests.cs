@@ -163,6 +163,8 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         Assert.Equal("PlayerEntered", sheet.GetProperty("rollRecords")[0].GetProperty("source").GetString());
         Assert.Equal(460, body.GetProperty("rules").GetProperty("pointBuyBudget").GetInt32());
         Assert.Equal("3D6", body.GetProperty("rules").GetProperty("luckDice").GetString());
+        Assert.Equal(99, body.GetProperty("rules").GetProperty("eduMaximum").GetInt32());
+        Assert.Equal(5, body.GetProperty("rules").GetProperty("luckMultiplier").GetInt32());
 
         var reread = await JsonAsync(await SendAsync(HttpMethod.Get, $"{Investigators}/mine/character-sheet", Player));
         Assert.Equal("Harvey Walters", reread.GetProperty("characterSheet").GetProperty("identity").GetProperty("name").GetString());
