@@ -26,3 +26,7 @@ global using static CocAssistant.Api.IntegrationTests.CampaignPlayApiRequests;
 global using CocAssistant.CampaignPlay.Domain.CharacterSheets;
 global using CocAssistant.CampaignPlay.Domain.Investigators;
 global using System.Collections.Concurrent;
+global using System.Threading.Channels;
+global using Microsoft.AspNetCore.Http.Connections;
+global using Microsoft.AspNetCore.SignalR;
+global using Microsoft.AspNetCore.SignalR.Client;

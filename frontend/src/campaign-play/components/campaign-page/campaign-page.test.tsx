@@ -19,6 +19,9 @@ vi.mock('@/campaign-play/components/rules-options/rules-options', () => ({
 vi.mock('@/campaign-play/components/investigator-list/investigator-list', () => ({
   InvestigatorList: () => <h2>Investigators</h2>,
 }))
+vi.mock('@/campaign-play/components/campaign-presence/campaign-presence', () => ({
+  CampaignPresence: () => <h2>At the table</h2>,
+}))
 vi.mock('@/campaign-play/components/your-investigator-card/your-investigator-card', () => ({
   YourInvestigatorCard: () => <h2>Your Investigator</h2>,
 }))
@@ -46,12 +49,13 @@ describe('CampaignPage', () => {
     routerState.location.state = {}
   })
 
-  it('shows the Keeper the Campaign Invite, then Investigators, then Rules options, and no Player card', () => {
+  it('shows the Keeper who is at the table first, then the Campaign Invite, Investigators, Rules options, and no Player card', () => {
     mockUseCampaign.mockReturnValue(query(keeperCampaign))
 
     render(<CampaignPage campaignId="c1" />)
 
     expect(screen.getAllByRole('heading').map((heading) => heading.textContent)).toEqual([
+      'At the table',
       'Campaign Invite',
       'Investigators',
       'Rules options',
@@ -71,6 +75,18 @@ describe('CampaignPage', () => {
     expect(screen.queryByRole('heading', { name: 'Rules options' })).not.toBeInTheDocument()
   })
 
+  it('shows a Player who is at the table below the Campaign name and above Your Investigator (ux.md section 1)', () => {
+    mockUseCampaign.mockReturnValue(query(playerCampaign))
+
+    render(<CampaignPage campaignId="c1" />)
+
+    expect(screen.getAllByRole('heading').map((heading) => heading.textContent)).toEqual([
+      'The Haunting',
+      'At the table',
+      'Your Investigator',
+    ])
+  })
+
   it('announces the status message passed by the page the Player came from', () => {
     routerState.location.state = { statusMessage: 'Draft saved.' }
     mockUseCampaign.mockReturnValue(query(playerCampaign))
@@ -80,13 +96,14 @@ describe('CampaignPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Draft saved.')
   })
 
-  it('UX-21: tells a non-member the Campaign could not be found, with a link back to Campaigns', () => {
+  it('UX-21, PR-UX-12: tells a non-member the Campaign could not be found, with a link back to Campaigns and no roster', () => {
     mockUseCampaign.mockReturnValue(query(null))
 
     render(<CampaignPage campaignId="c1" />)
 
     expect(screen.getByRole('heading', { level: 1, name: "We couldn't find that Campaign" })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Back to Campaigns' })).toHaveAttribute('href', '/campaigns')
+    expect(screen.queryByRole('heading', { name: 'At the table' })).not.toBeInTheDocument()
   })
 
   it('shows a busy skeleton while the Campaign loads', () => {

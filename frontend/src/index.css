@@ -18,6 +18,8 @@
   --destructive: oklch(0.505 0.213 27.518);
   /* Dark amber, at least 4.5:1 against --background (WCAG 2.2 AA text); always paired with text or an icon. */
   --warning: oklch(0.47 0.11 70);
+  /* Dark green, at least 3:1 against --background, the card surface (WCAG 2.2 AA icons); always paired with text. */
+  --success: oklch(0.52 0.13 150);
 }
 
 @theme inline {
@@ -36,6 +38,7 @@
   --color-ring: var(--ring);
   --color-destructive: var(--destructive);
   --color-warning: var(--warning);
+  --color-success: var(--success);
 }
 
 body {

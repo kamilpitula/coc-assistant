@@ -58,6 +58,15 @@ describe('index.css colour tokens', () => {
     expect(contrastRatio(readToken('warning'), readToken('background'))).toBeGreaterThanOrEqual(4.5)
   })
 
+  it('maps --success into the Tailwind theme so text-success resolves', () => {
+    expect(indexCss).toMatch(/--color-success:\s*var\(--success\)/)
+  })
+
+  // The Card surface is --background; there is no --card token (specs/campaign-play/ux.md section 3, PR-A11Y-3).
+  it('gives --success at least 3:1 contrast against the card surface (WCAG 2.2 AA icons)', () => {
+    expect(contrastRatio(readToken('success'), readToken('background'))).toBeGreaterThanOrEqual(3)
+  })
+
   it('computes the known 21:1 contrast of black on white', () => {
     const white = { lightness: 1, chroma: 0, hue: 0 }
     const black = { lightness: 0, chroma: 0, hue: 0 }

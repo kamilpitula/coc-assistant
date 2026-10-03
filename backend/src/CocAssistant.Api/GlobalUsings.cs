@@ -3,3 +3,5 @@ global using CocAssistant.Identity.Infrastructure;
 global using CocAssistant.CampaignPlay.Controllers;
 global using CocAssistant.CampaignPlay.Infrastructure;
 global using Microsoft.Identity.Web;
+global using CocAssistant.Api;
+global using Microsoft.AspNetCore.Authentication.JwtBearer;

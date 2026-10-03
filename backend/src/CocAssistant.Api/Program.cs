@@ -10,6 +10,8 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddIdentityInfrastructure(builder.Configuration);
 builder.Services.AddCampaignPlayInfrastructure(builder.Configuration);
+builder.Services.AddCampaignPlayLiveUpdates();
+builder.Services.AddLiveTransport(builder.Configuration);
 
 builder.Services
     .AddAuthentication(Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)
@@ -29,6 +31,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapCampaignHub();
 
 app.Run();
 

@@ -10,6 +10,7 @@ import {
   type CreationMethod,
 } from '@/campaign-play/types/Campaign'
 import type { CampaignInvite } from '@/campaign-play/types/CampaignInvite'
+import type { CampaignMember } from '@/campaign-play/types/CampaignMember'
 import type { JoinOutcome, JoinResult } from '@/campaign-play/types/JoinResult'
 
 export const eraSchema = z.enum(ERAS)
@@ -36,6 +37,15 @@ const playerCampaignResponseSchema = z.object({
 
 const campaignViewSchema = z.discriminatedUnion('role', [campaignResponseSchema, playerCampaignResponseSchema])
 
+const campaignMembersResponseSchema = z.array(
+  z.object({
+    memberId: z.string(),
+    displayName: z.string(),
+    role: z.enum(['Keeper', 'Player']),
+    isYou: z.boolean(),
+  }),
+)
+
 const inviteResponseSchema = z.object({
   campaignId: z.string(),
   token: z.string(),
@@ -51,6 +61,7 @@ export const campaignQueryKeys = {
   all: ['campaigns'] as const,
   detail: (campaignId: string) => ['campaigns', campaignId] as const,
   invite: (campaignId: string) => ['campaigns', campaignId, 'invite'] as const,
+  members: (campaignId: string) => ['campaigns', campaignId, 'members'] as const,
   investigators: (campaignId: string) => ['campaigns', campaignId, 'investigators'] as const,
   investigator: (campaignId: string, investigatorId: string) =>
     ['campaigns', campaignId, 'investigators', investigatorId] as const,
@@ -100,6 +111,26 @@ export async function getCampaign(accessToken: string, campaignId: string): Prom
   }
 
   return campaignViewSchema.parse(await response.json())
+}
+
+/**
+ * Calls GET /api/campaigns/{id}/members: the roster in display order (specs/campaign-play/spec.md, Campaign members
+ * API), or null for anyone who is not a Campaign Member (404).
+ */
+export async function getCampaignMembers(accessToken: string, campaignId: string): Promise<CampaignMember[] | null> {
+  const response = await fetch(`/api/campaigns/${campaignId}/members`, {
+    headers: authHeaders(accessToken),
+  })
+
+  if (response.status === 404) {
+    return null
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to load the Campaign members (${response.status})`)
+  }
+
+  return campaignMembersResponseSchema.parse(await response.json())
 }
 
 /** Calls PUT /api/campaigns/{id}/allowed-creation-methods (Keeper only) and returns the updated Campaign. */
