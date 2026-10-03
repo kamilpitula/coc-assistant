@@ -60,14 +60,29 @@ and attach the SPA app registration. Then:
 4. Under Other identity providers, select Google and Microsoft account.
 5. Select Save.
 
-## 6. Record the values
+## 7. Collect a display name and put it in the API token
+The API takes the Account's display name and email from the **access token** (see
+`EntraIdentity` in `backend/src/Identity/CocAssistant.Identity.Application/`). If the sign-up
+user flow does not collect a display name, Entra External ID sets every new user's
+`displayName` to `unknown`. The API ignores that placeholder, so these users have no name.
+
+1. External Identities > User flows > select the flow > User attributes. Select
+   **Display Name** (and optionally Given Name and Surname), then Save. New sign-ups are now
+   asked for a name.
+2. App registrations > `CocAssistant.Api` > Token configuration > Add optional claim >
+   token type **Access**. Add `email` (and `given_name`, `family_name` if you collected them).
+   Accept the prompt to add the Microsoft Graph `email` / `profile` permissions.
+3. Users created before step 1 keep `unknown`. Users > select the user > Edit properties, and
+   set **Display name**. The Account picks up the new name the next time that person signs in.
+
+## 8. Record the values
 - Tenant subdomain: `<tenant>.ciamlogin.com`
 - Tenant ID
 - SPA client ID
 - API client ID / App ID URI + scope name
 - Redirect URIs
 
-## 7. Paste the values into local config
+## 9. Paste the values into local config
 - Frontend: copy [`frontend/.env.example`](../frontend/.env.example) to `frontend/.env.local`
   (gitignored) and fill in `VITE_ENTRA_CLIENT_ID`, `VITE_ENTRA_AUTHORITY`,
   `VITE_ENTRA_REDIRECT_URI`, `VITE_API_SCOPE`.

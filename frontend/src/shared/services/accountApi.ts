@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import type { Account } from '@/shared/types/Account'
 
-const accountResponseSchema = z.object({
+export const accountResponseSchema = z.object({
   id: z.string(),
   displayName: z.string(),
   email: z.string(),

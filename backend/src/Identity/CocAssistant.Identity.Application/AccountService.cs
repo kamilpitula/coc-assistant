@@ -12,26 +12,43 @@ public class AccountService
         _timeProvider = timeProvider;
     }
 
-    public async Task<Account> ProvisionAccountAsync(
-        string entraObjectId,
-        string displayName,
-        string email,
-        CancellationToken cancellationToken)
+    /// <summary>Creates the Account on first sign-in, otherwise refreshes its snapshot (GET /api/account/me).</summary>
+    public async Task<Account> ProvisionAccountAsync(EntraIdentity identity, CancellationToken cancellationToken)
     {
         var now = _timeProvider.GetUtcNow();
-        var account = await _accounts.FindByEntraObjectIdAsync(entraObjectId, cancellationToken);
+        var account = await _accounts.FindByEntraObjectIdAsync(identity.EntraObjectId, cancellationToken);
 
         if (account is null)
         {
-            account = new Account(entraObjectId, displayName, email, now);
-            _accounts.Add(account);
+            account = Create(identity, now);
         }
         else
         {
-            account.Touch(displayName, email, now);
+            account.Touch(identity.DisplayName, identity.Email, now);
         }
 
         await _accounts.SaveChangesAsync(cancellationToken);
+        return account;
+    }
+
+    /// <summary>Returns the existing Account unchanged, creating it only on first contact.</summary>
+    public async Task<Account> FindOrCreateAccountAsync(EntraIdentity identity, CancellationToken cancellationToken)
+    {
+        var account = await _accounts.FindByEntraObjectIdAsync(identity.EntraObjectId, cancellationToken);
+        if (account is not null)
+        {
+            return account;
+        }
+
+        account = Create(identity, _timeProvider.GetUtcNow());
+        await _accounts.SaveChangesAsync(cancellationToken);
+        return account;
+    }
+
+    private Account Create(EntraIdentity identity, DateTimeOffset now)
+    {
+        var account = new Account(identity.EntraObjectId, identity.DisplayName, identity.Email, now);
+        _accounts.Add(account);
         return account;
     }
 }

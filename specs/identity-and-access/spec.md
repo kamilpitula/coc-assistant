@@ -9,14 +9,14 @@ Every Keeper and Player needs a single authenticated Account before they can cre
 ### Architecture
 
 - **API contracts:**
-  - `GET /api/account/me` (`[Authorize]`) — [backend/src/Identity/CocAssistant.Identity.Controllers/AccountController.cs](../../backend/src/Identity/CocAssistant.Identity.Controllers/AccountController.cs). Upserts the caller's Account from JWT claims (Entra object ID, display name, email) and returns it. This is the only endpoint requiring authentication; it exists to JIT-provision the Account and prove the auth pipeline end-to-end. All other endpoints remain unauthenticated.
+  - `GET /api/account/me` (`[Authorize]`) — [backend/src/Identity/CocAssistant.Identity.Controllers/AccountController.cs](../../backend/src/Identity/CocAssistant.Identity.Controllers/AccountController.cs). Upserts the caller's Account from JWT claims (Entra object ID, display name, email) and returns it. Claims are read by [EntraIdentity](../../backend/src/Identity/CocAssistant.Identity.Application/EntraIdentity.cs): the display name is `name`, unless it is empty or Entra External ID's `unknown` placeholder, in which case it falls back to `given_name` + `family_name`; the email is `email`, then `emails`. An empty display name or email never replaces a stored one. Campaign Play endpoints and the Campaign hub only find or create the caller's Account and never refresh its snapshot. This is the only endpoint requiring authentication; it exists to JIT-provision the Account and prove the auth pipeline end-to-end. All other endpoints remain unauthenticated.
 - **Data models:** [backend/src/Identity/CocAssistant.Identity.Domain/Account.cs](../../backend/src/Identity/CocAssistant.Identity.Domain/Account.cs) (`Id` GUID PK, `EntraObjectId` unique, `DisplayName`, `Email`, `CreatedAt`, `LastSignedInAt`), persisted via a dedicated `IdentityDbContext` in [backend/src/Identity/CocAssistant.Identity.Infrastructure/](../../backend/src/Identity/CocAssistant.Identity.Infrastructure/), scoped to this bounded context and kept separate from a future Campaign Play DbContext even though both target the same physical Azure SQL Database. See [docs/adr/0001-persist-account-entity.md](../../docs/adr/0001-persist-account-entity.md).
 
   **[DEPRECATED 2026-09-20]**
   ~~None introduced. An Account is the Entra-issued identity itself (tenant ID + object ID + claims); this feature does not persist a separate Account record.~~
   Replaced by: the Account data model above. Reason: Campaign Play and future features need a stable, queryable Account identifier independent of any single Campaign (e.g. searching/inviting by email, and a future cross-Campaign "my Campaigns" view), which a pure token-passthrough design cannot support.
 
-- **Frontend:** `@azure/msal-browser` + `@azure/msal-react`, authorization-code redirect flow, token cache in `sessionStorage`. Wired into [frontend/src/main.tsx](../../frontend/src/main.tsx) (`MsalProvider`), [frontend/src/shared/services/msalConfig.ts](../../frontend/src/shared/services/msalConfig.ts), [frontend/src/shared/hooks/useAccountSync.ts](../../frontend/src/shared/hooks/useAccountSync.ts), and [frontend/src/shared/components/Header.tsx](../../frontend/src/shared/components/Header.tsx) (Sign In, Sign Up, Sign Out actions). Immediately after the redirect completes, the Header calls `GET /api/account/me` to trigger provisioning.
+- **Frontend:** `@azure/msal-browser` + `@azure/msal-react`, authorization-code redirect flow, token cache in `sessionStorage`. Wired into [frontend/src/main.tsx](../../frontend/src/main.tsx) (`MsalProvider`), [frontend/src/shared/services/msalConfig.ts](../../frontend/src/shared/services/msalConfig.ts), [frontend/src/shared/hooks/useAccountSync.ts](../../frontend/src/shared/hooks/useAccountSync.ts), and [frontend/src/shared/components/header/header.tsx](../../frontend/src/shared/components/header/header.tsx) (Sign In, Sign Up, Sign Out actions). Immediately after the redirect completes, the Header calls `GET /api/account/me` to trigger provisioning. The last Account it returned is kept in `sessionStorage` so the Header can show the name straight away on the next load in the same tab. Header presentation and states: [ux.md](ux.md).
 - **Backend:** `Microsoft.Identity.Web` JWT bearer authentication registered in [backend/src/CocAssistant.Api/Program.cs](../../backend/src/CocAssistant.Api/Program.cs), configured from tenant/client placeholders in `appsettings`/environment variables. EF Core with the SQL Server provider persists the Account table; local development and integration tests use SQL Server LocalDB, unit tests use the EF Core SQLite in-memory provider. Setup runbook: [docs/entra-external-id-setup.md](../../docs/entra-external-id-setup.md).
 - **Dependencies:**
   - Depends on: a Microsoft Entra External ID (CIAM) tenant and app registration, and a Google Cloud OAuth client federated into it as an identity provider. Both are provisioned manually (outside this repo's Terraform, per current scope) and consumed here only as configuration placeholders.
@@ -33,9 +33,14 @@ Every Keeper and Player needs a single authenticated Account before they can cre
 
 - [ ] Clicking Sign In or Sign Up on the homepage starts an MSAL redirect to the Entra External ID authorize endpoint.
 - [ ] After a successful redirect return, the Header displays the Account's name and a Sign Out action instead of Sign In/Sign Up.
+- [ ] While MSAL is starting up, the Header shows neither the signed-out nor the signed-in actions; reloading a signed-in page in the same tab never shows Sign In or Sign Up ([ux.md](ux.md), section 2).
 - [ ] Clicking Sign Out clears the session cache and reverts the Header to Sign In/Sign Up.
 - [ ] The API has JWT bearer authentication configured against the Entra External ID tenant/client configuration.
-- [ ] The first authenticated call to `GET /api/account/me` for a given Entra object ID creates an Account row; subsequent calls update its `DisplayName` and `LastSignedInAt` rather than creating a duplicate.
+- [ ] The first authenticated call to `GET /api/account/me` for a given Entra object ID creates an Account row; subsequent calls update its `LastSignedInAt`, and its `DisplayName` and `Email` when the token carries non-empty values, rather than creating a duplicate.
+
+  **[DEPRECATED 2026-10-03]**
+  ~~subsequent calls update its `DisplayName` and `LastSignedInAt` rather than creating a duplicate.~~
+  Replaced by: the item above. Reason: Entra External ID issues `name = "unknown"` when the user flow does not collect a display name, and every Campaign Play request was overwriting the stored name with whatever the token carried.
 - [ ] `GET /api/account/me` rejects a request without a valid Entra-issued bearer token.
 
 ### Regression Guardrails
@@ -45,6 +50,8 @@ Every Keeper and Player needs a single authenticated Account before they can cre
 - The Header never shows both the signed-out (Sign In/Sign Up) and signed-in (name/Sign Out) states at the same time.
 - Sign Out fully clears the cached account from `sessionStorage`; a later Sign In cannot silently reuse a stale session.
 - An `EntraObjectId` never maps to more than one Account row.
+- An empty display name or email, or Entra's `unknown` display name placeholder, never replaces a stored Account value.
+- Only `GET /api/account/me` refreshes an Account's snapshot; other authenticated requests never change it.
 - No endpoint other than `GET /api/account/me` requires authentication as part of this feature.
 
 ### Scenarios
@@ -82,6 +89,17 @@ Scenario: Later sign-in updates the existing Account
   When the Header calls GET /api/account/me with a valid bearer token for that Entra object ID and a changed display name
   Then the existing Account row's display name and last-signed-in timestamp are updated
   And no second Account row is created for that Entra object ID
+
+Scenario: Reloading a signed-in page keeps the Header signed in
+  Given an Account is signed in
+  When the Account reloads the page in the same tab
+  Then the Header never shows Sign In or Sign Up
+  And the Header shows the Account's name before GET /api/account/me responds
+
+Scenario: Entra's placeholder display name does not replace a known name
+  Given an Account exists with a known display name
+  When the Header calls GET /api/account/me with a bearer token whose name claim is "unknown"
+  Then the Account keeps its known display name
 
 Scenario: Unauthenticated request to account/me is rejected
   Given a request to GET /api/account/me carries no bearer token
