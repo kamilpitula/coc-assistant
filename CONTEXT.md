@@ -97,7 +97,7 @@ The Keeper's decision that an Investigator's submitted Character Sheet is accept
 _Avoid_: Activation, verification
 
 **Creation Method**:
-The official procedure used to generate an Investigator's characteristics: Standard Rolling, Point Buy, or Quick Fire, as defined in the [characteristics rules](docs/game-rules/coc7_character_creation_and_development_rules.md#2-characteristics). The Keeper decides which Creation Methods a Campaign allows.
+The official procedure used to generate an Investigator's characteristics: Standard Rolling, Point Buy, or Quick Fire, as defined in the [characteristics rules](docs/game-rules/coc7_character_creation_and_development_rules.md#2-characteristics). The Keeper decides which Creation Methods a Campaign allows. User-facing copy writes them in sentence case ("Point buy").
 _Avoid_: Creation mode, generation type
 
 **Occupation**:
@@ -107,6 +107,10 @@ _Avoid_: Job, class, profession
 **Roll Record**:
 A recorded dice result used to create or develop an Investigator, naming what it was rolled for, the dice, the result, and who produced it.
 _Avoid_: Dice log, roll history
+
+**Validation Error**:
+A problem the [creation validation rules](docs/game-rules/coc7_character_creation_and_development_rules.md#15-character-creation-validation-rules) find on a Character Sheet, with a code, the field it concerns, a message, and a severity. An Error blocks submission; a Warning never does and is shown to both the Player and the Keeper.
+_Avoid_: Rule violation, lint, issue
 
 **Draft**:
 The status of an Investigator whose Character Sheet the Player is still building. A Draft is private to its Player.

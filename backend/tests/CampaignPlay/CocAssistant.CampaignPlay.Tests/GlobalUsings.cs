@@ -7,3 +7,5 @@ global using Microsoft.EntityFrameworkCore;
 global using System.Text;
 global using CocAssistant.CampaignPlay.Infrastructure.RuleData;
 global using System.Text.Json;
+global using CocAssistant.CampaignPlay.Domain.CharacterSheets;
+global using CocAssistant.CampaignPlay.Domain.Investigators;

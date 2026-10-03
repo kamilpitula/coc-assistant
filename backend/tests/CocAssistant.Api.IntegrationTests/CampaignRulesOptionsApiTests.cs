@@ -12,52 +12,9 @@ public class CampaignRulesOptionsApiTests : IClassFixture<IdentityApiFactory>, I
 
     public CampaignRulesOptionsApiTests(IdentityApiFactory factory) => _factory = factory;
 
-    public async Task InitializeAsync()
-    {
-        await _factory.EnsureDatabaseCreatedAsync();
-
-        using var scope = _factory.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<CampaignPlayDbContext>();
-        var connection = dbContext.Database.GetDbConnection();
-        await connection.OpenAsync();
-        var respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
-        {
-            DbAdapter = DbAdapter.SqlServer,
-            TablesToIgnore = ["__EFMigrationsHistory", "__CampaignPlayMigrationsHistory"],
-        });
-        await respawner.ResetAsync(connection);
-    }
+    public Task InitializeAsync() => ResetDatabaseAsync(_factory);
 
     public Task DisposeAsync() => Task.CompletedTask;
-
-    private static HttpRequestMessage BuildRequest(HttpMethod method, string uri, string oid, object? body = null) =>
-        new(method, uri)
-        {
-            Headers =
-            {
-                { "X-Test-Oid", oid },
-                { "X-Test-Name", $"Account {oid}" },
-                { "X-Test-Email", $"{oid}@example.com" },
-            },
-            Content = body is null ? null : JsonContent.Create(body),
-        };
-
-    private static async Task<CampaignResponse> CreateCampaignAsync(HttpClient client, string keeperOid, object? body = null)
-    {
-        var response = await client.SendAsync(
-            BuildRequest(HttpMethod.Post, "/api/campaigns", keeperOid, body ?? new { name = "The Haunting" }));
-        response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadFromJsonAsync<CampaignResponse>())!;
-    }
-
-    private static async Task JoinAsPlayerAsync(HttpClient client, Guid campaignId, string keeperOid, string playerOid)
-    {
-        var inviteResponse = await client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/invite", keeperOid));
-        inviteResponse.EnsureSuccessStatusCode();
-        var invite = await inviteResponse.Content.ReadFromJsonAsync<InviteResponse>();
-        var joinResponse = await client.SendAsync(BuildRequest(HttpMethod.Post, "/api/campaigns/join", playerOid, new { token = invite!.Token }));
-        joinResponse.EnsureSuccessStatusCode();
-    }
 
     private static Task<HttpResponseMessage> ChangeAllowedCreationMethodsAsync(
         HttpClient client, Guid campaignId, string oid, string[] allowedCreationMethods) =>

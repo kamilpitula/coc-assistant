@@ -151,16 +151,14 @@ Normal investigator age range: **15–90**. Values outside that range require Ke
 
 Use the applicable bracket only; creation does **not** cumulatively apply all previous age brackets.
 
-| Age | Physical modifiers | APP | EDU improvement checks | Luck |
-|---|---|---:|---:|---|
-| 15–19 | subtract total 5 points from STR and/or SIZ | unchanged | none | roll twice, keep higher |
-| 20–39 | none | unchanged | 1 | normal |
-| 40–49 | subtract total 5 from STR/CON/DEX | -5 | 2 | normal |
-| 50–59 | subtract total 10 from STR/CON/DEX | -10 | 3 | normal |
-| 60–69 | subtract total 20 from STR/CON/DEX | -15 | 4 | normal |
-| 70–79 | subtract total 40 from STR/CON/DEX | -20 | 4 | normal |
-| 80–89 | subtract total 80 from STR/CON/DEX | -25 | 4 | normal |
-| 90 | Keeper adjudication / use the applicable high-age rules | Keeper decision | Keeper decision | normal unless modified |
+The age bracket table (physical deduction total and the characteristics it is
+taken from, APP modifier, number of EDU improvement checks, and number of Luck
+rolls per bracket) is maintained as data in
+[catalogs/age-rules.json](catalogs/age-rules.json) (an `AgeRules` catalog with
+provenance per [section 20](#20-canonical-data-sources-the-implementation-should-maintain)).
+That catalog is the single source for these values; do not copy them here.
+When a bracket rolls Luck twice, the higher roll is kept ([section 5.5](#55-luck)).
+Ages that require Keeper adjudication are marked in the catalog.
 
 For the physical deduction, the player may distribute the total deduction across the named characteristics; e.g. a 40-year-old can subtract 3 STR and 2 DEX rather than taking all 5 from one characteristic.
 
@@ -314,19 +312,12 @@ Calculate:
 strengthSize = STR + SIZ
 ```
 
-Then use this table:
-
-| STR + SIZ | Damage Bonus | Build |
-|---:|---:|---:|
-| 2–64 | -2 | -2 |
-| 65–84 | -1 | -1 |
-| 85–124 | 0 | 0 |
-| 125–164 | +1D4 | 1 |
-| 165–204 | +1D6 | 2 |
-| 205–284 | +2D6 | 3 |
-| 285–364 | +3D6 | 4 |
-| 365–444 | +4D6 | 5 |
-| 445–524 | +5D6 | 6 |
+Then look up Damage Bonus and Build for `strengthSize` in the table maintained
+as data in [catalogs/characteristics-rules.json](catalogs/characteristics-rules.json)
+(`damageBonusAndBuild`, a `CharacteristicsRules` catalog with provenance per
+[section 20](#20-canonical-data-sources-the-implementation-should-maintain)).
+That catalog is the single source for the table bands up to 524; do not copy
+them here.
 
 Above 524:
 

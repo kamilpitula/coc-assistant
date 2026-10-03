@@ -16,3 +16,6 @@ Character Sheets need verified rule data at runtime, such as the Occupation cata
 - Changing a catalog needs a rebuild and redeploy. CI path filters therefore treat `docs/game-rules/**` as a backend change.
 - Adding an Era means adding its catalogs, an `Era` value, and one `IEraRuleData` registration. An integration test checks that every supported Era has registered rule data.
 - Further catalogs, such as skills and wealth, should be added to the same port and loaded the same way once code needs them.
+
+## Amendment (2026-10-02, PBI-CP-003)
+The age rules (`catalogs/age-rules.json`, section 3.1 data) and the Damage Bonus and Build table (`catalogs/characteristics-rules.json`, section 5.8 data) apply to every Era, so they are not part of `IEraRuleData`. They are embedded the same way and exposed through a second port, `ICreationRuleData`, implemented by `EmbeddedResourceCreationRuleData`. Each file is parsed once, on first use, and checked against its catalog name and schema version. Era-specific catalogs stay on `IEraRuleData`.

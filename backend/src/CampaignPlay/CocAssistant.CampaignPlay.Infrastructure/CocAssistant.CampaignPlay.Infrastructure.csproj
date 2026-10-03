@@ -19,11 +19,19 @@
     <EmbeddedResource Include="..\..\..\..\docs\game-rules\catalogs\occupations.1920s.json"
                       LogicalName="GameRules.Catalogs.occupations.1920s.json"
                       Link="RuleData\Catalogs\occupations.1920s.json" />
+    <EmbeddedResource Include="..\..\..\..\docs\game-rules\catalogs\age-rules.json"
+                      LogicalName="GameRules.Catalogs.age-rules.json"
+                      Link="RuleData\Catalogs\age-rules.json" />
+    <EmbeddedResource Include="..\..\..\..\docs\game-rules\catalogs\characteristics-rules.json"
+                      LogicalName="GameRules.Catalogs.characteristics-rules.json"
+                      Link="RuleData\Catalogs\characteristics-rules.json" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CocAssistant.CampaignPlay.Domain\CocAssistant.CampaignPlay.Domain.csproj" />
     <ProjectReference Include="..\CocAssistant.CampaignPlay.Application\CocAssistant.CampaignPlay.Application.csproj" />
+    <!-- Adapter for Campaign Play's IAccountDisplayNames port (ADR 0008). -->
+    <ProjectReference Include="..\..\Identity\CocAssistant.Identity.Application\CocAssistant.Identity.Application.csproj" />
   </ItemGroup>
 
 </Project>

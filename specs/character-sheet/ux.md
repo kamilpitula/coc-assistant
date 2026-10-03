@@ -52,7 +52,7 @@ The existing `InviteManagement` stays as is. Two sections are added below it, ea
 **Investigators**
 - A list (Table on 640px and wider, stacked Cards below that) with columns Player, Investigator, Status, and an Action column.
 - Sort order: Submitted first, then Changes Requested, then Approved, then In progress. Within each status, oldest update first.
-- Submitted rows have a "Review" link. Changes Requested and Approved rows have "View". In progress rows show the Player name, "Not named yet" (or the name, once entered), and no action.
+- Submitted rows have a "Review" link. Changes Requested and Approved rows have "View". In progress rows show the Player name, "Not shown until submitted" in the Investigator column, and no action. A Draft stays private to its Player ([campaign-play spec](../campaign-play/spec.md), Investigator visibility), so its Investigator name is never shown to the Keeper.
 - Empty state: "No Investigators yet. Players create theirs after joining."
 
 **Rules options**
@@ -66,14 +66,23 @@ The existing `InviteManagement` stays as is. Two sections are added below it, ea
 
 | State | Content | Primary action |
 |---|---|---|
+| No Investigator, and none of the Campaign's allowed creation methods is available yet | An Info icon (decorative) followed by "You can't create your Investigator yet. This Campaign allows {allowed methods}, which aren't available yet. Ask your Keeper to also allow {available methods}." With a single allowed method the verb is singular ("which isn't available yet"). Method lists use the existing creation-method labels, for example "Standard rolling, Quick fire" and "Point buy". | None. No disabled button is shown; the text explains why. |
 | No Investigator | "Create the Investigator you'll play in this Campaign." | "Create Investigator" (creates the Draft, then opens `identity`) |
 | Draft | Name (or "Unnamed Investigator"), "Draft", "Step N of 7" | "Continue" |
 | Submitted | Name, occupation, badge | "View" |
 | Changes Requested | Name, badge, and an Alert headed "Your Keeper asked for changes" containing the comment | "Edit Investigator" (opens `sheet`) |
 | Approved | Name, occupation, badge | "View" |
 
+- The card is a `section` headed by an `h2` "Your Investigator".
 - Loading: a skeleton card with `aria-busy="true"`.
 - Error: "We couldn't load your Investigator." with a "Try again" button.
+- The "creation methods not available" state is static text, not `role="alert"`, because it is not the result of an action. It reflects Keeper changes when the page is reloaded.
+- If "Create Investigator" is refused because the Keeper changed the creation methods after the page loaded, the card reloads the Campaign and shows the "not available" state. If it is refused because a Draft already exists (for example from another tab), the card reloads the Investigator and shows the Draft state.
+
+### 3.3 Campaign page states (both roles)
+- Loading: a skeleton block with `aria-busy="true"` in place of the page content.
+- Error: "We couldn't load this Campaign." with a "Try again" button.
+- Not found (the caller is not a member, or the Campaign does not exist): `h1` "We couldn't find that Campaign" and a link "Back to Campaigns" to `/campaigns`, matching the Investigator not-found page in section 1.
 
 ## 4. Wizard layout
 
@@ -163,10 +172,14 @@ Later inputs are kept. When the Player saves, any later step whose inputs became
   - Rows: the eight characteristics plus Luck.
   - When the age is in the two-Luck-roll bracket, a second Luck row "Luck, second roll" appears, with the help text "Your age lets you roll Luck twice and keep the higher result." The value kept is shown.
 - **Point buy**: eight number inputs and a budget counter (`point-budget-counter`) reading "Points used: 410 of 460". Server warnings for low INT or SIZ appear under the Worth checking Alert.
+  - **Luck (Point buy)**: below the eight inputs and the budget counter, outside the budget, an `h2` "Luck" with the help text "Luck isn't bought with points. Roll 3D6 at the table and enter the total." The dice expression in the help text comes from the rules data.
+  - One `dice-roll-input` row labelled "Luck, 3D6 total" with the range hint from the dice expression (for example "3 to 18") and the computed result as text ("= 55").
+  - When the age is in the two-Luck-roll bracket, a second row "Luck, second roll" appears with the help text "Your age lets you roll Luck twice and keep the higher result." The kept value is shown as "Luck kept: 65". The second row is not rendered for other ages.
+  - Luck values are not counted in "Points used". Errors on the Luck rows appear in the step's error summary and inline, like any other field.
 - **Quick fire**: eight Selects. Each Select offers the pool values not yet assigned elsewhere, plus its own current value. A line "Values left to assign: 50, 60" shows what remains.
 
 ### 6.3 Age effects (`age`)
-- The intro line comes from the server, for example "At age 45 you lose 5 points from STR, CON or DEX, and APP is reduced by 5." It is computed from rule data, not hard-coded.
+- The intro line is built from the age bracket the server returns, for example "At age 45 you lose 5 points from STR, CON or DEX, and APP is reduced by 5." Every number and characteristic in it comes from rule data, not hard-coded text. Parts that don't apply to the bracket are left out (for example ages 20 to 39 read "At age 25 you make 1 EDU check.").
 - **Deduction split**: one number input per eligible characteristic, and a counter "Still to deduct: 3". The adjusted value is shown next to each input.
 - **EDU improvement checks**: one group per required check, headed "EDU check 1 of 2". The group has an input "D100 roll". If the roll is above the current EDU, a second input "1D10 gain" appears. Each group ends with a result line: "EDU 60 -> 67", or "No improvement".
 - Fields hidden by these conditions are not rendered, rather than disabled.
@@ -237,18 +250,27 @@ When the Investigator is Changes Requested, a Keeper comment Alert appears at th
 | Card, Badge, Alert, AlertDialog, Dialog, Checkbox, RadioGroup, Select, Textarea, Collapsible, Label, Table, Skeleton | Add from shadcn/ui into `shared/components/ui/` |
 | `investigator-creation-stepper`, `investigator-summary`, `dice-roll-input`, `point-budget-counter`, `skill-allocation-table`, `skill-picker`, `character-sheet-view`, `your-investigator-card`, `investigator-list`, `investigator-review`, `rules-options` | New, in `frontend/src/campaign-play/components/<name>/` with a colocated story and test |
 
-Tokens: add `--destructive` (it is already used as `text-destructive` but not defined in `frontend/src/index.css`) and `--warning`, each with at least 4.5:1 contrast against `--background`. Every warning and error also carries an icon and text.
+Tokens: `--destructive` (defined) and `--warning` (added in PBI-CP-003), each with at least 4.5:1 contrast against `--background`. Every warning and error also carries an icon and text.
 
 ## 9. Delivery by ticket
 
 | Ticket | UX scope |
 |---|---|
 | PBI-CP-008 | Section 2; section 3.1 Rules options |
-| PBI-CP-003 | Section 3 (both roles); sections 4 and 5; steps 6.1 and 6.2 (Point buy only); a minimal `sheet` step with Summary and Submit; section 7 |
-| PBI-CP-009 | Steps 6.2 (Standard rolling, Quick fire) to 6.6; full summary rail |
-| PBI-CP-010 | Step 6.7 Backstory, Weapons, Gear, Wealth; Dice results in 7.1 |
+| PBI-CP-003 | Section 3 (both roles); sections 4 and 5, including the summary rail without the occupation and personal interest budget lines; step 6.1; step 6.2 for Point buy, including its Luck rows; step 6.3 Age effects; a `sheet` step with Summary and Submit; section 7, including Dice results |
+| PBI-CP-009 | Step 6.2 (Standard rolling, Quick fire, the creation method RadioGroup, and the switch confirmation); steps 6.4 to 6.6; the summary rail's budget lines |
+| PBI-CP-010 | Step 6.7 Backstory, Weapons, Gear, Wealth |
 
-In PBI-CP-003 the stepper shows only Identity, Characteristics, and Sheet and submit.
+In PBI-CP-003:
+- The stepper shows Identity, Characteristics, Age effects, and Sheet and submit, so the Draft card reads "Step N of 4".
+- Point buy is the only creation method available, so the step shows "Creation method: Point buy" as text and the RadioGroup is not rendered.
+- The Submitted and Approved cards show the name and badge without an occupation.
+- The summary rail shows HP, MP, SAN, Luck, MOV, Build, Damage Bonus, Dodge, and the problems line. Its values are the server's values from the latest save. The rail's live region has no budget to announce yet.
+- The Summary section of `sheet` shows identity, each characteristic's assigned value, its value after age effects with Hard and Extreme values, and the derived values from the rail. Its "Change" links go to Identity, Characteristics, and Age effects.
+- "Worth checking" lists the Point buy warnings only.
+- Before a valid age is saved, the Age effects step shows "Your age effects appear once a valid age is saved on the Identity step." instead of its inputs.
+- Dice results with no Roll Records reads "No dice results yet."; the review screen ends with a "Back to Campaign" link.
+- The Player's read-only View (Submitted or Approved) shows the Investigator name as `h1`, the status badge, the read-only `character-sheet-view`, and a "Back to Campaign" link.
 
 ## 10. UX acceptance criteria
 
@@ -270,6 +292,9 @@ In PBI-CP-003 the stepper shows only Identity, Characteristics, and Sheet and su
 - **UX-16** Start over requires confirmation, deletes the Draft, and returns the card to "Create Investigator".
 - **UX-17** A failed save keeps every input and offers "Try again".
 - **UX-18** Opening another Player's Investigator URL shows "We couldn't find that Investigator".
+- **UX-19** When the Campaign allows no creation method that is available yet, the Your Investigator card explains it, names the methods to ask the Keeper for, and offers no create action.
+- **UX-20** A Point buy Player enters Luck on the Characteristics step; Luck is not counted in "Points used", and a second Luck row appears only in the two-roll age bracket.
+- **UX-21** A non-member opening a Campaign URL sees "We couldn't find that Campaign" with a link back to Campaigns.
 
 ## 11. Accessibility acceptance criteria (WCAG 2.2 AA)
 

@@ -1,0 +1,164 @@
+{
+  "catalog": "AgeRules",
+  "schemaVersion": 1,
+  "verificationStatus": "moved unchanged from section 3.1 on 2026-10-02; awaiting project owner verification; pageReference values still to be added",
+  "entries": [
+    {
+      "id": "age-15-19",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "minimumAge": 15,
+        "maximumAge": 19,
+        "keeperAdjudication": false,
+        "physicalDeduction": {
+          "total": 5,
+          "characteristics": ["STR", "SIZ"]
+        },
+        "appearanceModifier": 0,
+        "eduImprovementChecks": 0,
+        "luckRolls": 2
+      }
+    },
+    {
+      "id": "age-20-39",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "minimumAge": 20,
+        "maximumAge": 39,
+        "keeperAdjudication": false,
+        "physicalDeduction": {
+          "total": 0,
+          "characteristics": []
+        },
+        "appearanceModifier": 0,
+        "eduImprovementChecks": 1,
+        "luckRolls": 1
+      }
+    },
+    {
+      "id": "age-40-49",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "minimumAge": 40,
+        "maximumAge": 49,
+        "keeperAdjudication": false,
+        "physicalDeduction": {
+          "total": 5,
+          "characteristics": ["STR", "CON", "DEX"]
+        },
+        "appearanceModifier": -5,
+        "eduImprovementChecks": 2,
+        "luckRolls": 1
+      }
+    },
+    {
+      "id": "age-50-59",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "minimumAge": 50,
+        "maximumAge": 59,
+        "keeperAdjudication": false,
+        "physicalDeduction": {
+          "total": 10,
+          "characteristics": ["STR", "CON", "DEX"]
+        },
+        "appearanceModifier": -10,
+        "eduImprovementChecks": 3,
+        "luckRolls": 1
+      }
+    },
+    {
+      "id": "age-60-69",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "minimumAge": 60,
+        "maximumAge": 69,
+        "keeperAdjudication": false,
+        "physicalDeduction": {
+          "total": 20,
+          "characteristics": ["STR", "CON", "DEX"]
+        },
+        "appearanceModifier": -15,
+        "eduImprovementChecks": 4,
+        "luckRolls": 1
+      }
+    },
+    {
+      "id": "age-70-79",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "minimumAge": 70,
+        "maximumAge": 79,
+        "keeperAdjudication": false,
+        "physicalDeduction": {
+          "total": 40,
+          "characteristics": ["STR", "CON", "DEX"]
+        },
+        "appearanceModifier": -20,
+        "eduImprovementChecks": 4,
+        "luckRolls": 1
+      }
+    },
+    {
+      "id": "age-80-89",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "minimumAge": 80,
+        "maximumAge": 89,
+        "keeperAdjudication": false,
+        "physicalDeduction": {
+          "total": 80,
+          "characteristics": ["STR", "CON", "DEX"]
+        },
+        "appearanceModifier": -25,
+        "eduImprovementChecks": 4,
+        "luckRolls": 1
+      }
+    },
+    {
+      "id": "age-90",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "minimumAge": 90,
+        "maximumAge": 90,
+        "keeperAdjudication": true,
+        "physicalDeduction": null,
+        "appearanceModifier": null,
+        "eduImprovementChecks": null,
+        "luckRolls": null
+      }
+    }
+  ]
+}

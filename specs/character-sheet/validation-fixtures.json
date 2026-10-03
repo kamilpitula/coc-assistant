@@ -1,0 +1,1579 @@
+{
+  "description": "Shared ValidationError fixtures for the Character Sheet validators (specs/character-sheet/spec.md, Validation). The backend must produce exactly the expected items for every case; the frontend must do the same for every case with scope 'shared'. Item order is not significant.",
+  "rules": {
+    "pointBuyBudget": 460,
+    "pointBuyMinimum": 15,
+    "pointBuyMaximum": 90,
+    "pointBuyRecommendedMinimum": 40,
+    "minimumAge": 15,
+    "maximumAge": 89,
+    "characteristicFloor": 0,
+    "luckDice": "3D6",
+    "eduImprovementCheckDice": "D100",
+    "eduImprovementGainDice": "1D10",
+    "eduMaximum": 99,
+    "luckMultiplier": 5
+  },
+  "cases": [
+    {
+      "name": "A valid Point Buy sheet at age 25 has no problems",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": []
+    },
+    {
+      "name": "Missing name and age are required",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": null,
+          "age": null,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": []
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "InvestigatorNameRequired",
+          "field": "identity.name",
+          "message": "Enter your Investigator's name.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        },
+        {
+          "code": "AgeRequired",
+          "field": "identity.age",
+          "message": "Enter your Investigator's age.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "A blank name counts as missing",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "   ",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "InvestigatorNameRequired",
+          "field": "identity.name",
+          "message": "Enter your Investigator's name.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "project_ruleset 4.1: age 14 is below the range",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 14,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": []
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "AgeOutOfRange",
+          "field": "identity.age",
+          "message": "Age must be between 15 and 89.",
+          "expected": "15-89",
+          "actual": "14",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "project_ruleset 4.1: age 90 is above the range",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 90,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": []
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "AgeOutOfRange",
+          "field": "identity.age",
+          "message": "Age must be between 15 and 89.",
+          "expected": "15-89",
+          "actual": "90",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "A missing Creation Method is required",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": null,
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "CreationMethodRequired",
+          "field": "creationMethod",
+          "message": "Choose a creation method.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "A Creation Method the Campaign no longer allows blocks submission",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "CreationMethodNotAllowed",
+          "field": "creationMethod",
+          "message": "This Campaign no longer allows this creation method. Ask your Keeper.",
+          "expected": "StandardRolling",
+          "actual": "PointBuy",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 2.2: a value above the maximum is out of range",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 91,
+          "CON": 29,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "PointBuyValueOutOfRange",
+          "field": "characteristics.STR",
+          "message": "STR must be between 15 and 90.",
+          "expected": "15-90",
+          "actual": "91",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 2.2: a value below the minimum is out of range",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 14,
+          "CON": 76,
+          "DEX": 90,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "PointBuyValueOutOfRange",
+          "field": "characteristics.STR",
+          "message": "STR must be between 15 and 90.",
+          "expected": "15-90",
+          "actual": "14",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 2.2: values that do not add up to the budget",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 40
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "PointBuyTotalMismatch",
+          "field": "characteristics",
+          "message": "Your characteristics must add up to 460. They add up to 450.",
+          "expected": "460",
+          "actual": "450",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 15: a missing characteristic is required and the total is not reported",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": null,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "CharacteristicRequired",
+          "field": "characteristics.INT",
+          "message": "Enter a value for INT.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 2.2: INT and SIZ below the recommendation only warn",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 90,
+          "CON": 80,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 35,
+          "INT": 35,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "PointBuyBelowRecommendation",
+          "field": "characteristics.INT",
+          "message": "INT is below the recommended 40. Check with your Keeper.",
+          "expected": "40",
+          "actual": "35",
+          "severity": "Warning"
+        },
+        {
+          "code": "PointBuyBelowRecommendation",
+          "field": "characteristics.SIZ",
+          "message": "SIZ is below the recommended 40. Check with your Keeper.",
+          "expected": "40",
+          "actual": "35",
+          "severity": "Warning"
+        }
+      ]
+    },
+    {
+      "name": "Section 5.5: the Luck roll is required",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": []
+      },
+      "expected": [
+        {
+          "code": "LuckRollRequired",
+          "field": "luckRolls[0]",
+          "message": "Enter your Luck roll.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "A Luck roll a 3D6 cannot produce is out of range",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          19
+        ]
+      },
+      "expected": [
+        {
+          "code": "DiceResultOutOfRange",
+          "field": "luckRolls[0]",
+          "message": "Enter a 3D6 result between 3 and 18.",
+          "expected": "3-18",
+          "actual": "19",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 3.1: a valid sheet at age 17 deducts from STR and SIZ and rolls Luck twice",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 17,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {
+            "STR": 3,
+            "SIZ": 2
+          },
+          "eduImprovementChecks": []
+        },
+        "luckRolls": [
+          11,
+          13
+        ]
+      },
+      "expected": []
+    },
+    {
+      "name": "Section 5.5: age 17 needs a second Luck roll",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 17,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {
+            "STR": 3,
+            "SIZ": 2
+          },
+          "eduImprovementChecks": []
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "LuckSecondRollRequired",
+          "field": "luckRolls[1]",
+          "message": "Enter your second Luck roll.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 5.5: age 25 uses one Luck roll",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11,
+          13
+        ]
+      },
+      "expected": [
+        {
+          "code": "LuckSecondRollNotAllowed",
+          "field": "luckRolls[1]",
+          "message": "Only one Luck roll is used at this age.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 3.1: a valid sheet at age 45 splits the deduction and makes two EDU checks",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 45,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {
+            "STR": 3,
+            "DEX": 2
+          },
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            },
+            {
+              "check": 20,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": []
+    },
+    {
+      "name": "Section 3.1: the deduction must match the bracket total",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 45,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {
+            "STR": 3
+          },
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            },
+            {
+              "check": 20,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "AgeDeductionTotalMismatch",
+          "field": "ageEffects.deductions",
+          "message": "Deduct exactly 5 points in total. You have deducted 3.",
+          "expected": "5",
+          "actual": "3",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 3.1: the deduction comes only from the bracket's characteristics",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 45,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {
+            "STR": 3,
+            "SIZ": 2
+          },
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            },
+            {
+              "check": 20,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "AgeDeductionNotAllowed",
+          "field": "ageEffects.deductions.SIZ",
+          "message": "SIZ can't take the age deduction at this age.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 3.1: a negative deduction is rejected",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 45,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {
+            "STR": 6,
+            "DEX": -1
+          },
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            },
+            {
+              "check": 20,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "AgeDeductionNegative",
+          "field": "ageEffects.deductions.DEX",
+          "message": "Enter 0 or more for DEX.",
+          "expected": null,
+          "actual": "-1",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 3.2: every required EDU check needs its roll",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 45,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {
+            "STR": 3,
+            "DEX": 2
+          },
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "EduImprovementCheckRequired",
+          "field": "ageEffects.eduImprovementChecks[1].check",
+          "message": "Enter the D100 roll for EDU check 2.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 3.1: an EDU check beyond the bracket's count is not needed",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            },
+            {
+              "check": 40,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "EduImprovementCheckNotRequired",
+          "field": "ageEffects.eduImprovementChecks[1]",
+          "message": "EDU check 2 isn't needed at this age.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "An EDU check roll a D100 cannot produce is out of range",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 101,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "DiceResultOutOfRange",
+          "field": "ageEffects.eduImprovementChecks[0].check",
+          "message": "Enter a D100 result between 1 and 100.",
+          "expected": "1-100",
+          "actual": "101",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "An EDU gain a 1D10 cannot produce is out of range",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 70,
+              "gain": 11
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "DiceResultOutOfRange",
+          "field": "ageEffects.eduImprovementChecks[0].gain",
+          "message": "Enter a 1D10 result between 1 and 10.",
+          "expected": "1-10",
+          "actual": "11",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 3.2: a roll above EDU needs its gain",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 70,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "EduImprovementGainRequired",
+          "field": "ageEffects.eduImprovementChecks[0].gain",
+          "message": "Enter the 1D10 gain for EDU check 1.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 3.2: a roll not above EDU has no gain",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": 5
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "EduImprovementGainNotAllowed",
+          "field": "ageEffects.eduImprovementChecks[0].gain",
+          "message": "EDU check 1 has no gain because the roll isn't above EDU.",
+          "expected": null,
+          "actual": "5",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 3.2: later checks compare against EDU after earlier gains",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 45,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {
+            "STR": 3,
+            "DEX": 2
+          },
+          "eduImprovementChecks": [
+            {
+              "check": 70,
+              "gain": 5
+            },
+            {
+              "check": 53,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": []
+    },
+    {
+      "name": "Section 3.2: a later roll above the improved EDU needs its gain",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 45,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {
+            "STR": 3,
+            "DEX": 2
+          },
+          "eduImprovementChecks": [
+            {
+              "check": 70,
+              "gain": 5
+            },
+            {
+              "check": 56,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "EduImprovementGainRequired",
+          "field": "ageEffects.eduImprovementChecks[1].gain",
+          "message": "Enter the 1D10 gain for EDU check 2.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "project_ruleset 4.4: the APP modifier cannot take APP below 0",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 85,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 90,
+          "CON": 90,
+          "DEX": 90,
+          "APP": 15,
+          "POW": 60,
+          "SIZ": 45,
+          "INT": 40,
+          "EDU": 30
+        },
+        "ageEffects": {
+          "deductions": {
+            "STR": 30,
+            "CON": 25,
+            "DEX": 25
+          },
+          "eduImprovementChecks": [
+            {
+              "check": 10,
+              "gain": null
+            },
+            {
+              "check": 20,
+              "gain": null
+            },
+            {
+              "check": 5,
+              "gain": null
+            },
+            {
+              "check": 25,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "CharacteristicBelowFloor",
+          "field": "characteristics.APP",
+          "message": "APP can't go below 0 after age effects.",
+          "expected": "0",
+          "actual": "-10",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "project_ruleset 4.4: the physical deduction cannot take a characteristic below 0",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 85,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 15,
+          "CON": 90,
+          "DEX": 90,
+          "APP": 60,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 50,
+          "EDU": 35
+        },
+        "ageEffects": {
+          "deductions": {
+            "STR": 30,
+            "CON": 25,
+            "DEX": 25
+          },
+          "eduImprovementChecks": [
+            {
+              "check": 10,
+              "gain": null
+            },
+            {
+              "check": 20,
+              "gain": null
+            },
+            {
+              "check": 5,
+              "gain": null
+            },
+            {
+              "check": 25,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ]
+      },
+      "expected": [
+        {
+          "code": "CharacteristicBelowFloor",
+          "field": "ageEffects.deductions.STR",
+          "message": "STR can't go below 0 after age effects.",
+          "expected": "0",
+          "actual": "-15",
+          "severity": "Error"
+        }
+      ]
+    }
+  ]
+}

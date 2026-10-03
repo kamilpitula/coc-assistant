@@ -9,6 +9,7 @@ public static class IdentityInfrastructureServiceCollectionExtensions
 
         services.AddScoped<IAccountRepository, EfAccountRepository>();
         services.AddScoped<AccountService>();
+        services.AddScoped<AccountDisplayNameQuery>();
         services.AddSingleton(TimeProvider.System);
 
         return services;

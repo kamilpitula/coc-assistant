@@ -4,48 +4,12 @@ namespace CocAssistant.Api.IntegrationTests;
 public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
 {
     private readonly IdentityApiFactory _factory;
-    private Respawner _respawner = null!;
 
     public CampaignMembershipApiTests(IdentityApiFactory factory) => _factory = factory;
 
-    public async Task InitializeAsync()
-    {
-        await _factory.EnsureDatabaseCreatedAsync();
-
-        using var scope = _factory.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<CampaignPlayDbContext>();
-        var connection = dbContext.Database.GetDbConnection();
-        await connection.OpenAsync();
-        _respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
-        {
-            DbAdapter = DbAdapter.SqlServer,
-            TablesToIgnore = ["__EFMigrationsHistory", "__CampaignPlayMigrationsHistory"],
-        });
-        await _respawner.ResetAsync(connection);
-    }
+    public Task InitializeAsync() => ResetDatabaseAsync(_factory);
 
     public Task DisposeAsync() => Task.CompletedTask;
-
-    private static HttpRequestMessage BuildRequest(HttpMethod method, string uri, string oid) =>
-        new(method, uri)
-        {
-            Headers =
-            {
-                { "X-Test-Oid", oid },
-                { "X-Test-Name", $"Account {oid}" },
-                { "X-Test-Email", $"{oid}@example.com" },
-            },
-        };
-
-    private async Task<Guid> CreateCampaignAsync(HttpClient client, string keeperOid)
-    {
-        var request = BuildRequest(HttpMethod.Post, "/api/campaigns", keeperOid);
-        request.Content = JsonContent.Create(new { name = "The Haunting" });
-        var response = await client.SendAsync(request);
-        response.EnsureSuccessStatusCode();
-        var campaign = await response.Content.ReadFromJsonAsync<CampaignResponse>();
-        return campaign!.Id;
-    }
 
     private async Task<string> IssueInviteAsync(HttpClient client, Guid campaignId, string keeperOid)
     {
@@ -67,7 +31,7 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
     public async Task Given_a_keeper_When_issuing_an_invite_Then_an_active_invite_is_returned()
     {
         var client = _factory.CreateClient();
-        var campaignId = await CreateCampaignAsync(client, "invite-keeper-1");
+        var campaignId = (await CreateCampaignAsync(client, "invite-keeper-1")).Id;
 
         var response = await client.SendAsync(
             BuildRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/invite", "invite-keeper-1"));
@@ -82,7 +46,7 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
     public async Task Given_a_non_keeper_When_issuing_an_invite_Then_it_is_not_found()
     {
         var client = _factory.CreateClient();
-        var campaignId = await CreateCampaignAsync(client, "invite-keeper-2");
+        var campaignId = (await CreateCampaignAsync(client, "invite-keeper-2")).Id;
 
         var response = await client.SendAsync(
             BuildRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/invite", "intruder-2"));
@@ -94,7 +58,7 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
     public async Task Given_an_active_invite_When_the_keeper_gets_it_Then_the_same_token_is_returned()
     {
         var client = _factory.CreateClient();
-        var campaignId = await CreateCampaignAsync(client, "invite-keeper-3");
+        var campaignId = (await CreateCampaignAsync(client, "invite-keeper-3")).Id;
         var token = await IssueInviteAsync(client, campaignId, "invite-keeper-3");
 
         var response = await client.SendAsync(
@@ -109,7 +73,7 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
     public async Task Given_a_non_keeper_When_getting_the_invite_Then_it_is_not_found()
     {
         var client = _factory.CreateClient();
-        var campaignId = await CreateCampaignAsync(client, "invite-keeper-4");
+        var campaignId = (await CreateCampaignAsync(client, "invite-keeper-4")).Id;
         await IssueInviteAsync(client, campaignId, "invite-keeper-4");
 
         var response = await client.SendAsync(
@@ -122,7 +86,7 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
     public async Task Given_an_active_invite_When_the_keeper_replaces_it_Then_a_new_token_is_issued()
     {
         var client = _factory.CreateClient();
-        var campaignId = await CreateCampaignAsync(client, "invite-keeper-5");
+        var campaignId = (await CreateCampaignAsync(client, "invite-keeper-5")).Id;
         var firstToken = await IssueInviteAsync(client, campaignId, "invite-keeper-5");
 
         var response = await client.SendAsync(
@@ -137,7 +101,7 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
     public async Task Given_an_active_invite_When_the_keeper_revokes_it_Then_no_active_invite_remains()
     {
         var client = _factory.CreateClient();
-        var campaignId = await CreateCampaignAsync(client, "invite-keeper-6");
+        var campaignId = (await CreateCampaignAsync(client, "invite-keeper-6")).Id;
         await IssueInviteAsync(client, campaignId, "invite-keeper-6");
 
         var revokeResponse = await client.SendAsync(
@@ -153,7 +117,7 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
     public async Task Given_a_non_keeper_When_revoking_the_invite_Then_it_is_not_found()
     {
         var client = _factory.CreateClient();
-        var campaignId = await CreateCampaignAsync(client, "invite-keeper-7");
+        var campaignId = (await CreateCampaignAsync(client, "invite-keeper-7")).Id;
         await IssueInviteAsync(client, campaignId, "invite-keeper-7");
 
         var response = await client.SendAsync(
@@ -166,7 +130,7 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
     public async Task Given_an_active_invite_When_an_account_joins_Then_it_becomes_a_player()
     {
         var client = _factory.CreateClient();
-        var campaignId = await CreateCampaignAsync(client, "join-keeper-1");
+        var campaignId = (await CreateCampaignAsync(client, "join-keeper-1")).Id;
         var token = await IssueInviteAsync(client, campaignId, "join-keeper-1");
 
         var response = await client.SendAsync(BuildJoinRequest(token, "player-1"));
@@ -181,7 +145,7 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
     public async Task Given_a_player_When_they_join_again_Then_they_are_already_a_member()
     {
         var client = _factory.CreateClient();
-        var campaignId = await CreateCampaignAsync(client, "join-keeper-2");
+        var campaignId = (await CreateCampaignAsync(client, "join-keeper-2")).Id;
         var token = await IssueInviteAsync(client, campaignId, "join-keeper-2");
         await client.SendAsync(BuildJoinRequest(token, "player-2"));
 
@@ -196,7 +160,7 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
     public async Task Given_a_revoked_invite_When_an_account_joins_Then_it_is_not_found()
     {
         var client = _factory.CreateClient();
-        var campaignId = await CreateCampaignAsync(client, "join-keeper-3");
+        var campaignId = (await CreateCampaignAsync(client, "join-keeper-3")).Id;
         var token = await IssueInviteAsync(client, campaignId, "join-keeper-3");
         await client.SendAsync(BuildRequest(HttpMethod.Delete, $"/api/campaigns/{campaignId}/invite", "join-keeper-3"));
 
@@ -209,7 +173,7 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
     public async Task Given_a_replaced_invite_When_an_account_uses_the_old_token_Then_it_is_not_found()
     {
         var client = _factory.CreateClient();
-        var campaignId = await CreateCampaignAsync(client, "join-keeper-4");
+        var campaignId = (await CreateCampaignAsync(client, "join-keeper-4")).Id;
         var oldToken = await IssueInviteAsync(client, campaignId, "join-keeper-4");
         await client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/invite/replace", "join-keeper-4"));
 
@@ -232,7 +196,7 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
     public async Task Given_a_campaign_at_its_player_limit_When_another_account_joins_Then_the_limit_is_reached()
     {
         var client = _factory.CreateClient();
-        var campaignId = await CreateCampaignAsync(client, "limit-keeper-1");
+        var campaignId = (await CreateCampaignAsync(client, "limit-keeper-1")).Id;
         var token = await IssueInviteAsync(client, campaignId, "limit-keeper-1");
 
         for (var i = 0; i < 8; i++)
@@ -286,7 +250,7 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
     public async Task Given_no_active_invite_When_the_keeper_issues_several_invites_at_once_Then_all_receive_the_single_active_invite()
     {
         var client = _factory.CreateClient();
-        var campaignId = await CreateCampaignAsync(client, "invite-race-keeper-1");
+        var campaignId = (await CreateCampaignAsync(client, "invite-race-keeper-1")).Id;
 
         var responses = await Task.WhenAll(Enumerable.Range(0, 4)
             .Select(_ => client.SendAsync(
@@ -303,7 +267,7 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
     public async Task Given_an_active_invite_When_the_keeper_replaces_it_twice_at_once_Then_exactly_one_invite_stays_active()
     {
         var client = _factory.CreateClient();
-        var campaignId = await CreateCampaignAsync(client, "invite-race-keeper-2");
+        var campaignId = (await CreateCampaignAsync(client, "invite-race-keeper-2")).Id;
         await IssueInviteAsync(client, campaignId, "invite-race-keeper-2");
 
         var responses = await Task.WhenAll(Enumerable.Range(0, 2)
@@ -318,7 +282,7 @@ public class CampaignMembershipApiTests : IClassFixture<IdentityApiFactory>, IAs
     public async Task Given_more_concurrent_joiners_than_slots_When_they_join_at_once_Then_exactly_the_limit_are_admitted()
     {
         var client = _factory.CreateClient();
-        var campaignId = await CreateCampaignAsync(client, "race-keeper-1");
+        var campaignId = (await CreateCampaignAsync(client, "race-keeper-1")).Id;
         var token = await IssueInviteAsync(client, campaignId, "race-keeper-1");
 
         const int playerLimit = 8;

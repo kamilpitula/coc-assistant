@@ -9,6 +9,15 @@ const campaignBody = {
   playerLimit: 8,
   era: '1920s',
   allowedCreationMethods: ['StandardRolling', 'PointBuy', 'QuickFire'],
+  role: 'Keeper',
+}
+
+const playerCampaignBody = {
+  id: 'c1',
+  name: 'The Haunting',
+  era: '1920s',
+  allowedCreationMethods: ['PointBuy'],
+  role: 'Player',
 }
 
 function jsonResponse(status: number, body?: unknown): Response {
@@ -58,7 +67,13 @@ describe('campaignApi rules options', () => {
     expect(campaign).toEqual(campaignBody)
   })
 
-  it('returns null when the caller is not the Keeper (404)', async () => {
+  it("returns a Player's reduced Campaign view with the Player role", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, playerCampaignBody))
+
+    expect(await getCampaign('token', 'c1')).toEqual(playerCampaignBody)
+  })
+
+  it('returns null when the caller is not a member of the Campaign (404)', async () => {
     fetchMock.mockResolvedValue(jsonResponse(404))
 
     expect(await getCampaign('token', 'c1')).toBeNull()

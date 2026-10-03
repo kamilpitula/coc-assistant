@@ -21,6 +21,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Shared validator parity fixtures (specs/character-sheet/spec.md, Validation). -->
+    <None Include="..\..\..\..\specs\character-sheet\validation-fixtures.json"
+          Link="Fixtures\validation-fixtures.json"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\src\CampaignPlay\CocAssistant.CampaignPlay.Domain\CocAssistant.CampaignPlay.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\CampaignPlay\CocAssistant.CampaignPlay.Application\CocAssistant.CampaignPlay.Application.csproj" />
     <ProjectReference Include="..\..\..\src\CampaignPlay\CocAssistant.CampaignPlay.Infrastructure\CocAssistant.CampaignPlay.Infrastructure.csproj" />

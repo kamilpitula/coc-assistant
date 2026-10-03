@@ -5,12 +5,13 @@ Replace the minimal Character Sheet with the full mechanical creation wizard so 
 
 **Scope:**
 - Wizard steps in order: Concept and Identity, Creation Method and Characteristics, Age Effects, Occupation, Occupation Skills, Personal Interests. Progress indicator, return to any completed step, Draft saved on every step transition.
-- Standard Rolling with Roll Records through `IRollSource` (`PlayerEntered` source only), Point Buy, and Quick Fire, limited to the Campaign's allowed Creation Methods.
-- Age effects and EDU improvement checks; all derived values computed server-side, one domain service per rule section.
+- Standard Rolling with characteristic Roll Records through the `IRollSource` introduced by PBI-CP-003 (`PlayerEntered` source only), and Quick Fire, alongside the Point Buy delivered by PBI-CP-003, limited to the Campaign's allowed Creation Methods.
+- Age effects, EDU improvement checks, Luck, and the derived values that depend only on characteristics and age were delivered by PBI-CP-003 for Point Buy; extend them to the new Creation Methods and add the remaining derived values (occupation and personal interest budgets, skill post-processing, wealth), one domain service per rule section.
 - Catalog and custom Occupations, occupation and personal interest allocation, Credit Rating and 1920s wealth.
 - Full validator (errors and warnings) per `specs/character-sheet/spec.md`.
 - Recompute on changes to earlier steps; clearing characteristics on Creation Method change after confirmation.
 - Do not implement narrative sections, weapons, gear, or the shared read-only sheet view (PBI-CP-010), or server-side rolling.
+- UX scope: `specs/character-sheet/ux.md` section 9 (PBI-CP-009 row).
 
 ## Dependencies
 - Blocked by: PBI-CP-003

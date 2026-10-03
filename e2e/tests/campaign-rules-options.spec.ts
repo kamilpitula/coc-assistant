@@ -6,8 +6,8 @@ import { createCampaignViaUi, issueInviteViaUi } from '../fixtures/campaigns'
 /**
  * Traces to specs/campaign-play/spec.md "Campaign rules options" and its Scenarios
  * "Keeper creates a Campaign with default rules options", "Keeper changes the allowed Creation
- * Methods", and "Player cannot change the allowed Creation Methods"; and to
- * specs/character-sheet/ux.md sections 2 and 3.1 (UX-1, UX-2).
+ * Methods", "Player cannot change the allowed Creation Methods", and "Player reads the Campaign without
+ * Keeper-only data"; and to specs/character-sheet/ux.md sections 2, 3.1, and 3.2 (UX-1, UX-2).
  */
 test.describe('Campaign rules options', () => {
   test('UX-1: Keeper creates a Campaign with default rules options without opening them', async ({
@@ -92,7 +92,8 @@ test.describe('Campaign rules options', () => {
   test('Player cannot change the allowed creation methods', async ({ page, browser }) => {
     const keeper = newAccount('Keeper')
     await signIn(page, keeper)
-    const campaignId = await createCampaignViaUi(page, `Guard ${keeper.oid.slice(0, 6)}`)
+    const campaignName = `Guard ${keeper.oid.slice(0, 6)}`
+    const campaignId = await createCampaignViaUi(page, campaignName)
     const token = await issueInviteViaUi(page, campaignId)
 
     const player = newAccount('Player')
@@ -104,7 +105,7 @@ test.describe('Campaign rules options', () => {
 
       let capturedAuth: string | null = null
 
-      await test.step('the Player sees no Rules options or edit control on the Campaign page', async () => {
+      await test.step('the Player sees the read-only Campaign view, without Rules options or an edit control', async () => {
         const campaignRequest = session.page.waitForResponse(
           (response) =>
             new URL(response.url()).pathname === `/api/campaigns/${campaignId}` &&
@@ -112,10 +113,15 @@ test.describe('Campaign rules options', () => {
         )
         await session.page.goto(`/campaigns/${campaignId}`)
         const response = await campaignRequest
-        expect(response.status()).toBe(404)
+        expect(response.status()).toBe(200)
+        const body = await response.json()
+        expect(body).toMatchObject({ role: 'Player', name: campaignName })
+        expect(body).not.toHaveProperty('keeperAccountId')
+        expect(body).not.toHaveProperty('playerLimit')
         capturedAuth = response.request().headers().authorization ?? null
 
-        await expect(session.page.getByRole('heading', { name: 'Campaign Invite' })).toBeVisible()
+        await expect(session.page.getByRole('heading', { level: 1, name: campaignName })).toBeVisible()
+        await expect(session.page.getByRole('heading', { name: 'Your Investigator' })).toBeVisible()
         await expect(session.page.getByRole('button', { name: 'Edit creation methods' })).toHaveCount(0)
         await expect(session.page.getByRole('heading', { name: 'Rules options' })).toHaveCount(0)
       })
