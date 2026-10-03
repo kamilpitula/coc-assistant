@@ -1,3 +1,9 @@
 global using Microsoft.AspNetCore.Authentication;
 global using Microsoft.AspNetCore.Mvc.Testing;
 global using Microsoft.Extensions.DependencyInjection;
+global using CocAssistant.Api;
+global using Microsoft.AspNetCore.Authentication.JwtBearer;
+global using Microsoft.AspNetCore.Http;
+global using Microsoft.AspNetCore.SignalR;
+global using Microsoft.Extensions.Configuration;
+global using Microsoft.Extensions.Options;

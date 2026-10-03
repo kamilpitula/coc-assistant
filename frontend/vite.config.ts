@@ -26,6 +26,13 @@ export default defineConfig(({ mode }) => {
           changeOrigin: false,
           secure: !proxyIsHttps ? undefined : false,
         },
+        // The Campaign hub (negotiate plus WebSockets) for live updates and Presence.
+        '/hubs': {
+          target: proxyTarget,
+          changeOrigin: false,
+          secure: !proxyIsHttps ? undefined : false,
+          ws: true,
+        },
       },
     },
     resolve: {

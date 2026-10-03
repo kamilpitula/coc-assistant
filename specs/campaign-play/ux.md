@@ -45,7 +45,7 @@ At the table                                   (h2)
 | Unknown | Dashed ring (`CircleDashed`) | "Unknown" | Icon and text `--muted-foreground` |
 
 - The text always shows; the icon only supports it (WCAG 1.4.1).
-- `--success` is added to the theme with at least 3:1 contrast against `--card` (WCAG 1.4.11).
+- `--success` is added to the theme with at least 3:1 contrast against the card surface (WCAG 1.4.11). The card surface is `--background`; there is no `--card` token.
 - "Unknown" rows render the name in `--muted-foreground`. Do not use opacity; the text must keep at least 4.5:1 contrast (WCAG 1.4.3).
 - No animation (no pulsing dot). State changes swap the icon and text in place.
 
@@ -54,6 +54,7 @@ At the table                                   (h2)
 | State | Summary line | Rows | Notice |
 |---|---|---|---|
 | Campaign loading | Not shown | The page skeleton from [specs/character-sheet/ux.md](../character-sheet/ux.md) section 3.3 covers the whole page | None |
+| Roster loading (Campaign loaded) | "Checking who's connected..." | The heading and placeholder (Skeleton) rows inside the card | None |
 | Connecting (before the first snapshot) | "Checking who's connected..." | All members, all "Unknown" | None |
 | Live | "{n} of {m} connected" | Each member's state | None |
 | Reconnecting (your connection dropped) | "Checking who's connected..." | All "Unknown" | "Connection lost. Reconnecting... Who's at the table may be out of date." |
@@ -67,7 +68,7 @@ At the table                                   (h2)
 
 ## 5. Order and live changes
 
-- Fixed order: the Keeper, then you (when you are a Player), then other Players by display name, case-insensitively, using the browser locale. A change in state never moves a row.
+- Fixed order: the Keeper, then you (when you are a Player), then other Players by display name, case-insensitively. The server returns this order ([spec.md](spec.md), Campaign members API) and the client keeps it. A change in state never moves a row.
 - A Player who joins through the Invite while the page is open is inserted into the roster at their sorted position, with their current state.
 - Changes update the row in place. There are no toasts or highlight animations.
 
@@ -84,7 +85,7 @@ One visually hidden `aria-live="polite"` region in the section. Rows and the sum
 
 - The first snapshot after loading is not announced.
 - Your own connect and disconnect are not announced as member events. The notice covers your own connection.
-- Several events that arrive together are announced in one message, in the order they arrived.
+- Several events that arrive together are announced in one message, in roster order (section 5).
 
 ## 7. Content
 
@@ -135,7 +136,7 @@ Stories cover: Live (mixed states), Connecting, Reconnecting, Reconnect failed, 
 
 - **PR-A11Y-1** The section is a `section` labelled by its `h2`. The roster is a `ul` whose items expose the name, role, and state as text (1.3.1).
 - **PR-A11Y-2** Each state is conveyed by text, not only by the icon or its color (1.4.1).
-- **PR-A11Y-3** Connected icons meet 3:1 against the card. All text, including "Unknown" rows, meets 4.5:1 (1.4.11, 1.4.3).
+- **PR-A11Y-3** Connected icons meet 3:1 against the card surface (`--background`; there is no `--card` token). All text, including "Unknown" rows, meets 4.5:1 (1.4.11, 1.4.3).
 - **PR-A11Y-4** Member changes and "Reconnected." are announced through one polite live region without moving focus. The first snapshot is not announced (4.1.3).
 - **PR-A11Y-5** The connection notice uses `role="status"`. "Try again" is reachable by keyboard, has a visible focus ring, and is at least 24 by 24 CSS pixels (2.1.1, 2.4.7, 2.5.8).
 - **PR-A11Y-6** When "Try again" is removed, focus moves to the section heading rather than to the page body (2.4.3).

@@ -1,5 +1,6 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 
+import { CampaignPresence } from '@/campaign-play/components/campaign-presence/campaign-presence'
 import { InvestigatorList } from '@/campaign-play/components/investigator-list/investigator-list'
 import { InviteManagement } from '@/campaign-play/components/invite-management/invite-management'
 import { RulesOptions } from '@/campaign-play/components/rules-options/rules-options'
@@ -14,7 +15,10 @@ interface CampaignPageProps {
   campaignId: string
 }
 
-/** The Campaign page, rendered by the caller's role (specs/character-sheet/ux.md section 3). */
+/**
+ * The Campaign page, rendered by the caller's role (specs/character-sheet/ux.md section 3), with "At the table"
+ * placed per specs/campaign-play/ux.md section 1.
+ */
 export function CampaignPage({ campaignId }: CampaignPageProps) {
   const campaign = useCampaign(campaignId)
 
@@ -48,6 +52,7 @@ export function CampaignPage({ campaignId }: CampaignPageProps) {
 
   return (
     <>
+      <CampaignPresence campaignId={campaignId} />
       <InviteManagement campaignId={campaignId} />
       <InvestigatorList campaignId={campaignId} />
       <RulesOptions campaignId={campaignId} />
@@ -76,6 +81,7 @@ function PlayerCampaignView({ campaign }: { campaign: PlayerCampaign }) {
       <p role="status" className="text-sm empty:hidden">
         {statusMessage}
       </p>
+      <CampaignPresence campaignId={campaign.id} />
       <YourInvestigatorCard campaign={campaign} />
     </section>
   )

@@ -15,3 +15,4 @@ global using Microsoft.EntityFrameworkCore.ChangeTracking;
 global using Microsoft.Extensions.Logging;
 global using System.Collections.Concurrent;
 global using Microsoft.EntityFrameworkCore.Diagnostics;
+global using CocAssistant.CampaignPlay.Domain.Presence;

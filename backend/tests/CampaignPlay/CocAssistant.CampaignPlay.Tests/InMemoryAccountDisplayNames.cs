@@ -10,6 +10,13 @@ public sealed class InMemoryAccountDisplayNames : IAccountDisplayNames
         [CampaignPlayScenario.OtherPlayerAccountId] = "Harvey Walters",
     };
 
+    /// <summary>Adds or replaces the display name of an Account.</summary>
+    public InMemoryAccountDisplayNames With(Guid accountId, string displayName)
+    {
+        _names[accountId] = displayName;
+        return this;
+    }
+
     public Task<IReadOnlyDictionary<Guid, string>> GetDisplayNamesAsync(
         IReadOnlyCollection<Guid> accountIds,
         CancellationToken cancellationToken) =>

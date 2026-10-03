@@ -32,6 +32,10 @@ _Avoid_: Game Master, GM, referee
 A participant who joins a Campaign and controls an Investigator. A Player may contribute actions to the shared play record but does not control the Campaign.
 _Avoid_: User, gamer
 
+**Campaign Member**:
+The Keeper or a Player of a Campaign. Only Campaign Members see the Campaign, its members, and their Presence.
+_Avoid_: Participant, user
+
 **Campaign Invite**:
 The join mechanism issued by a Keeper for a Campaign. Anyone with an active invite may join until the Keeper revokes or replaces it, subject to the Campaign's player limit.
 _Avoid_: Session link, invitation code
@@ -83,8 +87,8 @@ A Wall Entry visible only to the Keeper, used for secrets, unrevealed consequenc
 _Avoid_: Private note, hidden event
 
 **Presence**:
-The current participation state of a Campaign member while connected to the live Campaign experience.
-_Avoid_: Availability, status
+The current participation state of a Campaign Member while connected to the live Campaign experience: Connected while any of their connections is open on the Campaign, otherwise Not connected.
+_Avoid_: Availability, status, online, offline
 
 ## Character Readiness
 
