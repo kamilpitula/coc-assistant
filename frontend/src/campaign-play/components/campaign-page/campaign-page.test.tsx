@@ -16,6 +16,9 @@ vi.mock('@/campaign-play/components/invite-management/invite-management', () => 
 vi.mock('@/campaign-play/components/rules-options/rules-options', () => ({
   RulesOptions: () => <h2>Rules options</h2>,
 }))
+vi.mock('@/campaign-play/components/investigator-list/investigator-list', () => ({
+  InvestigatorList: () => <h2>Investigators</h2>,
+}))
 vi.mock('@/campaign-play/components/your-investigator-card/your-investigator-card', () => ({
   YourInvestigatorCard: () => <h2>Your Investigator</h2>,
 }))
@@ -43,13 +46,16 @@ describe('CampaignPage', () => {
     routerState.location.state = {}
   })
 
-  it('shows the Keeper the Campaign Invite and Rules options and no Player card', () => {
+  it('shows the Keeper the Campaign Invite, then Investigators, then Rules options, and no Player card', () => {
     mockUseCampaign.mockReturnValue(query(keeperCampaign))
 
     render(<CampaignPage campaignId="c1" />)
 
-    expect(screen.getByRole('heading', { name: 'Campaign Invite' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Rules options' })).toBeInTheDocument()
+    expect(screen.getAllByRole('heading').map((heading) => heading.textContent)).toEqual([
+      'Campaign Invite',
+      'Investigators',
+      'Rules options',
+    ])
     expect(screen.queryByRole('heading', { name: 'Your Investigator' })).not.toBeInTheDocument()
   })
 
@@ -61,6 +67,7 @@ describe('CampaignPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'The Haunting' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Your Investigator' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Campaign Invite' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Investigators' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Rules options' })).not.toBeInTheDocument()
   })
 

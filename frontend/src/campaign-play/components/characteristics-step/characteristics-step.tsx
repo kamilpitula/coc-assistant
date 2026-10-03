@@ -1,10 +1,9 @@
-import { TriangleAlert } from 'lucide-react'
-
 import { creationMethodLabels } from '@/campaign-play/components/creation-methods-fieldset/creationMethodLabels'
 import { DiceRollInput } from '@/campaign-play/components/dice-roll-input/dice-roll-input'
 import { FieldGroupError } from '@/campaign-play/components/field-group-error/field-group-error'
 import { PointBuyBudgetCounter } from '@/campaign-play/components/point-budget-counter/point-budget-counter'
 import { WizardField } from '@/campaign-play/components/wizard-field/wizard-field'
+import { WorthCheckingAlert } from '@/campaign-play/components/worth-checking-alert/worth-checking-alert'
 import { characteristicField, luckRollField } from '@/campaign-play/services/characterSheetValidation'
 import { fieldId, groupDescribedBy } from '@/campaign-play/services/fieldIds'
 import {
@@ -14,7 +13,6 @@ import {
   type ValidationError,
 } from '@/campaign-play/types/CharacterSheet'
 import type { WizardStepProps } from '@/campaign-play/types/WizardStepProps'
-import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert'
 
 interface CharacteristicsStepProps extends WizardStepProps {
   rules: CharacterSheetRules
@@ -31,19 +29,7 @@ export function CharacteristicsStep({ inputs, errors, rules, bracket, warnings, 
     <div className="flex flex-col gap-6">
       <p className="text-sm">Creation method: {creationMethodLabels.PointBuy.name}</p>
 
-      {warnings.length > 0 && (
-        <Alert variant="warning">
-          <TriangleAlert aria-hidden="true" />
-          <AlertTitle>Worth checking</AlertTitle>
-          <AlertDescription>
-            <ul className="list-disc pl-5">
-              {warnings.map((warning) => (
-                <li key={`${warning.field}-${warning.code}`}>{warning.message}</li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
-      )}
+      <WorthCheckingAlert warnings={warnings} />
 
       <fieldset
         id={fieldId('characteristics')}

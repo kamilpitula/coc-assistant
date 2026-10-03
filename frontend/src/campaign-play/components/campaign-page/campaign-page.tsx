@@ -1,5 +1,6 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 
+import { InvestigatorList } from '@/campaign-play/components/investigator-list/investigator-list'
 import { InviteManagement } from '@/campaign-play/components/invite-management/invite-management'
 import { RulesOptions } from '@/campaign-play/components/rules-options/rules-options'
 import { YourInvestigatorCard } from '@/campaign-play/components/your-investigator-card/your-investigator-card'
@@ -48,6 +49,7 @@ export function CampaignPage({ campaignId }: CampaignPageProps) {
   return (
     <>
       <InviteManagement campaignId={campaignId} />
+      <InvestigatorList campaignId={campaignId} />
       <RulesOptions campaignId={campaignId} />
     </>
   )
