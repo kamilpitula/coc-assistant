@@ -2,51 +2,82 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import { CampaignLiveConnectionContext } from '@/campaign-play/providers/campaignLiveConnectionContext'
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
+import { myCharacterSheet, sheetView } from '@/campaign-play/test-support/characterSheetFixtures'
+import {
+  keeperCampaign,
+  keeperRosterAllApproved,
+  keeperRosterWithoutPlayers,
+  keeperRosterWithReviews,
+  playerCampaign,
+  playerRoster,
+  STORY_CAMPAIGN_ID,
+} from '@/campaign-play/test-support/rosterFixtures'
 import type { CampaignView } from '@/campaign-play/types/Campaign'
+import type { CampaignMember } from '@/campaign-play/types/CampaignMember'
+import type { InvestigatorSummary } from '@/campaign-play/types/Investigator'
+import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 
 import { CampaignPage } from './campaign-page'
 
-const campaignId = 'story-campaign'
-
 const live = {
   connection: 'connected',
-  presence: { connection: 'connected', presenceByMember: { keeper: 'Connected', player: 'Connected' } },
+  presence: { connection: 'connected', presenceByMember: { k: 'Connected', a: 'Connected', y: 'Connected' } },
   retry: () => {},
 } as const
 
-function withCampaign(campaign: CampaignView | null) {
-  return (Story: () => React.JSX.Element) => (
-    <StoryProviders
-      seed={(client) => {
-        client.setQueryData(campaignQueryKeys.detail(campaignId), campaign)
-        client.setQueryData(campaignQueryKeys.myInvestigator(campaignId), null)
-        client.setQueryData(campaignQueryKeys.members(campaignId), [
-          { memberId: 'keeper', displayName: 'Eleanor Hart', role: 'Keeper', isYou: false },
-          { memberId: 'player', displayName: 'Sam Okafor', role: 'Player', isYou: true },
-        ])
-      }}
-    >
-      <CampaignLiveConnectionContext.Provider value={live}>
-        <Story />
-      </CampaignLiveConnectionContext.Provider>
-    </StoryProviders>
+interface StoryArgs {
+  campaign: CampaignView
+  members: CampaignMember[]
+  investigator?: InvestigatorSummary | null
+}
+
+function OverviewStory({ campaign, members, investigator = null }: StoryArgs) {
+  return (
+    <StoryMsal>
+      <StoryProviders
+        seed={(client) => {
+          client.setQueryData(campaignQueryKeys.detail(STORY_CAMPAIGN_ID), campaign)
+          client.setQueryData(campaignQueryKeys.members(STORY_CAMPAIGN_ID), members)
+          client.setQueryData(campaignQueryKeys.myInvestigator(STORY_CAMPAIGN_ID), investigator)
+          client.setQueryData(campaignQueryKeys.myCharacterSheet(STORY_CAMPAIGN_ID), myCharacterSheet({ characterSheet: sheetView() }))
+        }}
+      >
+        <CampaignLiveConnectionContext.Provider value={live}>
+          <CampaignPage campaignId={STORY_CAMPAIGN_ID} />
+        </CampaignLiveConnectionContext.Provider>
+      </StoryProviders>
+    </StoryMsal>
   )
 }
 
 const meta = {
   title: 'CampaignPlay/CampaignPage',
-  component: CampaignPage,
-  args: { campaignId },
-} satisfies Meta<typeof CampaignPage>
+  component: OverviewStory,
+} satisfies Meta<typeof OverviewStory>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const PlayerView: Story = {
-  decorators: [
-    withCampaign({ id: campaignId, name: 'The Haunting', era: '1920s', allowedCreationMethods: ['PointBuy'], role: 'Player' }),
-  ],
+export const KeeperWithReviewsPending: Story = { args: { campaign: keeperCampaign, members: keeperRosterWithReviews } }
+
+export const KeeperWithNoPlayers: Story = { args: { campaign: keeperCampaign, members: keeperRosterWithoutPlayers } }
+
+export const KeeperAllApproved: Story = { args: { campaign: keeperCampaign, members: keeperRosterAllApproved } }
+
+export const PlayerWithDraft: Story = {
+  args: {
+    campaign: playerCampaign,
+    members: playerRoster,
+    investigator: { id: 'i1', status: 'Draft', name: null, changeRequestComment: null, updatedAt: '2026-10-03T12:00:00Z' },
+  },
 }
 
-export const NotFound: Story = { decorators: [withCampaign(null)] }
+/** A Player whose Investigator is Submitted has no attention items. */
+export const PlayerWithNothingToDo: Story = {
+  args: {
+    campaign: playerCampaign,
+    members: playerRoster,
+    investigator: { id: 'i1', status: 'Submitted', name: 'Mae Doyle', changeRequestComment: null, updatedAt: '2026-10-03T12:00:00Z' },
+  },
+}

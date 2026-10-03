@@ -86,6 +86,20 @@ public sealed class CampaignPlayScenario : IDisposable
         return investigatorId;
     }
 
+    /// <summary>Approves a Submitted Investigator as the Campaign's Keeper.</summary>
+    public async Task ApproveAsync(Guid campaignId, Guid investigatorId)
+    {
+        using var context = Fixture.CreateContext();
+        await KeeperService(context).ApproveAsync(campaignId, investigatorId, KeeperAccountId, CancellationToken.None);
+    }
+
+    /// <summary>Requests changes to a Submitted Investigator as the Campaign's Keeper.</summary>
+    public async Task RequestChangesAsync(Guid campaignId, Guid investigatorId, string comment)
+    {
+        using var context = Fixture.CreateContext();
+        await KeeperService(context).RequestChangesAsync(campaignId, investigatorId, KeeperAccountId, comment, CancellationToken.None);
+    }
+
     /// <summary>Reads the Investigator as stored.</summary>
     public async Task<Investigator?> LoadInvestigatorAsync(Guid campaignId, Guid investigatorId)
     {

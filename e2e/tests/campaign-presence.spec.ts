@@ -1,8 +1,9 @@
-import { test, expect, type Locator, type Page } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
 import { newAccount, signIn, signInNewContext } from '../fixtures/auth'
 import { createCampaignViaUi, issueInviteViaUi } from '../fixtures/campaigns'
 import { joinAsNewPlayer } from '../fixtures/investigators'
+import { attentionList, atTheTable, memberRow, memberRows } from '../fixtures/overview'
 
 /**
  * Traces to specs/campaign-play/spec.md, Presence scenarios, and specs/campaign-play/ux.md section 9:
@@ -15,7 +16,8 @@ import { joinAsNewPlayer } from '../fixtures/investigators'
  * - Scenario 7 "Presence changes do not reorder the roster" (PR-UX-6)
  * - Scenario 8 "Losing your own connection marks Presence as unknown" (PR-UX-7, PR-UX-8)
  * - Scenario 9 "Reconnecting gives up and offers a retry" (PR-UX-9)
- * - Scenario 10 "Keeper without Players is prompted to share the Invite" (PR-UX-10)
+ * - Scenario 10 "Keeper without Players is prompted to share the Invite" (PR-UX-10, superseded by CO-UX-5 of
+ *   specs/campaign-overview/ux.md: the prompt is now the "Needs your attention" item)
  * - Scenario 11 PR-UX-12: a non-member opening the Campaign URL sees no roster
  * "Non-member cannot subscribe", "Non-member cannot read a Campaign's roster", "Unauthenticated connection is rejected",
  * "Presence stays within its Campaign", and token expiry are API-level and covered by
@@ -26,14 +28,6 @@ import { joinAsNewPlayer } from '../fixtures/investigators'
 // that wait for a reconnect outcome use this local timeout instead of a global one.
 const RECONNECT_TIMEOUT = 60_000
 const HUB_NEGOTIATE = '**/hubs/campaign/negotiate**'
-
-function atTheTable(page: Page): Locator {
-  return page.getByRole('region', { name: 'At the table' })
-}
-
-function memberRow(page: Page, displayName: string): Locator {
-  return atTheTable(page).getByRole('listitem').filter({ hasText: displayName })
-}
 
 async function expectPresence(page: Page, displayName: string, presence: 'Connected' | 'Not connected' | 'Unknown') {
   await expect(memberRow(page, displayName).getByText(presence, { exact: true })).toBeVisible()
@@ -75,14 +69,14 @@ test.describe('Campaign Presence: who is at the table', () => {
 
       await test.step('the other Player opens the Campaign and sees who is at the table', async () => {
         await amos.page.goto(`/campaigns/${campaignId}`)
-        const rows = atTheTable(amos.page).getByRole('listitem')
-        await expect(rows).toHaveText([
-          new RegExp(`^${keeper.name}\\s*Keeper\\s*Connected$`),
-          new RegExp(`^${amos.account.name} \\(you\\)\\s*Connected$`),
-          new RegExp(`^${zoe.account.name}\\s*Connected$`),
+        await expect(memberRows(amos.page)).toHaveText([
+          new RegExp(`^${keeper.name}\\s*Keeper\\s*Connected`),
+          new RegExp(`^${amos.account.name} \\(you\\)\\s*Connected`),
+          new RegExp(`^${zoe.account.name}\\s*Connected`),
         ])
         await expect(atTheTable(amos.page).getByText('3 of 3 connected')).toBeVisible()
-        await expect(atTheTable(amos.page)).not.toContainText(/Investigator/)
+        // CO-UX-8: another Player's Investigator reads "Not ready yet" until it is Approved.
+        await expect(memberRow(amos.page, zoe.account.name)).toContainText('Not ready yet')
       })
     } finally {
       await zoe.context.close()
@@ -187,7 +181,7 @@ test.describe('Campaign Presence: who is at the table', () => {
     const campaignId = await createCampaignViaUi(page, `Join ${keeper.oid.slice(0, 6)}`)
     const token = await issueInviteViaUi(page, campaignId)
     const mike = await joinAsNewPlayer(browser, token, 'Mike')
-    const rows = atTheTable(page).getByRole('listitem')
+    const rows = memberRows(page)
 
     const alpha = newAccount('Alpha')
     const alphaSession = await signInNewContext(browser, alpha)
@@ -222,7 +216,7 @@ test.describe('Campaign Presence: who is at the table', () => {
       new RegExp(`^${bea.account.name} \\(you\\)`),
       new RegExp(`^${cal.account.name}`),
     ]
-    const rows = atTheTable(bea.page).getByRole('listitem')
+    const rows = memberRows(bea.page)
 
     try {
       await bea.page.goto(`/campaigns/${campaignId}`)
@@ -292,17 +286,18 @@ test.describe('Campaign Presence: who is at the table', () => {
     await expect(atTheTable(page).getByRole('heading', { name: 'At the table' })).toBeFocused()
   })
 
-  test('Scenario 10: a Keeper without Players is prompted to share the Invite', async ({ page }) => {
+  test('Scenario 10: a Keeper without Players is prompted to invite them', async ({ page }) => {
     const keeper = newAccount('Keeper')
     await signIn(page, keeper)
     const campaignId = await createCampaignViaUi(page, `Alone ${keeper.oid.slice(0, 6)}`)
 
     await page.goto(`/campaigns/${campaignId}`)
 
-    await expect(atTheTable(page).getByRole('listitem')).toHaveCount(1)
+    await expect(memberRows(page)).toHaveCount(1)
     await expectPresence(page, keeper.name, 'Connected')
     await expect(atTheTable(page).getByText('1 of 1 connected')).toBeVisible()
-    await expect(atTheTable(page).getByText('No Players yet. Share the Invite to bring them in.')).toBeVisible()
+    await expect(attentionList(page).getByText('No Players have joined yet.')).toBeVisible()
+    await expect(atTheTable(page).getByText(/No Players yet/)).toHaveCount(0)
   })
 
   test('Scenario 11: a non-member opening the Campaign URL sees no roster', async ({ page, browser }) => {

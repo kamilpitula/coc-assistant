@@ -3,13 +3,15 @@ import { test, expect } from '@playwright/test'
 import { newAccount, signIn } from '../fixtures/auth'
 import { createCampaignViaUi, issueInviteViaUi } from '../fixtures/campaigns'
 import { fillPointBuy, joinAsNewPlayer, pressWizardAction, VALID_POINT_BUY } from '../fixtures/investigators'
+import { attentionList, memberRow, ownRow } from '../fixtures/overview'
 
 /**
  * Traces to specs/campaign-play/spec.md "Investigator lifecycle" and Scenarios "Player starts a Draft Investigator",
  * "Player submits a valid Character Sheet", "Keeper requests changes", "Request changes requires a comment", and
  * "Keeper approves an Investigator"; to specs/character-sheet/spec.md Scenarios "Point Buy Investigator applies age
  * effects before Hard and Extreme values" and "Draft resumes after leaving the wizard"; and to
- * specs/character-sheet/ux.md sections 3 to 7 (UX-3, UX-4, UX-5, UX-11, UX-12, UX-13, UX-14, UX-15, UX-20).
+ * specs/character-sheet/ux.md sections 3 to 7 (UX-3, UX-4, UX-5, UX-11, UX-12, UX-13, UX-14, UX-15, UX-20), with the
+ * Campaign page as the overview of specs/campaign-overview/ux.md (CO-UX-4, CO-UX-6, CO-UX-9).
  */
 test.describe('Investigator lifecycle', () => {
   test('A Player creates, saves, resumes, and submits an Investigator; the Keeper requests changes, then approves it', async ({
@@ -27,17 +29,16 @@ test.describe('Investigator lifecycle', () => {
     const playerPage = player.page
 
     try {
-      await test.step('UX-3: the Player creates a Draft from the Your Investigator card', async () => {
+      await test.step('UX-3: the Player creates a Draft from "Needs your attention"', async () => {
         await playerPage.goto(`/campaigns/${campaignId}`)
         await expect(playerPage.getByRole('heading', { level: 1, name: campaignName })).toBeVisible()
-        await playerPage.getByRole('button', { name: 'Create Investigator' }).click()
+        await attentionList(playerPage).getByRole('button', { name: 'Create Investigator' }).click()
         await expect(playerPage.getByRole('heading', { level: 1, name: 'Identity' })).toBeFocused()
       })
 
       await test.step('UX-3: the Keeper sees the Draft only as "In progress", without a name or an action', async () => {
         await page.goto(`/campaigns/${campaignId}`)
-        const investigators = page.getByRole('region', { name: 'Investigators' })
-        const row = investigators.getByRole('row', { name: new RegExp(player.account.name) })
+        const row = memberRow(page, player.account.name)
         await expect(row.getByText('In progress')).toBeVisible()
         await expect(row.getByText('Not shown until submitted')).toBeVisible()
         await expect(row.getByRole('link')).toHaveCount(0)
@@ -62,11 +63,11 @@ test.describe('Investigator lifecycle', () => {
         await playerPage.getByLabel('STR', { exact: true }).fill('60')
         await pressWizardAction(playerPage, 'Save and exit')
         await expect(playerPage.getByRole('status').filter({ hasText: 'Draft saved.' })).toBeVisible()
-        await expect(playerPage.getByText('Step 2 of 4')).toBeVisible()
+        await expect(attentionList(playerPage).getByText('Continue Harvey Walters: step 2 of 4')).toBeVisible()
       })
 
       await test.step('UX-5: "Continue" resumes at Characteristics with the saved value', async () => {
-        await playerPage.getByRole('link', { name: 'Continue' }).click()
+        await attentionList(playerPage).getByRole('link', { name: 'Continue' }).click()
         await expect(playerPage.getByRole('heading', { level: 1, name: 'Characteristics' })).toBeVisible()
         await expect(playerPage.getByLabel('STR', { exact: true })).toHaveValue('60')
       })
@@ -104,20 +105,19 @@ test.describe('Investigator lifecycle', () => {
         await expect(
           playerPage.getByRole('status').filter({ hasText: 'Submitted. Your Keeper will review your Investigator.' }),
         ).toBeVisible()
-        await expect(playerPage.getByText('Submitted - waiting for your Keeper')).toBeVisible()
+        await expect(ownRow(playerPage)).toContainText('Submitted - waiting for your Keeper')
       })
 
       await test.step('UX-12: the Submitted Investigator opens read-only', async () => {
-        await playerPage.getByRole('link', { name: 'View' }).click()
+        await ownRow(playerPage).getByRole('link', { name: 'View Harvey Walters' }).click()
         await expect(playerPage.getByRole('heading', { level: 1, name: 'Harvey Walters' })).toBeVisible()
         await expect(playerPage.getByRole('textbox')).toHaveCount(0)
         await expect(playerPage.getByRole('spinbutton')).toHaveCount(0)
       })
 
-      await test.step('UX-13: the Keeper sees the Submitted Investigator first, with "Review"', async () => {
+      await test.step('UX-13: the Keeper is asked to review the Submitted Investigator', async () => {
         await page.reload()
-        const investigators = page.getByRole('region', { name: 'Investigators' })
-        await investigators.getByRole('link', { name: 'Review Harvey Walters' }).click()
+        await attentionList(page).getByRole('link', { name: 'Review Harvey Walters' }).click()
         await expect(page.getByRole('heading', { level: 1, name: 'Harvey Walters' })).toBeVisible()
         await expect(page.getByText(`Player: ${player.account.name}`)).toBeVisible()
       })
@@ -140,15 +140,15 @@ test.describe('Investigator lifecycle', () => {
 
       await test.step("UX-15: the Player sees the Keeper's comment, edits, and resubmits", async () => {
         await playerPage.goto(`/campaigns/${campaignId}`)
-        await expect(playerPage.getByText('Credit Rating seems high for this Occupation')).toBeVisible()
-        await playerPage.getByRole('link', { name: 'Edit Investigator' }).click()
+        await expect(attentionList(playerPage).getByText('Credit Rating seems high for this Occupation')).toBeVisible()
+        await attentionList(playerPage).getByRole('link', { name: 'Edit Investigator' }).click()
         await expect(playerPage.getByRole('heading', { name: 'Your Keeper asked for changes' })).toBeVisible()
         await playerPage.getByRole('link', { name: 'Change identity' }).click()
         await playerPage.getByLabel('Residence').fill('Arkham')
         await pressWizardAction(playerPage, 'Save and exit')
-        await playerPage.getByRole('link', { name: 'Edit Investigator' }).click()
+        await attentionList(playerPage).getByRole('link', { name: 'Edit Investigator' }).click()
         await playerPage.getByRole('button', { name: 'Submit to Keeper' }).click()
-        await expect(playerPage.getByText('Submitted - waiting for your Keeper')).toBeVisible()
+        await expect(ownRow(playerPage)).toContainText('Submitted - waiting for your Keeper')
       })
 
       await test.step('UX-14: the Keeper approves on one click and it is ready for play', async () => {
@@ -160,7 +160,7 @@ test.describe('Investigator lifecycle', () => {
 
       await test.step('the Player sees the Investigator approved and ready for play', async () => {
         await playerPage.goto(`/campaigns/${campaignId}`)
-        await expect(playerPage.getByText('Approved - ready for play')).toBeVisible()
+        await expect(ownRow(playerPage)).toContainText('Approved - ready for play')
       })
     } finally {
       await player.context.close()

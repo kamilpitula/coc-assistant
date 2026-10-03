@@ -9,7 +9,8 @@ import {
 
 /**
  * Traces to specs/campaign-play/spec.md — Scenario: "Keeper creates a persistent Campaign"
- * and the Definition of Done entry "The Keeper can issue, revoke, and replace a Campaign Invite".
+ * and the Definition of Done entry "The Keeper can issue, revoke, and replace a Campaign Invite", on the Keeper's
+ * Settings page (specs/campaign-overview/ux.md section 8, CO-UX-3).
  */
 test.describe('Keeper manages a Campaign Invite', () => {
   test('Scenario 1: Keeper creates a persistent Campaign (signed in)', async ({ page }) => {
@@ -31,8 +32,8 @@ test.describe('Keeper manages a Campaign Invite', () => {
 
     const campaignId = await createCampaignViaUi(page, `Mansion ${keeper.oid.slice(0, 6)}`)
 
-    await test.step('Keeper opens the Campaign and issues an Invite', async () => {
-      await page.goto(`/campaigns/${campaignId}`)
+    await test.step('Keeper opens Settings and issues an Invite', async () => {
+      await page.goto(`/campaigns/${campaignId}/settings`)
       await page.getByRole('button', { name: /issue invite link/i }).click()
     })
 

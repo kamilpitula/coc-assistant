@@ -48,6 +48,7 @@ UX specification: [ux.md](ux.md).
   | Player | Another Player's Approved Investigator | `{visibility: "Visible", name, status: "Approved"}` |
   | Player | Another Player's Investigator in any other status, or none | `{visibility: "NotReady"}` |
 
+  - **Wire format:** properties are camelCase; `visibility` and `status` use PascalCase names (`Visible`, `InProgress`, `NotReady`; `Draft`, `Submitted`, `ChangesRequested`, `Approved`). Each shape carries exactly the properties in its row: `InProgress` and `NotReady` carry `visibility` only, and a Player's `Visible` entry has no `id` property at all.
   - `name` may be `null` for an unnamed Investigator.
   - `id` is given to the Keeper only, because only the Keeper opens other Investigators.
   - A Player never receives another Player's Investigator id, status other than Approved, or any Character Sheet data.
@@ -130,7 +131,7 @@ Scenario: Player attention follows their Investigator
   # CO-UX-6
   Given a Player whose Investigator is a Draft at step 3
   When the Player opens the overview
-  Then "Needs your attention" shows one item with "step 3 of 7" and "Continue"
+  Then "Needs your attention" shows one item with "step 3 of 4" and "Continue"
   When the Investigator is Submitted
   Then "Needs your attention" is not shown
 

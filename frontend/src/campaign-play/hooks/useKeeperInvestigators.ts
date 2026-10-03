@@ -4,22 +4,10 @@ import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import {
   approveInvestigator,
   getInvestigatorForKeeper,
-  listInvestigators,
   requestChanges,
 } from '@/campaign-play/services/investigatorApi'
 import type { KeeperInvestigator } from '@/campaign-play/types/Investigator'
 import { useAccessToken } from '@/shared/hooks/useAccessToken'
-
-/** The Keeper's Investigator list; null for anyone who is not the Keeper. */
-export function useInvestigatorList(campaignId: string, enabled = true) {
-  const getAccessToken = useAccessToken()
-
-  return useQuery({
-    queryKey: campaignQueryKeys.investigators(campaignId),
-    queryFn: async () => listInvestigators(await getAccessToken(), campaignId),
-    enabled,
-  })
-}
 
 /** A non-Draft Investigator for the Keeper's review; null outside the Keeper's visibility. */
 export function useKeeperInvestigator(campaignId: string, investigatorId: string) {

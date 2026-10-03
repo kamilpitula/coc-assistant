@@ -1,4 +1,4 @@
-import { createElement, type ReactNode } from 'react'
+import { createElement, type MouseEventHandler, type ReactNode } from 'react'
 import { vi } from 'vitest'
 
 /**
@@ -18,10 +18,12 @@ interface MockLinkProps {
   params?: Record<string, string>
   children: ReactNode
   className?: string
+  onClick?: MouseEventHandler<HTMLAnchorElement>
+  'aria-current'?: 'page'
 }
 
-function MockLink({ to, params, children, className }: MockLinkProps) {
-  return createElement('a', { href: resolvePath(to, params), className }, children)
+function MockLink({ to, params, children, className, onClick, 'aria-current': ariaCurrent }: MockLinkProps) {
+  return createElement('a', { href: resolvePath(to, params), className, onClick, 'aria-current': ariaCurrent }, children)
 }
 
 export const routerMock = {

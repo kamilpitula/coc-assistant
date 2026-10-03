@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { InvestigatorResume } from '@/campaign-play/components/investigator-resume/investigator-resume'
-import { Header } from '@/shared/components/header/header'
 
 export const Route = createFileRoute('/campaigns/$campaignId/investigator/')({
   component: InvestigatorResumePage,
@@ -10,12 +9,5 @@ export const Route = createFileRoute('/campaigns/$campaignId/investigator/')({
 function InvestigatorResumePage() {
   const { campaignId } = Route.useParams()
 
-  return (
-    <div className="flex min-h-svh flex-col">
-      <Header />
-      <main className="flex-1 px-6 py-12 md:px-16">
-        <InvestigatorResume campaignId={campaignId} />
-      </main>
-    </div>
-  )
+  return <InvestigatorResume campaignId={campaignId} />
 }

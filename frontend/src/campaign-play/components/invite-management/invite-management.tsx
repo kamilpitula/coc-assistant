@@ -6,6 +6,7 @@ import {
   useReplaceInvite,
   useRevokeInvite,
 } from '@/campaign-play/hooks/useCampaignInvite'
+import { joinLink } from '@/campaign-play/services/joinLink'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 
@@ -13,12 +14,9 @@ interface InviteManagementProps {
   campaignId: string
 }
 
-function joinLink(token: string): string {
-  return `${window.location.origin}/campaigns/join/${token}`
-}
-
-/** Lets a Keeper issue, share, replace, and revoke their Campaign's active Invite link. */
+/** Lets a Keeper issue, share, replace, and revoke their Campaign's active Invite link, on Settings (ux.md section 8). */
 export function InviteManagement({ campaignId }: InviteManagementProps) {
+  const headingId = useId()
   const linkFieldId = useId()
   const invite = useCampaignInvite(campaignId)
   const issue = useIssueInvite(campaignId)
@@ -29,8 +27,10 @@ export function InviteManagement({ campaignId }: InviteManagementProps) {
   const anyError = invite.isError || issue.isError || replace.isError || revoke.isError
 
   return (
-    <section className="mx-auto flex max-w-md flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Campaign Invite</h1>
+    <section aria-labelledby={headingId} className="flex flex-col gap-6">
+      <h2 id={headingId} className="text-xl font-semibold">
+        Invite
+      </h2>
 
       {invite.isPending && (
         <p role="status" className="text-sm">

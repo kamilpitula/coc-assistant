@@ -45,6 +45,17 @@ describe('InviteManagement', () => {
     mockUseRevokeInvite.mockReturnValue(mutationState(mockRevoke))
   })
 
+  // specs/campaign-overview/ux.md section 8: on Settings the Invite is a section headed by an h2 "Invite".
+  it('is a section headed "Invite" on the Settings page', () => {
+    mockUseCampaignInvite.mockReturnValue(queryState({ data: null }))
+
+    render(<InviteManagement campaignId="c-1" />)
+
+    expect(screen.getByRole('region', { name: 'Invite' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Invite' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+  })
+
   it('shows an issue button when there is no active invite', () => {
     mockUseCampaignInvite.mockReturnValue(queryState({ data: null }))
 

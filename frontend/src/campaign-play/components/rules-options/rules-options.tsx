@@ -53,7 +53,7 @@ export function RulesOptions({ campaignId }: RulesOptionsProps) {
 
 function RulesOptionsSection({ children }: { children: ReactNode }) {
   return (
-    <section aria-labelledby="rules-options-heading" className="mx-auto flex max-w-md flex-col gap-3">
+    <section aria-labelledby="rules-options-heading" className="flex max-w-md flex-col gap-3">
       <h2 id="rules-options-heading" className="text-xl font-semibold">
         Rules options
       </h2>

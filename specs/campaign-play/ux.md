@@ -130,7 +130,7 @@ Stories cover: Live (mixed states), Connecting, Reconnecting, Reconnect failed, 
 - **PR-UX-7** Before the first snapshot every row shows "Unknown" and the summary reads "Checking who's connected...".
 - **PR-UX-8** When your connection drops, the notice appears and every row shows "Unknown". After reconnecting, the notice disappears and current states return.
 - **PR-UX-9** When reconnecting fails, the notice reads "Couldn't reconnect." with "Try again", which starts a new attempt.
-- **PR-UX-10** A Keeper with no Players sees only their own row and the hint about sharing the Invite. Players never see the hint.
+- **PR-UX-10** A Keeper with no Players sees only their own row. The hint about sharing the Invite is superseded by the attention item of CO-UX-5 ([campaign-overview ux](../campaign-overview/ux.md) section 4.1).
 - **PR-UX-11** (Superseded by [campaign-overview ux](../campaign-overview/ux.md) CO-UX-7 to CO-UX-9.) The roster shows only the Investigator data visible to the viewer.
 - **PR-UX-12** A non-member opening the Campaign URL sees "We couldn't find that Campaign" and no roster.
 

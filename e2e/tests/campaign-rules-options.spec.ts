@@ -7,7 +7,8 @@ import { createCampaignViaUi, issueInviteViaUi } from '../fixtures/campaigns'
  * Traces to specs/campaign-play/spec.md "Campaign rules options" and its Scenarios
  * "Keeper creates a Campaign with default rules options", "Keeper changes the allowed Creation
  * Methods", "Player cannot change the allowed Creation Methods", and "Player reads the Campaign without
- * Keeper-only data"; and to specs/character-sheet/ux.md sections 2, 3.1, and 3.2 (UX-1, UX-2).
+ * Keeper-only data"; and to specs/character-sheet/ux.md sections 2, 3.1, and 3.2 (UX-1, UX-2). Rules options
+ * live on the Keeper's Settings page (specs/campaign-overview/ux.md section 8, CO-UX-3).
  */
 test.describe('Campaign rules options', () => {
   test('UX-1: Keeper creates a Campaign with default rules options without opening them', async ({
@@ -28,8 +29,8 @@ test.describe('Campaign rules options', () => {
       })
     })
 
-    await test.step('the Campaign page shows the 1920s Era and all three creation methods', async () => {
-      await page.goto(`/campaigns/${campaignId}`)
+    await test.step('Settings shows the 1920s Era and all three creation methods', async () => {
+      await page.goto(`/campaigns/${campaignId}/settings`)
       const rulesOptions = page.getByRole('region', { name: 'Rules options' })
       await expect(rulesOptions.getByText('Era: 1920s')).toBeVisible()
       await expect(
@@ -61,11 +62,11 @@ test.describe('Campaign rules options', () => {
     })
   })
 
-  test('Keeper changes the allowed creation methods from the Campaign page', async ({ page }) => {
+  test('Keeper changes the allowed creation methods on Settings', async ({ page }) => {
     const keeper = newAccount('Keeper')
     await signIn(page, keeper)
     const campaignId = await createCampaignViaUi(page, `Edit ${keeper.oid.slice(0, 6)}`)
-    await page.goto(`/campaigns/${campaignId}`)
+    await page.goto(`/campaigns/${campaignId}/settings`)
     const editButton = page.getByRole('button', { name: 'Edit creation methods' })
 
     await test.step('Keeper turns off Quick fire and saves', async () => {
@@ -121,7 +122,7 @@ test.describe('Campaign rules options', () => {
         capturedAuth = response.request().headers().authorization ?? null
 
         await expect(session.page.getByRole('heading', { level: 1, name: campaignName })).toBeVisible()
-        await expect(session.page.getByRole('heading', { name: 'Your Investigator' })).toBeVisible()
+        await expect(session.page.getByRole('heading', { name: 'At the table' })).toBeVisible()
         await expect(session.page.getByRole('button', { name: 'Edit creation methods' })).toHaveCount(0)
         await expect(session.page.getByRole('heading', { name: 'Rules options' })).toHaveCount(0)
       })
@@ -139,7 +140,7 @@ test.describe('Campaign rules options', () => {
       })
 
       await test.step('the Keeper still sees all three creation methods', async () => {
-        await page.goto(`/campaigns/${campaignId}`)
+        await page.goto(`/campaigns/${campaignId}/settings`)
         await expect(
           page.getByText('Creation methods: Standard rolling, Point buy, Quick fire'),
         ).toBeVisible()

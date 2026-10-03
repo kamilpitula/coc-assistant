@@ -38,6 +38,56 @@ public static class CampaignPlayApiRequests
         joinResponse.EnsureSuccessStatusCode();
     }
 
+    /// <summary>A valid Point Buy Character Sheet request body with the given Investigator name.</summary>
+    public static object ValidCharacterSheet(string name) => new
+    {
+        identity = new { name, age = 25, gender = (string?)null, residence = "Boston", birthplace = (string?)null },
+        creationMethod = "PointBuy",
+        characteristics = new Dictionary<string, int?>
+        {
+            ["STR"] = 60,
+            ["CON"] = 60,
+            ["DEX"] = 60,
+            ["APP"] = 50,
+            ["POW"] = 60,
+            ["SIZ"] = 60,
+            ["INT"] = 60,
+            ["EDU"] = 50,
+        },
+        ageEffects = new { deductions = new Dictionary<string, int?>(), eduImprovementChecks = new[] { new { check = (int?)30, gain = (int?)null } } },
+        luckRolls = new int?[] { 11 },
+    };
+
+    /// <summary>Creates the Player's Draft with a valid, named Character Sheet and returns the Investigator id.</summary>
+    public static async Task<Guid> CreateNamedDraftAsync(HttpClient client, Guid campaignId, string playerOid, string name)
+    {
+        var investigators = $"/api/campaigns/{campaignId}/investigators";
+        var created = await client.SendAsync(BuildRequest(HttpMethod.Post, investigators, playerOid));
+        created.EnsureSuccessStatusCode();
+        var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        (await client.SendAsync(BuildRequest(HttpMethod.Put, $"{investigators}/mine/character-sheet", playerOid, ValidCharacterSheet(name))))
+            .EnsureSuccessStatusCode();
+        return id;
+    }
+
+    /// <summary>Creates and submits the Player's named Investigator and returns its id.</summary>
+    public static async Task<Guid> CreateSubmittedAsync(HttpClient client, Guid campaignId, string playerOid, string name)
+    {
+        var id = await CreateNamedDraftAsync(client, campaignId, playerOid, name);
+        (await client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/investigators/mine/submit", playerOid)))
+            .EnsureSuccessStatusCode();
+        return id;
+    }
+
+    /// <summary>Creates, submits, and approves (as the Keeper) the Player's named Investigator and returns its id.</summary>
+    public static async Task<Guid> CreateApprovedAsync(HttpClient client, Guid campaignId, string keeperOid, string playerOid, string name)
+    {
+        var id = await CreateSubmittedAsync(client, campaignId, playerOid, name);
+        (await client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/investigators/{id}/approve", keeperOid)))
+            .EnsureSuccessStatusCode();
+        return id;
+    }
+
     /// <summary>Migrates the test database and deletes all rows, keeping the migration history.</summary>
     public static async Task ResetDatabaseAsync(IdentityApiFactory factory)
     {

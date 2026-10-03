@@ -6,10 +6,10 @@ import { describePresenceChanges, type PresenceView } from './presenceAnnounceme
 
 // specs/campaign-play/ux.md section 6 (screen-reader announcements) and PR-A11Y-4.
 
-const keeper: CampaignMember = { memberId: 'k', displayName: 'Eleanor Hart', role: 'Keeper', isYou: false }
-const you: CampaignMember = { memberId: 'y', displayName: 'Sam Okafor', role: 'Player', isYou: true }
-const alex: CampaignMember = { memberId: 'a', displayName: 'Alex Brandt', role: 'Player', isYou: false }
-const priya: CampaignMember = { memberId: 'p', displayName: 'Priya Nair', role: 'Player', isYou: false }
+const keeper: CampaignMember = { memberId: 'k', displayName: 'Eleanor Hart', role: 'Keeper', isYou: false, investigator: null }
+const you: CampaignMember = { memberId: 'y', displayName: 'Sam Okafor', role: 'Player', isYou: true, investigator: null }
+const alex: CampaignMember = { memberId: 'a', displayName: 'Alex Brandt', role: 'Player', isYou: false, investigator: null }
+const priya: CampaignMember = { memberId: 'p', displayName: 'Priya Nair', role: 'Player', isYou: false, investigator: null }
 
 function view(members: CampaignMember[] | undefined, presenceByMember: PresenceView['presenceByMember']): PresenceView {
   return { members, presenceByMember }
