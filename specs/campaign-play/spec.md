@@ -16,6 +16,7 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
   - The Player edits the Character Sheet only in Draft or Changes Requested. Deleting the Investigator ("Start over") is available only in Draft. Editing after Approval is outside this feature.
 - **Investigator visibility:** A Player reads only their own Investigator. The Keeper reads every Investigator in Submitted, Changes Requested, or Approved; a Draft is shown to the Keeper only as "In progress" with the Player's name. Requests for an Investigator outside the caller's visibility, including any in another Campaign, return 404.
 - **Player and Keeper experience:** The Campaign page renders by role. A Player sees a read-only Campaign view with a "Your Investigator" card showing the status and one primary action (Create, Continue, View, or Edit with the Keeper's Change Request comment). The Keeper sees the Investigator list with statuses and a review screen that uses the shared read-only Character Sheet view with Approve and Request changes actions. UX specification: [specs/character-sheet/ux.md](../character-sheet/ux.md).
+- **Presence:** Each Campaign member is Connected or Not connected; the model allows adding further states later. Presence belongs to the member: they are Connected while any of their connections (tabs or devices) is open on any `/campaigns/{campaignId}` page, and Not connected immediately after the last one closes. Every member sees the full roster of their Campaign with each member's display name, role, and Presence, and no Investigator names. Only Campaign members can subscribe to a Campaign's Presence, and a Player who joins appears to connected members without a reload. UX specification: [ux.md](ux.md).
 - **API Contracts:**
   - `POST /api/campaigns` - accepts `era` and `allowedCreationMethods` in addition to the existing fields; the response is the Keeper view below.
   - `GET /api/campaigns/{campaignId}` - Campaign members only; the response depends on the caller's role. The Keeper gets the Keeper view `{id, name, keeperAccountId, playerLimit, era, allowedCreationMethods, role: "Keeper"}`. A Player gets the reduced Player view `{id, name, era, allowedCreationMethods, role: "Player"}`, which carries no Keeper-only data. Non-members get 404.
@@ -36,6 +37,17 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
   - `DELETE .../investigators/mine` returns 204. `POST .../approve` and `POST .../request-changes` return the Keeper Investigator.
   - Errors use RFC 9457 problem details. An action the Investigator's status does not allow, a second Investigator, or a Campaign without a supported Creation Method returns 409. A submission with errors returns 422 with a `validationErrors` array of `ValidationError` items. A missing or too long Change Request comment returns 400.
   - Player names come from the caller's Account display name through an Identity read port; Campaign Play does not store a copy.
+- **Campaign members API:** `GET /api/campaigns/{campaignId}/members` - Campaign members (Keeper or Player) only; non-members get 404. Returns the roster in the UX order ([ux.md](ux.md) section 5) as an array of `{memberId, displayName, role, isYou}`.
+  - `memberId` is an opaque string, stable within the Campaign, that identifies a member in Presence events. It is not an Account id, so the roster exposes no Account ids to Players (consistent with the Player Campaign view).
+  - `role` is `Keeper` or `Player`. `isYou` is true only on the caller's own entry. The roster carries no Investigator data.
+- **Live connection contract:** One authenticated SignalR hub at `/hubs/campaign`, hosted by the API and scaled through Azure SignalR Service. PBI-CP-006 adds its Wall Entry and Investigator events to the same hub.
+  - Authentication: the Entra bearer token is sent through the SignalR `accessTokenFactory` (the `access_token` query string on the hub path only). Connections without a valid token are rejected.
+  - The frontend opens the connection in the `/campaigns/$campaignId` layout route and closes it when the user leaves that route. It uses automatic reconnect with the default delays (0, 2, 10, 30 seconds); after the last attempt fails, the UI shows the failed state and "Try again" starts a new connection.
+  - Client to server: `SubscribeToCampaign(campaignId)` checks Campaign membership server-side, adds the connection to that Campaign's group, records the connection for Presence, and returns a Presence snapshot `{campaignId, members: [{memberId, presence}]}`. For a non-member or an unknown Campaign it throws a `HubException` with "Campaign not found." and nothing is recorded or delivered. After a reconnect the client subscribes again and replaces its states with the new snapshot.
+  - Server to client, sent only to the Campaign's group: `PresenceChanged {campaignId, memberId, presence}` when a member's Presence changes, and `MemberJoined {campaignId, member: {memberId, displayName, role}, presence}` when a Player joins through the Campaign Invite. `isYou` is not sent in events; the client compares `memberId` with its own roster entry.
+  - `presence` values use PascalCase names: `Connected`, `NotConnected`.
+  - Presence tracking: the server counts open subscribed connections per (Campaign, Account). The first connection makes the member Connected and the last disconnect makes them Not connected; changes in between send no event. "Immediately" means as soon as the server sees the disconnect: at once for a closed tab, and after the SignalR server timeout (30 seconds by default) for a lost network.
+  - The tracker is held in API memory, so the API runs a single replica until a shared tracker replaces it. Presence is not persisted and has no history.
 - **Identity and access:** Account authentication is defined in [specs/identity-and-access/spec.md](../identity-and-access/spec.md). Campaign permissions distinguish the Keeper from Players and protect Keeper-only information.
 - **Persistence:** Campaign state is stored in Azure SQL Database.
 - **Live collaboration:** Wall Entry changes, the connected Player's own Investigator stat changes, and Presence changes are delivered through Azure SignalR Service.
@@ -77,6 +89,7 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
 - A Player cannot read another Player's Investigator.
 - A Player cannot perform Keeper actions through a Player-authorized operation.
 - A revoked or replaced Campaign Invite cannot admit new Players.
+- A Campaign's roster and Presence are delivered only to members of that Campaign, and never include Account ids or Investigator data.
 
 ### Scenarios
 ```gherkin
@@ -206,4 +219,104 @@ Scenario: Live Wall Entry is delivered to connected members
   Given a Keeper and a Player are connected to the same Campaign
   When the Keeper creates a Public Wall Entry
   Then the Player receives the new Wall Entry without manually reloading
+
+# Presence scenarios trace to specs/campaign-play/ux.md section 9 (PR-UX-n).
+
+Scenario: Members see who is at the table
+  # PR-UX-1, PR-UX-11
+  Given a Campaign with a Keeper and two Players
+  And the Keeper and one Player have the Campaign open
+  When the other Player opens the Campaign page
+  Then the Player sees every member in the order Keeper, themselves, other Players
+  And their own entry is marked "(you)" and the Keeper's entry is labelled "Keeper"
+  And each member shows "Connected" or "Not connected"
+  And no Investigator name appears in the roster
+
+Scenario: A member connecting is shown without reloading
+  # PR-UX-2
+  Given the Keeper has the Campaign page open
+  And a Player is shown as "Not connected"
+  When the Player opens the Campaign
+  Then the Keeper sees the Player as "Connected" without manually reloading
+  And the summary count of connected members goes up by one
+
+Scenario: A member leaving is shown without reloading
+  # PR-UX-3
+  Given the Keeper and a Player have the Campaign open
+  When the Player closes their only Campaign tab
+  Then the Keeper sees the Player as "Not connected" without manually reloading
+
+Scenario: A member with another open tab stays connected
+  # PR-UX-3
+  Given a Player has the Campaign open in two tabs
+  And the Keeper has the Campaign page open
+  When the Player closes one of the tabs
+  Then the Keeper still sees the Player as "Connected"
+
+Scenario: A member on a Campaign sub-page counts as connected
+  # PR-UX-4
+  Given the Keeper has the Campaign page open
+  When a Player opens the Investigator creation wizard in that Campaign
+  Then the Keeper sees the Player as "Connected"
+
+Scenario: A Player who joins appears to connected members
+  # PR-UX-5
+  Given the Keeper has the Campaign page open
+  When an authenticated user joins through the active Campaign Invite
+  Then the new Player appears in the Keeper's roster without manually reloading
+  And no member's position changes except to make room for the new Player
+
+Scenario: Presence changes do not reorder the roster
+  # PR-UX-6
+  Given a Player has the Campaign page open
+  When another Player connects and then disconnects
+  Then every member stays in the same position in the roster
+
+Scenario: Losing your own connection marks Presence as unknown
+  # PR-UX-7, PR-UX-8
+  Given a Player has the Campaign page open
+  When the Player's live connection is lost
+  Then the Player sees "Connection lost. Reconnecting..."
+  And every member shows "Unknown"
+  When the connection is restored
+  Then the notice disappears and every member shows their current Presence
+
+Scenario: Reconnecting gives up and offers a retry
+  # PR-UX-9
+  Given a Player's live connection is lost
+  When every automatic reconnect attempt fails
+  Then the Player sees "Couldn't reconnect." with a "Try again" button
+  When the Player presses "Try again" and the connection succeeds
+  Then every member shows their current Presence
+
+Scenario: Keeper without Players is prompted to share the Invite
+  # PR-UX-10
+  Given a Campaign has no Players
+  When the Keeper opens the Campaign page
+  Then the roster shows only the Keeper as "Connected"
+  And the Keeper sees "No Players yet. Share the Invite to bring them in."
+
+Scenario: Non-member cannot subscribe to a Campaign's Presence
+  # PR-UX-12
+  Given an authenticated user is not a member of a Campaign
+  When the user subscribes to that Campaign's Presence
+  Then the subscription is refused with "Campaign not found."
+  And the user receives no Presence or roster for that Campaign
+  And no member sees the user as connected
+
+Scenario: Non-member cannot read a Campaign's roster
+  Given an authenticated user is not a member of a Campaign
+  When the user requests that Campaign's members
+  Then the request returns 404
+
+Scenario: Unauthenticated connection is rejected
+  Given a request carries no valid bearer token
+  When it connects to the Campaign hub
+  Then the connection is rejected
+
+Scenario: Presence stays within its Campaign
+  Given a Player is a member of Campaign A but not of Campaign B
+  And the Player has Campaign A open
+  When a member of Campaign B connects
+  Then the Player receives no Presence event for Campaign B
 ```
