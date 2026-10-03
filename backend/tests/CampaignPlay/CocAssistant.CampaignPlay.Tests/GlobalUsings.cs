@@ -9,3 +9,5 @@ global using CocAssistant.CampaignPlay.Infrastructure.RuleData;
 global using System.Text.Json;
 global using CocAssistant.CampaignPlay.Domain.CharacterSheets;
 global using CocAssistant.CampaignPlay.Domain.Investigators;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Logging;

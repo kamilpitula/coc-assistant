@@ -12,3 +12,6 @@ global using CocAssistant.Identity.Application;
 global using CocAssistant.CampaignPlay.Domain.CharacterSheets;
 global using CocAssistant.CampaignPlay.Domain.Investigators;
 global using Microsoft.EntityFrameworkCore.ChangeTracking;
+global using Microsoft.Extensions.Logging;
+global using System.Collections.Concurrent;
+global using Microsoft.EntityFrameworkCore.Diagnostics;

@@ -46,6 +46,12 @@ public class CampaignPlayMigrationTests : IAsyncLifetime
             .SingleAsync();
 
     [Fact]
+    public void Given_the_current_model_When_compared_with_the_migrations_Then_no_model_change_is_pending()
+    {
+        Assert.False(_dbContext.Database.HasPendingModelChanges());
+    }
+
+    [Fact]
     public async Task Given_a_campaign_created_before_player_limits_When_migrating_to_latest_Then_it_admits_eight_players()
     {
         var campaignId = Guid.NewGuid();

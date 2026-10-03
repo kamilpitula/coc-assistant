@@ -1,7 +1,7 @@
 namespace CocAssistant.CampaignPlay.Domain;
 
 /// <summary>A persistent story container owned by one Keeper, identified by their Account.</summary>
-public class Campaign
+public class Campaign : AggregateRoot
 {
     /// <summary>The default number of Players a Campaign admits before the limit is reached.</summary>
     public const int DefaultPlayerLimit = 8;
@@ -153,8 +153,10 @@ public class Campaign
             return JoinCampaignOutcome.LimitReached;
         }
 
-        _players.Add(new CampaignPlayer(Id, accountId, invite.Id, now));
+        var player = new CampaignPlayer(Id, accountId, invite.Id, now);
+        _players.Add(player);
         MembershipVersion++;
+        Raise(new PlayerJoinedCampaign(Id, player.Id, accountId, now));
         return JoinCampaignOutcome.Joined;
     }
 }
