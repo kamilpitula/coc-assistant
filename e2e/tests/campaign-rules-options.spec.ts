@@ -42,7 +42,7 @@ test.describe('Campaign rules options', () => {
   test('UX-2: unchecking every creation method blocks Campaign creation', async ({ page }) => {
     const keeper = newAccount('Keeper')
     await signIn(page, keeper)
-    await page.goto('/campaigns')
+    await page.goto('/campaigns/new')
     await page.getByLabel(/campaign name/i).fill(`Blocked ${keeper.oid.slice(0, 6)}`)
 
     await test.step('Keeper opens Rules options and unchecks every creation method', async () => {
@@ -58,7 +58,7 @@ test.describe('Campaign rules options', () => {
       await page.getByRole('button', { name: /create campaign/i }).click()
       await expect(page.getByRole('alert')).toHaveText('Choose at least one creation method.')
       await expect(page.getByRole('checkbox', { name: /^standard rolling/i })).toBeFocused()
-      await expect(page.getByRole('link', { name: /manage its invite/i })).toHaveCount(0)
+      await expect(page).toHaveURL(/\/campaigns\/new$/)
     })
   })
 

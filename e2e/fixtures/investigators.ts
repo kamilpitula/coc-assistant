@@ -98,3 +98,11 @@ export async function pressWizardAction(page: Page, name: 'Save and continue' | 
   await page.getByRole('button', { name }).click()
   await saved
 }
+
+/** Approves the Player's Submitted Investigator from the Keeper's overview, through the review screen. */
+export async function approveFromOverview(page: Page, campaignId: string, investigatorName: string): Promise<void> {
+  await page.goto(`/campaigns/${campaignId}`)
+  await attentionList(page).getByRole('link', { name: `Review ${investigatorName}` }).click()
+  await page.getByRole('button', { name: 'Approve' }).click()
+  await expect(page.getByText(`${investigatorName} is approved and ready for play.`)).toBeVisible()
+}
