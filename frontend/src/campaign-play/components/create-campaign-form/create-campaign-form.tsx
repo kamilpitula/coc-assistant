@@ -1,3 +1,4 @@
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { z } from 'zod'
 
@@ -6,7 +7,7 @@ import { RulesOptionsCollapsible } from '@/campaign-play/components/rules-option
 import { useCreateCampaign } from '@/campaign-play/hooks/useCreateCampaign'
 import { creationMethodSchema, eraSchema } from '@/campaign-play/services/campaignApi'
 import { CREATION_METHODS, DEFAULT_ERA, type CreationMethod } from '@/campaign-play/types/Campaign'
-import { Button } from '@/shared/components/ui/button'
+import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 
 const DEFAULT_PLAYER_LIMIT = 8
@@ -46,7 +47,10 @@ function toFieldErrors(issues: z.core.$ZodIssue[]): CreateCampaignFormErrors {
   return errors
 }
 
-/** Lets a signed-in Keeper name a new Campaign, set its Player limit and rules options, and confirms their ownership. */
+/**
+ * Lets a signed-in Keeper name a new Campaign and set its Player limit and rules options, then opens the new Campaign's
+ * overview in place of the form (specs/campaign-list/ux.md section 5).
+ */
 export function CreateCampaignForm() {
   const nameFieldId = useId()
   const nameErrorId = useId()
@@ -62,6 +66,14 @@ export function CreateCampaignForm() {
   const firstCreationMethodRef = useRef<HTMLButtonElement>(null)
   const [validationErrors, setValidationErrors] = useState<CreateCampaignFormErrors>({})
   const { mutate, isPending, isSuccess, isError, data } = useCreateCampaign()
+  const navigate = useNavigate()
+
+  // Replace, so Back from the new overview returns to the Campaign List rather than to a filled-out form.
+  useEffect(() => {
+    if (isSuccess && data) {
+      void navigate({ to: '/campaigns/$campaignId', params: { campaignId: data.id }, replace: true })
+    }
+  }, [isSuccess, data, navigate])
 
   // Runs after the expanded Rules options section has rendered its checkboxes.
   useEffect(() => {
@@ -95,7 +107,7 @@ export function CreateCampaignForm() {
 
   return (
     <section className="mx-auto flex max-w-md flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Create a Campaign</h1>
+      <h1 className="text-2xl font-semibold">New campaign</h1>
 
       <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         <div className="flex flex-col gap-2">
@@ -153,21 +165,10 @@ export function CreateCampaignForm() {
         <Button type="submit" disabled={isPending}>
           {isPending ? 'Creating…' : 'Create Campaign'}
         </Button>
+        <Link to="/campaigns" className={buttonVariants({ variant: 'link', className: 'self-start px-0' })}>
+          Cancel
+        </Link>
       </form>
-
-      {isSuccess && data && (
-        <p role="status" className="text-sm">
-          Campaign &ldquo;{data.name}&rdquo; created for up to {data.playerLimit} Players. You are
-          its Keeper.{' '}
-          <a
-            href={`/campaigns/${data.id}/settings`}
-            className="text-primary underline-offset-4 hover:underline"
-          >
-            Manage its invite
-          </a>
-          .
-        </p>
-      )}
 
       {isError && (
         <p role="alert" className="text-sm text-destructive">

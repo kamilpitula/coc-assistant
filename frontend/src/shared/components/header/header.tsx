@@ -1,13 +1,13 @@
 import { LogIn, LogOut, UserPlus } from 'lucide-react'
-import { InteractionStatus } from '@azure/msal-browser'
-import { useIsAuthenticated, useMsal } from '@azure/msal-react'
+import { useMsal } from '@azure/msal-react'
 
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
-import { apiScope } from '@/shared/services/msalConfig'
 import { clearStoredAccount } from '@/shared/services/storedAccount'
 import { useAccountSync } from '@/shared/hooks/useAccountSync'
+import { useAuthStatus } from '@/shared/hooks/useAuthStatus'
 import { useDelayedFlag } from '@/shared/hooks/useDelayedFlag'
+import { useSignIn } from '@/shared/hooks/useSignIn'
 import type { Account } from '@/shared/types/Account'
 
 /** How long MSAL may resolve before the auth slot shows a skeleton (ux.md section 2). */
@@ -23,13 +23,14 @@ export function Header() {
 }
 
 function AuthSlot() {
-  const isAuthenticated = useIsAuthenticated()
-  const { instance, inProgress } = useMsal()
+  const authStatus = useAuthStatus()
+  const { instance } = useMsal()
   const { data: account, isError: accountSyncFailed } = useAccountSync()
-  const isResolving = inProgress === InteractionStatus.Startup
+  const isResolving = authStatus === 'resolving'
+  const isAuthenticated = authStatus === 'signedIn'
   const isSlow = useDelayedFlag(isResolving, slowResolvingDelayMs)
 
-  const signIn = () => instance.loginRedirect({ scopes: [apiScope] })
+  const signIn = useSignIn()
   const signOut = () => {
     clearStoredAccount()
     instance.logoutRedirect()

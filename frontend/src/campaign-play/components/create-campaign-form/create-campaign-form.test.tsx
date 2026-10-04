@@ -2,12 +2,16 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
+import { navigateSpy } from '@/shared/test-support/routerMock'
+
 import { CreateCampaignForm } from './create-campaign-form'
 
 const { mockMutate, mockUseCreateCampaign } = vi.hoisted(() => ({
   mockMutate: vi.fn(),
   mockUseCreateCampaign: vi.fn(),
 }))
+
+vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 
 vi.mock('@/campaign-play/hooks/useCreateCampaign', () => ({
   useCreateCampaign: mockUseCreateCampaign,
@@ -112,7 +116,8 @@ describe('CreateCampaignForm', () => {
     },
   )
 
-  it('confirms the Keeper owns the new Campaign after a successful create', () => {
+  // specs/campaign-list/ux.md section 5, Success (CL-UX-7).
+  it("opens the new Campaign's overview in place of the form after a successful create", () => {
     mockUseCreateCampaign.mockReturnValue(
       mutationState({
         isSuccess: true,
@@ -130,31 +135,27 @@ describe('CreateCampaignForm', () => {
 
     render(<CreateCampaignForm />)
 
-    expect(screen.getByRole('status')).toHaveTextContent(/the haunting/i)
-    expect(screen.getByRole('status')).toHaveTextContent(/up to 5 players/i)
-    expect(screen.getByRole('status')).toHaveTextContent(/keeper/i)
+    expect(navigateSpy).toHaveBeenCalledWith({ to: '/campaigns/$campaignId', params: { campaignId: '1' }, replace: true })
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /manage its invite/i })).not.toBeInTheDocument()
   })
 
-  // Decision D7: Invite management lives on Settings (specs/campaign-overview/ux.md section 8).
-  it('links the new Campaign\'s Invite management on its Settings page', () => {
-    mockUseCreateCampaign.mockReturnValue(
-      mutationState({
-        isSuccess: true,
-        data: {
-          id: '1',
-          name: 'The Haunting',
-          keeperAccountId: 'keeper-1',
-          playerLimit: 5,
-          era: '1920s',
-          allowedCreationMethods: ALL_CREATION_METHODS,
-          role: 'Keeper',
-        },
-      }),
-    )
+  it('does not navigate before the Campaign is created', () => {
+    mockUseCreateCampaign.mockReturnValue(mutationState())
 
     render(<CreateCampaignForm />)
 
-    expect(screen.getByRole('link', { name: 'Manage its invite' })).toHaveAttribute('href', '/campaigns/1/settings')
+    expect(navigateSpy).not.toHaveBeenCalled()
+  })
+
+  // specs/campaign-list/ux.md section 5, Page (CL-UX-7).
+  it('is headed "New campaign" and offers Cancel back to the Campaign List', () => {
+    mockUseCreateCampaign.mockReturnValue(mutationState())
+
+    render(<CreateCampaignForm />)
+
+    expect(screen.getByRole('heading', { level: 1, name: 'New campaign' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/campaigns')
   })
 
   describe('Rules options (specs/character-sheet/ux.md section 2)', () => {

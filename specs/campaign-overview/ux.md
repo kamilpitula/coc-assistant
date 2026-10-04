@@ -9,7 +9,7 @@ Behavior and rules: [spec.md](spec.md). This document covers presentation only. 
 ## 1. Information architecture
 
 ```
-/campaigns                                   Campaigns list (unchanged)
+/campaigns                                   Campaign List (specs/campaign-list/ux.md)
 /campaigns/$campaignId                       layout: Campaign header + live connection
   (index)          Overview                  tab "Overview"
   /wall            Campaign Wall             tab "Wall"      (PBI-CP-004; tab hidden until then)
