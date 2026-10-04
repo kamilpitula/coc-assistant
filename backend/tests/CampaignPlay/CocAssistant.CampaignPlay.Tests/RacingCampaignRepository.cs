@@ -25,6 +25,9 @@ public sealed class RacingCampaignRepository : ICampaignRepository
     public Task<Campaign?> FindByInviteTokenAsync(string token, CancellationToken cancellationToken) =>
         _inner.FindByInviteTokenAsync(token, cancellationToken);
 
+    public Task<IReadOnlyList<Campaign>> ListForMemberAsync(Guid accountId, CancellationToken cancellationToken) =>
+        _inner.ListForMemberAsync(accountId, cancellationToken);
+
     public void DiscardPendingChanges() => _inner.DiscardPendingChanges();
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken)

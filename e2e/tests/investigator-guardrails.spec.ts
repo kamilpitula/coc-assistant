@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 import { newAccount, signIn, signInNewContext } from '../fixtures/auth'
-import { createCampaignViaUi, issueInviteViaUi } from '../fixtures/campaigns'
+import { campaignIdFromOverviewUrl, createCampaignViaUi, issueInviteViaUi } from '../fixtures/campaigns'
 import { API_ORIGIN, joinAsNewPlayer, openAndCaptureBearer, submitValidInvestigatorViaUi } from '../fixtures/investigators'
 import { attentionList, ownRow } from '../fixtures/overview'
 
@@ -138,14 +138,13 @@ test.describe('Investigator guardrails', () => {
   }) => {
     const keeper = newAccount('Keeper')
     await signIn(page, keeper)
-    await page.goto('/campaigns')
+    await page.goto('/campaigns/new')
     await page.getByLabel(/campaign name/i).fill(`Quick fire only ${keeper.oid.slice(0, 6)}`)
     await page.getByRole('button', { name: /^rules options/i }).click()
     await page.getByRole('checkbox', { name: /^standard rolling/i }).uncheck()
     await page.getByRole('checkbox', { name: /^point buy/i }).uncheck()
     await page.getByRole('button', { name: /create campaign/i }).click()
-    const href = await page.getByRole('link', { name: /manage its invite/i }).getAttribute('href')
-    const campaignId = href?.match(/\/campaigns\/([0-9a-f-]+)/i)?.[1] as string
+    const campaignId = await campaignIdFromOverviewUrl(page)
     const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, campaignId))
 
     try {

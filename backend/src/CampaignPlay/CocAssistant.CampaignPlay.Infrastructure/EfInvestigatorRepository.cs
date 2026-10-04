@@ -35,6 +35,13 @@ public class EfInvestigatorRepository : IInvestigatorRepository
             .Where(investigator => investigator.CampaignId == campaignId)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Investigator>> ListForCampaignsAsync(
+        IReadOnlyCollection<Guid> campaignIds,
+        CancellationToken cancellationToken) =>
+        await _dbContext.Investigators
+            .Where(investigator => campaignIds.Contains(investigator.CampaignId))
+            .ToListAsync(cancellationToken);
+
     public async Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         try

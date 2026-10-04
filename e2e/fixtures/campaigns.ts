@@ -1,8 +1,21 @@
 import { expect, type Page } from '@playwright/test'
 
 /**
- * Creates a Campaign through the real UI and returns its id (parsed from the "Manage its invite" link, which opens
- * the Campaign's Settings).
+ * Waits for the SPA to open a Campaign overview (`/campaigns/{id}`) and returns the Campaign id from its URL. A
+ * successful create on New campaign replaces the form with the new Campaign's overview (specs/campaign-list/ux.md
+ * section 5).
+ */
+export async function campaignIdFromOverviewUrl(page: Page): Promise<string> {
+  await page.waitForURL(/\/campaigns\/[0-9a-f-]{36}$/i)
+  const match = new URL(page.url()).pathname.match(/^\/campaigns\/([0-9a-f-]{36})$/i)
+  if (!match) {
+    throw new Error(`Could not parse Campaign id from the overview URL: ${page.url()}`)
+  }
+  return match[1]
+}
+
+/**
+ * Creates a Campaign through the real UI on New campaign and returns its id, read from the overview it opens.
  * Leaves the Player limit at its default unless `playerLimit` is given.
  */
 export async function createCampaignViaUi(
@@ -10,22 +23,15 @@ export async function createCampaignViaUi(
   name: string,
   options: { playerLimit?: number } = {},
 ): Promise<string> {
-  await page.goto('/campaigns')
+  await page.goto('/campaigns/new')
   await page.getByLabel(/campaign name/i).fill(name)
   if (options.playerLimit !== undefined) {
     await page.getByLabel(/player limit/i).fill(String(options.playerLimit))
   }
   await page.getByRole('button', { name: /create campaign/i }).click()
-
-  const manageLink = page.getByRole('link', { name: /manage its invite/i })
-  await expect(manageLink).toBeVisible()
-
-  const href = await manageLink.getAttribute('href')
-  const match = href?.match(/\/campaigns\/([0-9a-f-]+)/i)
-  if (!match) {
-    throw new Error(`Could not parse Campaign id from manage link href: ${href}`)
-  }
-  return match[1]
+  const campaignId = await campaignIdFromOverviewUrl(page)
+  await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
+  return campaignId
 }
 
 /** Issues a Campaign Invite on the Keeper's Settings page and returns the live token from the readonly input. */

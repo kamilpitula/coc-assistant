@@ -1,6 +1,6 @@
 namespace CocAssistant.CampaignPlay.Application;
 
-/// <summary>Application port for Investigator persistence; every lookup is scoped to one Campaign.</summary>
+/// <summary>Application port for Investigator persistence; every lookup is scoped to the given Campaigns.</summary>
 public interface IInvestigatorRepository
 {
     void Add(Investigator investigator);
@@ -12,6 +12,8 @@ public interface IInvestigatorRepository
     Task<Investigator?> FindForPlayerAsync(Guid campaignId, Guid playerAccountId, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<Investigator>> ListForCampaignAsync(Guid campaignId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<Investigator>> ListForCampaignsAsync(IReadOnlyCollection<Guid> campaignIds, CancellationToken cancellationToken);
 
     /// <summary>
     /// Persists pending changes, throwing <see cref="InvestigatorConflictException"/> when the Player already has an

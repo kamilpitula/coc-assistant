@@ -85,10 +85,13 @@ test.describe('Player joins through a Campaign Invite', () => {
     await signIn(page, keeper)
 
     const campaignId = await test.step('Keeper creates a Campaign limited to two Players', async () => {
-      const id = await createCampaignViaUi(page, `Small table ${keeper.oid.slice(0, 6)}`, {
-        playerLimit: 2,
-      })
-      await expect(page.getByRole('status')).toContainText(/up to 2 players/i)
+      const name = `Small table ${keeper.oid.slice(0, 6)}`
+      const id = await createCampaignViaUi(page, name, { playerLimit: 2 })
+      // The Campaign List shows the Keeper the configured limit (specs/campaign-list/ux.md section 3).
+      await page.goto('/campaigns')
+      await expect(
+        page.getByRole('listitem').filter({ has: page.getByRole('link', { name, exact: true }) }),
+      ).toContainText('0 of 2 Players')
       return id
     })
     const token = await issueInviteViaUi(page, campaignId)

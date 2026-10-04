@@ -4,6 +4,7 @@ import { newAccount, signIn, signInNewContext } from '../fixtures/auth'
 import { createCampaignViaUi, issueInviteViaUi } from '../fixtures/campaigns'
 import {
   API_ORIGIN,
+  approveFromOverview,
   joinAsNewPlayer,
   openAndCaptureBearer,
   pressWizardAction,
@@ -31,14 +32,6 @@ import { attentionList, atTheTable, campaignNav, memberRow, memberRows, ownRow }
 
 function navLink(page: Page, name: 'Overview' | 'Settings') {
   return campaignNav(page).getByRole('link', { name, exact: true })
-}
-
-/** Approves the Player's Submitted Investigator from the Keeper's overview, through the review screen. */
-async function approveFromOverview(page: Page, campaignId: string, investigatorName: string): Promise<void> {
-  await page.goto(`/campaigns/${campaignId}`)
-  await attentionList(page).getByRole('link', { name: `Review ${investigatorName}` }).click()
-  await page.getByRole('button', { name: 'Approve' }).click()
-  await expect(page.getByText(`${investigatorName} is approved and ready for play.`)).toBeVisible()
 }
 
 test.describe('Campaign overview and navigation', () => {

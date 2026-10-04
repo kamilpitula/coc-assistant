@@ -30,6 +30,13 @@ public class EfCampaignRepository : ICampaignRepository
             .Include(campaign => campaign.Players)
             .SingleOrDefaultAsync(campaign => campaign.Invites.Any(invite => invite.Token == token), cancellationToken);
 
+    public async Task<IReadOnlyList<Campaign>> ListForMemberAsync(Guid accountId, CancellationToken cancellationToken) =>
+        await _dbContext.Campaigns
+            .Include(campaign => campaign.Invites)
+            .Include(campaign => campaign.Players)
+            .Where(campaign => campaign.KeeperAccountId == accountId || campaign.Players.Any(player => player.AccountId == accountId))
+            .ToListAsync(cancellationToken);
+
     public void DiscardPendingChanges() => _dbContext.ChangeTracker.Clear();
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken)

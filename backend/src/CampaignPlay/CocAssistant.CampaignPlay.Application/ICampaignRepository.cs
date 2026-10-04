@@ -9,6 +9,9 @@ public interface ICampaignRepository
 
     Task<Campaign?> FindByInviteTokenAsync(string token, CancellationToken cancellationToken);
 
+    /// <summary>Every Campaign the Account is a Campaign Member of, as its Keeper or as a Player, in no particular order.</summary>
+    Task<IReadOnlyList<Campaign>> ListForMemberAsync(Guid accountId, CancellationToken cancellationToken);
+
     /// <summary>Drops pending tracked changes so the next read reflects fresh database state, used to retry a lost join race.</summary>
     void DiscardPendingChanges();
 

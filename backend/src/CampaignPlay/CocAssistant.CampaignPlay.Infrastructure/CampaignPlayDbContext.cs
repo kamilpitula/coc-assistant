@@ -75,6 +75,9 @@ public class CampaignPlayDbContext : DbContext
             builder.Property(player => player.AccountId).IsRequired();
             builder.Property(player => player.InviteId).IsRequired();
             builder.HasIndex(player => new { player.CampaignId, player.AccountId }).IsUnique();
+
+            // Serves the Campaign List lookup by Account (specs/campaign-list/spec.md, API).
+            builder.HasIndex(player => player.AccountId);
         });
 
         modelBuilder.Entity<Investigator>(builder =>

@@ -18,6 +18,7 @@ public static class CampaignPlayInfrastructureServiceCollectionExtensions
         services.AddScoped<CampaignMembershipService>();
         services.AddScoped<CampaignRuleDataService>();
         services.AddScoped<CampaignMemberService>();
+        services.AddScoped<CampaignListService>();
         services.AddScoped<CampaignPresenceService>();
         services.AddSingleton<IPresenceTracker, InMemoryPresenceTracker>();
         services.AddScoped<IDomainEventHandler<PlayerJoinedCampaign>, PublishMembersChangedOnPlayerJoined>();
