@@ -117,6 +117,8 @@ namespace CocAssistant.CampaignPlay.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AccountId");
+
                     b.HasIndex("CampaignId", "AccountId")
                         .IsUnique();
 

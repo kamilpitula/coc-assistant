@@ -4,11 +4,27 @@ namespace CocAssistant.CampaignPlay.Controllers;
 public class CampaignController : CampaignPlayControllerBase
 {
     private readonly CampaignService _campaignService;
+    private readonly CampaignListService _campaignListService;
 
-    public CampaignController(CampaignService campaignService, AccountService accountService)
+    public CampaignController(CampaignService campaignService, CampaignListService campaignListService, AccountService accountService)
         : base(accountService)
     {
         _campaignService = campaignService;
+        _campaignListService = campaignListService;
+    }
+
+    /// <summary>Lists every Campaign the caller is a Campaign Member of, each item shaped for the caller's role.</summary>
+    [HttpGet]
+    public async Task<IActionResult> List(CancellationToken cancellationToken)
+    {
+        var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
+        if (accountId is null)
+        {
+            return Unauthorized();
+        }
+
+        var items = await _campaignListService.ListAsync(accountId.Value, cancellationToken);
+        return Ok(items.Select(ToListItemResponse).ToList());
     }
 
     /// <summary>Creates a Campaign owned by the authenticated caller as its Keeper.</summary>
@@ -74,6 +90,15 @@ public class CampaignController : CampaignPlayControllerBase
 
         return campaign is null ? NotFound() : Ok(ToResponse(campaign));
     }
+
+    // Typed as object so each item is serialized with exactly its own role's properties.
+    private static object ToListItemResponse(CampaignListItem item) =>
+        item switch
+        {
+            KeeperCampaignListItem keeperItem => KeeperCampaignListItemResponse.From(keeperItem),
+            PlayerCampaignListItem playerItem => PlayerCampaignListItemResponse.From(playerItem),
+            _ => throw new ArgumentOutOfRangeException(nameof(item), item.GetType().Name, "Unknown Campaign List item."),
+        };
 
     private static CampaignResponse ToResponse(Campaign campaign) =>
         new(

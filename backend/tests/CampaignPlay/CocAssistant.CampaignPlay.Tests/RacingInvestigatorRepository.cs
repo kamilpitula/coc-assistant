@@ -28,6 +28,9 @@ public sealed class RacingInvestigatorRepository : IInvestigatorRepository
     public Task<IReadOnlyList<Investigator>> ListForCampaignAsync(Guid campaignId, CancellationToken cancellationToken) =>
         _inner.ListForCampaignAsync(campaignId, cancellationToken);
 
+    public Task<IReadOnlyList<Investigator>> ListForCampaignsAsync(IReadOnlyCollection<Guid> campaignIds, CancellationToken cancellationToken) =>
+        _inner.ListForCampaignsAsync(campaignIds, cancellationToken);
+
     public async Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         var competingRequest = _competingRequest;
