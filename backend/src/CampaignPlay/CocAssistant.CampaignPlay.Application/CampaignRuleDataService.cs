@@ -4,12 +4,12 @@ namespace CocAssistant.CampaignPlay.Application;
 public class CampaignRuleDataService
 {
     private readonly ICampaignRepository _campaigns;
-    private readonly IReadOnlyList<IEraRuleData> _ruleDataByEra;
+    private readonly EraRuleDataLookup _ruleDataByEra;
 
     public CampaignRuleDataService(ICampaignRepository campaigns, IEnumerable<IEraRuleData> ruleDataByEra)
     {
         _campaigns = campaigns;
-        _ruleDataByEra = ruleDataByEra.ToList();
+        _ruleDataByEra = new EraRuleDataLookup(ruleDataByEra);
     }
 
     /// <summary>Returns the Occupation catalog for the Campaign's Era; null when the Campaign is missing or the caller is not a member.</summary>
@@ -21,10 +21,6 @@ public class CampaignRuleDataService
             return null;
         }
 
-        return RuleDataFor(campaign.Era).Occupations;
+        return _ruleDataByEra.For(campaign.Era).Occupations;
     }
-
-    private IEraRuleData RuleDataFor(Era era) =>
-        _ruleDataByEra.SingleOrDefault(ruleData => ruleData.Era == era)
-        ?? throw new InvalidOperationException($"No rule data is registered for the {era} Era.");
 }

@@ -20,6 +20,10 @@ public class CampaignRuleDataServiceTests : IDisposable
         public Era Era { get; } = era;
 
         public OccupationCatalog Occupations { get; } = occupations;
+
+        public SkillCatalog Skills { get; } = new(era, [new SkillDefinition(new SkillReference("Accounting"), SkillBase.Fixed(5))]);
+
+        public WealthTable Wealth { get; } = new(era, "USD", []);
     }
 
     private async Task<Guid> CreateCampaignWithPlayerAsync()

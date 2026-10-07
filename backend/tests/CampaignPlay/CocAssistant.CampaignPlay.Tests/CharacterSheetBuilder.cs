@@ -26,6 +26,10 @@ public sealed class CharacterSheetBuilder
     private CharacteristicValues _deductions = CharacteristicValues.Empty;
     private IReadOnlyList<EduImprovementCheckInput> _eduChecks = [new EduImprovementCheckInput(30, null)];
     private IReadOnlyList<int?> _luckRolls = [11];
+    private CharacteristicValues _characteristicRolls = CharacteristicValues.Empty;
+    private OccupationSelection? _occupation;
+    private IReadOnlyList<SkillAllocation> _skills = [];
+    private QuickFireSkills _quickFire = QuickFireSkills.Empty;
 
     public CharacterSheetBuilder WithName(string? name)
     {
@@ -69,8 +73,47 @@ public sealed class CharacterSheetBuilder
         return this;
     }
 
+    /// <summary>Switches to Standard Rolling with these raw totals (section 2.1), clearing the assigned values.</summary>
+    public CharacterSheetBuilder WithCharacteristicRolls(IReadOnlyDictionary<Characteristic, int?> rawTotals)
+    {
+        _creationMethod = CreationMethod.StandardRolling;
+        _assigned = CharacteristicValues.Empty;
+        _characteristicRolls = CharacteristicValues.From(rawTotals);
+        return this;
+    }
+
+    /// <summary>Switches to Quick Fire with these characteristic values (section 2.3).</summary>
+    public CharacterSheetBuilder WithQuickFireCharacteristics(IReadOnlyDictionary<Characteristic, int?> values)
+    {
+        _creationMethod = CreationMethod.QuickFire;
+        _assigned = CharacteristicValues.From(values);
+        return this;
+    }
+
+    public CharacterSheetBuilder WithOccupation(OccupationSelection? occupation)
+    {
+        _occupation = occupation;
+        return this;
+    }
+
+    /// <summary>A catalog Occupation with formula choices and one list of picks per skill slot.</summary>
+    public CharacterSheetBuilder WithCatalogOccupation(string id, IReadOnlyList<string?>? formulaCharacteristics = null, params SkillReference[][] skillChoices) =>
+        WithOccupation(new OccupationSelection(id, null, formulaCharacteristics ?? [], skillChoices));
+
+    public CharacterSheetBuilder WithSkills(params SkillAllocation[] skills)
+    {
+        _skills = skills;
+        return this;
+    }
+
+    public CharacterSheetBuilder WithQuickFireSkills(QuickFireSkills quickFire)
+    {
+        _quickFire = quickFire;
+        return this;
+    }
+
     public CharacterSheetInputs BuildInputs() =>
-        new(_identity, _creationMethod, _assigned, _deductions, _eduChecks, _luckRolls);
+        new(_identity, _creationMethod, _assigned, _deductions, _eduChecks, _luckRolls, _characteristicRolls, _occupation, _skills, _quickFire);
 
     public CharacterSheet Build() => BuildInputs().ToCharacterSheet(new PlayerEnteredRollSource());
 }

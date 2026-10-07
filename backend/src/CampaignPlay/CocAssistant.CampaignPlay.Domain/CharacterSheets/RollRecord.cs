@@ -31,6 +31,9 @@ public static class RollPurposes
     public const string Luck = "Luck";
     public const string LuckSecondRoll = "Luck:SecondRoll";
 
+    /// <summary>The Standard Rolling roll of a characteristic (section 2.1), for example "Characteristic:STR".</summary>
+    public static string Characteristic(Characteristic characteristic) => $"Characteristic:{characteristic.ToCode()}";
+
     /// <summary>The D100 roll of the 1-based EDU improvement check.</summary>
     public static string EduImprovementCheck(int checkNumber) => $"EduImprovement[{checkNumber}].Check";
 

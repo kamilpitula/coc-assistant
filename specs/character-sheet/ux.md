@@ -118,7 +118,7 @@ The existing `InviteManagement` stays as is. Two sections are added below it, ea
 
 ### 4.2 Summary rail (`investigator-summary`)
 - `aside` with the heading "Your Investigator".
-- A definition list showing HP, MP, SAN, Luck, MOV, Build, Damage Bonus, Dodge, then "Occupation points left" and "Personal interest points left" once those budgets exist. Values that can't be calculated yet show an em dash with the visually hidden text "not yet calculated".
+- A definition list showing HP, MP, SAN, Luck, MOV, Build, Damage Bonus, Dodge, then "Occupation points left" and "Personal interest points left" once those budgets exist. With Quick fire there are no budgets; the rail shows "Skill values left" (the count of Quick fire skill values not yet assigned) and "Personal interests left" instead. Values that can't be calculated yet show an em dash with the visually hidden text "not yet calculated".
 - The last line shows "No problems", or "2 problems" as a link to the error summary.
 - Below 1024px the rail becomes a Collapsible button "Summary: HP 12, SAN 65, 120 points left" placed above the step actions, collapsed by default.
 - Announcements: a single polite live region (`role="status"`) announces only budget changes, after the field loses focus, for example "120 occupation points left". Other rail values are not announced.
@@ -149,6 +149,8 @@ The existing `InviteManagement` stays as is. Two sections are added below it, ea
 
 ### 5.3 Resume
 `/investigator` opens the first step that is not completed. If every step is completed, it opens `sheet`. Steps after the first incomplete one are Not started and can't be opened.
+
+A step is completed when it is started and has no errors. A step is started once the Player has entered any of its inputs. Personal interests has no required input (unspent points only warn), so it also counts as started once Occupation skills is completed (decided 2026-10-07).
 
 ### 5.4 Changing an earlier step
 Later inputs are kept. When the Player saves, any later step whose inputs became invalid switches to "Needs attention" in the stepper, and the status message "Some later steps need attention." is announced.
@@ -207,6 +209,14 @@ Later inputs are kept. When the Player saves, any later step whose inputs became
 - The Cthulhu Mythos row has a disabled input with the text "Not available at creation".
 - An "Add another specialization" button (for example a second Language (Other)) adds a row whose specialization field receives focus.
 
+### 6.5a Quick fire skills (selected 2026-10-07, option A of three: table with value Selects; alternatives were a value-centred list and drag-and-drop chips)
+Quick fire assigns fixed values instead of spending points ([spec.md](spec.md), Delivery scope PBI-CP-009). The steps reuse `skill-allocation-table`:
+- **Occupation** (`occupation`): the option cards hide the points line and the formula choice, because Quick fire has no occupation points.
+- **Occupation skills** (`occupation-skills`): the same choice controls as 6.5 at the top. In the table the Points column is replaced by a Select labelled "{skill}, Quick fire value" on each occupation skill row and on Credit Rating (first). Each Select offers the values not yet assigned elsewhere plus its own current value, like the Quick fire characteristics in 6.2. Credit Rating shows the hint "Must be {value} for this occupation". A line "Values left to assign: 50, 40" shows what remains.
+  - When the occupation's Credit Rating does not take a Quick fire value, a skill picker "Extra skill for the freed {value}" appears below the table, with the help text "Your Credit Rating doesn't use a Quick fire value, so the freed {value} goes to one more skill of your choice."
+- **Personal interests** (`personal-interests`): the Points column is replaced by a Checkbox "{skill}, +{bonus}" on every skill that is not an occupation skill, Credit Rating, or Cthulhu Mythos. The counter reads "Personal interests chosen: 2 of 4". When it reaches the count, the unchecked Checkboxes stay enabled, and choosing another shows the error from the server and the client validator. The Total column shows the base plus the bonus.
+- Every number in this copy comes from the rules data.
+
 ### 6.7 Sheet and submit (`sheet`)
 Uses the shared `character-sheet-view` in edit mode for its narrative sections and read-only mode for the rest. Sections, each with an `h2`:
 1. **Summary**: identity, characteristics with Hard and Extreme values, and derived values. Each has a "Change" link to its wizard step.
@@ -260,8 +270,12 @@ Tokens: `--destructive` (defined) and `--warning` (added in PBI-CP-003), each wi
 |---|---|
 | PBI-CP-008 | Section 2; section 3.1 Rules options |
 | PBI-CP-003 | Section 3 (both roles); sections 4 and 5, including the summary rail without the occupation and personal interest budget lines; step 6.1; step 6.2 for Point buy, including its Luck rows; step 6.3 Age effects; a `sheet` step with Summary and Submit; section 7, including Dice results |
-| PBI-CP-009 | Step 6.2 (Standard rolling, Quick fire, the creation method RadioGroup, and the switch confirmation); steps 6.4 to 6.6; the summary rail's budget lines |
+| PBI-CP-009 | Step 6.2 (Standard rolling, Quick fire, the creation method RadioGroup, and the switch confirmation); steps 6.4 to 6.6 and 6.5a; the summary rail's budget lines; step 6.7 Skills (read-only, also on the Keeper's review) |
 | PBI-CP-010 | Step 6.7 Backstory, Weapons, Gear, Wealth |
+
+In PBI-CP-009:
+- The stepper shows all seven steps, so the Draft card reads "Step N of 7".
+- Every creation method is available, so the state of UX-19 can't occur while every method is supported. Its card state is kept for a future method that isn't available yet.
 
 In PBI-CP-003:
 - The stepper shows Identity, Characteristics, Age effects, and Sheet and submit, so the Draft card reads "Step N of 4".

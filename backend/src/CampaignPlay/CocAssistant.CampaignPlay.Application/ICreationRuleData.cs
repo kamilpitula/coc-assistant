@@ -11,4 +11,7 @@ public interface ICreationRuleData
 
     /// <summary>docs/game-rules/catalogs/characteristics-rules.json (section 5.8 data).</summary>
     CharacteristicsRules CharacteristicsRules { get; }
+
+    /// <summary>docs/game-rules/catalogs/skill-specializations.json (section 6.2 data).</summary>
+    SkillSpecializationCatalog SkillSpecializations { get; }
 }

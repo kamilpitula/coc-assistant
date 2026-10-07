@@ -12,6 +12,12 @@ public sealed class EmbeddedResourceCreationRuleData : ICreationRuleData
     /// <summary>Logical name of the embedded docs/game-rules/catalogs/characteristics-rules.json.</summary>
     public const string CharacteristicsRulesResourceName = "GameRules.Catalogs.characteristics-rules.json";
 
+    /// <summary>Logical name of the embedded docs/game-rules/catalogs/skill-specializations.json.</summary>
+    public const string SkillSpecializationsResourceName = "GameRules.Catalogs.skill-specializations.json";
+
+    private readonly Lazy<SkillSpecializationCatalog> _skillSpecializations =
+        new(() => Load(SkillSpecializationsResourceName, SkillCatalogReader.ReadSpecializations));
+
     private readonly Lazy<AgeRules> _ageRules = new(() => Load(AgeRulesResourceName, CreationRuleCatalogReader.ReadAgeRules));
 
     private readonly Lazy<CharacteristicsRules> _characteristicsRules =
@@ -20,6 +26,8 @@ public sealed class EmbeddedResourceCreationRuleData : ICreationRuleData
     public AgeRules AgeRules => _ageRules.Value;
 
     public CharacteristicsRules CharacteristicsRules => _characteristicsRules.Value;
+
+    public SkillSpecializationCatalog SkillSpecializations => _skillSpecializations.Value;
 
     private static T Load<T>(string resourceName, Func<Stream, T> read)
     {

@@ -44,9 +44,61 @@ public class CharacterSheetJsonStorageTests
         var stored = CharacterSheetJsonStorage.ToStorage(new CharacterSheetBuilder().Build());
 
         using var document = JsonDocument.Parse(stored);
-        Assert.Equal(1, document.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(2, document.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("PointBuy", document.RootElement.GetProperty("creationMethod").GetString());
         Assert.Equal(60, document.RootElement.GetProperty("assignedCharacteristics").GetProperty("STR").GetInt32());
+    }
+
+    [Fact]
+    public void Given_an_occupation_skills_and_quick_fire_inputs_When_storing_and_reading_the_sheet_Then_they_round_trip()
+    {
+        var custom = new CustomOccupation("Bootlegger", "EDUx2+DEXx2", [new SkillReference("Drive Auto"), null], 5, 30);
+        var sheet = new CharacterSheetBuilder()
+            .WithOccupation(new OccupationSelection("police-detective", custom, [null, "DEX"], [[new SkillReference("Disguise")], []]))
+            .WithSkills(new SkillAllocation(new SkillReference("Firearms", "Handgun"), 40, null), new SkillAllocation(SkillReference.CreditRating, 30, 5))
+            .WithQuickFireSkills(new QuickFireSkills([new QuickFireSkillValue(new SkillReference("Law"), 70)], [new SkillReference("Art/Craft", "Painting")]))
+            .Build();
+
+        var read = CharacterSheetJsonStorage.FromStorage(CharacterSheetJsonStorage.ToStorage(sheet));
+
+        Assert.Equal(sheet, read);
+    }
+
+    [Fact]
+    public void Given_standard_rolling_rolls_When_storing_and_reading_the_sheet_Then_the_characteristic_roll_records_round_trip()
+    {
+        var sheet = new CharacterSheetBuilder()
+            .WithCharacteristicRolls(new Dictionary<Characteristic, int?> { [Characteristic.Strength] = 11, [Characteristic.Size] = 7 })
+            .Build();
+
+        var read = CharacterSheetJsonStorage.FromStorage(CharacterSheetJsonStorage.ToStorage(sheet));
+
+        Assert.Equal(sheet, read);
+        Assert.Equal(7, read.CharacteristicRolls[Characteristic.Size]);
+    }
+
+    [Fact]
+    public void Given_a_schema_version_1_document_When_reading_it_Then_it_is_upgraded_without_occupation_or_skills()
+    {
+        const string stored = """
+            {
+              "schemaVersion": 1,
+              "identity": { "name": "Harvey Walters", "age": 25 },
+              "creationMethod": "PointBuy",
+              "assignedCharacteristics": { "STR": 60 },
+              "ageDeductions": {},
+              "rollRecords": [ { "purpose": "Luck", "dice": "3D6", "result": 11, "source": "PlayerEntered" } ]
+            }
+            """;
+
+        var read = CharacterSheetJsonStorage.FromStorage(stored);
+
+        Assert.Equal("Harvey Walters", read.Identity.Name);
+        Assert.Equal(60, read.AssignedCharacteristics[Characteristic.Strength]);
+        Assert.Equal([11], read.LuckRolls);
+        Assert.Null(read.Occupation);
+        Assert.Empty(read.SkillAllocations);
+        Assert.Equal(QuickFireSkills.Empty, read.QuickFire);
     }
 
     [Fact]

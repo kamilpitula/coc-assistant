@@ -8,7 +8,7 @@ namespace CocAssistant.CampaignPlay.Tests;
 public class ValidationFixtureParityTests
 {
     private static readonly ICreationRuleData RuleData = new EmbeddedResourceCreationRuleData();
-    private static readonly CharacterSheetCalculator Calculator = new(RuleData.AgeRules, RuleData.CharacteristicsRules);
+    private static readonly CharacterSheetCalculator Calculator = TestRules.Calculator;
     private static readonly Lazy<JsonDocument> Fixtures = new(() =>
         JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "validation-fixtures.json"))));
 
@@ -33,7 +33,7 @@ public class ValidationFixtureParityTests
         var allowed = AllowedCreationMethods.Create(fixtureCase.GetProperty("allowedCreationMethods").EnumerateArray()
             .Select(method => Enum.Parse<CreationMethod>(method.GetString()!)));
 
-        var actual = CharacterSheetValidator.Validate(sheet, allowed, Calculator.Calculate(sheet));
+        var actual = TestRules.Validate(sheet, allowed);
 
         var expected = fixtureCase.GetProperty("expected").EnumerateArray().Select(FixtureSheet.ToValidationError);
         Assert.Equal(Sorted(expected), Sorted(actual));

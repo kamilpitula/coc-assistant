@@ -10,10 +10,10 @@ public class CharacterSheetValidatorTests
     private static readonly AllowedCreationMethods PointBuyAllowed = AllowedCreationMethods.Create([CreationMethod.PointBuy]);
 
     private static readonly ICreationRuleData RuleData = new EmbeddedResourceCreationRuleData();
-    private static readonly CharacterSheetCalculator Calculator = new(RuleData.AgeRules, RuleData.CharacteristicsRules);
+    private static readonly CharacterSheetCalculator Calculator = TestRules.Calculator;
 
     private static IReadOnlyList<ValidationError> Validate(CharacterSheet sheet, AllowedCreationMethods? allowed = null) =>
-        CharacterSheetValidator.Validate(sheet, allowed ?? PointBuyAllowed, Calculator.Calculate(sheet));
+        TestRules.Validate(sheet, allowed ?? PointBuyAllowed);
 
     private static CharacterSheetBuilder APointBuySheet() => new();
 

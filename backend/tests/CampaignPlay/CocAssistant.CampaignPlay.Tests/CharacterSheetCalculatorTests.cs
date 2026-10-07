@@ -7,7 +7,7 @@ namespace CocAssistant.CampaignPlay.Tests;
 public class CharacterSheetCalculatorTests
 {
     private static readonly ICreationRuleData RuleData = new EmbeddedResourceCreationRuleData();
-    private static readonly CharacterSheetCalculator Calculator = new(RuleData.AgeRules, RuleData.CharacteristicsRules);
+    private static readonly CharacterSheetCalculator Calculator = TestRules.Calculator;
 
     // Scenario: Point Buy Investigator applies age effects before Hard and Extreme values
     [Fact]
@@ -55,7 +55,7 @@ public class CharacterSheetCalculatorTests
             Dodge: 29,
             MovementRate: 6,
             DamageBonus: "0",
-            Build: 0), derived);
+            Build: 0), SectionFiveValuesOf(derived));
     }
 
     [Fact]
@@ -66,8 +66,12 @@ public class CharacterSheetCalculatorTests
         Assert.Null(computation.Bracket);
         Assert.Empty(computation.FinalCharacteristics.Present);
         Assert.Null(computation.LevelsOf(Characteristic.Strength));
-        Assert.Equal(DerivedValues.NotCalculated, computation.Derived);
+        Assert.Equal(DerivedValues.NotCalculated, SectionFiveValuesOf(computation.Derived));
     }
+
+    // The section 5 values only; budgets, Credit Rating, and wealth are covered by SkillComputationTests.
+    private static DerivedValues SectionFiveValuesOf(DerivedValues derived) =>
+        derived with { OccupationPoints = null, PersonalInterestPoints = null, CreditRating = null, Wealth = null };
 
     [Fact]
     public void Given_a_missing_characteristic_When_calculating_Then_only_the_values_that_need_it_are_not_calculated()

@@ -49,7 +49,7 @@ public sealed class CampaignPlayScenario : IDisposable
             Fixture.CreateRepository(context),
             investigators ?? Fixture.CreateInvestigatorRepository(context),
             new InMemoryAccountDisplayNames(),
-            new CharacterSheetEvaluator(RuleData),
+            new CharacterSheetEvaluator(RuleData, [EmbeddedResourceEraRuleData.For1920s()]),
             new PlayerEnteredRollSource(),
             TimeProvider);
 
@@ -58,7 +58,7 @@ public sealed class CampaignPlayScenario : IDisposable
             Fixture.CreateRepository(context),
             Fixture.CreateInvestigatorRepository(context),
             new InMemoryAccountDisplayNames(),
-            new CharacterSheetEvaluator(RuleData),
+            new CharacterSheetEvaluator(RuleData, [EmbeddedResourceEraRuleData.For1920s()]),
             TimeProvider);
 
     /// <summary>Creates the Player's Draft Investigator and returns its id.</summary>

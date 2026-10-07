@@ -59,6 +59,29 @@ public class RollRecordTests
     }
 
     [Fact]
+    public void Section_2_1_Given_eight_characteristic_rolls_and_a_luck_roll_When_building_the_sheet_Then_there_is_one_player_entered_roll_record_per_result()
+    {
+        var rolls = CharacteristicValues.From(CharacteristicCodes.All.Select(characteristic => KeyValuePair.Create(characteristic, (int?)7)));
+        var inputs = new CharacterSheetInputs(
+            InvestigatorIdentity.Empty,
+            CreationMethod.StandardRolling,
+            CharacteristicValues.Empty,
+            CharacteristicValues.Empty,
+            [],
+            [11],
+            CharacteristicRolls: rolls);
+
+        var sheet = inputs.ToCharacterSheet(new PlayerEnteredRollSource());
+
+        Assert.Equal(9, sheet.RollRecords.Count);
+        Assert.All(sheet.RollRecords, record => Assert.Equal(RollSource.PlayerEntered, record.Source));
+        Assert.Contains(new RollRecord("Characteristic:STR", "3D6", 7, RollSource.PlayerEntered), sheet.RollRecords);
+        Assert.Contains(new RollRecord("Characteristic:SIZ", "2D6", 7, RollSource.PlayerEntered), sheet.RollRecords);
+        Assert.Equal(rolls, sheet.CharacteristicRolls);
+        Assert.Equal(CharacteristicValues.Empty, sheet.AssignedCharacteristics);
+    }
+
+    [Fact]
     public void Given_a_character_sheet_with_roll_records_When_reading_its_dice_inputs_Then_they_come_back_in_order_with_gaps()
     {
         var inputs = new CharacterSheetInputs(

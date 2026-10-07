@@ -10,7 +10,8 @@ public static class CharacterSheetValidator
     public static IReadOnlyList<ValidationError> Validate(
         CharacterSheet sheet,
         AllowedCreationMethods allowedCreationMethods,
-        CharacterSheetComputation computation) =>
+        CharacterSheetComputation computation,
+        CreationRuleSet rules) =>
         IdentityProblems(sheet.Identity)
             .Concat(CreationMethodProblems(sheet.CreationMethod, allowedCreationMethods))
             .Concat(CharacteristicPresenceProblems(sheet.AssignedCharacteristics))

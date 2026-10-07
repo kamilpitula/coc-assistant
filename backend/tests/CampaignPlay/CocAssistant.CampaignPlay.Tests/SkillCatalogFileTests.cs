@@ -2,7 +2,7 @@ namespace CocAssistant.CampaignPlay.Tests;
 
 /// <summary>
 /// Guards docs/game-rules/catalogs/skills.1920s.json, the 1920s skill bases moved out of section 6.1 of
-/// docs/game-rules/coc7_character_creation_and_development_rules.md. Not loaded at runtime yet.
+/// docs/game-rules/coc7_character_creation_and_development_rules.md. Loaded at runtime through IEraRuleData.Skills.
 /// </summary>
 public class SkillCatalogFileTests
 {
@@ -23,13 +23,13 @@ public class SkillCatalogFileTests
         catalog.GetProperty("entries").EnumerateArray().Single(entry => entry.GetProperty("data").GetProperty("name").GetString() == name);
 
     [Fact]
-    public void Given_the_1920s_skill_catalog_When_reading_its_envelope_Then_it_is_a_version_1_skill_catalog_for_the_1920s()
+    public void Given_the_1920s_skill_catalog_When_reading_its_envelope_Then_it_is_a_version_2_skill_catalog_for_the_1920s()
     {
         var catalog = LoadCatalog();
 
         Assert.Equal("SkillCatalog", catalog.GetProperty("catalog").GetString());
         Assert.Equal("1920s", catalog.GetProperty("era").GetString());
-        Assert.Equal(1, catalog.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(2, catalog.GetProperty("schemaVersion").GetInt32());
     }
 
     [Fact]
