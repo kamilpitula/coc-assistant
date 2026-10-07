@@ -1,3 +1,9 @@
+---
+id: PBI-SP-004
+status: todo
+blocked_by: [PBI-SP-002, PBI-SP-003]
+---
+
 # PBI-SP-004: Link Non-Player Entities to Scenes
 
 ## Directive

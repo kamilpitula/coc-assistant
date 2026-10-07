@@ -1,3 +1,10 @@
+---
+id: PBI-CP-008
+status: done
+blocked_by: [PBI-CP-007]
+pr: 2
+---
+
 # PBI-CP-008: Configure Campaign Era and Allowed Creation Methods
 
 ## Directive
@@ -27,11 +34,11 @@ Read: `docs/game-rules/project_ruleset.md` sections 1 and 2; `docs/game-rules/co
 UX: follows `specs/character-sheet/ux.md` sections 2 and 3.1.
 
 ## Verification
-- [ ] A Keeper creating a Campaign without touching rules options gets the 1920s Era and all three Creation Methods.
-- [ ] The Keeper can change allowed Creation Methods later; at least one must remain; a Player cannot change them.
-- [ ] Existing Campaigns migrate to the 1920s Era with all Creation Methods allowed.
-- [ ] Campaign members can read the 1920s Occupation catalog; non-members get 404.
-- [ ] Unit, integration, and E2E tests cover the defaults, the edit authorization, the migration, and catalog loading.
+- [x] A Keeper creating a Campaign without touching rules options gets the 1920s Era and all three Creation Methods.
+- [x] The Keeper can change allowed Creation Methods later; at least one must remain; a Player cannot change them.
+- [x] Existing Campaigns migrate to the 1920s Era with all Creation Methods allowed.
+- [x] Campaign members can read the 1920s Occupation catalog; non-members get 404.
+- [x] Unit, integration, and E2E tests cover the defaults, the edit authorization, the migration, and catalog loading.
 
 ## Refinement Protocol
 Add an Era only after its data exists in `docs/game-rules/` per `project_ruleset.md` section 1. Keep Era immutable after Campaign creation unless the spec is changed first.

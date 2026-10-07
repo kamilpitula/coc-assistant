@@ -1,3 +1,10 @@
+---
+id: PBI-CI-001
+status: done
+blocked_by: []
+pr: 1
+---
+
 # PBI-CI-001: Make the SQL Server Connection Configurable
 
 ## Directive
@@ -19,10 +26,14 @@ Read: `specs/continuous-integration/spec.md`
 - Contract: Regression Guardrails on LocalDB fallback and per-consumer database names.
 
 ## Verification
-- [ ] With the variable unset, integration tests and the E2E suite pass locally against LocalDB exactly as before.
-- [ ] With the variable set to a SQL Server container, the integration tests pass.
-- [ ] Each consumer keeps its own database name.
-- [ ] xUnit tests cover the unset, whitespace, configured, and database-override cases.
+- [ ] With the variable unset, integration tests and the E2E suite pass locally against LocalDB exactly as before. Deferred: see Follow-ups.
+- [ ] With the variable set to a SQL Server container, the integration tests pass. Deferred: see Follow-ups.
+- [x] Each consumer keeps its own database name.
+- [x] xUnit tests cover the unset, whitespace, configured, and database-override cases.
 
 ## Refinement Protocol
 If a consumer needs connection settings beyond server, credentials, and database, update the Blueprint's connection configuration section in the same commit.
+
+## Follow-ups
+- Confirm on a recorded run that the integration tests and the E2E suite pass locally against LocalDB with `COC_SQLSERVER_CONNECTION` unset.
+- Confirm on a recorded run that the integration tests pass against a SQL Server container with `COC_SQLSERVER_CONNECTION` set.

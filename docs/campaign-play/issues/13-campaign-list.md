@@ -1,3 +1,10 @@
+---
+id: PBI-CP-013
+status: done
+blocked_by: [PBI-CP-012]
+pr: 8
+---
+
 # PBI-CP-013: Campaign List
 
 ## Directive
@@ -32,13 +39,13 @@ Read: `specs/campaign-list/spec.md` and `specs/campaign-list/ux.md`
 - Regression Guardrails: a Player item never carries the Player limit, the awaiting-review count, Account or Investigator ids, or any count depending on other Players' non-Approved Investigators.
 
 ## Verification
-- [ ] `/campaigns` lists the caller's Campaigns in the two sections with the per-role item content, and shows no create form.
-- [ ] Every item opens its Campaign overview.
-- [ ] `/campaigns/new` creates a Campaign and opens its overview; Cancel and Back return to `/campaigns`.
-- [ ] A signed-in Account opening `/` lands on `/campaigns`, and Back does not return to `/`.
-- [ ] Signed-out visitors on `/campaigns` and `/campaigns/new` see the sign-in prompt and no list request is made.
-- [ ] `GET /api/campaigns` returns only the caller's Campaigns, projected per role, in the defined order, and `[]` for an Account with none.
-- [ ] Unit, integration, and E2E tests cover the above, with Playwright tests traced to the scenarios in `specs/campaign-list/spec.md`.
+- [x] `/campaigns` lists the caller's Campaigns in the two sections with the per-role item content, and shows no create form.
+- [x] Every item opens its Campaign overview.
+- [x] `/campaigns/new` creates a Campaign and opens its overview; Cancel and Back return to `/campaigns`.
+- [x] A signed-in Account opening `/` lands on `/campaigns`, and Back does not return to `/`.
+- [x] Signed-out visitors on `/campaigns` and `/campaigns/new` see the sign-in prompt and no list request is made.
+- [x] `GET /api/campaigns` returns only the caller's Campaigns, projected per role, in the defined order, and `[]` for an Account with none.
+- [x] Unit, integration, and E2E tests cover the above, with Playwright tests traced to the scenarios in `specs/campaign-list/spec.md`.
 
 ## Refinement Protocol
 If item content or the per-role projection changes, update `specs/campaign-list/spec.md`, `specs/campaign-list/ux.md`, the API projection, and the item component together. Keep all projection server-side.

@@ -1,3 +1,10 @@
+---
+id: PBI-CP-012
+status: done
+blocked_by: [PBI-CP-005]
+pr: 7
+---
+
 # PBI-CP-012: Campaign Overview and Navigation
 
 ## Directive
@@ -30,12 +37,12 @@ Read: `specs/campaign-overview/spec.md` and `specs/campaign-overview/ux.md`
 - Regression Guardrails: the roster never exposes Investigator data beyond the caller's visibility, and the Keeper never sees a Draft name.
 
 ## Verification
-- [ ] The Campaign header and navigation appear on every Campaign page, with Settings for the Keeper only.
-- [ ] The overview shows the attention items and "At the table" rows for each role and Investigator status in the UX spec.
-- [ ] The members API returns the `investigator` projection for each caller and status, and a Player never receives another Player's Investigator id or a non-Approved status.
-- [ ] Invite management and Rules options work unchanged on Settings, and a Player cannot reach them.
-- [ ] "Invite Players" shows the join link, issuing an Invite first when none is active.
-- [ ] Unit, integration, and E2E tests cover the above, with Playwright tests traced to the scenarios in `specs/campaign-overview/spec.md`.
+- [x] The Campaign header and navigation appear on every Campaign page, with Settings for the Keeper only.
+- [x] The overview shows the attention items and "At the table" rows for each role and Investigator status in the UX spec.
+- [x] The members API returns the `investigator` projection for each caller and status, and a Player never receives another Player's Investigator id or a non-Approved status.
+- [x] Invite management and Rules options work unchanged on Settings, and a Player cannot reach them.
+- [x] "Invite Players" shows the join link, issuing an Invite first when none is active.
+- [x] Unit, integration, and E2E tests cover the above, with Playwright tests traced to the scenarios in `specs/campaign-overview/spec.md`.
 
 ## Refinement Protocol
 If the roster projection or Investigator visibility changes, update `specs/campaign-overview/spec.md`, the members API projection, and the overview rows together. Keep all projection server-side.

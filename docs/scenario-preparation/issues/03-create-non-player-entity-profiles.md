@@ -1,3 +1,9 @@
+---
+id: PBI-SP-003
+status: todo
+blocked_by: [PBI-SP-001]
+---
+
 # PBI-SP-003: Create Non-Player Entity Profiles
 
 ## Directive

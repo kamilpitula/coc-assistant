@@ -1,3 +1,10 @@
+---
+id: PBI-CI-005
+status: done
+blocked_by: [PBI-CI-001, PBI-CI-002]
+pr: 1
+---
+
 # PBI-CI-005: Add the E2E Job
 
 ## Directive
@@ -19,9 +26,12 @@ Read: `specs/continuous-integration/spec.md`
 Read: `docs/e2e/authenticated-harness.md`
 
 ## Verification
-- [ ] The full suite passes in CI.
-- [ ] A failing test uploads the report, traces, and server logs with 7-day retention; a passing run uploads none.
-- [ ] The harness documentation describes the CI run and no longer lists CI as out of scope.
+- [ ] The full suite passes in CI. Deferred: see Follow-ups.
+- [x] A failing test uploads the report, traces, and server logs with 7-day retention; a passing run uploads none.
+- [x] The harness documentation describes the CI run and no longer lists CI as out of scope.
 
 ## Refinement Protocol
 If certificate trust or networking on the Linux runner requires a different approach than the spec describes, update the E2E in CI section of the spec in the same commit.
+
+## Follow-ups
+- Confirm on a recorded run that the full E2E suite passes in CI.

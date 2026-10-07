@@ -15,3 +15,4 @@
 - Add or update focused tests for behavior changes.
 - Do not commit secrets, generated build output, local environment files, or dependency caches.
 - Use ASCII by default and keep comments short and purposeful.
+- Track PBIs as described in `docs/backlog.md`: frontmatter status and dependencies, derived in-progress branches, Deferred items, and Follow-ups. Run `/backlog` to see the backlog.

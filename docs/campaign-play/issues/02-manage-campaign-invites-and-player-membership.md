@@ -1,3 +1,9 @@
+---
+id: PBI-CP-002
+status: done
+blocked_by: [PBI-CP-001]
+---
+
 # PBI-CP-002: Manage Campaign Invites and Player Membership
 
 ## Directive
@@ -20,10 +26,10 @@ Read: `specs/campaign-play/spec.md`
 - Regression Guardrails: A revoked or replaced Invite cannot admit new Players.
 
 ## Verification
-- [ ] The Keeper can issue, revoke, and replace a Campaign Invite.
-- [ ] An Account can join through an active Invite until the configured Player limit is reached.
-- [ ] Revoked, replaced, invalid, and over-limit Invites cannot change membership.
-- [ ] Unit, integration, and E2E tests cover authorization, concurrency-sensitive limit enforcement, and the join workflow.
+- [x] The Keeper can issue, revoke, and replace a Campaign Invite.
+- [x] An Account can join through an active Invite until the configured Player limit is reached.
+- [x] Revoked, replaced, invalid, and over-limit Invites cannot change membership.
+- [x] Unit, integration, and E2E tests cover authorization, concurrency-sensitive limit enforcement, and the join workflow.
 
 ## Refinement Protocol
 If the Campaign limit or Invite lifecycle changes, update the membership state rules and all related acceptance scenarios before implementation. Preserve the invariant that a Player belongs only to the Campaign joined through the active Invite.

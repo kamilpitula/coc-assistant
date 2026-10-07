@@ -1,3 +1,10 @@
+---
+id: PBI-CP-003
+status: done
+blocked_by: [PBI-CP-002, PBI-CP-008]
+pr: 3
+---
+
 # PBI-CP-003: Submit and Approve Investigator Character Sheets
 
 ## Directive
@@ -29,14 +36,14 @@ Read: `specs/character-sheet/spec.md`
 UX: the "Your Investigator" card, the Keeper list and review screen, and the minimal sheet form follow `specs/character-sheet/ux.md` (scope in its section 9).
 
 ## Verification
-- [ ] A Player can create a Draft Investigator, leave, resume, and submit a Character Sheet with no validation errors.
-- [ ] Submission with validation errors is rejected with structured `ValidationError` items.
-- [ ] The Keeper can request changes with a comment; the Player sees it, edits, and resubmits.
-- [ ] The Keeper can approve a Submitted Investigator and it becomes ready for play.
-- [ ] A submitted Character Sheet meets every section 15 condition that applies to its content, and its derived values match their rule sections in unit tests named after those sections.
-- [ ] The Keeper sees a Draft only as "In progress".
-- [ ] Cross-Campaign access, a second Investigator for the same Player, Player approval attempts, and reading another Player's Investigator are rejected.
-- [ ] Unit, integration, and E2E tests cover submission, request changes, approval, authorization, and readiness state. E2E: one lifecycle flow (create, save, resume, submit, request changes, resubmit, approve) plus the guardrails above.
+- [x] A Player can create a Draft Investigator, leave, resume, and submit a Character Sheet with no validation errors.
+- [x] Submission with validation errors is rejected with structured `ValidationError` items.
+- [x] The Keeper can request changes with a comment; the Player sees it, edits, and resubmits.
+- [x] The Keeper can approve a Submitted Investigator and it becomes ready for play.
+- [x] A submitted Character Sheet meets every section 15 condition that applies to its content, and its derived values match their rule sections in unit tests named after those sections.
+- [x] The Keeper sees a Draft only as "In progress".
+- [x] Cross-Campaign access, a second Investigator for the same Player, Player approval attempts, and reading another Player's Investigator are rejected.
+- [x] Unit, integration, and E2E tests cover submission, request changes, approval, authorization, and readiness state. E2E: one lifecycle flow (create, save, resume, submit, request changes, resubmit, approve) plus the guardrails above.
 
 ## Refinement Protocol
 If the Character Sheet needs a rule or field not covered by `docs/game-rules/`, add it there first and reference it; do not define it in the spec or code. If the Character Sheet vocabulary or Investigator statuses change, update `CONTEXT.md`, the domain state transitions, and the acceptance scenarios together. Keep Investigator ownership exclusive to one Campaign and one Player.

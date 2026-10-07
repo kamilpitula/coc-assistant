@@ -1,3 +1,9 @@
+---
+id: PBI-SP-006
+status: todo
+blocked_by: [PBI-SP-001, PBI-SP-002, PBI-SP-003, PBI-SP-004, PBI-SP-005]
+---
+
 # PBI-SP-006: Verify Manual Scenario Preparation
 
 ## Directive

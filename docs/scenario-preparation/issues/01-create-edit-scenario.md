@@ -1,3 +1,9 @@
+---
+id: PBI-SP-001
+status: todo
+blocked_by: [PBI-CP-001]
+---
+
 # PBI-SP-001: Create and Edit a Campaign Scenario
 
 ## Directive

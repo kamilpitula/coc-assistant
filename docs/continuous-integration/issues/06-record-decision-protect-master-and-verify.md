@@ -1,3 +1,9 @@
+---
+id: PBI-CI-006
+status: todo
+blocked_by: [PBI-CI-003, PBI-CI-004, PBI-CI-005]
+---
+
 # PBI-CI-006: Record the Decision, Protect Master, and Verify Scenarios
 
 ## Directive
@@ -16,7 +22,7 @@ Read: `specs/continuous-integration/spec.md`
 - Contract: Definition of Done, Regression Guardrails, Scenarios.
 
 ## Verification
-- [ ] ADR 0004 records the runner, database, aggregation, and E2E exemption decisions.
+- [x] ADR 0004 records the runner, database, aggregation, and E2E exemption decisions.
 - [ ] Each spec scenario has been observed on a real run.
 - [ ] `master` requires a pull request and the `ci-success` check.
 

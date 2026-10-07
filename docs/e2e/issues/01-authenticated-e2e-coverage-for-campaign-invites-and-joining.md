@@ -1,3 +1,9 @@
+---
+id: PBI-E2E-001
+status: done
+blocked_by: []
+---
+
 # PBI-E2E-001: Authenticated E2E Coverage for Campaign Invites and Joining
 
 ## Directive
@@ -33,10 +39,10 @@ PBI-CP-002's ticket required that unit, integration, and E2E tests cover authori
 As a result, the business-critical workflows - a Keeper issuing, revoking, or replacing a Campaign Invite, and a Player joining through one, including authorization and over-limit rejection - are currently verified only by backend integration tests (`CampaignMembershipApiTests.cs` using header-based fake auth), not truly end-to-end through the real UI and authentication stack. This gap will recur for every future authenticated-flow ticket in Campaign Play (Investigators, Wall Entries, Presence, live updates), which is why it is tracked as its own cross-cutting issue rather than folded into the Campaign Play backlog.
 
 ## Verification
-- [ ] An authenticated Playwright harness can drive a signed-in Keeper and a signed-in Player without an insecure production auth bypass.
-- [ ] E2E tests cover a Keeper issuing, revoking, and replacing a Campaign Invite through the real UI.
-- [ ] E2E tests cover a Player joining through an active Invite, including authorization checks and over-limit rejection.
-- [ ] Scenarios covered, each traced to `specs/campaign-play/spec.md`:
+- [x] An authenticated Playwright harness can drive a signed-in Keeper and a signed-in Player without an insecure production auth bypass.
+- [x] E2E tests cover a Keeper issuing, revoking, and replacing a Campaign Invite through the real UI.
+- [x] E2E tests cover a Player joining through an active Invite, including authorization checks and over-limit rejection.
+- [x] Scenarios covered, each traced to `specs/campaign-play/spec.md`:
   1. Keeper creates a persistent Campaign (signed in).
   2. Keeper issues an Invite and sees a shareable link.
   3. Keeper revokes the Invite; a new Account following the old link is not admitted.
@@ -45,7 +51,10 @@ As a result, the business-critical workflows - a Keeper issuing, revoking, or re
   6. Eight Players join; the ninth sees "Campaign is full" (409 `LimitReached`).
   7. A Player cannot manage the Keeper's Invite: asserted in the UI and by a `page.request` call with the Player's real token expecting 404.
   8. The Keeper following their own Invite is refused (`KeeperCannotJoin`).
-- [ ] The harness is reusable for future authenticated-flow Campaign Play tickets.
+- [x] The harness is reusable for future authenticated-flow Campaign Play tickets.
 
 ## Refinement Protocol
 If the authentication architecture changes, update the test harness to match the real Entra ID sign-in path before extending coverage. Keep the harness aligned with server-side authorization and never substitute an insecure bypass for the real auth stack.
+
+## Follow-ups
+- Refresh the stale Out of scope bullets in `docs/e2e/authenticated-harness.md`; Presence assertions and the member-list API now exist.

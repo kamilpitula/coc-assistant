@@ -1,3 +1,10 @@
+---
+id: PBI-CI-003
+status: done
+blocked_by: [PBI-CI-002]
+pr: 1
+---
+
 # PBI-CI-003: Add the Frontend and Terraform Jobs
 
 ## Directive
@@ -18,9 +25,9 @@ Read: `specs/continuous-integration/spec.md`
 - Contract: Terraform-only and frontend lint scenarios.
 
 ## Verification
-- [ ] A Terraform-only change runs only the Terraform job and passes `ci-success`.
-- [ ] A frontend lint failure fails `ci-success`.
-- [ ] Frontend test output is no longer tracked.
+- [x] A Terraform-only change runs only the Terraform job and passes `ci-success`.
+- [x] A frontend lint failure fails `ci-success`.
+- [x] Frontend test output is no longer tracked.
 
 ## Refinement Protocol
 If a frontend or Terraform check cannot run headless on Linux, record the exception in the spec before skipping it.

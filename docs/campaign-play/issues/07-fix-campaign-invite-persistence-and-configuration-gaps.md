@@ -1,3 +1,10 @@
+---
+id: PBI-CP-007
+status: done
+blocked_by: [PBI-CP-002]
+pr: 1
+---
+
 # PBI-CP-007: Fix Campaign Invite Persistence and Player Limit Configuration Gaps
 
 ## Directive
@@ -25,10 +32,10 @@ Gaps found during independent review of PBI-CP-002:
 - The spec says the Keeper may configure the Player limit, but no constructor parameter, request field, or endpoint exists to set a non-default limit. `Campaign` always assigns the default of eight (see `backend/src/CampaignPlay/CocAssistant.CampaignPlay.Domain/Campaign.cs`), and `backend/src/CampaignPlay/CocAssistant.CampaignPlay.Controllers/CreateCampaignRequest.cs` only accepts `Name`.
 
 ## Verification
-- [ ] Existing Campaigns created before this migration default to a Player limit of eight, not zero.
-- [ ] The database enforces exactly one active Campaign Invite per Campaign, and a concurrency test proves concurrent issue/replace cannot create two active Invites.
-- [ ] The Keeper can configure the Player limit at Campaign-creation time, and the configured value is persisted and enforced.
-- [ ] Unit and integration tests cover the migration backfill, the concurrency constraint, and the configurable limit.
+- [x] Existing Campaigns created before this migration default to a Player limit of eight, not zero.
+- [x] The database enforces exactly one active Campaign Invite per Campaign, and a concurrency test proves concurrent issue/replace cannot create two active Invites.
+- [x] The Keeper can configure the Player limit at Campaign-creation time, and the configured value is persisted and enforced.
+- [x] Unit and integration tests cover the migration backfill, the concurrency constraint, and the configurable limit.
 
 ## Refinement Protocol
 If the Campaign limit or Invite lifecycle changes, update the membership state rules and all related acceptance scenarios before implementation. Preserve the invariant that each Campaign has exactly one active Invite and that the default Player limit is eight.
