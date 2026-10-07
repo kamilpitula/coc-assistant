@@ -1,3 +1,9 @@
+---
+id: PBI-CP-001
+status: done
+blocked_by: []
+---
+
 # PBI-CP-001: Create a Campaign and Establish Keeper Membership
 
 ## Directive
@@ -19,9 +25,9 @@ Read: `specs/campaign-play/spec.md`
 - Regression Guardrails: Campaign data remains within its Campaign boundary.
 
 ## Verification
-- [ ] An authenticated Account can create a Campaign and is recorded as its Keeper.
-- [ ] Campaign ownership and Keeper authorization prevent access through an unrelated Campaign.
-- [ ] Unit, integration, and E2E tests cover persistence, authorization, and the creation workflow.
+- [x] An authenticated Account can create a Campaign and is recorded as its Keeper.
+- [x] Campaign ownership and Keeper authorization prevent access through an unrelated Campaign.
+- [x] Unit, integration, and E2E tests cover persistence, authorization, and the creation workflow.
 
 ## Refinement Protocol
 If the Identity and Access contract changes, update the Account-to-Keeper boundary before implementation. Keep Campaign ownership aligned with the authoritative glossary and do not introduce a second identity model.

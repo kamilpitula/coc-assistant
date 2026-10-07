@@ -1,3 +1,10 @@
+---
+id: PBI-CP-011
+status: done
+blocked_by: []
+pr: 4
+---
+
 # PBI-CP-011: Dispatch Domain Events After Commit
 
 ## Directive
@@ -21,12 +28,15 @@ Read: [ADR 0011](../../adr/0011-dispatch-domain-events-after-commit.md) and [ADR
 - Conventions: `backend/CLAUDE.md` (Domain references nothing outside Domain; Application references only its Domain).
 
 ## Verification
-- [ ] Joining a Campaign raises exactly one `PlayerJoinedCampaign`; an already-member join and a refused join raise none.
-- [ ] Events are dispatched only after a successful commit; a failed or concurrency-retried save dispatches nothing for the failed attempt.
-- [ ] A throwing handler is logged, does not fail the request, and does not prevent other handlers from running.
-- [ ] Events are cleared after dispatch and never dispatched twice.
-- [ ] Unit tests cover aggregates and the dispatcher; integration tests cover the interceptor through the assembled API.
-- [ ] E2E exception: no user-visible behavior changes, so no E2E is added; existing E2E suites must still pass.
+- [x] Joining a Campaign raises exactly one `PlayerJoinedCampaign`; an already-member join and a refused join raise none.
+- [x] Events are dispatched only after a successful commit; a failed or concurrency-retried save dispatches nothing for the failed attempt.
+- [x] A throwing handler is logged, does not fail the request, and does not prevent other handlers from running.
+- [x] Events are cleared after dispatch and never dispatched twice.
+- [x] Unit tests cover aggregates and the dispatcher; integration tests cover the interceptor through the assembled API.
+- [ ] E2E exception: no user-visible behavior changes, so no E2E is added; existing E2E suites must still pass. Deferred: see Follow-ups.
 
 ## Refinement Protocol
 If delivery must become at-least-once (for example, for email or other reactions that cannot be recovered by refetching), replace after-commit dispatch with a transactional outbox and update ADR 0011.
+
+## Follow-ups
+- Confirm on a recorded run that the existing E2E suites still pass after domain-event dispatch.

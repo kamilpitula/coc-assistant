@@ -1,3 +1,9 @@
+---
+id: PBI-SP-005
+status: todo
+blocked_by: [PBI-SP-002]
+---
+
 # PBI-SP-005: Attach and Protect Scene Handouts
 
 ## Directive

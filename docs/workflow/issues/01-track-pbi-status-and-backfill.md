@@ -1,6 +1,6 @@
 ---
 id: PBI-WF-001
-status: todo
+status: done
 blocked_by: []
 ---
 
@@ -33,11 +33,11 @@ Make PBI status, dependencies, and follow-ups machine-readable in each PBI file,
 - Merged branches are not deleted; derive in-progress with `git branch -a --no-merged master`.
 
 ## Verification
-- [ ] `docs/backlog.md` and `docs/pbi-template.md` describe the convention above, and `CLAUDE.md` links to `docs/backlog.md`.
-- [ ] Every PBI file has valid frontmatter, with statuses confirmed by a human.
-- [ ] `/backlog` lists status, ready PBIs, unpromoted follow-ups, and git mismatch warnings.
-- [ ] `--check` passes on the backfilled repository and fails on each listed error case.
-- [ ] Vitest unit tests cover frontmatter parsing, status derivation, readiness, follow-up detection, and every `--check` rule.
+- [x] `docs/backlog.md` and `docs/pbi-template.md` describe the convention above, and `CLAUDE.md` links to `docs/backlog.md`.
+- [x] Every PBI file has valid frontmatter, with statuses confirmed by a human.
+- [x] `/backlog` lists status, ready PBIs, unpromoted follow-ups, and git mismatch warnings.
+- [x] `--check` passes on the backfilled repository and fails on each listed error case.
+- [x] Vitest unit tests cover frontmatter parsing, status derivation, readiness, follow-up detection, and every `--check` rule.
 
 ## Refinement Protocol
 If the frontmatter schema or status vocabulary changes, update `docs/backlog.md`, `docs/pbi-template.md`, the tool, and its tests together.

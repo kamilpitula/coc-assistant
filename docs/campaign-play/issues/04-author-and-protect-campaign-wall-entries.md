@@ -1,3 +1,9 @@
+---
+id: PBI-CP-004
+status: todo
+blocked_by: [PBI-CP-001, PBI-CP-002]
+---
+
 # PBI-CP-004: Author and Protect Campaign Wall Entries
 
 ## Directive

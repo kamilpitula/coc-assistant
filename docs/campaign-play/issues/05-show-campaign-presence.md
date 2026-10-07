@@ -1,3 +1,10 @@
+---
+id: PBI-CP-005
+status: done
+blocked_by: [PBI-CP-002, PBI-CP-011]
+pr: 5
+---
+
 # PBI-CP-005: Show Campaign Presence
 
 ## Directive
@@ -36,12 +43,12 @@ Read: `specs/campaign-play/spec.md` and `specs/campaign-play/ux.md`
 - Regression Guardrails: Campaign data remains within its Campaign boundary; roster and Presence never include Account ids or Investigator data.
 
 ## Verification
-- [ ] Connected Campaign members can see Presence for members of their Campaign.
-- [ ] Presence changes on connection and disconnection without manually reloading the Campaign view.
-- [ ] Non-members cannot subscribe to or receive a Campaign's Presence.
-- [ ] A Player joining sends `CampaignDataChanged` with `members` to `campaign:{id}` only.
-- [ ] An expired token closes the connection, and the client reconnects and subscribes again.
-- [ ] Unit, integration, and E2E tests cover connection lifecycle, authorization, and Campaign scoping, traced to the Presence scenarios in `spec.md`.
+- [x] Connected Campaign members can see Presence for members of their Campaign.
+- [x] Presence changes on connection and disconnection without manually reloading the Campaign view.
+- [x] Non-members cannot subscribe to or receive a Campaign's Presence.
+- [x] A Player joining sends `CampaignDataChanged` with `members` to `campaign:{id}` only.
+- [x] An expired token closes the connection, and the client reconnects and subscribes again.
+- [x] Unit, integration, and E2E tests cover connection lifecycle, authorization, and Campaign scoping, traced to the Presence scenarios in `spec.md`.
 
 ## Refinement Protocol
 If the live collaboration transport or Presence states change, update the connection contract and the Campaign membership authorization together. Keep Presence limited to the v1 live collaboration scope.

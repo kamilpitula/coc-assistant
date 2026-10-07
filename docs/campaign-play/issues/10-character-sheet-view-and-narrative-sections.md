@@ -1,3 +1,9 @@
+---
+id: PBI-CP-010
+status: todo
+blocked_by: [PBI-CP-009]
+---
+
 # PBI-CP-010: Character Sheet View and Narrative Sections
 
 ## Directive

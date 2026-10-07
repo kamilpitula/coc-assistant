@@ -1,3 +1,9 @@
+---
+id: PBI-CP-009
+status: todo
+blocked_by: [PBI-CP-003]
+---
+
 # PBI-CP-009: Guided Investigator Creation Wizard
 
 ## Directive

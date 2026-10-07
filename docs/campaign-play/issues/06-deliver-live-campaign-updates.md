@@ -1,3 +1,9 @@
+---
+id: PBI-CP-006
+status: todo
+blocked_by: [PBI-CP-003, PBI-CP-004, PBI-CP-005]
+---
+
 # PBI-CP-006: Deliver Live Campaign Updates
 
 ## Directive
@@ -32,7 +38,7 @@ Read: `specs/campaign-play/spec.md`
 - [ ] Connected Campaign members receive new Public Wall Entries without reloading.
 - [ ] Players receive live changes only for their own Investigator, and no signal for a Keeper-only Wall Entry reaches a Player.
 - [ ] The Keeper sees Investigator submissions without reloading.
-- [ ] Presence changes and reconnect behavior preserve Campaign membership authorization.
+- [x] Presence changes and reconnect behavior preserve Campaign membership authorization.
 - [ ] Unit, integration, and E2E tests cover publication, audience routing, reconnect behavior, and end-to-end live updates.
 
 ## Refinement Protocol

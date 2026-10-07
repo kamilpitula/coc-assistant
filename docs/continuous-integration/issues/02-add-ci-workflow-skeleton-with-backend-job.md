@@ -1,3 +1,10 @@
+---
+id: PBI-CI-002
+status: done
+blocked_by: []
+pr: 1
+---
+
 # PBI-CI-002: Add the CI Workflow Skeleton with the Backend Job
 
 ## Directive
@@ -17,10 +24,13 @@ Read: `specs/continuous-integration/spec.md`
 - Blueprint: Workflow (triggers, concurrency, `changes`, `backend`, `ci-success`), Toolchain versions, Workflow supply chain, Constraints.
 
 ## Verification
-- [ ] The pull request shows a passing `ci-success` check.
-- [ ] Unformatted C# code fails the backend job and `ci-success`.
-- [ ] Unit test results appear in the run summary.
-- [ ] Third-party actions are pinned by commit SHA and the default token permission is read-only.
+- [ ] The pull request shows a passing `ci-success` check. Deferred: see Follow-ups.
+- [x] Unformatted C# code fails the backend job and `ci-success`.
+- [x] Unit test results appear in the run summary.
+- [x] Third-party actions are pinned by commit SHA and the default token permission is read-only.
 
 ## Refinement Protocol
 If the path-filter or aggregation design cannot satisfy a spec scenario, stop and update the Blueprint before working around it.
+
+## Follow-ups
+- Confirm on a recorded run that a pull request shows a passing `ci-success` check.
