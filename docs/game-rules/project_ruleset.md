@@ -11,7 +11,7 @@ Anything not listed here follows that document unchanged.
 
 | Era | Status | Era-specific data |
 |---|---|---|
-| 1920s | Supported | [Skill bases](catalogs/skills.1920s.json) ([section 6.1](coc7_character_creation_and_development_rules.md#61-standard-1920s-investigator-sheet-skill-base-values)), [wealth table](coc7_character_creation_and_development_rules.md#11-finances-gear-and-possessions), [occupation catalog](catalogs/occupations.1920s.json) |
+| 1920s | Supported | [Skill bases](catalogs/skills.1920s.json) ([section 6.1](coc7_character_creation_and_development_rules.md#61-standard-1920s-investigator-sheet-skill-base-values)), [wealth table](catalogs/wealth.1920s.json) ([section 11](coc7_character_creation_and_development_rules.md#11-finances-gear-and-possessions)), [occupation catalog](catalogs/occupations.1920s.json) |
 
 Adding an Era requires its skill bases, wealth table, and occupation catalog
 here before a Campaign can select it.
@@ -50,9 +50,18 @@ has no Keeper adjudication mechanism for creation yet.
 every weapon is a Player-entered custom entry, as permitted by
 [section 10.2](coc7_character_creation_and_development_rules.md#102-weapon-assignment-algorithm).
 Character Approval by the Keeper is the explicit approval that section requires.
-Gear and skill specializations are free text; the specializations in
-[section 6.2](coc7_character_creation_and_development_rules.md#62-common-specialization-base-values)
-are offered as suggestions only.
+Gear is free text. Skill specializations are free text, with these exceptions
+and suggestions:
+
+- Fighting and Firearms specializations must be one of the specializations in
+  [catalogs/skill-specializations.json](catalogs/skill-specializations.json)
+  ([section 6.2](coc7_character_creation_and_development_rules.md#62-common-specialization-base-values)),
+  because their base values differ by specialization and the rules give no base
+  for any other specialization.
+- The other specialized skills (the open families in that catalog) take free
+  text and start at their family's base value from the Era's skill catalog;
+  specializations named in the Era's Occupation catalog are offered as
+  suggestions.
 
 ## 4.3 Dice results at creation
 
@@ -76,3 +85,25 @@ A Character Sheet whose age effects would take a characteristic below the floor
 is invalid; it is reported as a validation error and is not corrected
 automatically
 ([section 15](coc7_character_creation_and_development_rules.md#15-character-creation-validation-rules)).
+
+## 4.5 Occupation skill choices
+
+**House rule (project assumption).** The rules do not say whether one skill may
+fill two occupation skill slots. In this project an occupation's skills are all
+different: a slot cannot be filled with a skill (with the same specialization)
+that is already an occupation skill, and no slot can be filled with Cthulhu
+Mythos
+([section 8](coc7_character_creation_and_development_rules.md#8-personal-interest-skills)).
+An "any" slot accepts any other skill; Credit Rating always takes occupation
+points separately
+([section 7.2](coc7_character_creation_and_development_rules.md#72-occupation-skill-allocation)).
+
+## 4.6 Credit Rating takes occupation points only
+
+**House rule (resolves a conflict).**
+[Section 8](coc7_character_creation_and_development_rules.md#8-personal-interest-skills)
+allows Personal Interest points on any skill except Cthulhu Mythos, while
+[section 9](coc7_character_creation_and_development_rules.md#9-skill-post-processing)
+sets Credit Rating to the allocated occupation points. In this project Credit
+Rating is raised only with occupation points; Personal Interest points spent on
+Credit Rating are reported as a validation error.

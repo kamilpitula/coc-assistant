@@ -1,8 +1,8 @@
 {
   "catalog": "SkillCatalog",
   "era": "1920s",
-  "schemaVersion": 1,
-  "verificationStatus": "moved unchanged from section 6.1 and verified by the project owner on 2026-10-02; pageReference values still to be added",
+  "schemaVersion": 2,
+  "verificationStatus": "moved unchanged from section 6.1 and verified by the project owner on 2026-10-02; pageReference values still to be added; schema version 2 (2026-10-07) adds explicit skill and specialization fields to the specialized sheet entries, values unchanged",
   "entries": [
     {
       "id": "accounting",
@@ -224,6 +224,8 @@
       "lastVerified": "2026-10-02",
       "data": {
         "name": "Fighting (Brawl)",
+        "skill": "Fighting",
+        "specialization": "Brawl",
         "base": {
           "kind": "fixed",
           "value": 25
@@ -239,6 +241,8 @@
       "lastVerified": "2026-10-02",
       "data": {
         "name": "Firearms (Handgun)",
+        "skill": "Firearms",
+        "specialization": "Handgun",
         "base": {
           "kind": "fixed",
           "value": 20
@@ -254,6 +258,8 @@
       "lastVerified": "2026-10-02",
       "data": {
         "name": "Firearms (Rifle/Shotgun)",
+        "skill": "Firearms",
+        "specialization": "Rifle/Shotgun",
         "base": {
           "kind": "fixed",
           "value": 25

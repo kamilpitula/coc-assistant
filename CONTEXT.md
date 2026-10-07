@@ -112,6 +112,22 @@ _Avoid_: Creation mode, generation type
 The profession an Investigator follows, which determines their occupation skills, skill point formula, and Credit Rating range per the [occupation rules](docs/game-rules/coc7_character_creation_and_development_rules.md#7-occupation-creation-rules). It is either a catalog Occupation for the Campaign's Era or a custom Occupation defined by the Player and judged by the Keeper.
 _Avoid_: Job, class, profession
 
+**Credit Rating**:
+The skill that measures an Investigator's wealth and social standing, set at creation within its Occupation's range per the [Credit Rating rules](docs/game-rules/coc7_character_creation_and_development_rules.md#73-credit-rating).
+_Avoid_: Wealth score, money
+
+**Occupation Points**:
+The creation budget an Investigator spends on its Occupation's skills and Credit Rating, computed from the Occupation's [skill point formula](docs/game-rules/coc7_character_creation_and_development_rules.md#71-occupation-skill-points).
+_Avoid_: Skill points, career points
+
+**Personal Interest Points**:
+The creation budget an Investigator spends on [personal interest skills](docs/game-rules/coc7_character_creation_and_development_rules.md#8-personal-interest-skills).
+_Avoid_: Hobby points, free points
+
+**Wealth**:
+The spending level, cash, and assets that follow from an Investigator's Credit Rating and the Campaign's Era, per the [finances rules](docs/game-rules/coc7_character_creation_and_development_rules.md#11-finances-gear-and-possessions).
+_Avoid_: Money, finances
+
 **Roll Record**:
 A recorded dice result used to create or develop an Investigator, naming what it was rolled for, the dice, the result, and who produced it.
 _Avoid_: Dice log, roll history
