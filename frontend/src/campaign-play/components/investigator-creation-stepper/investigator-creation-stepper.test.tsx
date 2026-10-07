@@ -8,16 +8,19 @@ const states = {
   identity: 'completed',
   characteristics: 'needsAttention',
   age: 'notStarted',
+  occupation: 'notStarted',
+  'occupation-skills': 'notStarted',
+  'personal-interests': 'notStarted',
   sheet: 'notStarted',
 } as const
 
 /** specs/character-sheet/ux.md section 4.1; A11Y-2 and UX-6. */
 describe('InvestigatorCreationStepper', () => {
-  it('is a labelled navigation with an ordered list of the four steps', () => {
+  it('is a labelled navigation with an ordered list of the seven steps', () => {
     render(<InvestigatorCreationStepper campaignId="c1" current="age" states={states} onSelect={vi.fn()} />)
 
     const nav = screen.getByRole('navigation', { name: 'Investigator creation steps' })
-    expect(within(nav).getAllByRole('listitem')).toHaveLength(4)
+    expect(within(nav).getAllByRole('listitem')).toHaveLength(7)
   })
 
   it('makes completed and needs-attention steps links that say their status, and marks the current step', () => {
@@ -32,7 +35,7 @@ describe('InvestigatorCreationStepper', () => {
     render(<InvestigatorCreationStepper campaignId="c1" current="age" states={states} onSelect={vi.fn()} />)
 
     expect(screen.queryByRole('link', { name: /Sheet and submit/ })).not.toBeInTheDocument()
-    expect(screen.getByText(', not started')).toBeInTheDocument()
+    expect(screen.getAllByText(', not started')).toHaveLength(4)
   })
 
   it('hands a link click to the wizard so it can save first', async () => {

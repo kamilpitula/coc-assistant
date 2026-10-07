@@ -6,7 +6,7 @@ import { bracket17, bracket25, emptyInputs, problem, rules, validInputs } from '
 
 import { CharacteristicsStep } from './characteristics-step'
 
-const noop = { onAction: vi.fn(), onBlur: vi.fn() }
+const noop = { onAction: vi.fn(), onBlur: vi.fn(), allowedMethods: ['PointBuy' as const] }
 
 /** specs/character-sheet/ux.md section 6.2 (Point buy with its Luck rows); UX-9, UX-10, UX-20. */
 describe('CharacteristicsStep', () => {
@@ -47,7 +47,7 @@ describe('CharacteristicsStep', () => {
 
   it('reports characteristic and Luck changes', async () => {
     const onAction = vi.fn()
-    render(<CharacteristicsStep inputs={emptyInputs} errors={{}} rules={rules} bracket={bracket25} warnings={[]} onAction={onAction} onBlur={vi.fn()} />)
+    render(<CharacteristicsStep inputs={emptyInputs} errors={{}} rules={rules} bracket={bracket25} warnings={[]} onAction={onAction} onBlur={vi.fn()} allowedMethods={['PointBuy']} />)
 
     await userEvent.type(screen.getByLabelText('STR'), '6')
     await userEvent.type(screen.getByLabelText('Luck, 3D6 total'), '9')
@@ -80,5 +80,43 @@ describe('CharacteristicsStep', () => {
     expect(screen.getByRole('group', { name: 'Characteristics' })).toHaveAccessibleDescription(
       'Your characteristics must add up to 460. They add up to 450.',
     )
+  })
+
+  it("offers the Campaign's methods and switches at once while nothing is entered", async () => {
+    const onAction = vi.fn()
+    const inputs = { ...emptyInputs, creationMethod: null }
+    render(<CharacteristicsStep inputs={inputs} errors={{}} rules={rules} bracket={bracket25} warnings={[]} onAction={onAction} onBlur={vi.fn()} allowedMethods={['StandardRolling', 'PointBuy', 'QuickFire']} />)
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Standard rolling' }))
+
+    expect(onAction).toHaveBeenCalledWith({ type: 'creationMethod', method: 'StandardRolling' })
+  })
+
+  it('UX-9: Standard rolling takes a raw total per characteristic and shows the computed value', async () => {
+    const onAction = vi.fn()
+    const inputs = { ...emptyInputs, creationMethod: 'StandardRolling' as const, characteristicRolls: { SIZ: 7 } }
+    render(<CharacteristicsStep inputs={inputs} errors={{}} rules={rules} bracket={bracket25} warnings={[]} onAction={onAction} onBlur={vi.fn()} allowedMethods={['StandardRolling']} />)
+
+    expect(screen.getByLabelText('STR, 3D6 total')).toBeInTheDocument()
+    expect(screen.getByLabelText('SIZ, 2D6 total')).toHaveValue(7)
+    expect(screen.getAllByText('(2D6 + 6) x 5')).toHaveLength(3)
+    expect(screen.getByText('= 65')).toBeInTheDocument()
+    expect(screen.queryByText(/Points used/)).not.toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('STR, 3D6 total'), '9')
+
+    expect(onAction).toHaveBeenCalledWith({ type: 'characteristicRoll', code: 'STR', value: 9 })
+  })
+
+  it('Quick fire assigns pool values with eight Selects and lists the values left', async () => {
+    const onAction = vi.fn()
+    const inputs = { ...emptyInputs, creationMethod: 'QuickFire' as const, characteristics: { STR: 80, CON: 50 } }
+    render(<CharacteristicsStep inputs={inputs} errors={{}} rules={rules} bracket={bracket25} warnings={[]} onAction={onAction} onBlur={vi.fn()} allowedMethods={['QuickFire']} />)
+
+    expect(screen.getByText('Values left to assign: 70, 60, 60, 50, 50, 40')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('combobox', { name: 'DEX' }))
+    expect(screen.queryByRole('option', { name: '80' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('option', { name: '70' }))
+
+    expect(onAction).toHaveBeenCalledWith({ type: 'characteristic', code: 'DEX', value: 70 })
   })
 })

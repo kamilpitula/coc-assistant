@@ -168,7 +168,11 @@ public static class CharacterSheetWireFormat
             resolved?.CreditRatingMin,
             resolved?.CreditRatingMax,
             resolved?.IsCustom ?? false,
-            resolved?.Formula is { } formula ? OccupationPointFormulas.IdOf(formula) : null);
+            resolved?.Formula is { } formula ? OccupationPointFormulas.IdOf(formula) : null,
+            resolved?.CreditRatingMin is { } minimum ? ToQuickFireCreditRating(QuickFireRules.CreditRatingFor(minimum)) : null);
+
+    private static QuickFireCreditRatingResponse ToQuickFireCreditRating(QuickFireCreditRating creditRating) =>
+        new(creditRating.Value, creditRating.FreedValue);
 
     private static SkillRowResponse ToSkillRow(SkillRow row) =>
         new(row.Skill.Skill, row.Skill.Specialization, row.Base, row.OccupationPoints, row.PersonalInterestPoints, row.Value, row.Hard, row.Extreme, row.IsOccupationSkill);

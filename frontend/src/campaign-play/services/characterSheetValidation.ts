@@ -8,6 +8,8 @@ import {
   type EduImprovementCheckInputs,
   type ValidationError,
 } from '@/campaign-play/types/CharacterSheet'
+import { occupationProblems, quickFireSkillProblems, skillAllocationProblems } from '@/campaign-play/services/skillValidation'
+import { validationError } from '@/campaign-play/services/validationErrorFactory'
 
 /**
  * The frontend's instant-feedback validator. It mirrors the backend for the checks with scope "shared" in the
@@ -23,12 +25,69 @@ export function validateCharacterSheet(
   return [
     ...identityProblems(inputs, rules),
     ...(inputs.creationMethod === null ? [error('CreationMethodRequired', 'creationMethod', 'Choose a creation method.')] : []),
-    ...characteristicPresenceProblems(inputs.characteristics),
-    ...(inputs.creationMethod === 'PointBuy' ? pointBuyProblems(inputs.characteristics, rules) : []),
+    ...characteristicProblems(inputs, rules),
     ...luckProblems(inputs.luckRolls, rules, bracket),
     ...(bracket ? deductionProblems(inputs.ageEffects.deductions, bracket) : []),
     ...(bracket ? eduImprovementProblems(inputs.ageEffects.eduImprovementChecks, rules, bracket) : []),
+    ...occupationProblems(inputs, rules),
+    ...(inputs.creationMethod === 'QuickFire' ? quickFireSkillProblems(inputs, rules) : skillAllocationProblems(inputs.skills, rules)),
   ]
+}
+
+// docs/game-rules section 15: eight characteristics, valid under the Creation Method (sections 2.1 to 2.3).
+function characteristicProblems(inputs: CharacterSheetInputs, rules: CharacterSheetRules): ValidationError[] {
+  switch (inputs.creationMethod) {
+    case 'StandardRolling':
+      return standardRollingProblems(inputs.characteristicRolls, rules)
+    case 'PointBuy':
+      return [...characteristicPresenceProblems(inputs.characteristics), ...pointBuyProblems(inputs.characteristics, rules)]
+    case 'QuickFire':
+      return [...characteristicPresenceProblems(inputs.characteristics), ...quickFireProblems(inputs.characteristics, rules)]
+    default:
+      return characteristicPresenceProblems(inputs.characteristics)
+  }
+}
+
+export function characteristicRollField(code: CharacteristicCode): string {
+  return `characteristicRolls.${code}`
+}
+
+// docs/game-rules section 2.1: a raw total for every characteristic that its dice can produce.
+function standardRollingProblems(rolls: CharacteristicInputs, rules: CharacterSheetRules): ValidationError[] {
+  return CHARACTERISTIC_CODES.flatMap((code) => {
+    const dice = rules.standardRolling[code].dice
+    const roll = rolls[code] ?? null
+    return roll === null
+      ? [validationError('CharacteristicRollRequired', characteristicRollField(code), `Enter the ${dice} total for ${code}.`)]
+      : diceProblems(characteristicRollField(code), diceRange(dice), roll)
+  })
+}
+
+// docs/game-rules section 2.3: each pool value exactly once.
+function quickFireProblems(characteristics: CharacteristicInputs, rules: CharacterSheetRules): ValidationError[] {
+  const pool = rules.quickFireCharacteristicValues
+  const distinct = [...new Set(pool)].sort((first, second) => first - second).join(', ')
+  const present = presentEntries(characteristics)
+  const notInPool = present
+    .filter(([, value]) => !pool.includes(value))
+    .map(([code, value]) =>
+      validationError('QuickFireValueNotInPool', characteristicField(code), `${code} must be one of the Quick fire values: ${distinct}.`, distinct, String(value)),
+    )
+
+  const ascending = (values: number[]) => [...values].sort((first, second) => first - second).join(', ')
+  const assigned = present.map(([, value]) => value)
+  const mismatch = present.length === CHARACTERISTIC_CODES.length && notInPool.length === 0 && ascending(assigned) !== ascending(pool)
+  return mismatch
+    ? [
+        validationError(
+          'QuickFireAssignmentMismatch',
+          'characteristics',
+          `Use each Quick fire value exactly once: ${ascending(pool)}.`,
+          ascending(pool),
+          ascending(assigned),
+        ),
+      ]
+    : notInPool
 }
 
 interface DiceRange {
@@ -60,9 +119,7 @@ export function eduCheckField(index: number): string {
   return `ageEffects.eduImprovementChecks[${index}]`
 }
 
-function error(code: string, field: string, message: string, expected: string | null = null, actual: string | null = null): ValidationError {
-  return { code, field, message, expected, actual, severity: 'Error' }
-}
+const error = validationError
 
 function presentEntries(values: CharacteristicInputs): [CharacteristicCode, number][] {
   return CHARACTERISTIC_CODES.flatMap((code) => {

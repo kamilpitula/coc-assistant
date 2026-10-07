@@ -5,16 +5,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   emptySheetView,
   myCharacterSheet,
+  occupationCatalog,
   problem,
   sheetView,
+  skillCatalog,
+  validInputs,
 } from '@/campaign-play/test-support/characterSheetFixtures'
 import type { MyCharacterSheet } from '@/campaign-play/types/Investigator'
 import { navigateSpy, routerState } from '@/shared/test-support/routerMock'
 
 import { InvestigatorWizard } from './investigator-wizard'
 
-const { mockUseSheet, mockSave, mockSubmit, mockDelete } = vi.hoisted(() => ({
+const { mockUseSheet, mockSave, mockSubmit, mockDelete, mockUseCampaign } = vi.hoisted(() => ({
   mockUseSheet: vi.fn(),
+  mockUseCampaign: vi.fn(),
   mockSave: vi.fn(),
   mockSubmit: vi.fn(),
   mockDelete: vi.fn(),
@@ -27,6 +31,16 @@ vi.mock('@/campaign-play/hooks/useMyInvestigator', () => ({
   useSubmitInvestigator: () => ({ mutateAsync: mockSubmit, isPending: false }),
   useDeleteInvestigator: () => ({ mutateAsync: mockDelete, isPending: false }),
 }))
+
+vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
+vi.mock('@/campaign-play/hooks/useRuleData', () => ({
+  useOccupationCatalog: () => ({ data: occupationCatalog, isPending: false, isError: false }),
+  useSkillCatalog: () => ({ data: skillCatalog, isPending: false, isError: false }),
+}))
+
+function allowing(...methods: string[]) {
+  mockUseCampaign.mockReturnValue({ data: { allowedCreationMethods: methods }, isPending: false, isError: false })
+}
 
 function withSheet(sheet: MyCharacterSheet | null) {
   mockUseSheet.mockReturnValue({ data: sheet, isPending: false, isError: false, refetch: vi.fn() })
@@ -44,6 +58,7 @@ describe('InvestigatorWizard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     routerState.location.state = {}
+    allowing('PointBuy')
   })
 
   it('UX-18: shows the not-found page when the caller has no Investigator', () => {
@@ -246,5 +261,52 @@ describe('InvestigatorWizard', () => {
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: 'Investigator creation steps' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Change/ })).not.toBeInTheDocument()
+  })
+
+  it('UX-10: starts a new Draft on the only method the Campaign allows and saves it', async () => {
+    withSheet(freshDraft)
+    mockSave.mockResolvedValue(myCharacterSheet({ characterSheet: sheetView(), validationErrors: [] }))
+    render(<InvestigatorWizard campaignId="c1" step="characteristics" />)
+
+    expect(screen.getByText('Creation method: Point buy')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }))
+
+    await waitFor(() => expect(mockSave).toHaveBeenCalled())
+    expect(mockSave.mock.calls[0][0].creationMethod).toBe('PointBuy')
+  })
+
+  it('offers the creation method choice when the Campaign allows several', () => {
+    allowing('StandardRolling', 'PointBuy', 'QuickFire')
+    withSheet(myCharacterSheet({ characterSheet: emptySheetView() }))
+
+    render(<InvestigatorWizard campaignId="c1" step="characteristics" />)
+
+    expect(screen.getByRole('radiogroup', { name: 'Creation method' })).toBeInTheDocument()
+  })
+
+  it.each([
+    ['occupation', 'Occupation', 'radio', /Antiquarian/],
+    ['occupation-skills', 'Occupation skills', 'table', 'Occupation skills'],
+    ['personal-interests', 'Personal interests', 'table', 'Personal interests'],
+  ] as const)('shows the %s step', (step, title, role, name) => {
+    withSheet(myCharacterSheet())
+
+    render(<InvestigatorWizard campaignId="c1" step={step} />)
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(title)
+    expect(screen.getByRole(role, { name })).toBeInTheDocument()
+  })
+
+  it('saves the occupation picked on the Occupation step', async () => {
+    withSheet(myCharacterSheet())
+    mockSave.mockResolvedValue(myCharacterSheet())
+    render(<InvestigatorWizard campaignId="c1" step="occupation" />)
+
+    await userEvent.click(screen.getByRole('radio', { name: /Police Detective/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }))
+
+    await waitFor(() => expect(mockSave).toHaveBeenCalled())
+    expect(mockSave.mock.calls[0][0].occupation.catalogId).toBe('police-detective')
+    expect(mockSave.mock.calls[0][0].skills).toEqual(validInputs.skills)
   })
 })

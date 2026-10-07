@@ -65,7 +65,11 @@ public record OccupationViewResponse(
     int? CreditRatingMin,
     int? CreditRatingMax,
     bool IsCustom,
-    string? FormulaId);
+    string? FormulaId,
+    QuickFireCreditRatingResponse? QuickFireCreditRating);
+
+/** The Credit Rating a Quick Fire Investigator takes for this occupation and the value it frees (section 18 assumption). */
+public record QuickFireCreditRatingResponse(int Value, int? FreedValue);
 
 /// <summary>One skill on the sheet (section 9).</summary>
 public record SkillRowResponse(

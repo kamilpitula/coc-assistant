@@ -7,6 +7,8 @@ interface DiceRollInputProps {
   rollLabel: string
   /** The dice expression from the rules data, for example "3D6". */
   dice: string
+  /** The rules data's bonus added to the raw total before multiplying, for example 6 for SIZ (section 2.1). */
+  bonus?: number
   /** The rules data's multiplier for the raw total, for example 5 for Luck. */
   multiplier: number
   value: number | null
@@ -19,14 +21,14 @@ interface DiceRollInputProps {
  * One dice row: the Player enters the raw dice total and sees the computed value
  * (specs/character-sheet/ux.md section 6.2; UX-9; A11Y-3 names the roll and the dice).
  */
-export function DiceRollInput({ field, rollLabel, dice, multiplier, value, error, onChange, onBlur }: DiceRollInputProps) {
+export function DiceRollInput({ field, rollLabel, dice, bonus = 0, multiplier, value, error, onChange, onBlur }: DiceRollInputProps) {
   const range = diceRange(dice)
   return (
     <div className="flex flex-wrap items-end gap-3">
       <div className="flex min-w-24 flex-col">
         <span className="text-sm font-medium">{rollLabel}</span>
         <span className="text-sm text-muted-foreground">
-          {dice} x {multiplier}
+          {bonus === 0 ? dice : `(${dice} + ${bonus})`} x {multiplier}
         </span>
       </div>
       <WizardField
@@ -40,7 +42,7 @@ export function DiceRollInput({ field, rollLabel, dice, multiplier, value, error
         onBlur={onBlur}
         className="w-48"
       />
-      {value !== null && <p className="pb-2 text-sm font-medium">= {value * multiplier}</p>}
+      {value !== null && <p className="pb-2 text-sm font-medium">= {(value + bonus) * multiplier}</p>}
     </div>
   )
 }

@@ -6,6 +6,7 @@ import type { Campaign, PlayerCampaign } from '@/campaign-play/types/Campaign'
 import type { CampaignMember } from '@/campaign-play/types/CampaignMember'
 import { navigateSpy } from '@/shared/test-support/routerMock'
 
+import { emptySheetView } from '@/campaign-play/test-support/characterSheetFixtures'
 import { AttentionList } from './attention-list'
 
 // specs/campaign-overview/ux.md section 4; spec.md, Attention items; CO-UX-4, CO-UX-5, CO-UX-6.
@@ -134,16 +135,10 @@ function investigator(overrides: Record<string, unknown> = {}) {
 const emptyIdentity = { name: null, age: null, gender: null, residence: null, birthplace: null }
 
 function characterSheetWithName(name: string | null) {
-  const characteristic = { assigned: null, value: null, hard: null, extreme: null }
   return {
     status: 'Draft',
     validationErrors: [],
-    characterSheet: {
-      identity: { ...emptyIdentity, name, age: name ? 25 : null },
-      characteristics: Object.fromEntries(['STR', 'CON', 'DEX', 'APP', 'POW', 'SIZ', 'INT', 'EDU'].map((code) => [code, characteristic])),
-      ageEffects: { bracket: null, deductions: {}, eduImprovementChecks: [] },
-      luckRolls: [],
-    },
+    characterSheet: { ...emptySheetView(), identity: { ...emptyIdentity, name, age: name ? 25 : null } },
   }
 }
 
@@ -176,25 +171,11 @@ describe('AttentionList for a Player (CO-UX-6)', () => {
     expect(screen.getByRole('alert')).toHaveTextContent("We couldn't create your Investigator. Try again.")
   })
 
-  it('explains that no allowed Creation Method is available yet, with no action', () => {
+  // PBI-CP-009: every creation method is available, so UX-19's "not available yet" state can no longer occur.
+  it('offers "Create Investigator" for a Campaign that allows only Standard rolling and Quick fire', () => {
     render(<AttentionList campaign={{ ...playerCampaign, allowedCreationMethods: ['StandardRolling', 'QuickFire'] }} />)
 
-    expect(
-      within(section()).getByText(
-        "You can't create your Investigator yet. This Campaign allows Standard rolling, Quick fire, which aren't available yet. Ask your Keeper to also allow Point buy.",
-      ),
-    ).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Create Investigator' })).not.toBeInTheDocument()
-  })
-
-  it('uses a singular verb when the Campaign allows a single unavailable method', () => {
-    render(<AttentionList campaign={{ ...playerCampaign, allowedCreationMethods: ['QuickFire'] }} />)
-
-    expect(
-      screen.getByText(
-        "You can't create your Investigator yet. This Campaign allows Quick fire, which isn't available yet. Ask your Keeper to also allow Point buy.",
-      ),
-    ).toBeInTheDocument()
+    expect(within(section()).getByRole('button', { name: 'Create Investigator' })).toBeInTheDocument()
   })
 
   it('asks to continue a Draft at the step to resume', () => {
@@ -203,7 +184,7 @@ describe('AttentionList for a Player (CO-UX-6)', () => {
 
     render(<AttentionList campaign={playerCampaign} />)
 
-    expect(within(section()).getByText('Continue Harvey Walters: step 2 of 4')).toBeInTheDocument()
+    expect(within(section()).getByText('Continue Harvey Walters: step 2 of 7')).toBeInTheDocument()
     expect(within(section()).getByRole('link', { name: 'Continue' })).toHaveAttribute('href', '/campaigns/c1/investigator')
   })
 
@@ -213,7 +194,7 @@ describe('AttentionList for a Player (CO-UX-6)', () => {
 
     render(<AttentionList campaign={playerCampaign} />)
 
-    expect(within(section()).getByText('Continue your Investigator: step 1 of 4')).toBeInTheDocument()
+    expect(within(section()).getByText('Continue your Investigator: step 1 of 7')).toBeInTheDocument()
   })
 
   it('waits for the Draft progress before showing the item', () => {

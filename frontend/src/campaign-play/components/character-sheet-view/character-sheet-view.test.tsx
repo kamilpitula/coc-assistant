@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import { sheetView } from '@/campaign-play/test-support/characterSheetFixtures'
@@ -54,5 +55,26 @@ describe('CharacterSheetView', () => {
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('names the occupation with the identity', () => {
+    render(<CharacterSheetView sheet={at45} playerName="Ada Lovelace" />)
+
+    expect(screen.getByText('Occupation').nextElementSibling).toHaveTextContent('Antiquarian')
+  })
+
+  it('lists the skills with points, and every skill on request (ux.md 6.7 Skills)', async () => {
+    render(<CharacterSheetView sheet={at45} playerName="Ada Lovelace" changeLinksFor="c1" />)
+
+    const skills = screen.getByRole('table', { name: 'Skills' })
+    const rows = () => within(skills).getAllByRole('row').slice(1).map((row) => row.textContent)
+    expect(rows()).toEqual(['Credit Rating30156', 'Library Use703514', 'Drive Auto804016'])
+    expect(screen.getByRole('link', { name: 'Change occupation skills' })).toHaveAttribute('href', '/campaigns/c1/investigator/occupation-skills')
+    expect(screen.getByRole('link', { name: 'Change personal interests' })).toHaveAttribute('href', '/campaigns/c1/investigator/personal-interests')
+    expect(screen.getByRole('link', { name: 'Change occupation' })).toHaveAttribute('href', '/campaigns/c1/investigator/occupation')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show all skills' }))
+
+    expect(rows()).toHaveLength(8)
   })
 })

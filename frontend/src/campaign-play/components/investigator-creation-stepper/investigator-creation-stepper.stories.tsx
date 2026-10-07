@@ -14,13 +14,13 @@ type Story = StoryObj<typeof meta>
 export const OnCharacteristics: Story = {
   args: {
     current: 'characteristics',
-    states: { identity: 'completed', characteristics: 'notStarted', age: 'notStarted', sheet: 'notStarted' },
+    states: { identity: 'completed', characteristics: 'notStarted', age: 'notStarted', occupation: 'notStarted', 'occupation-skills': 'notStarted', 'personal-interests': 'notStarted', sheet: 'notStarted' },
   },
 }
 
 export const EarlierStepNeedsAttention: Story = {
   args: {
     current: 'age',
-    states: { identity: 'completed', characteristics: 'needsAttention', age: 'notStarted', sheet: 'notStarted' },
+    states: { identity: 'completed', characteristics: 'needsAttention', age: 'notStarted', occupation: 'notStarted', 'occupation-skills': 'notStarted', 'personal-interests': 'notStarted', sheet: 'notStarted' },
   },
 }

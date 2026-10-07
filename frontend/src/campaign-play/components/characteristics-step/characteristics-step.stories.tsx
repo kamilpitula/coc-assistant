@@ -14,7 +14,7 @@ import { CharacteristicsStep } from './characteristics-step'
 const meta = {
   title: 'CampaignPlay/CharacteristicsStep',
   component: CharacteristicsStep,
-  args: { rules, errors: {}, warnings: [], onAction: () => {}, onBlur: () => {} },
+  args: { rules, errors: {}, warnings: [], allowedMethods: ['PointBuy'], onAction: () => {}, onBlur: () => {} },
 } satisfies Meta<typeof CharacteristicsStep>
 
 export default meta
@@ -26,6 +26,26 @@ export const Complete: Story = { args: { inputs: validInputs, bracket: bracket25
 
 export const YoungInvestigatorRollsLuckTwice: Story = {
   args: { inputs: { ...validInputs, luckRolls: [11, 13] }, bracket: bracket17 },
+}
+
+export const ChoosingAMethod: Story = {
+  args: { inputs: { ...emptyInputs, creationMethod: null }, bracket: bracket25, allowedMethods: ['StandardRolling', 'PointBuy', 'QuickFire'] },
+}
+
+export const StandardRolling: Story = {
+  args: {
+    inputs: { ...emptyInputs, creationMethod: 'StandardRolling', characteristicRolls: { STR: 12, SIZ: 7 } },
+    bracket: bracket25,
+    allowedMethods: ['StandardRolling', 'PointBuy', 'QuickFire'],
+  },
+}
+
+export const QuickFire: Story = {
+  args: {
+    inputs: { ...emptyInputs, creationMethod: 'QuickFire', characteristics: { STR: 80, CON: 50 } },
+    bracket: bracket25,
+    allowedMethods: ['StandardRolling', 'PointBuy', 'QuickFire'],
+  },
 }
 
 export const WithWarningAndTotalError: Story = {

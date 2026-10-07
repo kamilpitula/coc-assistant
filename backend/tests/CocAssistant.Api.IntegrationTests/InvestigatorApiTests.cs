@@ -252,6 +252,8 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         var listen = sheet.GetProperty("skills").EnumerateArray().Single(row => row.GetProperty("skill").GetString() == "Listen");
         Assert.Equal(40, listen.GetProperty("value").GetInt32());
         Assert.Equal(4, sheet.GetProperty("quickFire").GetProperty("personalInterests").GetArrayLength());
+        var creditRating = sheet.GetProperty("occupation").GetProperty("quickFireCreditRating");
+        Assert.Equal((30, 40), (creditRating.GetProperty("value").GetInt32(), creditRating.GetProperty("freedValue").GetInt32()));
     }
 
     [Theory]
