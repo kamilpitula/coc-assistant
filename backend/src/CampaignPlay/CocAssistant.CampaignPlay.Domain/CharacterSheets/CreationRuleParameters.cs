@@ -27,3 +27,24 @@ public static class CharacteristicFloor
 {
     public const int Value = 0;
 }
+
+/// <summary>The range of Credit Rating values: docs/game-rules/coc7_character_creation_and_development_rules.md section 7.3.</summary>
+public static class CreditRatingRange
+{
+    public const int Minimum = 0;
+    public const int Maximum = 99;
+
+    public static bool Contains(int value) => value is >= Minimum and <= Maximum;
+}
+
+/// <summary>A custom Occupation's number of occupation skills (section 18: eight occupation skills; ux.md section 6.4).</summary>
+public static class CustomOccupationRules
+{
+    public const int SkillCount = 8;
+}
+
+/// <summary>The "skill above 90" warning: app-level advice, not a rule (specs/character-sheet/ux.md section 12).</summary>
+public static class SkillValueWarning
+{
+    public const int Threshold = 90;
+}

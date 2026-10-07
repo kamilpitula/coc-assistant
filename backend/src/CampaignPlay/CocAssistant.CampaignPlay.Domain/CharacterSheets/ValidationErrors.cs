@@ -124,6 +124,244 @@ public static class ValidationErrors
             null,
             Text(gain));
 
+    public static ValidationError CharacteristicRollRequired(Characteristic characteristic) =>
+        Error(
+            "CharacteristicRollRequired",
+            CharacteristicRollField(characteristic),
+            $"Enter the {StandardRolling.FormulaFor(characteristic).Dice} total for {characteristic.ToCode()}.");
+
+    public static ValidationError QuickFireValueNotInPool(Characteristic characteristic, int value)
+    {
+        var values = List(QuickFireRules.CharacteristicValues.Distinct().Order());
+        return Error(
+            "QuickFireValueNotInPool",
+            CharacteristicField(characteristic),
+            $"{characteristic.ToCode()} must be one of the Quick fire values: {values}.",
+            values,
+            Text(value));
+    }
+
+    public static ValidationError QuickFireAssignmentMismatch(IEnumerable<int> assigned)
+    {
+        var pool = List(QuickFireRules.CharacteristicValues.Order());
+        return Error("QuickFireAssignmentMismatch", "characteristics", $"Use each Quick fire value exactly once: {pool}.", pool, List(assigned.Order()));
+    }
+
+    public static ValidationError OccupationRequired() => Error("OccupationRequired", "occupation", "Choose an occupation.");
+
+    public static ValidationError OccupationNotAvailable(string catalogId) =>
+        Error("OccupationNotAvailable", "occupation.catalogId", "This occupation isn't available in this Campaign's era.", null, catalogId);
+
+    public static ValidationError OccupationFormulaChoiceRequired(int termIndex, IReadOnlyList<string> options) =>
+        Error(
+            "OccupationFormulaChoiceRequired",
+            $"occupation.formulaCharacteristics[{termIndex}]",
+            "Choose which characteristic your occupation points use.",
+            string.Join(", ", options));
+
+    public static ValidationError CustomOccupationNameRequired() =>
+        Error("CustomOccupationNameRequired", "occupation.custom.name", "Enter a name for your occupation.");
+
+    public static ValidationError CustomOccupationFormulaNotAllowed(string? formulaId) =>
+        Error("CustomOccupationFormulaNotAllowed", "occupation.custom.formulaId", "Choose a point formula from the list.", null, formulaId);
+
+    public static ValidationError CustomOccupationSkillRequired(int index) =>
+        Error("CustomOccupationSkillRequired", CustomOccupationSkillField(index), $"Choose occupation skill {index + 1}.");
+
+    public static ValidationError CustomOccupationCreditRatingRangeInvalid(int? minimum, int? maximum) =>
+        Error(
+            "CustomOccupationCreditRatingRangeInvalid",
+            "occupation.custom.creditRating",
+            $"Enter a Credit Rating range between {CreditRatingRange.Minimum} and {CreditRatingRange.Maximum}, with the minimum no higher than the maximum.",
+            $"{CreditRatingRange.Minimum}-{CreditRatingRange.Maximum}",
+            $"{minimum}-{maximum}");
+
+    public static ValidationError OccupationSkillChoiceRequired(int slotIndex, int needed, int chosen) =>
+        Error(
+            "OccupationSkillChoiceRequired",
+            SkillChoiceField(slotIndex),
+            $"Choose {needed} {(needed == 1 ? "skill" : "skills")} for this part of your occupation.",
+            Text(needed),
+            Text(chosen));
+
+    public static ValidationError OccupationSkillChoiceNotAllowed(string field, SkillReference skill) =>
+        Error(
+            "OccupationSkillChoiceNotAllowed",
+            field,
+            "Choose a skill this occupation allows that isn't already one of its skills.",
+            null,
+            skill.DisplayName);
+
+    public static ValidationError SpecializationRequired(string skillField, SkillReference skill) =>
+        Error("SpecializationRequired", SpecializationField(skillField), $"Enter a specialization for {skill.Skill}.");
+
+    public static ValidationError SpecializationNotAllowed(string skillField, SkillReference skill) =>
+        Error(
+            "SpecializationNotAllowed",
+            SpecializationField(skillField),
+            $"Choose a {skill.Skill} specialization from the list.",
+            null,
+            skill.Specialization);
+
+    public static ValidationError UnknownSkill(int index, SkillReference skill) =>
+        Error("UnknownSkill", $"{SkillField(index)}.skill", "Choose a skill from the list.", null, skill.DisplayName);
+
+    public static ValidationError SkillPointsNegative(string field, SkillReference skill, int points) =>
+        Error("SkillPointsNegative", field, $"Enter 0 or more points for {skill.DisplayName}.", null, Text(points));
+
+    public static ValidationError CreationPointsOnCthulhuMythos(string field, int points) =>
+        Error("CreationPointsOnCthulhuMythos", field, "Cthulhu Mythos can't take points at creation.", null, Text(points));
+
+    public static ValidationError PersonalInterestPointsOnCreditRating(int index, int points) =>
+        Error(
+            "PersonalInterestPointsOnCreditRating",
+            PersonalInterestPointsField(index),
+            "Credit Rating can only take occupation points.",
+            null,
+            Text(points));
+
+    public static ValidationError OccupationPointsOutsideOccupationSkills(int index, SkillReference skill, int points) =>
+        Error(
+            "OccupationPointsOutsideOccupationSkills",
+            OccupationPointsField(index),
+            $"{skill.DisplayName} isn't one of your occupation skills.",
+            null,
+            Text(points));
+
+    public static ValidationError OccupationPointsOverspent(PointBudget budget) =>
+        Error(
+            "OccupationPointsOverspent",
+            "occupationPoints",
+            $"You've spent {budget.Spent} occupation points. You have {budget.Budget}.",
+            Text(budget.Budget),
+            Text(budget.Spent));
+
+    public static ValidationError OccupationPointsUnspent(PointBudget budget) =>
+        Warning(
+            "OccupationPointsUnspent",
+            "occupationPoints",
+            $"You have {budget.Left} occupation points left. Unspent points are lost.",
+            Text(budget.Budget),
+            Text(budget.Spent));
+
+    public static ValidationError CreditRatingOutOfRange(int minimum, int maximum, int creditRating) =>
+        Error(
+            "CreditRatingOutOfRange",
+            CreditRatingField,
+            $"Credit Rating must be between {minimum} and {maximum}.",
+            $"{minimum}-{maximum}",
+            Text(creditRating));
+
+    public static ValidationError PersonalInterestPointsOverspent(PointBudget budget) =>
+        Error(
+            "PersonalInterestPointsOverspent",
+            "personalInterestPoints",
+            $"You've spent {budget.Spent} personal interest points. You have {budget.Budget}.",
+            Text(budget.Budget),
+            Text(budget.Spent));
+
+    public static ValidationError PersonalInterestPointsUnspent(PointBudget budget) =>
+        Warning(
+            "PersonalInterestPointsUnspent",
+            "personalInterestPoints",
+            $"You have {budget.Left} personal interest points left. Unspent points are lost.",
+            Text(budget.Budget),
+            Text(budget.Spent));
+
+    public static ValidationError QuickFireSkillValueNotInPool(int index, int value)
+    {
+        var values = List(QuickFireRules.SkillValues.Distinct());
+        return Error(
+            "QuickFireSkillValueNotInPool",
+            $"{QuickFireValueField(index)}.value",
+            $"Use one of the Quick fire skill values: {values}.",
+            values,
+            Text(value));
+    }
+
+    public static ValidationError QuickFireSkillAssignmentMismatch(IEnumerable<int> expected, IEnumerable<int> assigned)
+    {
+        var values = List(expected.OrderDescending());
+        return Error(
+            "QuickFireSkillAssignmentMismatch",
+            "quickFire.values",
+            $"Use each Quick fire skill value exactly once: {values}.",
+            values,
+            List(assigned.OrderDescending()));
+    }
+
+    public static ValidationError QuickFireSkillNotOccupationSkill(int index, SkillReference skill) =>
+        Error(
+            "QuickFireSkillNotOccupationSkill",
+            $"{QuickFireValueField(index)}.skill",
+            $"{skill.DisplayName} isn't one of your occupation skills.",
+            null,
+            skill.DisplayName);
+
+    public static ValidationError QuickFireCreditRatingValue(int expected, int? actual) =>
+        Error(
+            "QuickFireCreditRatingValue",
+            CreditRatingField,
+            $"Credit Rating must be {expected} for this occupation.",
+            Text(expected),
+            actual is { } value ? Text(value) : null);
+
+    public static ValidationError QuickFirePersonalInterestNotAllowed(int index, SkillReference skill) =>
+        Error(
+            "QuickFirePersonalInterestNotAllowed",
+            QuickFirePersonalInterestField(index),
+            "Choose a skill that isn't an occupation skill, Credit Rating, Cthulhu Mythos, or already chosen.",
+            null,
+            skill.DisplayName);
+
+    public static ValidationError QuickFirePersonalInterestsTooMany(int chosen) =>
+        Error(
+            "QuickFirePersonalInterestsTooMany",
+            "quickFire.personalInterests",
+            PersonalInterestCountMessage(chosen),
+            Text(QuickFireRules.PersonalInterestCount),
+            Text(chosen));
+
+    public static ValidationError QuickFirePersonalInterestsUnchosen(int chosen) =>
+        Warning(
+            "QuickFirePersonalInterestsUnchosen",
+            "quickFire.personalInterests",
+            PersonalInterestCountMessage(chosen),
+            Text(QuickFireRules.PersonalInterestCount),
+            Text(chosen));
+
+    public static ValidationError SkillAboveWarningThreshold(SkillReference skill, int value) =>
+        Warning(
+            "SkillAboveWarningThreshold",
+            "skills",
+            $"{skill.DisplayName} is above {SkillValueWarning.Threshold}. Check with your Keeper.",
+            Text(SkillValueWarning.Threshold),
+            Text(value));
+
+    public const string CreditRatingField = "creditRating";
+
+    public static string CharacteristicRollField(Characteristic characteristic) => $"characteristicRolls.{characteristic.ToCode()}";
+
+    public static string SkillChoiceField(int slotIndex) => $"occupation.skillChoices[{slotIndex}]";
+
+    public static string SkillChoicePickField(int slotIndex, int pickIndex) => $"{SkillChoiceField(slotIndex)}[{pickIndex}]";
+
+    public static string CustomOccupationSkillField(int index) => $"occupation.custom.skills[{index}]";
+
+    public static string SkillField(int index) => $"skills[{index}]";
+
+    public static string OccupationPointsField(int index) => $"{SkillField(index)}.occupationPoints";
+
+    public static string PersonalInterestPointsField(int index) => $"{SkillField(index)}.personalInterestPoints";
+
+    public static string QuickFireValueField(int index) => $"quickFire.values[{index}]";
+
+    public static string QuickFirePersonalInterestField(int index) => $"quickFire.personalInterests[{index}]";
+
+    /// <summary>The specialization field of a skill field: "skills[2]" or "skills[2].skill" become "skills[2].specialization".</summary>
+    public static string SpecializationField(string skillField) =>
+        $"{(skillField.EndsWith(".skill", StringComparison.Ordinal) ? skillField[..^".skill".Length] : skillField)}.specialization";
+
     public static string CharacteristicField(Characteristic characteristic) => $"characteristics.{characteristic.ToCode()}";
 
     public static string AgeDeductionField(Characteristic characteristic) => $"ageEffects.deductions.{characteristic.ToCode()}";
@@ -138,6 +376,14 @@ public static class ValidationErrors
 
     private static ValidationError Error(string code, string field, string message, string? expected = null, string? actual = null) =>
         new(code, field, message, expected, actual, ValidationSeverity.Error);
+
+    private static ValidationError Warning(string code, string field, string message, string? expected = null, string? actual = null) =>
+        new(code, field, message, expected, actual, ValidationSeverity.Warning);
+
+    private static string PersonalInterestCountMessage(int chosen) =>
+        $"Choose {QuickFireRules.PersonalInterestCount} personal interest skills. You have chosen {chosen}.";
+
+    private static string List(IEnumerable<int> values) => string.Join(", ", values.Select(Text));
 
     private static string Text(int value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }
