@@ -23,6 +23,10 @@ the Explorer's report. Read all of them before forming a view — a diff that
 looks clean in isolation can still miss what the plan called for or wander
 outside the task's scope.
 
+If the task names a PBI (`PBI: <id> (<file path>)` from the Orchestrator,
+or a PBI id or `docs/<area>/issues/` path in the task), it is a PBI task;
+otherwise skip the PBI tracking check below.
+
 # Validation commands
 
 Run only the commands relevant to the areas the diff touches (backend,
@@ -59,6 +63,15 @@ Run from `e2e/`:
 
 The Playwright configuration does not start a `webServer` automatically, so the
 frontend prerequisite above is required before running the suite.
+
+## PBI files and the backlog tool (`docs/*/issues/*.md`, `tools/backlog/**`)
+
+Run from `tools/backlog/`:
+
+- Install (only if `node_modules` is missing/stale): `npm ci`
+- Type-check: `npm run typecheck`
+- Unit tests: `npm test`
+- PBI file check: `npm run check`
 
 Treat any non-zero exit code or failing test from these commands as a
 blocking finding, regardless of what the Builder's report claimed.
@@ -139,6 +152,19 @@ acceptance criterion with no unit or E2E test is a blocking finding.
 Anything only checkable by hand (visual layout, screen-reader output) goes
 under open items as not verified.
 
+For a PBI task, check the PBI file against `docs/backlog.md` (Done PBIs,
+Deferred items, and Follow-ups) without editing it:
+
+- `npm run check` in `tools/backlog/` passes, and the status is `done`.
+- Each ticked Verification item is actually met, judged by evidence you
+  re-ran or observed, not by the Builder's report.
+- Each item marked `Deferred: see Follow-ups.` has a Follow-ups entry.
+- The current branch name carries the PBI id (Branch naming).
+
+A ticked item that is not met, a deferral without a follow-up, or a
+branch that does not match is a blocking finding. Report it; the fix is
+the Builder's.
+
 ## 4. Check scope
 
 Confirm the changed files match what the plan and task called for. Flag
@@ -173,6 +199,11 @@ reject. Do not proceed to any of those on your own.
 - Implemented as planned: <brief>
 - Deviations from plan: <any, or "none">
 - Edge cases from the plan: <covered / not covered, one line each>
+
+### PBI tracking
+
+- <each Verification item: met / not met / deferred with follow-up; check and branch result>
+  _(omit for a no-PBI task)_
 
 ### Scope
 

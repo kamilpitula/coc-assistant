@@ -40,6 +40,13 @@ starting context. Treat it as reliable but not infallible:
   couple of direct searches is faster than a delegation round-trip. Use
   judgment; don't invoke a subagent for a one-file change.
 
+**PBI tasks.** A task is a PBI task when it names one PBI, as
+`PBI: <id> (<file path>)` from the Orchestrator or as a `PBI-<AREA>-<NNN>`
+id or `docs/<area>/issues/NN-<slug>.md` path in the task text. If it names
+more than one, ask which. Otherwise it is a no-PBI task (for example an
+ad-hoc fix): skip every PBI step below and create no branch or commit
+unless asked. The convention is `docs/backlog.md`.
+
 # Hard constraints
 
 - **Check the Reuse Candidates before writing anything new.** For every
@@ -188,6 +195,12 @@ _(omit if the task changes no user-facing UI)_
 - Selected option: <option name> — `specs/<feature>/ux.md` (new / updated / existing)
 - Acceptance criteria to cover: <UX and accessibility criteria, one line each>
 
+### PBI
+
+_(omit for a no-PBI task)_
+
+- <PBI id> — branch `<type>/<area>-<nnn>-<slug>`; final commit closes the PBI (step 6)
+
 ### Risks / open questions
 
 - <anything the plan depends on that you're not fully sure of>
@@ -211,7 +224,15 @@ renaming a variable) where the plan is one sentence, you may note that it's
 trivial and proceed without waiting — but default to waiting whenever there's
 real judgment in the plan.
 
+For a PBI task, approving a plan whose `### PBI` section names the branch
+is the human's authorization to create that branch and commit on it. It
+never authorizes pushing, opening a pull request, or setting `dropped`.
+
 ## 4. Implement — red, then green, via the `tdd` skill
+
+For a PBI task, first create or switch to the PBI's branch, named per
+`docs/backlog.md` (Branch naming) from the PBI id, with a `<type>` such
+as `feature` or `fix`. Make no edits on `master`.
 
 This project has a `tdd` skill at `.claude/commands/tdd.md`. **Load and follow it before writing any implementation code.** It is the source of truth for how this repo wants red-green done — if anything below conflicts with it, the skill wins; treat this section as the fallback only for the rare case the `tdd` skill is not found, and flag that explicitly in your output if so.
 
@@ -246,7 +267,25 @@ rather than adjusting the check to pass. Iterate until it's clean, or until
 you hit something you can't resolve — in which case say so plainly rather
 than reporting success.
 
-## 6. Report
+## 6. Close the PBI (PBI tasks only)
+
+Only once step 5 is clean, make the final commit on the branch. If
+verification is not clean, leave the status alone and report instead. In
+the PBI file, following `docs/backlog.md` (Frontmatter; Done PBIs,
+Deferred items, and Follow-ups):
+
+1. Set `status: done`.
+2. Tick each Verification item you have evidence for. Leave the rest
+   unticked with `Deferred: see Follow-ups.` on the same line.
+3. Under `## Follow-ups`, add an entry for each deferred item and for
+   other work you discovered but left out of scope.
+4. Run `node tools/backlog/src/cli.ts --check`, then commit in the repo's
+   commit message style.
+
+If the Verifier sends the work back, put fixes and tick or deferral
+corrections in further commits on the same branch.
+
+## 7. Report
 
 Always end with a structured summary — this is what a reviewer, the
 orchestrator, or a Verifier subagent will read instead of the whole
@@ -282,6 +321,11 @@ transcript.
 - Red-green: <N units of behavior, each with a test that failed red, then passed green>
 - Full suite: <command run> → <result, with the actual output or a relevant excerpt>
 - (repeat the full-suite line for build/lint/etc.)
+
+### PBI
+
+- <id>, branch <name>, closing commit <sha>: <ticked items>; <deferred items and their follow-ups>
+  _(omit for a no-PBI task)_
 
 ### Deviations from plan / open items
 

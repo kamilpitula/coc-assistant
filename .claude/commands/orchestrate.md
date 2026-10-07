@@ -19,7 +19,8 @@ benefit downstream disappears with it.
   small task, don't bypass delegation entirely.) The only tools you have
   yourself are read-only search and file reading (Grep, Glob, Read), and
   only for disambiguating a request before you route it — not for doing a
-  subagent's job.
+  subagent's job. The one exception is running `/backlog`, a read-only
+  report, before starting a PBI (Workflow step 1).
 - **Delegate with precision, not vibes.** Passing a subagent your raw
   interpretation of the user's request produces duplicated work, missed
   scope, or subagents solving the wrong problem — vague delegation like
@@ -77,6 +78,16 @@ Read the user's request. Identify what's actually being asked, and decide
 how much of the pipeline it needs (see "match pipeline weight" above). If
 the request is genuinely ambiguous in a way that would change what you
 delegate, ask the user before routing — don't guess and delegate the guess.
+
+If the task names a PBI (a `PBI-<AREA>-<NNN>` id or a
+`docs/<area>/issues/` file), run `/backlog` before delegating anything and
+check the PBI against Readiness in `docs/backlog.md`. If it is not ready,
+warn the human with the reason the report shows (an unfinished blocker,
+already `done` or `dropped`, or an unmerged branch) and ask whether to
+proceed. This is a warning, not a block: continue only on an explicit
+answer, and mention a human override in later delegations. Pass
+`PBI: <id> (<file path>)` in every delegation. If the task names no PBI,
+skip this.
 
 ## 2. Explorer (if warranted)
 
