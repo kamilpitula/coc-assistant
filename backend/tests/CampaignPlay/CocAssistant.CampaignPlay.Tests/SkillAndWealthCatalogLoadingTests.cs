@@ -51,4 +51,16 @@ public class SkillAndWealthCatalogLoadingTests
         Assert.Equal(MoneyRule.FixedAmount(5000000m, orMore: true), wealth.Bands[^1].Assets);
         Assert.Equal(MoneyRule.PerCreditRating(500m), wealth.Bands[3].Assets);
     }
+
+    [Fact]
+    public void Project_ruleset_4_2_Given_the_catalogs_When_suggesting_specializations_Then_closed_families_list_theirs_and_open_families_take_the_occupation_catalog_names()
+    {
+        var suggestions = SpecializationSuggestions.From(TestRules.The1920s);
+
+        Assert.Contains("Bow", suggestions["Firearms"]);
+        Assert.Equal(["Acting", "Literature", "Photography"], suggestions["Art/Craft"]);
+        Assert.Equal(["Latin"], suggestions["Language (Other)"]);
+        Assert.Equal(["Biology", "Pharmacy"], suggestions["Science"]);
+        Assert.Empty(suggestions["Pilot"]);
+    }
 }

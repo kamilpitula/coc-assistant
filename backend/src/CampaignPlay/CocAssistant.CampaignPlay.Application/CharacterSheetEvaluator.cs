@@ -6,18 +6,16 @@ namespace CocAssistant.CampaignPlay.Application;
 /// </summary>
 public sealed class CharacterSheetEvaluator
 {
-    private readonly ICreationRuleData _creationRuleData;
-    private readonly EraRuleDataLookup _eraRuleData;
+    private readonly CreationRuleSets _ruleSets;
 
-    public CharacterSheetEvaluator(ICreationRuleData creationRuleData, IEnumerable<IEraRuleData> eraRuleData)
+    public CharacterSheetEvaluator(CreationRuleSets ruleSets)
     {
-        _creationRuleData = creationRuleData;
-        _eraRuleData = new EraRuleDataLookup(eraRuleData);
+        _ruleSets = ruleSets;
     }
 
     public (CharacterSheetComputation Computation, IReadOnlyList<ValidationError> ValidationErrors) Evaluate(CharacterSheet sheet, Campaign campaign)
     {
-        var rules = RulesFor(campaign.Era);
+        var rules = _ruleSets.For(campaign.Era);
         var computation = new CharacterSheetCalculator(rules).Calculate(sheet);
         return (computation, CharacterSheetValidator.Validate(sheet, campaign.AllowedCreationMethods, computation, rules));
     }
@@ -26,18 +24,6 @@ public sealed class CharacterSheetEvaluator
     {
         var (computation, errors) = Evaluate(investigator.CharacterSheet, campaign);
         return new CharacterSheetView(investigator, playerName, computation, errors);
-    }
-
-    private CreationRuleSet RulesFor(Era era)
-    {
-        var eraRuleData = _eraRuleData.For(era);
-        return new CreationRuleSet(
-            _creationRuleData.AgeRules,
-            _creationRuleData.CharacteristicsRules,
-            _creationRuleData.SkillSpecializations,
-            eraRuleData.Occupations,
-            eraRuleData.Skills,
-            eraRuleData.Wealth);
     }
 }
 
@@ -49,17 +35,34 @@ public static class SupportedCreationMethods
     public static bool AnyAllowedBy(AllowedCreationMethods allowed) => All.Any(allowed.Allows);
 }
 
-/// <summary>Finds the registered rule data of an Era (ADR 0006: one IEraRuleData per Era).</summary>
-public sealed class EraRuleDataLookup
+/// <summary>
+/// Builds the rule set of an Era from the creation rule data and the Era's registered rule data (ADR 0006: one
+/// IEraRuleData per Era).
+/// </summary>
+public sealed class CreationRuleSets
 {
+    private readonly ICreationRuleData _creationRuleData;
     private readonly IReadOnlyList<IEraRuleData> _ruleDataByEra;
 
-    public EraRuleDataLookup(IEnumerable<IEraRuleData> ruleDataByEra)
+    public CreationRuleSets(ICreationRuleData creationRuleData, IEnumerable<IEraRuleData> ruleDataByEra)
     {
+        _creationRuleData = creationRuleData;
         _ruleDataByEra = ruleDataByEra.ToList();
     }
 
-    public IEraRuleData For(Era era) =>
+    public IEraRuleData EraRuleDataFor(Era era) =>
         _ruleDataByEra.SingleOrDefault(ruleData => ruleData.Era == era)
         ?? throw new InvalidOperationException($"No rule data is registered for the {era} Era.");
+
+    public CreationRuleSet For(Era era)
+    {
+        var eraRuleData = EraRuleDataFor(era);
+        return new CreationRuleSet(
+            _creationRuleData.AgeRules,
+            _creationRuleData.CharacteristicsRules,
+            _creationRuleData.SkillSpecializations,
+            eraRuleData.Occupations,
+            eraRuleData.Skills,
+            eraRuleData.Wealth);
+    }
 }

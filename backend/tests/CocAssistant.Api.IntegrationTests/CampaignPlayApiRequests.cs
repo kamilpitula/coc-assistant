@@ -56,7 +56,39 @@ public static class CampaignPlayApiRequests
         },
         ageEffects = new { deductions = new Dictionary<string, int?>(), eduImprovementChecks = new[] { new { check = (int?)30, gain = (int?)null } } },
         luckRolls = new int?[] { 11 },
+        occupation = ValidAntiquarian,
+        skills = ValidSkillAllocations,
     };
+
+    /// <summary>The 1920s Antiquarian with a pick for every open skill slot (section 7.2).</summary>
+    public static object ValidAntiquarian => new
+    {
+        catalogId = "antiquarian",
+        formulaCharacteristics = Array.Empty<string?>(),
+        skillChoices = new object[][]
+        {
+            [],
+            [new { skill = "Art/Craft", specialization = "Painting" }],
+            [],
+            [],
+            [new { skill = "Language (Other)", specialization = "Latin" }],
+            [new { skill = "Charm", specialization = (string?)null }],
+            [],
+            [new { skill = "Firearms", specialization = "Handgun" }],
+        },
+    };
+
+    /// <summary>All 200 occupation points (Credit Rating 30) and all 120 personal interest points for the valid sheet.</summary>
+    public static object[] ValidSkillAllocations =>
+    [
+        new { skill = "Credit Rating", occupationPoints = 30 },
+        new { skill = "Library Use", occupationPoints = 50 },
+        new { skill = "Appraise", occupationPoints = 50 },
+        new { skill = "History", occupationPoints = 50 },
+        new { skill = "Spot Hidden", occupationPoints = 20 },
+        new { skill = "Drive Auto", personalInterestPoints = 60 },
+        new { skill = "Listen", personalInterestPoints = 60 },
+    ];
 
     /// <summary>Creates the Player's Draft with a valid, named Character Sheet and returns the Investigator id.</summary>
     public static async Task<Guid> CreateNamedDraftAsync(HttpClient client, Guid campaignId, string playerOid, string name)

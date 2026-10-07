@@ -2,14 +2,23 @@ namespace CocAssistant.CampaignPlay.Controllers;
 
 /// <summary>
 /// The Player's Character Sheet inputs (PUT .../investigators/mine/character-sheet). Derived values are never accepted.
-/// Dice results are raw totals. Shape: specs/character-sheet/spec.md, API Contracts.
+/// Dice results are raw totals. Inputs that belong to another Creation Method are a malformed body. Shape:
+/// specs/character-sheet/spec.md, API Contracts.
 /// </summary>
 public record CharacterSheetRequest(
     [Required] IdentityRequest Identity,
     [SupportedCreationMethodName] string? CreationMethod,
     [CharacteristicCodes] Dictionary<string, int?>? Characteristics,
     AgeEffectsRequest? AgeEffects,
-    [MaxLength(2)] int?[]? LuckRolls);
+    [MaxLength(2)] int?[]? LuckRolls,
+    [CharacteristicCodes] Dictionary<string, int?>? CharacteristicRolls = null,
+    OccupationRequest? Occupation = null,
+    [MaxLength(200)] SkillAllocationRequest[]? Skills = null,
+    QuickFireRequest? QuickFire = null) : IValidatableObject
+{
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
+        CharacterSheetRequestRules.Problems(this).Select(message => new ValidationResult(message));
+}
 
 public record IdentityRequest(
     [MaxLength(200)] string? Name,
@@ -24,10 +33,37 @@ public record AgeEffectsRequest(
 
 public record EduImprovementCheckRequest(int? Check, int? Gain);
 
+/// <summary>A skill, optionally with its specialization.</summary>
+public record SkillReferenceRequest([Required, MaxLength(100)] string Skill, [MaxLength(100)] string? Specialization);
+
+/// <summary>A catalog Occupation (by id) or a custom one, the formula picks, and the picks for each skill slot.</summary>
+public record OccupationRequest(
+    [MaxLength(100)] string? CatalogId,
+    CustomOccupationRequest? Custom,
+    [MaxLength(5)] string?[]? FormulaCharacteristics,
+    [MaxLength(20)] SkillReferenceRequest[][]? SkillChoices);
+
+public record CustomOccupationRequest(
+    [MaxLength(200)] string? Name,
+    [MaxLength(100)] string? FormulaId,
+    [MaxLength(CustomOccupationRules.SkillCount)] SkillReferenceRequest?[]? Skills,
+    int? CreditRatingMin,
+    int? CreditRatingMax);
+
+public record SkillAllocationRequest(
+    [Required, MaxLength(100)] string Skill,
+    [MaxLength(100)] string? Specialization,
+    int? OccupationPoints,
+    int? PersonalInterestPoints);
+
+public record QuickFireRequest([MaxLength(20)] QuickFireValueRequest[]? Values, [MaxLength(20)] SkillReferenceRequest[]? PersonalInterests);
+
+public record QuickFireValueRequest([Required, MaxLength(100)] string Skill, [MaxLength(100)] string? Specialization, int? Value);
+
 /// <summary>A Keeper's Change Request: a required comment of at most 2000 characters.</summary>
 public record RequestChangesRequest([Required, MaxLength(Investigator.ChangeRequestCommentMaxLength)] string Comment);
 
-/// <summary>Accepts null or the name of a Creation Method this version supports (PBI-CP-003: "PointBuy").</summary>
+/// <summary>Accepts null or the name of a Creation Method this version supports.</summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter)]
 public sealed class SupportedCreationMethodNameAttribute : ValidationAttribute
 {
@@ -54,4 +90,48 @@ public sealed class CharacteristicCodesAttribute : ValidationAttribute
 
     public override bool IsValid(object? value) =>
         value is not IDictionary<string, int?> values || values.Keys.All(code => CharacteristicCodes.TryParse(code, out _));
+}
+
+/// <summary>
+/// The shape rules a Character Sheet body must meet beyond its attributes: each Creation Method's inputs only
+/// (section 2.3: Quick Fire's skill assignment is never mixed with occupation points), one Occupation, and each skill
+/// listed once.
+/// </summary>
+public static class CharacterSheetRequestRules
+{
+    public static IEnumerable<string> Problems(CharacterSheetRequest request)
+    {
+        var method = request.CreationMethod is { } name && RulesOptionsWireFormat.IsCreationMethodName(name) ? Enum.Parse<CreationMethod>(name) : (CreationMethod?)null;
+        var problems = new List<string>();
+        AddIf(problems, method == CreationMethod.StandardRolling && HasValues(request.Characteristics), "Standard rolling takes characteristicRolls, not characteristics.");
+        AddIf(problems, method != CreationMethod.StandardRolling && HasValues(request.CharacteristicRolls), "Only Standard rolling takes characteristicRolls.");
+        AddIf(problems, method == CreationMethod.QuickFire && request.Skills is { Length: > 0 }, "Quick fire takes quickFire, not skills.");
+        AddIf(problems, method != CreationMethod.QuickFire && HasQuickFireInputs(request.QuickFire), "Only Quick fire takes quickFire.");
+        AddIf(problems, request.Occupation is { CatalogId: not null, Custom: not null }, "Choose a catalog occupation or a custom one, not both.");
+        AddIf(problems, HasDuplicates((request.Skills ?? []).Select(skill => Key(skill.Skill, skill.Specialization))), "Each skill may be listed once in skills.");
+        AddIf(problems, HasDuplicates((request.QuickFire?.Values ?? []).Select(value => Key(value.Skill, value.Specialization))), "Each skill may take one Quick fire value.");
+        return problems;
+    }
+
+    private static void AddIf(List<string> problems, bool condition, string message)
+    {
+        if (condition)
+        {
+            problems.Add(message);
+        }
+    }
+
+    private static bool HasValues(Dictionary<string, int?>? values) => values?.Values.Any(value => value is not null) == true;
+
+    private static bool HasQuickFireInputs(QuickFireRequest? quickFire) =>
+        quickFire is not null && ((quickFire.Values?.Length ?? 0) > 0 || (quickFire.PersonalInterests?.Length ?? 0) > 0);
+
+    private static bool HasDuplicates(IEnumerable<string> keys)
+    {
+        var all = keys.ToList();
+        return all.Distinct().Count() != all.Count;
+    }
+
+    private static string Key(string skill, string? specialization) =>
+        CharacterSheetWireFormat.ToSkill(skill, specialization).DisplayName.ToUpperInvariant();
 }

@@ -25,4 +25,18 @@ public class CampaignRulesController : CampaignPlayControllerBase
         var catalog = await _ruleDataService.GetOccupationsAsync(campaignId, accountId.Value, cancellationToken);
         return catalog is null ? NotFound() : Ok(OccupationCatalogResponse.From(catalog));
     }
+
+    /// <summary>Returns the skills, specialized skills, and suggestions for the Campaign's Era; 404 for non-members.</summary>
+    [HttpGet("skills")]
+    public async Task<ActionResult<SkillCatalogResponse>> GetSkills(Guid campaignId, CancellationToken cancellationToken)
+    {
+        var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
+        if (accountId is null)
+        {
+            return Unauthorized();
+        }
+
+        var skills = await _ruleDataService.GetSkillsAsync(campaignId, accountId.Value, cancellationToken);
+        return skills is null ? NotFound() : Ok(SkillCatalogResponse.From(skills));
+    }
 }

@@ -37,10 +37,57 @@ public record CharacterSheetViewResponse(
     IdentityResponse Identity,
     string? CreationMethod,
     IReadOnlyDictionary<string, CharacteristicResponse> Characteristics,
+    IReadOnlyDictionary<string, int?> CharacteristicRolls,
     AgeEffectsResponse AgeEffects,
     IReadOnlyList<int?> LuckRolls,
+    OccupationViewResponse? Occupation,
+    IReadOnlyList<SkillRowResponse> Skills,
+    QuickFireResponse QuickFire,
     DerivedResponse Derived,
     IReadOnlyList<RollRecordResponse> RollRecords);
+
+public record SkillReferenceResponse(string Skill, string? Specialization);
+
+public record CustomOccupationResponse(
+    string? Name,
+    string? FormulaId,
+    IReadOnlyList<SkillReferenceResponse?> Skills,
+    int? CreditRatingMin,
+    int? CreditRatingMax);
+
+/// <summary>The Occupation inputs plus what they resolve to; resolved values are null while unknown.</summary>
+public record OccupationViewResponse(
+    string? CatalogId,
+    CustomOccupationResponse? Custom,
+    IReadOnlyList<string?> FormulaCharacteristics,
+    IReadOnlyList<IReadOnlyList<SkillReferenceResponse>> SkillChoices,
+    string? Name,
+    int? CreditRatingMin,
+    int? CreditRatingMax,
+    bool IsCustom,
+    string? FormulaId);
+
+/// <summary>One skill on the sheet (section 9).</summary>
+public record SkillRowResponse(
+    string Skill,
+    string? Specialization,
+    int? Base,
+    int? OccupationPoints,
+    int? PersonalInterestPoints,
+    int? Value,
+    int? Hard,
+    int? Extreme,
+    bool IsOccupationSkill);
+
+public record QuickFireValueResponse(string Skill, string? Specialization, int? Value);
+
+public record QuickFireResponse(IReadOnlyList<QuickFireValueResponse> Values, IReadOnlyList<SkillReferenceResponse> PersonalInterests);
+
+public record PointBudgetResponse(int Budget, int Spent, int Left);
+
+public record MoneyResponse(decimal Amount, bool OrMore);
+
+public record WealthResponse(string Currency, MoneyResponse SpendingLevel, MoneyResponse Cash, MoneyResponse? Assets);
 
 public record IdentityResponse(string? Name, int? Age, string? Gender, string? Residence, string? Birthplace);
 
@@ -70,7 +117,11 @@ public record DerivedResponse(
     int? Dodge,
     int? MovementRate,
     string? DamageBonus,
-    int? Build);
+    int? Build,
+    PointBudgetResponse? OccupationPoints,
+    PointBudgetResponse? PersonalInterestPoints,
+    int? CreditRating,
+    WealthResponse? Wealth);
 
 public record SanityResponse(int? Current, int? Maximum);
 
@@ -89,6 +140,23 @@ public record RulesResponse(
     string EduImprovementCheckDice,
     string EduImprovementGainDice,
     int EduMaximum,
-    int LuckMultiplier);
+    int LuckMultiplier,
+    IReadOnlyDictionary<string, CharacteristicRollFormulaResponse> StandardRolling,
+    IReadOnlyList<int> QuickFireCharacteristicValues,
+    IReadOnlyList<int> QuickFireSkillValues,
+    int QuickFirePersonalInterestBonus,
+    int QuickFirePersonalInterestCount,
+    IReadOnlyList<OccupationPointFormulaOptionResponse> OccupationPointFormulas,
+    int CustomOccupationSkillCount,
+    int CreditRatingMinimum,
+    int CreditRatingMaximum,
+    int SkillValueWarningThreshold,
+    string CreditRatingSkill,
+    string CthulhuMythosSkill);
+
+public record CharacteristicRollFormulaResponse(string Dice, int Bonus, int Multiplier);
+
+/// <summary>A section 7.1 formula a custom Occupation can use, with its id.</summary>
+public record OccupationPointFormulaOptionResponse(string Id, IReadOnlyList<OccupationPointTermResponse> Terms);
 
 public record ValidationErrorResponse(string Code, string Field, string Message, string? Expected, string? Actual, string Severity);

@@ -42,7 +42,7 @@ public class CampaignRuleDataServiceTests : IDisposable
         using var context = _fixture.CreateContext();
         var service = new CampaignRuleDataService(
             _fixture.CreateRepository(context),
-            [new StubEraRuleData(Era.The1920s, Occupations1920s)]);
+            new CreationRuleSets(TestRules.Creation, [new StubEraRuleData(Era.The1920s, Occupations1920s)]));
         return await service.GetOccupationsAsync(campaignId, accountId, CancellationToken.None);
     }
 
@@ -77,7 +77,7 @@ public class CampaignRuleDataServiceTests : IDisposable
     {
         var campaignId = await CreateCampaignWithPlayerAsync();
         using var context = _fixture.CreateContext();
-        var service = new CampaignRuleDataService(_fixture.CreateRepository(context), []);
+        var service = new CampaignRuleDataService(_fixture.CreateRepository(context), new CreationRuleSets(TestRules.Creation, []));
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.GetOccupationsAsync(campaignId, KeeperAccountId, CancellationToken.None));
