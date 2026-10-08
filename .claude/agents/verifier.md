@@ -32,11 +32,17 @@ otherwise skip the PBI tracking check below.
 Run only the commands relevant to the areas the diff touches (backend,
 frontend, e2e), but always include build/test/lint for each touched area —
 do not substitute a narrower check. Run all commands from the repository
-root unless noted.
+root unless noted. These mirror the jobs in `.github/workflows/ci.yml`.
+
+## Every diff
+
+- PBI file check: `node tools/backlog/src/cli.ts --check` (CI runs it on
+  every pull request)
 
 ## Backend (`backend/**/*.cs`)
 
 - Build: `dotnet build backend/CocAssistant.slnx`
+- Formatting: `dotnet format backend/CocAssistant.slnx --verify-no-changes`
 - Unit + integration tests: `dotnet test backend/CocAssistant.slnx`
 - To scope to one project during triage (not a substitute for the full
   solution run above): `dotnet test backend/tests/<Functionality>/<Project>/<Project>.csproj`
@@ -46,23 +52,30 @@ root unless noted.
 Run from `frontend/`:
 
 - Install (only if `node_modules` is missing/stale): `npm ci`
+- Route tree (gitignored, needed by lint and tsc): `npm run generate-routes`
 - Lint: `npm run lint`
 - Type-check + build: `npm run build`
 - Unit tests: `npm run test`
+- Storybook build: `npm run build-storybook`
 
 ## E2E (`e2e/**/*`)
 
 Run from `e2e/`:
 
 - Install (only if `node_modules` is missing/stale): `npm ci`
-- Start the frontend first in a separate terminal from the repository root: `npm --prefix frontend run dev -- --host 127.0.0.1`
-- Run suite against that server: set `BASE_URL=http://127.0.0.1:5173` and run `npm run test`
-- On PowerShell, use `$env:BASE_URL='http://127.0.0.1:5173'; npm run test`; on POSIX shells, use `BASE_URL=http://127.0.0.1:5173 npm run test`
-- If Playwright browsers are missing, install first: `npx playwright install --with-deps`
+- Run the suite: `npx playwright test --retries=0` (the local config
+  retries once, which hides flaky tests)
+- If Playwright browsers are missing, install first: `npx playwright install --with-deps chromium`
 - Inspect a failure's HTML report: `npm run report`
 
-The Playwright configuration does not start a `webServer` automatically, so the
-frontend prerequisite above is required before running the suite.
+`playwright.config.ts` starts the mock OIDC container (port 8443), the API
+(https://localhost:5059), and Vite (port 5174) itself; `globalSetup.ts`
+validates the dev certificate and runs the EF migrations. Prerequisites:
+Docker running, the dev certificate at `e2e/.certs/dev-cert.pfx` with its
+password, and a LocalDB that no other run is using for `CocAssistantE2E`.
+Locally, a server already listening on one of those ports is reused rather
+than started, so confirm it is not someone else's app; never stop a process
+you did not start. Setup and troubleshooting: `docs/e2e/authenticated-harness.md`.
 
 ## PBI files and the backlog tool (`docs/*/issues/*.md`, `tools/backlog/**`)
 
