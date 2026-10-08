@@ -1,0 +1,8 @@
+<Project>
+
+  <!-- Sets the CA1502 cyclomatic complexity threshold; .editorconfig sets its severity. -->
+  <ItemGroup>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)CodeMetricsConfig.txt" />
+  </ItemGroup>
+
+</Project>
