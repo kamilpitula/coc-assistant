@@ -22,6 +22,9 @@ const SERVER_ONLY_CODES = new Set([
   'QuickFireSkillNotOccupationSkill',
   'QuickFireCreditRatingValue',
   'QuickFirePersonalInterestNotAllowed',
+  'QuickFireExtraSkillRequired',
+  'QuickFireExtraSkillNotAllowed',
+  'QuickFireExtraSkillNotNeeded',
 ])
 
 /** After a blur, the client's shared checks replace the server's, and the server-only results of the last save stay. */

@@ -34,6 +34,9 @@ describe('visibleErrors', () => {
     'QuickFireSkillNotOccupationSkill',
     'QuickFireCreditRatingValue',
     'QuickFirePersonalInterestNotAllowed',
+    'QuickFireExtraSkillRequired',
+    'QuickFireExtraSkillNotAllowed',
+    'QuickFireExtraSkillNotNeeded',
   ])('keeps the server-only %s result after the client checks run', (code) => {
     const serverOnly = problem(code, 'occupationPoints', 'From the server.')
 

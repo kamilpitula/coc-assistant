@@ -102,6 +102,7 @@ const skillRowSchema = skillReferenceSchema.extend({
 const quickFireSchema = z.object({
   values: z.array(skillReferenceSchema.extend({ value: nullableNumber })),
   personalInterests: z.array(skillReferenceSchema),
+  extraSkill: skillReferenceSchema.nullable(),
 })
 
 const characterSheetViewSchema = z.object({

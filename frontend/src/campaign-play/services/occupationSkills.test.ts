@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { antiquarianInputs, occupationCatalog, skill } from '@/campaign-play/test-support/characterSheetFixtures'
 
-import { formulaPoints, occupationSkillsOf, openSlotsOf, selectedCatalogOccupation } from './occupationSkills'
+import { formulaPoints, occupationRowsOf, occupationSkillsOf, openSlotsOf, selectedCatalogOccupation } from './occupationSkills'
 
 const antiquarian = occupationCatalog.occupations[0]
 const policeDetective = occupationCatalog.occupations[1]
@@ -52,5 +52,33 @@ describe('occupationSkills', () => {
     expect(formulaPoints(policeDetective.occupationPointFormula.terms, values, [null, 'STR'])).toBe(220)
     expect(formulaPoints(policeDetective.occupationPointFormula.terms, values, [])).toBeNull()
     expect(formulaPoints(policeDetective.occupationPointFormula.terms, { EDU: 60 }, [null, 'DEX'])).toBeNull()
+  })
+
+  it('ux.md 6.5: lays out a row per occupation skill slot in catalog order, naming the slots still to choose', () => {
+    const occupation = {
+      ...antiquarianInputs,
+      skillChoices: [[], [skill('Art/Craft')], [], [], [skill('Language (Other)', 'Latin')], [], [], [skill('Firearms', 'Handgun')]],
+    }
+
+    expect(occupationRowsOf(occupation, occupationCatalog, 8)).toEqual([
+      { kind: 'skill', skill: skill('Appraise') },
+      { kind: 'unchosen', label: 'Art/Craft specialization' },
+      { kind: 'skill', skill: skill('History') },
+      { kind: 'skill', skill: skill('Library Use') },
+      { kind: 'skill', skill: skill('Language (Other)', 'Latin') },
+      { kind: 'unchosen', label: 'Choose 1 interpersonal skill' },
+      { kind: 'skill', skill: skill('Spot Hidden') },
+      { kind: 'skill', skill: skill('Firearms', 'Handgun') },
+    ])
+  })
+
+  it('ux.md 6.5: lays out a custom occupation as its numbered skills', () => {
+    const custom = { catalogId: null, custom: { name: 'Bootlegger', formulaId: null, skills: [skill('Drive Auto'), null], creditRatingMin: 5, creditRatingMax: 30 }, formulaCharacteristics: [], skillChoices: [] }
+
+    expect(occupationRowsOf(custom, occupationCatalog, 3)).toEqual([
+      { kind: 'skill', skill: skill('Drive Auto') },
+      { kind: 'unchosen', label: 'Occupation skill 2' },
+      { kind: 'unchosen', label: 'Occupation skill 3' },
+    ])
   })
 })

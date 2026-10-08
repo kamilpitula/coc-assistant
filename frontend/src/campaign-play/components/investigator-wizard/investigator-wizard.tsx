@@ -22,7 +22,7 @@ import { useOccupationCatalog, useSkillCatalog } from '@/campaign-play/hooks/use
 import { useWizardMoves, type PendingAction, type WizardMove } from '@/campaign-play/hooks/useWizardMoves'
 import { validateCharacterSheet } from '@/campaign-play/services/characterSheetValidation'
 import { fieldId } from '@/campaign-play/services/fieldIds'
-import { valuesLeft } from '@/campaign-play/services/quickFireValues'
+import { skillValuesLeft } from '@/campaign-play/services/quickFireValues'
 import { inlineErrorsForStep, isFieldTouched, mergeClientAndServerErrors } from '@/campaign-play/services/visibleErrors'
 import { stepOfField, stepStates, WIZARD_STEPS, type WizardStep } from '@/campaign-play/services/wizardProgress'
 import { characterSheetFormReducer, inputsForSave, inputsFromSheet } from '@/campaign-play/state/characterSheetForm'
@@ -138,7 +138,12 @@ function quickFireLeft(sheet: MyCharacterSheet): { values: number; interests: nu
   }
 
   return {
-    values: valuesLeft(rules.quickFireSkillValues, characterSheet.quickFire.values.map((value) => value.value)).length,
+    values: skillValuesLeft(
+      rules.quickFireSkillValues,
+      characterSheet.quickFire.values.map((value) => value.value),
+      characterSheet.occupation?.quickFireCreditRating?.freedValue ?? null,
+      Boolean(characterSheet.quickFire.extraSkill),
+    ),
     interests: Math.max(0, rules.quickFirePersonalInterestCount - characterSheet.quickFire.personalInterests.length),
   }
 }

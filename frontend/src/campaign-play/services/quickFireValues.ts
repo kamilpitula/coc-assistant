@@ -20,3 +20,11 @@ export function optionsFor(pool: number[], assignedElsewhere: (number | null)[],
   const available = new Set([...valuesLeft(pool, assignedElsewhere), ...(own === null ? [] : [own])])
   return descending([...available])
 }
+
+/**
+ * How many Quick fire skill values are still to give (the summary rail, ux.md 4.2): the pool less every assigned value,
+ * and less the freed value once the extra skill that takes it is chosen (docs/game-rules section 18).
+ */
+export function skillValuesLeft(pool: number[], assigned: (number | null)[], freedValue: number | null, extraSkillChosen: boolean): number {
+  return valuesLeft(pool, [...assigned, ...(freedValue !== null && extraSkillChosen ? [freedValue] : [])]).length
+}

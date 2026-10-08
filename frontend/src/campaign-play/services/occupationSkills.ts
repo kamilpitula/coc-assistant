@@ -87,3 +87,39 @@ export function formulaPoints(terms: OccupationPointTerm[], values: Characterist
   }
   return total
 }
+
+/** A row of "2. Assign values": a chosen occupation skill, or a slot still to choose named after it (ux.md 6.5). */
+export type OccupationRow = { kind: 'skill'; skill: SkillReference } | { kind: 'unchosen'; label: string }
+
+function slotRows(slot: OccupationSkillSlot, index: number, picks: SkillReference[], catalog: OccupationCatalog): OccupationRow[] {
+  if (isFixed(slot)) {
+    return [{ kind: 'skill', skill: referenceOf(slot) }]
+  }
+
+  const open = openSlot(slot, index, catalog)
+  return Array.from({ length: open.needed }, (_, pick): OccupationRow => {
+    const chosen = picks[pick]
+    const complete = chosen !== undefined && (!open.specializationOnly || chosen.specialization !== null)
+    return complete ? { kind: 'skill', skill: chosen } : { kind: 'unchosen', label: open.needed === 1 ? open.label : `${open.label}, pick ${pick + 1}` }
+  })
+}
+
+/**
+ * The occupation skill rows in a stable order: a catalog Occupation's slots in catalog order, or a custom Occupation's
+ * numbered skills, so rows never reorder after a save (specs/character-sheet/ux.md section 6.5).
+ */
+export function occupationRowsOf(occupation: OccupationInputs | null, catalog: OccupationCatalog, customSkillCount: number): OccupationRow[] {
+  const selected = selectedCatalogOccupation(occupation, catalog)
+  if (selected) {
+    return selected.skillSlots.flatMap((slot, index) => slotRows(slot, index, occupation?.skillChoices[index] ?? [], catalog))
+  }
+
+  if (!occupation?.custom) {
+    return []
+  }
+
+  return Array.from({ length: customSkillCount }, (_, index): OccupationRow => {
+    const chosen = occupation.custom?.skills[index] ?? null
+    return chosen ? { kind: 'skill', skill: chosen } : { kind: 'unchosen', label: `Occupation skill ${index + 1}` }
+  })
+}

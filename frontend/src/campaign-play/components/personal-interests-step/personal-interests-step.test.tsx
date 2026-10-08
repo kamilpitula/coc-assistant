@@ -73,4 +73,17 @@ describe('PersonalInterestsStep', () => {
 
     expect(onAction).toHaveBeenCalledWith({ type: 'quickFireInterest', skill: skill('Drive Auto'), chosen: true })
   })
+
+  it('section 18: does not offer the extra skill that takes the freed value as a personal interest', () => {
+    const inputs: CharacterSheetInputs = {
+      ...validInputs,
+      creationMethod: 'QuickFire',
+      skills: [],
+      quickFire: { values: [], personalInterests: [], extraSkill: skill('Drive Auto') },
+    }
+    renderStep(inputs)
+
+    expect(screen.queryByRole('checkbox', { name: 'Drive Auto, +20' })).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Listen, +20' })).toBeInTheDocument()
+  })
 })

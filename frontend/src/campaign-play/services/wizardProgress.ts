@@ -39,6 +39,7 @@ const FIELD_OWNERS: [prefix: string, step: WizardStep][] = [
   ['occupation', 'occupation'],
   ['creditRating', 'occupation-skills'],
   ['quickFire.values', 'occupation-skills'],
+  ['quickFire.extraSkill', 'occupation-skills'],
   ['quickFire.personalInterests', 'personal-interests'],
   ['personalInterestPoints', 'personal-interests'],
 ]
@@ -73,7 +74,8 @@ const STARTED_BY_INPUT: Partial<Record<WizardStep, (sheet: CharacterSheetView) =
   'occupation-skills': (sheet) =>
     (sheet.occupation?.skillChoices ?? []).some((picks) => picks.length > 0) ||
     sheet.skills.some((row) => hasValue(row.occupationPoints)) ||
-    sheet.quickFire.values.length > 0,
+    sheet.quickFire.values.length > 0 ||
+    Boolean(sheet.quickFire.extraSkill),
   'personal-interests': (sheet) =>
     sheet.skills.some((row) => hasValue(row.personalInterestPoints)) || sheet.quickFire.personalInterests.length > 0,
 }

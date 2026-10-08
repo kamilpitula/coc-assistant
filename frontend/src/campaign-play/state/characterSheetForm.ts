@@ -33,8 +33,9 @@ export type CharacterSheetFormAction =
   | { type: 'skillPoints'; skill: SkillReference; column: SkillPointsColumn; value: number | null }
   | { type: 'quickFireValue'; skill: SkillReference; value: number | null }
   | { type: 'quickFireInterest'; skill: SkillReference; chosen: boolean }
+  | { type: 'quickFireExtraSkill'; skill: SkillReference | null }
 
-const NO_QUICK_FIRE: QuickFireInputs = { values: [], personalInterests: [] }
+const NO_QUICK_FIRE: QuickFireInputs = { values: [], personalInterests: [], extraSkill: null }
 
 /** True when two skill references name the same skill (names compare without regard to case). */
 export function sameSkill(first: SkillReference, second: SkillReference): boolean {
@@ -67,7 +68,11 @@ export function inputsFromSheet(sheet: CharacterSheetView): CharacterSheetInputs
     skills: sheet.skills
       .filter((row) => row.occupationPoints !== null || row.personalInterestPoints !== null)
       .map(({ skill, specialization, occupationPoints, personalInterestPoints }) => ({ skill, specialization, occupationPoints, personalInterestPoints })),
-    quickFire: { values: [...sheet.quickFire.values], personalInterests: [...sheet.quickFire.personalInterests] },
+    quickFire: {
+      values: [...sheet.quickFire.values],
+      personalInterests: [...sheet.quickFire.personalInterests],
+      extraSkill: sheet.quickFire.extraSkill ?? null,
+    },
   }
 }
 
@@ -96,7 +101,7 @@ export function clearsSkillInputs(inputs: CharacterSheetInputs, method: Creation
 }
 
 function hasQuickFireInputs(quickFire: QuickFireInputs): boolean {
-  return quickFire.values.length > 0 || quickFire.personalInterests.length > 0
+  return quickFire.values.length > 0 || quickFire.personalInterests.length > 0 || Boolean(quickFire.extraSkill)
 }
 
 // ux.md section 5.5: switching clears the characteristics, and the other method's skill inputs when Quick fire is involved.
@@ -160,6 +165,11 @@ function occupationReducer(inputs: CharacterSheetInputs, action: CharacterSheetF
       return { ...inputs, quickFire: withQuickFireValue(inputs.quickFire, action.skill, action.value) }
     case 'quickFireInterest':
       return { ...inputs, quickFire: withQuickFireInterest(inputs.quickFire, action.skill, action.chosen) }
+    case 'quickFireExtraSkill':
+      return {
+        ...inputs,
+        quickFire: { ...inputs.quickFire, extraSkill: action.skill ? { skill: action.skill.skill, specialization: action.skill.specialization } : null },
+      }
     default:
       return inputs
   }

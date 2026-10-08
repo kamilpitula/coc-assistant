@@ -58,6 +58,7 @@ describe('wizardProgress', () => {
     ['skills[3].occupationPoints', 'occupation-skills'],
     ['quickFire.values[2].value', 'occupation-skills'],
     ['quickFire.values', 'occupation-skills'],
+    ['quickFire.extraSkill', 'occupation-skills'],
     ['skills[3].personalInterestPoints', 'personal-interests'],
     ['skills[3].skill', 'personal-interests'],
     ['skills', 'personal-interests'],

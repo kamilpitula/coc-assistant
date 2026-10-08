@@ -133,7 +133,8 @@ function pointsRow(entry: SkillTableEntry, props: SkillStepProps, onBlur: (field
 function quickFireRow(entry: SkillTableEntry, props: SkillStepProps): SkillAllocationRow[] {
   const { inputs, errors, rules, onAction } = props
   const assigned = inputs.quickFire.values.some((value) => sameSkill(value, entry.skill))
-  if (entry.isOccupationSkill || assigned || entry.skill.skill === rules.cthulhuMythosSkill) {
+  const extra = inputs.quickFire.extraSkill ? sameSkill(inputs.quickFire.extraSkill, entry.skill) : false
+  if (entry.isOccupationSkill || assigned || extra || entry.skill.skill === rules.cthulhuMythosSkill) {
     return []
   }
 

@@ -62,6 +62,8 @@ export interface QuickFireValueInputs extends SkillReference {
 export interface QuickFireInputs {
   values: QuickFireValueInputs[]
   personalInterests: SkillReference[]
+  /** The skill that takes the value Credit Rating frees (section 18); absent or null when none is chosen. */
+  extraSkill?: SkillReference | null
 }
 
 /** The body of PUT .../investigators/mine/character-sheet: the Player's inputs only; dice results are raw totals. */

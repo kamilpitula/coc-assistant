@@ -76,8 +76,8 @@ export async function chooseAntiquarianViaUi(page: Page): Promise<void> {
 
 /** Fills the Antiquarian's open slots: Art/Craft (Painting), Language (Other) (Latin), Charm, and Firearms (Handgun). */
 export async function pickAntiquarianSkillsViaUi(page: Page): Promise<void> {
-  await page.getByRole('combobox', { name: 'Art/Craft specialization' }).fill('Painting')
-  await page.getByRole('combobox', { name: 'Language (Other) specialization' }).fill('Latin')
+  await page.getByRole('combobox', { name: 'Art/Craft specialization', exact: true }).fill('Painting')
+  await page.getByRole('combobox', { name: 'Language (Other) specialization', exact: true }).fill('Latin')
   await chooseOption(page, 'Choose 1 interpersonal skill', 'Charm')
   await chooseOption(page, 'Choose 1 skill of your choice', 'Firearms')
   await chooseOption(page, 'Firearms specialization', 'Handgun')

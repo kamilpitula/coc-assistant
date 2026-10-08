@@ -268,7 +268,7 @@ export function sheetView(overrides: Partial<CharacterSheetView> = {}): Characte
     luckRolls: [11],
     occupation: { ...antiquarianInputs, name: 'Antiquarian', creditRatingMin: 30, creditRatingMax: 70, isCustom: false, formulaId: 'EDUx4', quickFireCreditRating: { value: 30, freedValue: 40 } },
     skills: skillRows,
-    quickFire: { values: [], personalInterests: [] },
+    quickFire: { values: [], personalInterests: [], extraSkill: null },
     derived: {
       luck: 55,
       hitPoints: 12,

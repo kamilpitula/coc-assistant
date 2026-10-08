@@ -22,7 +22,7 @@ import { attentionList, memberRow, ownRow } from '../fixtures/overview'
  * effects before Hard and Extreme values", "Draft resumes after leaving the wizard", "Standard Rolling records every
  * Player-entered roll", "Changing characteristics keeps later allocations", and "Changing the Creation Method clears
  * characteristics after confirmation"; and to specs/character-sheet/ux.md sections 3 to 7 (UX-3, UX-4, UX-5, UX-7,
- * UX-8, UX-9, UX-10, UX-11, UX-12, UX-13, UX-14, UX-15, UX-20), with the Campaign page as the overview of
+ * UX-8, UX-9, UX-10, UX-11, UX-12, UX-13, UX-14, UX-15, UX-20, UX-22, UX-23, UX-24, UX-25), with the Campaign page as the overview of
  * specs/campaign-overview/ux.md (CO-UX-4, CO-UX-6, CO-UX-9).
  */
 test.describe('Investigator lifecycle', () => {
@@ -305,10 +305,19 @@ test.describe('Investigator lifecycle', () => {
         await pressWizardAction(playerPage, 'Save and continue')
       })
 
-      await test.step('the Player assigns the skill values, with Credit Rating at its value and the freed 40 to one more skill', async () => {
+      await test.step('UX-22: the skill choices come first, and a slot still to choose waits disabled in its place', async () => {
         await chooseAntiquarianViaUi(playerPage)
+        await expect(playerPage.getByRole('heading', { level: 2, name: '1. Make your skill choices' })).toBeVisible()
+        const waiting = playerPage.getByRole('row', { name: /^Choose 1 interpersonal skill/ })
+        await expect(waiting).toContainText('Choose this skill above first')
+        await expect(waiting.getByRole('combobox')).toBeDisabled()
         await pickAntiquarianSkillsViaUi(playerPage)
+        await expect(playerPage.getByRole('row', { name: /^Charm/ })).toBeVisible()
+      })
+
+      await test.step('UX-25: the Player assigns the skill values, with Credit Rating at its value and the freed 40 in its own row', async () => {
         await expect(playerPage.getByText('Must be 30 for this occupation')).toBeVisible()
+        await expect(playerPage.getByRole('row', { name: /^Extra skill \(freed 40\)/ })).toBeVisible()
         await chooseOption(playerPage, 'Extra skill for the freed 40', 'Drive Auto')
         for (const [skill, value] of QUICK_FIRE_SKILLS) {
           await chooseOption(playerPage, `${skill}, Quick fire value`, value)
@@ -325,22 +334,35 @@ test.describe('Investigator lifecycle', () => {
         await playerPage.keyboard.press('Escape')
       })
 
-      await test.step('a value left on a skill that stops being an occupation skill stays visible with its error', async () => {
+      await test.step('UX-23: "No value" clears a value and returns it to the values left', async () => {
+        await chooseOption(playerPage, 'Appraise, Quick fire value', 'No value')
+        await expect(playerPage.getByText('Values left to assign: 70')).toBeVisible()
+        await chooseOption(playerPage, 'Appraise, Quick fire value', '70')
+        await expect(playerPage.getByText('Every value is assigned.')).toBeVisible()
+      })
+
+      await test.step('UX-24: changing a choice after assigning lists the old skill with its value, its error, and "Remove value"', async () => {
         await chooseOption(playerPage, 'Choose 1 interpersonal skill', 'Persuade')
         await playerPage.getByRole('button', { name: 'Save and continue' }).click()
+        const error = 'Charm is no longer one of your occupation skills. Remove its value to use it elsewhere.'
         const summary = playerPage.getByRole('alert').filter({ hasText: "There's a problem" })
-        await expect(summary.getByRole('link', { name: "Charm isn't one of your occupation skills." })).toBeVisible()
-        await expect(playerPage.getByRole('combobox', { name: 'Charm, Quick fire value', exact: true })).toHaveText('50')
-        await summary.getByRole('link', { name: "Charm isn't one of your occupation skills." }).click()
-        await expect(playerPage.getByRole('combobox', { name: 'Charm, Quick fire value', exact: true })).toBeFocused()
-        await chooseOption(playerPage, 'Choose 1 interpersonal skill', 'Charm')
-        await expect(playerPage.getByRole('combobox', { name: 'Persuade, Quick fire value', exact: true })).toHaveCount(0)
+        await expect(summary.getByRole('link', { name: error })).toBeVisible()
+        const leftOver = playerPage.getByRole('region', { name: 'No longer occupation skills' })
+        await expect(leftOver).toContainText('Charm')
+        await expect(leftOver).toContainText('50')
+        await summary.getByRole('link', { name: error }).click()
+        await expect(leftOver.getByRole('button', { name: 'Remove value from Charm' })).toBeFocused()
+        await leftOver.getByRole('button', { name: 'Remove value from Charm' }).click()
+        await expect(leftOver).toHaveCount(0)
+        await expect(playerPage.getByText('Values left to assign: 50')).toBeVisible()
+        await chooseOption(playerPage, 'Persuade, Quick fire value', '50')
+        await expect(playerPage.getByText('Every value is assigned.')).toBeVisible()
         await pressWizardAction(playerPage, 'Save and continue')
       })
 
       await test.step('the Player chooses four personal interests and submits', async () => {
         await expect(playerPage.getByRole('heading', { level: 1, name: 'Personal interests' })).toBeVisible()
-        for (const skill of ['Listen', 'Stealth', 'Psychology', 'Persuade']) {
+        for (const skill of ['Listen', 'Stealth', 'Psychology', 'Charm']) {
           await playerPage.getByRole('checkbox', { name: `${skill}, +20` }).check()
         }
         await expect(playerPage.getByText('Personal interests chosen: 4 of 4')).toBeVisible()

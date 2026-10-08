@@ -113,7 +113,7 @@ describe('characterSheetForm', () => {
       { ...skill('Library Use'), occupationPoints: 50, personalInterestPoints: null },
       { ...skill('Drive Auto'), occupationPoints: null, personalInterestPoints: 60 },
     ])
-    expect(inputs.quickFire).toEqual(saved.quickFire)
+    expect(inputs.quickFire).toEqual({ ...saved.quickFire, extraSkill: null })
   })
 
   it('clears the characteristic values when the creation method changes', () => {
@@ -133,7 +133,7 @@ describe('characterSheetForm', () => {
     )
 
     expect(toQuickFire.skills).toEqual([])
-    expect(back.quickFire).toEqual({ values: [], personalInterests: [] })
+    expect(back.quickFire).toEqual({ values: [], personalInterests: [], extraSkill: null })
     expect(clearsSkillInputs(validInputs, 'QuickFire')).toBe(true)
     expect(clearsSkillInputs(validInputs, 'StandardRolling')).toBe(false)
   })
@@ -185,6 +185,14 @@ describe('characterSheetForm', () => {
     expect(inputs.quickFire).toEqual({ values: [{ ...skill('Credit Rating'), value: 30 }], personalInterests: [skill('Swim')] })
   })
 
+  it('section 18: stores the extra skill that takes the freed value, and clears it', () => {
+    const chosen = characterSheetFormReducer({ ...validInputs, creationMethod: 'QuickFire' }, { type: 'quickFireExtraSkill', skill: skill('Drive Auto') })
+    const cleared = characterSheetFormReducer(chosen, { type: 'quickFireExtraSkill', skill: null })
+
+    expect(chosen.quickFire.extraSkill).toEqual(skill('Drive Auto'))
+    expect(cleared.quickFire.extraSkill).toBeNull()
+  })
+
   it('never saves inputs of another creation method', () => {
     const mixed: CharacterSheetInputs = {
       ...validInputs,
@@ -197,7 +205,7 @@ describe('characterSheetForm', () => {
 
     expect(saved.characteristics).toEqual({})
     expect(saved.characteristicRolls).toEqual({ STR: 12 })
-    expect(saved.quickFire).toEqual({ values: [], personalInterests: [] })
+    expect(saved.quickFire).toEqual({ values: [], personalInterests: [], extraSkill: null })
     expect(saved.skills).toEqual(validInputs.skills)
   })
 
