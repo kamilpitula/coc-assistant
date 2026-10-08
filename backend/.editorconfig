@@ -1,0 +1,3 @@
+[*.cs]
+# Cyclomatic complexity above the CodeMetricsConfig.txt threshold fails the build.
+dotnet_diagnostic.CA1502.severity = error

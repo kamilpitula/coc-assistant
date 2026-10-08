@@ -35,6 +35,11 @@ benefit downstream disappears with it.
   Cthulhu game rules, include links to the governing `docs/game-rules/`
   sections in each delegation. Never paraphrase a rule into the delegation
   itself; the subagents read the source.
+- **Check rule-gap claims before relaying them.** Before you surface an
+  Explorer claim that a game rule is missing, ambiguous, or lacks data,
+  read the cited `docs/game-rules/` section yourself and state exactly what
+  it does and does not specify, instead of relaying the claim; an
+  unchecked claim sends the human after a gap that may not exist.
 - **Never skip, auto-approve, or paraphrase away a human gate.** The Builder
   pauses for a UX option selection (when the task changes user-facing UI)
   and for plan approval; the Verifier pauses for a merge decision.
