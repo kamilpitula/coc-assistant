@@ -8,7 +8,10 @@ import {
   joinAsNewPlayer,
   openAndCaptureBearer,
   pressWizardAction,
+  chooseAntiquarianViaUi,
+  pickAntiquarianSkillsViaUi,
   saveDraftUpToAgeEffectsViaUi,
+  spendAntiquarianPointsViaUi,
   submitValidInvestigatorViaUi,
 } from '../fixtures/investigators'
 import { attentionList, atTheTable, campaignNav, memberRow, memberRows, ownRow } from '../fixtures/overview'
@@ -216,10 +219,10 @@ test.describe('Campaign overview and navigation', () => {
         ])
       })
 
-      await test.step('CO-UX-6: a Draft at step 3 shows one item with "step 3 of 4" and "Continue"', async () => {
+      await test.step('CO-UX-6: a Draft at step 3 shows one item with "step 3 of 7" and "Continue"', async () => {
         await saveDraftUpToAgeEffectsViaUi(player.page, campaignId, 'Mae Doyle')
         await player.page.goto(`/campaigns/${campaignId}`)
-        await expect(attentionList(player.page).getByRole('listitem')).toHaveText([/Continue Mae Doyle: step 3 of 4/])
+        await expect(attentionList(player.page).getByRole('listitem')).toHaveText([/Continue Mae Doyle: step 3 of 7/])
         await expect(ownRow(player.page)).toContainText('Draft')
       })
 
@@ -228,6 +231,9 @@ test.describe('Campaign overview and navigation', () => {
         await expect(player.page.getByRole('heading', { level: 1, name: 'Age effects' })).toBeVisible()
         await player.page.getByRole('group', { name: 'EDU check 1 of 1' }).getByLabel('D100 roll').fill('30')
         await pressWizardAction(player.page, 'Save and continue')
+        await chooseAntiquarianViaUi(player.page)
+        await pickAntiquarianSkillsViaUi(player.page)
+        await spendAntiquarianPointsViaUi(player.page)
         await player.page.getByRole('button', { name: 'Submit to Keeper' }).click()
         await expect(ownRow(player.page)).toContainText('Submitted - waiting for your Keeper')
       })

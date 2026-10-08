@@ -14,19 +14,30 @@ export async function campaignIdFromOverviewUrl(page: Page): Promise<string> {
   return match[1]
 }
 
+/** The creation method labels of the Rules options checkboxes (specs/character-sheet/ux.md section 2). */
+export type CreationMethodLabel = 'Standard rolling' | 'Point buy' | 'Quick fire'
+
+const CREATION_METHOD_LABELS: CreationMethodLabel[] = ['Standard rolling', 'Point buy', 'Quick fire']
+
 /**
  * Creates a Campaign through the real UI on New campaign and returns its id, read from the overview it opens.
- * Leaves the Player limit at its default unless `playerLimit` is given.
+ * Leaves the Player limit and the allowed creation methods (all three) at their defaults unless given.
  */
 export async function createCampaignViaUi(
   page: Page,
   name: string,
-  options: { playerLimit?: number } = {},
+  options: { playerLimit?: number; allowedCreationMethods?: CreationMethodLabel[] } = {},
 ): Promise<string> {
   await page.goto('/campaigns/new')
   await page.getByLabel(/campaign name/i).fill(name)
   if (options.playerLimit !== undefined) {
     await page.getByLabel(/player limit/i).fill(String(options.playerLimit))
+  }
+  if (options.allowedCreationMethods) {
+    await page.getByRole('button', { name: /^rules options/i }).click()
+    for (const label of CREATION_METHOD_LABELS.filter((method) => !options.allowedCreationMethods!.includes(method))) {
+      await page.getByRole('checkbox', { name: new RegExp(`^${label}`, 'i') }).uncheck()
+    }
   }
   await page.getByRole('button', { name: /create campaign/i }).click()
   const campaignId = await campaignIdFromOverviewUrl(page)

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 import { newAccount, signIn, signInNewContext } from '../fixtures/auth'
-import { campaignIdFromOverviewUrl, createCampaignViaUi, issueInviteViaUi } from '../fixtures/campaigns'
+import { createCampaignViaUi, issueInviteViaUi } from '../fixtures/campaigns'
 import { API_ORIGIN, joinAsNewPlayer, openAndCaptureBearer, submitValidInvestigatorViaUi } from '../fixtures/investigators'
 import { attentionList, ownRow } from '../fixtures/overview'
 
@@ -11,8 +11,8 @@ import { attentionList, ownRow } from '../fixtures/overview'
  * to any Investigator, including their own", "A Player cannot read another Player's Investigator") and Scenarios
  * "Player starts over from a Draft", "Player cannot approve their own Investigator", "Player cannot create a second
  * Investigator", "Player cannot read another Player's Investigator", "Investigator is not reachable from another
- * Campaign", "Player cannot create an Investigator without a supported Creation Method", and "Player reads the
- * Campaign without Keeper-only data"; and to specs/character-sheet/ux.md UX-16, UX-18, UX-19, and UX-21.
+ * Campaign", and "Player reads the Campaign without Keeper-only data"; and to specs/character-sheet/ux.md UX-16, UX-18,
+ * and UX-21 (UX-19 cannot occur once every creation method is available, PBI-CP-009).
  */
 test.describe('Investigator guardrails', () => {
   test('UX-16: a Player starts over from a Draft only after confirming', async ({ page, browser }) => {
@@ -132,34 +132,17 @@ test.describe('Investigator guardrails', () => {
     }
   })
 
-  test('UX-19: a Campaign without an available creation method blocks creation in the UI and the API', async ({
-    page,
-    browser,
-  }) => {
+  // PBI-CP-009 makes every creation method available, so UX-19's blocked state can no longer occur (ux.md section 9).
+  test('A Player can create an Investigator in a Campaign that allows only Quick fire', async ({ page, browser }) => {
     const keeper = newAccount('Keeper')
     await signIn(page, keeper)
-    await page.goto('/campaigns/new')
-    await page.getByLabel(/campaign name/i).fill(`Quick fire only ${keeper.oid.slice(0, 6)}`)
-    await page.getByRole('button', { name: /^rules options/i }).click()
-    await page.getByRole('checkbox', { name: /^standard rolling/i }).uncheck()
-    await page.getByRole('checkbox', { name: /^point buy/i }).uncheck()
-    await page.getByRole('button', { name: /create campaign/i }).click()
-    const campaignId = await campaignIdFromOverviewUrl(page)
+    const campaignId = await createCampaignViaUi(page, `Quick fire only ${keeper.oid.slice(0, 6)}`, { allowedCreationMethods: ['Quick fire'] })
     const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, campaignId))
 
     try {
-      const bearer = await openAndCaptureBearer(player.page, `/campaigns/${campaignId}`)
-      await expect(
-        player.page.getByText(
-          "You can't create your Investigator yet. This Campaign allows Quick fire, which isn't available yet. Ask your Keeper to also allow Point buy.",
-        ),
-      ).toBeVisible()
-      await expect(player.page.getByRole('button', { name: 'Create Investigator' })).toHaveCount(0)
-
-      const create = await player.page.request.post(`${API_ORIGIN}/api/campaigns/${campaignId}/investigators`, {
-        headers: { Authorization: bearer },
-      })
-      expect(create.status()).toBe(409)
+      await player.page.goto(`/campaigns/${campaignId}`)
+      await attentionList(player.page).getByRole('button', { name: 'Create Investigator' }).click()
+      await expect(player.page.getByRole('heading', { level: 1, name: 'Identity' })).toBeFocused()
     } finally {
       await player.context.close()
     }

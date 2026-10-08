@@ -25,6 +25,15 @@
     <EmbeddedResource Include="..\..\..\..\docs\game-rules\catalogs\characteristics-rules.json"
                       LogicalName="GameRules.Catalogs.characteristics-rules.json"
                       Link="RuleData\Catalogs\characteristics-rules.json" />
+    <EmbeddedResource Include="..\..\..\..\docs\game-rules\catalogs\skills.1920s.json"
+                      LogicalName="GameRules.Catalogs.skills.1920s.json"
+                      Link="RuleData\Catalogs\skills.1920s.json" />
+    <EmbeddedResource Include="..\..\..\..\docs\game-rules\catalogs\wealth.1920s.json"
+                      LogicalName="GameRules.Catalogs.wealth.1920s.json"
+                      Link="RuleData\Catalogs\wealth.1920s.json" />
+    <EmbeddedResource Include="..\..\..\..\docs\game-rules\catalogs\skill-specializations.json"
+                      LogicalName="GameRules.Catalogs.skill-specializations.json"
+                      Link="RuleData\Catalogs\skill-specializations.json" />
   </ItemGroup>
 
   <ItemGroup>

@@ -2,16 +2,28 @@ import { test, expect } from '@playwright/test'
 
 import { newAccount, signIn } from '../fixtures/auth'
 import { createCampaignViaUi, issueInviteViaUi } from '../fixtures/campaigns'
-import { fillPointBuy, joinAsNewPlayer, pressWizardAction, VALID_POINT_BUY } from '../fixtures/investigators'
+import {
+  chooseAntiquarianViaUi,
+  chooseCreationMethod,
+  chooseOption,
+  fillPointBuy,
+  joinAsNewPlayer,
+  pickAntiquarianSkillsViaUi,
+  pressWizardAction,
+  spendAntiquarianPointsViaUi,
+  VALID_POINT_BUY,
+} from '../fixtures/investigators'
 import { attentionList, memberRow, ownRow } from '../fixtures/overview'
 
 /**
  * Traces to specs/campaign-play/spec.md "Investigator lifecycle" and Scenarios "Player starts a Draft Investigator",
  * "Player submits a valid Character Sheet", "Keeper requests changes", "Request changes requires a comment", and
  * "Keeper approves an Investigator"; to specs/character-sheet/spec.md Scenarios "Point Buy Investigator applies age
- * effects before Hard and Extreme values" and "Draft resumes after leaving the wizard"; and to
- * specs/character-sheet/ux.md sections 3 to 7 (UX-3, UX-4, UX-5, UX-11, UX-12, UX-13, UX-14, UX-15, UX-20), with the
- * Campaign page as the overview of specs/campaign-overview/ux.md (CO-UX-4, CO-UX-6, CO-UX-9).
+ * effects before Hard and Extreme values", "Draft resumes after leaving the wizard", "Standard Rolling records every
+ * Player-entered roll", "Changing characteristics keeps later allocations", and "Changing the Creation Method clears
+ * characteristics after confirmation"; and to specs/character-sheet/ux.md sections 3 to 7 (UX-3, UX-4, UX-5, UX-7,
+ * UX-8, UX-9, UX-10, UX-11, UX-12, UX-13, UX-14, UX-15, UX-20, UX-22, UX-23, UX-24, UX-25, UX-26), with the Campaign page as the overview of
+ * specs/campaign-overview/ux.md (CO-UX-4, CO-UX-6, CO-UX-9).
  */
 test.describe('Investigator lifecycle', () => {
   test('A Player creates, saves, resumes, and submits an Investigator; the Keeper requests changes, then approves it', async ({
@@ -23,7 +35,8 @@ test.describe('Investigator lifecycle', () => {
     const keeper = newAccount('Keeper')
     await signIn(page, keeper)
     const campaignName = `Lifecycle ${keeper.oid.slice(0, 6)}`
-    const campaignId = await createCampaignViaUi(page, campaignName)
+    // A Point buy only Campaign also covers UX-10: the method is named, not offered as a choice.
+    const campaignId = await createCampaignViaUi(page, campaignName, { allowedCreationMethods: ['Point buy'] })
     const token = await issueInviteViaUi(page, campaignId)
     const player = await joinAsNewPlayer(browser, token)
     const playerPage = player.page
@@ -63,7 +76,7 @@ test.describe('Investigator lifecycle', () => {
         await playerPage.getByLabel('STR', { exact: true }).fill('60')
         await pressWizardAction(playerPage, 'Save and exit')
         await expect(playerPage.getByRole('status').filter({ hasText: 'Draft saved.' })).toBeVisible()
-        await expect(attentionList(playerPage).getByText('Continue Harvey Walters: step 2 of 4')).toBeVisible()
+        await expect(attentionList(playerPage).getByText('Continue Harvey Walters: step 2 of 7')).toBeVisible()
       })
 
       await test.step('UX-5: "Continue" resumes at Characteristics with the saved value', async () => {
@@ -92,6 +105,12 @@ test.describe('Investigator lifecycle', () => {
         await playerPage.getByRole('group', { name: 'EDU check 1 of 2' }).getByLabel('D100 roll').fill('30')
         await playerPage.getByRole('group', { name: 'EDU check 2 of 2' }).getByLabel('D100 roll').fill('20')
         await pressWizardAction(playerPage, 'Save and continue')
+      })
+
+      await test.step('the Player chooses the Antiquarian, picks its skills, and spends every point', async () => {
+        await chooseAntiquarianViaUi(playerPage)
+        await pickAntiquarianSkillsViaUi(playerPage)
+        await spendAntiquarianPointsViaUi(playerPage)
       })
 
       await test.step('the summary shows values after age effects with Hard and Extreme values', async () => {
@@ -166,4 +185,257 @@ test.describe('Investigator lifecycle', () => {
       await player.context.close()
     }
   })
+
+  test('A Player creates a Standard rolling Investigator from Player-entered rolls, and lowering EDU flags the skill points', async ({
+    page,
+    browser,
+  }) => {
+    test.slow()
+
+    const keeper = newAccount('Keeper')
+    await signIn(page, keeper)
+    const campaignId = await createCampaignViaUi(page, `Rolling ${keeper.oid.slice(0, 6)}`)
+    const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, campaignId))
+    const playerPage = player.page
+
+    try {
+      await test.step('the Player names a 25-year-old Investigator', async () => {
+        await playerPage.goto(`/campaigns/${campaignId}`)
+        await attentionList(playerPage).getByRole('button', { name: 'Create Investigator' }).click()
+        await playerPage.getByLabel('Investigator name').fill('Mae Doyle')
+        await playerPage.getByLabel('Age').fill('25')
+        await pressWizardAction(playerPage, 'Save and continue')
+      })
+
+      await test.step('UX-9: the Player chooses Standard rolling and enters raw dice totals', async () => {
+        await chooseCreationMethod(playerPage, 'Standard rolling')
+        for (const [code, dice, total] of STANDARD_ROLLS) {
+          await playerPage.getByLabel(`${code}, ${dice} total`).fill(total)
+        }
+        await expect(playerPage.getByLabel('SIZ, 2D6 total')).toHaveValue('6')
+        await playerPage.getByLabel('Luck, 3D6 total').fill('11')
+        await pressWizardAction(playerPage, 'Save and continue')
+      })
+
+      await test.step('the Player makes the EDU check, then picks the Antiquarian and spends the points', async () => {
+        await playerPage.getByRole('group', { name: 'EDU check 1 of 1' }).getByLabel('D100 roll').fill('30')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await chooseAntiquarianViaUi(playerPage)
+        await pickAntiquarianSkillsViaUi(playerPage)
+        await spendAntiquarianPointsViaUi(playerPage)
+      })
+
+      await test.step('UX-7: lowering EDU keeps the allocations and marks Occupation skills as needing attention', async () => {
+        await playerPage.getByRole('link', { name: /^Characteristics ?, completed$/ }).click()
+        await playerPage.getByLabel('EDU, 2D6 total').fill('2')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByRole('status').filter({ hasText: 'Some later steps need attention.' })).toBeVisible()
+        await playerPage.getByRole('link', { name: /^Occupation skills ?, needs attention$/ }).click()
+        await expect(playerPage.getByText("You've spent 200 occupation points. You have 160.")).toBeVisible()
+        await expect(playerPage.getByLabel('Library Use, occupation points')).toHaveValue('50')
+      })
+
+      await test.step('the Player restores EDU and submits', async () => {
+        await playerPage.getByRole('link', { name: /^Characteristics ?, completed$/ }).click()
+        await playerPage.getByLabel('EDU, 2D6 total').fill('4')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await playerPage.getByRole('link', { name: /^Sheet and submit ?, completed$/ }).click()
+        await playerPage.getByRole('button', { name: 'Submit to Keeper' }).click()
+        await expect(ownRow(playerPage)).toContainText('Submitted - waiting for your Keeper')
+      })
+
+      await test.step('the Keeper sees one Player-entered result per roll', async () => {
+        await page.goto(`/campaigns/${campaignId}`)
+        await attentionList(page).getByRole('link', { name: 'Review Mae Doyle' }).click()
+        await page.getByRole('button', { name: 'Dice results' }).click()
+        for (const [code, dice, total] of STANDARD_ROLLS) {
+          await expect(page.getByRole('row', { name: new RegExp(`^${code} ${dice} ${total} Player$`) })).toBeVisible()
+        }
+        await expect(page.getByRole('row', { name: /^Luck 3D6 11 Player$/ })).toBeVisible()
+      })
+    } finally {
+      await player.context.close()
+    }
+  })
+
+  test('A Player creates a Quick fire Investigator after confirming the switch from Point buy', async ({ page, browser }) => {
+    test.slow()
+
+    const keeper = newAccount('Keeper')
+    await signIn(page, keeper)
+    const campaignId = await createCampaignViaUi(page, `Quick fire ${keeper.oid.slice(0, 6)}`)
+    const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, campaignId))
+    const playerPage = player.page
+
+    try {
+      await test.step('the Player names a 25-year-old Investigator and starts with Point buy', async () => {
+        await playerPage.goto(`/campaigns/${campaignId}`)
+        await attentionList(playerPage).getByRole('button', { name: 'Create Investigator' }).click()
+        await playerPage.getByLabel('Investigator name').fill('Dr. Ames')
+        await playerPage.getByLabel('Age').fill('25')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await chooseCreationMethod(playerPage, 'Point buy')
+        await playerPage.getByLabel('STR', { exact: true }).fill('60')
+      })
+
+      await test.step('UX-8: switching needs confirmation, and cancelling keeps the method and the values', async () => {
+        await chooseCreationMethod(playerPage, 'Quick fire')
+        const dialog = playerPage.getByRole('alertdialog', { name: 'Switch to Quick fire?' })
+        await expect(dialog).toContainText('Your characteristic values will be cleared.')
+        await dialog.getByRole('button', { name: 'Keep current method' }).click()
+        await expect(playerPage.getByRole('radio', { name: 'Point buy' })).toBeChecked()
+        await expect(playerPage.getByLabel('STR', { exact: true })).toHaveValue('60')
+      })
+
+      await test.step('UX-8: confirming switches to Quick fire and clears the values', async () => {
+        await chooseCreationMethod(playerPage, 'Quick fire')
+        await playerPage.getByRole('alertdialog').getByRole('button', { name: 'Switch and clear' }).click()
+        await expect(playerPage.getByRole('radio', { name: 'Quick fire' })).toBeChecked()
+        await expect(playerPage.getByText('Values left to assign: 80, 70, 60, 60, 50, 50, 50, 40')).toBeVisible()
+      })
+
+      await test.step('the Player assigns each Quick fire value once and rolls Luck', async () => {
+        for (const [code, value] of QUICK_FIRE_CHARACTERISTICS) {
+          await chooseOption(playerPage, code, value)
+        }
+        await expect(playerPage.getByText('Every value is assigned.')).toBeVisible()
+        await playerPage.getByLabel('Luck, 3D6 total').fill('11')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await playerPage.getByRole('group', { name: 'EDU check 1 of 1' }).getByLabel('D100 roll').fill('30')
+        await pressWizardAction(playerPage, 'Save and continue')
+      })
+
+      await test.step('UX-22: the skill choices come first, and a slot still to choose waits disabled in its place', async () => {
+        await chooseAntiquarianViaUi(playerPage)
+        await expect(playerPage.getByRole('heading', { level: 2, name: '1. Make your skill choices' })).toBeVisible()
+        const waiting = playerPage.getByRole('row', { name: /^Choose 1 interpersonal skill/ })
+        await expect(waiting).toContainText('Choose this skill above first')
+        await expect(waiting.getByRole('combobox')).toBeDisabled()
+        await pickAntiquarianSkillsViaUi(playerPage)
+        await expect(playerPage.getByRole('row', { name: /^Charm/ })).toBeVisible()
+      })
+
+      await test.step('UX-25: the Player assigns the skill values, with Credit Rating at its value and the freed 40 in its own row', async () => {
+        await expect(playerPage.getByText('Must be 30 for this occupation')).toBeVisible()
+        await expect(playerPage.getByRole('row', { name: /^Extra skill \(freed 40\)/ })).toBeVisible()
+        await chooseOption(playerPage, 'Extra skill for the freed 40', 'Drive Auto')
+        for (const [skill, value] of QUICK_FIRE_SKILLS) {
+          await chooseOption(playerPage, `${skill}, Quick fire value`, value)
+        }
+        await expect(playerPage.getByText('Every value is assigned.')).toBeVisible()
+      })
+
+      await test.step('the value list opens on an opaque surface, so its options are readable', async () => {
+        await playerPage.getByRole('combobox', { name: 'Appraise, Quick fire value', exact: true }).click()
+        const list = playerPage.getByRole('listbox')
+        await expect(list).toBeVisible()
+        await playerPage.screenshot({ path: test.info().outputPath('quick-fire-value-list.png') })
+        expect(await list.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
+        await playerPage.keyboard.press('Escape')
+      })
+
+      await test.step('UX-23: "No value" clears a value and returns it to the values left', async () => {
+        await chooseOption(playerPage, 'Appraise, Quick fire value', 'No value')
+        await expect(playerPage.getByText('Values left to assign: 70')).toBeVisible()
+        await chooseOption(playerPage, 'Appraise, Quick fire value', '70')
+        await expect(playerPage.getByText('Every value is assigned.')).toBeVisible()
+      })
+
+      await test.step('UX-24: changing a choice after assigning lists the old skill with its value, its error, and "Remove value"', async () => {
+        await chooseOption(playerPage, 'Choose 1 interpersonal skill', 'Persuade')
+        await playerPage.getByRole('button', { name: 'Save and continue' }).click()
+        const error = 'Charm is no longer one of your occupation skills. Remove its value to use it elsewhere.'
+        const summary = playerPage.getByRole('alert').filter({ hasText: "There's a problem" })
+        await expect(summary.getByRole('link', { name: error })).toBeVisible()
+        const leftOver = playerPage.getByRole('region', { name: 'No longer occupation skills' })
+        await expect(leftOver).toContainText('Charm')
+        await expect(leftOver).toContainText('50')
+        await summary.getByRole('link', { name: error }).click()
+        await expect(leftOver.getByRole('button', { name: 'Remove value from Charm' })).toBeFocused()
+        await leftOver.getByRole('button', { name: 'Remove value from Charm' }).click()
+        await expect(leftOver).toHaveCount(0)
+        await expect(playerPage.getByText('Values left to assign: 50')).toBeVisible()
+        await chooseOption(playerPage, 'Persuade, Quick fire value', '50')
+        await expect(playerPage.getByText('Every value is assigned.')).toBeVisible()
+        await pressWizardAction(playerPage, 'Save and continue')
+      })
+
+      await test.step('the Player chooses four personal interests and submits', async () => {
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Personal interests' })).toBeVisible()
+        for (const skill of ['Listen', 'Stealth', 'Psychology', 'Charm']) {
+          await playerPage.getByRole('checkbox', { name: `${skill}, +20` }).check()
+        }
+        await expect(playerPage.getByText('Personal interests chosen: 4 of 4')).toBeVisible()
+        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Sheet and submit' })).toBeVisible()
+      })
+
+      await test.step('UX-26: a personal interest that becomes the extra skill stays visible with its error and can be removed', async () => {
+        await playerPage.getByRole('link', { name: /^Occupation skills ?, completed$/ }).click()
+        await chooseOption(playerPage, 'Extra skill for the freed 40', 'Charm')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Personal interests' })).toBeVisible()
+        const error = "Choose a skill that isn't an occupation skill, Credit Rating, Cthulhu Mythos, or already chosen."
+        const stranded = playerPage.getByRole('region', { name: 'No longer personal interests' })
+        await expect(stranded).toContainText('Charm')
+        await expect(stranded).toContainText(error)
+        await playerPage.getByRole('button', { name: 'Save and continue' }).click()
+        const summary = playerPage.getByRole('alert').filter({ hasText: "There's a problem" })
+        await summary.getByRole('link', { name: error }).click()
+        const remove = stranded.getByRole('button', { name: 'Remove Charm from your personal interests' })
+        await expect(remove).toBeFocused()
+        await remove.click()
+        await expect(stranded).toHaveCount(0)
+        await expect(playerPage.getByText('Personal interests chosen: 3 of 4')).toBeVisible()
+        await playerPage.getByRole('checkbox', { name: 'Drive Auto, +20' }).check()
+        await pressWizardAction(playerPage, 'Save and continue')
+      })
+
+      await test.step('the Player submits the Quick fire Investigator', async () => {
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Sheet and submit' })).toBeVisible()
+        await expect(playerPage.getByRole('row', { name: /^Listen/ })).toContainText('40')
+        await playerPage.getByRole('button', { name: 'Submit to Keeper' }).click()
+        await expect(ownRow(playerPage)).toContainText('Submitted - waiting for your Keeper')
+      })
+    } finally {
+      await player.context.close()
+    }
+  })
 })
+
+/** Raw totals for STR 60, CON 60, DEX 60, APP 50, POW 60, SIZ 60, INT 60, EDU 50 (section 2.1). */
+const STANDARD_ROLLS: [code: string, dice: string, total: string][] = [
+  ['STR', '3D6', '12'],
+  ['CON', '3D6', '12'],
+  ['DEX', '3D6', '12'],
+  ['APP', '3D6', '10'],
+  ['POW', '3D6', '12'],
+  ['SIZ', '2D6', '6'],
+  ['INT', '2D6', '6'],
+  ['EDU', '2D6', '4'],
+]
+
+/** One of each section 2.3 pool value. */
+const QUICK_FIRE_CHARACTERISTICS: [code: string, value: string][] = [
+  ['STR', '50'],
+  ['CON', '60'],
+  ['DEX', '50'],
+  ['APP', '40'],
+  ['POW', '60'],
+  ['SIZ', '50'],
+  ['INT', '80'],
+  ['EDU', '70'],
+]
+
+/** The Antiquarian's Credit Rating (minimum 30) and occupation skills with one of each section 18 value but the freed 40. */
+const QUICK_FIRE_SKILLS: [skill: string, value: string][] = [
+  ['Credit Rating', '30'],
+  ['Appraise', '70'],
+  ['Art/Craft (Painting)', '60'],
+  ['History', '60'],
+  ['Library Use', '50'],
+  ['Language (Other): Latin', '50'],
+  ['Charm', '50'],
+  ['Spot Hidden', '40'],
+  ['Firearms (Handgun)', '40'],
+]

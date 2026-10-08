@@ -26,6 +26,7 @@ public static class CampaignPlayInfrastructureServiceCollectionExtensions
         services.AddScoped<IInvestigatorRepository, EfInvestigatorRepository>();
         services.AddScoped<PlayerInvestigatorService>();
         services.AddScoped<KeeperInvestigatorService>();
+        services.AddSingleton<CreationRuleSets>();
         services.AddSingleton<CharacterSheetEvaluator>();
         services.AddSingleton<IRollSource, PlayerEnteredRollSource>();
         services.AddSingleton<IEraRuleData>(EmbeddedResourceEraRuleData.For1920s());

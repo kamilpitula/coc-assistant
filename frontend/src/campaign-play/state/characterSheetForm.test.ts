@@ -1,13 +1,22 @@
 import { describe, expect, it } from 'vitest'
 
+import { antiquarianInputs, rules, sheetView, skill, validInputs } from '@/campaign-play/test-support/characterSheetFixtures'
 import type { AgeBracket, CharacterSheetInputs, CharacterSheetView } from '@/campaign-play/types/CharacterSheet'
 
-import { characterSheetFormReducer, eduBeforeEachCheck, inputsForSave, inputsFromSheet } from './characterSheetForm'
+import {
+  characterSheetFormReducer,
+  clearsSkillInputs,
+  eduBeforeEachCheck,
+  hasCharacteristicInputs,
+  inputsForSave,
+  inputsFromSheet,
+} from './characterSheetForm'
 
 const characteristic = (assigned: number | null) => ({ assigned, value: assigned, hard: null, extreme: null })
 
 const view: CharacterSheetView = {
-  schemaVersion: 1,
+  ...sheetView(),
+  schemaVersion: 2,
   identity: { name: 'Harvey Walters', age: 45, gender: null, residence: 'Boston', birthplace: null },
   creationMethod: null,
   characteristics: {
@@ -26,6 +35,10 @@ const view: CharacterSheetView = {
     eduImprovementChecks: [{ check: 70, gain: 5, eduBefore: 50, eduAfter: 55 }],
   },
   luckRolls: [11],
+  occupation: null,
+  skills: [],
+  quickFire: { values: [], personalInterests: [] },
+  characteristicRolls: {},
   derived: {
     luck: null,
     hitPoints: null,
@@ -35,6 +48,10 @@ const view: CharacterSheetView = {
     movementRate: null,
     damageBonus: null,
     build: null,
+    occupationPoints: null,
+    personalInterestPoints: null,
+    creditRating: null,
+    wealth: null,
   },
   rollRecords: [],
 }
@@ -50,8 +67,8 @@ const bracket45: AgeBracket = {
 }
 
 describe('characterSheetForm', () => {
-  it('starts from the saved sheet, using Point buy as the only available creation method', () => {
-    const inputs = inputsFromSheet(view)
+  it('starts from the saved sheet, with its creation method', () => {
+    const inputs = inputsFromSheet({ ...view, creationMethod: 'PointBuy' })
 
     expect(inputs.identity).toEqual(view.identity)
     expect(inputs.creationMethod).toBe('PointBuy')
@@ -78,6 +95,135 @@ describe('characterSheetForm', () => {
     ])
   })
 
+  it('starts a Standard rolling sheet from its raw rolls, not the computed values', () => {
+    const inputs = inputsFromSheet({ ...view, creationMethod: 'StandardRolling', characteristicRolls: { STR: 12, SIZ: 6 } })
+
+    expect(inputs.characteristicRolls).toEqual({ STR: 12, SIZ: 6 })
+    expect(inputs.characteristics).toEqual({})
+  })
+
+  it('starts from the saved occupation, allocations, and Quick fire skills without the computed values', () => {
+    const saved = sheetView({ quickFire: { values: [{ ...skill('Law'), value: 70 }], personalInterests: [skill('Listen')] } })
+
+    const inputs = inputsFromSheet(saved)
+
+    expect(inputs.occupation).toEqual(antiquarianInputs)
+    expect(inputs.skills).toEqual([
+      { ...skill('Credit Rating'), occupationPoints: 30, personalInterestPoints: null },
+      { ...skill('Library Use'), occupationPoints: 50, personalInterestPoints: null },
+      { ...skill('Drive Auto'), occupationPoints: null, personalInterestPoints: 60 },
+    ])
+    expect(inputs.quickFire).toEqual({ ...saved.quickFire, extraSkill: null })
+  })
+
+  it('clears the characteristic values when the creation method changes', () => {
+    const switched = characterSheetFormReducer({ ...validInputs, characteristicRolls: { STR: 10 } }, { type: 'creationMethod', method: 'StandardRolling' })
+
+    expect(switched.creationMethod).toBe('StandardRolling')
+    expect(switched.characteristics).toEqual({})
+    expect(switched.characteristicRolls).toEqual({})
+    expect(switched.skills).toEqual(validInputs.skills)
+  })
+
+  it('clears the other method\'s skill inputs only when switching to or from Quick fire', () => {
+    const toQuickFire = characterSheetFormReducer(validInputs, { type: 'creationMethod', method: 'QuickFire' })
+    const back = characterSheetFormReducer(
+      { ...toQuickFire, quickFire: { values: [{ ...skill('Law'), value: 70 }], personalInterests: [] } },
+      { type: 'creationMethod', method: 'PointBuy' },
+    )
+
+    expect(toQuickFire.skills).toEqual([])
+    expect(back.quickFire).toEqual({ values: [], personalInterests: [], extraSkill: null })
+    expect(clearsSkillInputs(validInputs, 'QuickFire')).toBe(true)
+    expect(clearsSkillInputs(validInputs, 'StandardRolling')).toBe(false)
+  })
+
+  it('knows when characteristic values have been entered, so a switch needs confirmation', () => {
+    expect(hasCharacteristicInputs(validInputs)).toBe(true)
+    expect(hasCharacteristicInputs({ ...validInputs, characteristics: {}, characteristicRolls: { STR: null } })).toBe(false)
+  })
+
+  it('applies the occupation and skill changes, keeping later inputs when the occupation changes', () => {
+    let inputs: CharacterSheetInputs = { ...validInputs }
+    inputs = characterSheetFormReducer(inputs, { type: 'characteristicRoll', code: 'STR', value: 12 })
+    inputs = characterSheetFormReducer(inputs, { type: 'occupation', catalogId: 'police-detective', custom: null })
+    inputs = characterSheetFormReducer(inputs, { type: 'formulaCharacteristic', index: 1, value: 'DEX' })
+    inputs = characterSheetFormReducer(inputs, { type: 'skillChoice', slot: 5, picks: [skill('Persuade')] })
+    inputs = characterSheetFormReducer(inputs, { type: 'skillPoints', skill: skill('Library Use'), column: 'personalInterestPoints', value: 10 })
+    inputs = characterSheetFormReducer(inputs, { type: 'skillPoints', skill: skill('Drive Auto'), column: 'personalInterestPoints', value: null })
+    inputs = characterSheetFormReducer(inputs, { type: 'skillPoints', skill: skill('Firearms', 'Rifle/Shotgun'), column: 'occupationPoints', value: 20 })
+
+    expect(inputs.characteristicRolls).toEqual({ STR: 12 })
+    expect(inputs.occupation).toEqual({ ...antiquarianInputs, catalogId: 'police-detective', formulaCharacteristics: [null, 'DEX'], skillChoices: [
+      ...antiquarianInputs.skillChoices.slice(0, 5),
+      [skill('Persuade')],
+      ...antiquarianInputs.skillChoices.slice(6),
+    ] })
+    expect(inputs.skills).toEqual([
+      { ...skill('Credit Rating'), occupationPoints: 30, personalInterestPoints: null },
+      { ...skill('Library Use'), occupationPoints: 50, personalInterestPoints: 10 },
+      { ...skill('Firearms', 'Rifle/Shotgun'), occupationPoints: 20, personalInterestPoints: null },
+    ])
+  })
+
+  it('defines a custom occupation with empty skill pickers', () => {
+    const inputs = characterSheetFormReducer(validInputs, { type: 'occupation', catalogId: null, custom: { name: 'Bootlegger', formulaId: null, skills: [], creditRatingMin: null, creditRatingMax: null } })
+
+    expect(inputs.occupation?.catalogId).toBeNull()
+    expect(inputs.occupation?.custom?.name).toBe('Bootlegger')
+  })
+
+  it('assigns Quick fire values and personal interests', () => {
+    let inputs: CharacterSheetInputs = { ...validInputs, creationMethod: 'QuickFire', skills: [] }
+    inputs = characterSheetFormReducer(inputs, { type: 'quickFireValue', skill: skill('Law'), value: 70 })
+    inputs = characterSheetFormReducer(inputs, { type: 'quickFireValue', skill: skill('Credit Rating'), value: 30 })
+    inputs = characterSheetFormReducer(inputs, { type: 'quickFireValue', skill: skill('Law'), value: null })
+    inputs = characterSheetFormReducer(inputs, { type: 'quickFireInterest', skill: skill('Listen'), chosen: true })
+    inputs = characterSheetFormReducer(inputs, { type: 'quickFireInterest', skill: skill('Swim'), chosen: true })
+    inputs = characterSheetFormReducer(inputs, { type: 'quickFireInterest', skill: skill('Listen'), chosen: false })
+
+    expect(inputs.quickFire).toEqual({ values: [{ ...skill('Credit Rating'), value: 30 }], personalInterests: [skill('Swim')] })
+  })
+
+  it('section 18: stores the extra skill that takes the freed value, and clears it', () => {
+    const chosen = characterSheetFormReducer({ ...validInputs, creationMethod: 'QuickFire' }, { type: 'quickFireExtraSkill', skill: skill('Drive Auto') })
+    const cleared = characterSheetFormReducer(chosen, { type: 'quickFireExtraSkill', skill: null })
+
+    expect(chosen.quickFire.extraSkill).toEqual(skill('Drive Auto'))
+    expect(cleared.quickFire.extraSkill).toBeNull()
+  })
+
+  it('never saves inputs of another creation method', () => {
+    const mixed: CharacterSheetInputs = {
+      ...validInputs,
+      creationMethod: 'StandardRolling',
+      characteristicRolls: { STR: 12 },
+      quickFire: { values: [{ ...skill('Law'), value: 70 }], personalInterests: [] },
+    }
+
+    const saved = inputsForSave(mixed, 'occupation', null, rules)
+
+    expect(saved.characteristics).toEqual({})
+    expect(saved.characteristicRolls).toEqual({ STR: 12 })
+    expect(saved.quickFire).toEqual({ values: [], personalInterests: [], extraSkill: null })
+    expect(saved.skills).toEqual(validInputs.skills)
+  })
+
+  it('section 2.1: works out the EDU checks against the rolled EDU under Standard rolling', () => {
+    const inputs: CharacterSheetInputs = {
+      ...validInputs,
+      creationMethod: 'StandardRolling',
+      characteristics: {},
+      characteristicRolls: { EDU: 4 },
+      ageEffects: { deductions: {}, eduImprovementChecks: [{ check: 60, gain: 5 }, { check: 10, gain: 3 }] },
+    }
+
+    expect(inputsForSave(inputs, 'age', bracket45, rules).ageEffects.eduImprovementChecks).toEqual([
+      { check: 60, gain: 5 },
+      { check: 10, gain: null },
+    ])
+  })
+
   it('replaces everything with a reset', () => {
     const replacement = inputsFromSheet({ ...view, identity: { ...view.identity, name: 'Reset' } })
 
@@ -97,19 +243,19 @@ describe('characterSheetForm', () => {
   })
 
   it('keeps every input when saving from a step that does not own the age effects or Luck rows', () => {
-    const inputs: CharacterSheetInputs = { ...inputsFromSheet(view), luckRolls: [11, 13] }
+    const inputs: CharacterSheetInputs = { ...inputsFromSheet({ ...view, creationMethod: 'PointBuy' }), luckRolls: [11, 13] }
 
-    expect(inputsForSave(inputs, 'identity', bracket45)).toEqual(inputs)
+    expect(inputsForSave(inputs, 'identity', bracket45, rules)).toEqual(inputs)
   })
 
   it('drops the Luck row the Characteristics step does not show when saving from it', () => {
     const inputs: CharacterSheetInputs = { ...inputsFromSheet(view), luckRolls: [11, 13] }
 
-    expect(inputsForSave(inputs, 'characteristics', bracket45).luckRolls).toEqual([11])
+    expect(inputsForSave(inputs, 'characteristics', bracket45, rules).luckRolls).toEqual([11])
   })
 
   it('drops the age inputs the Age effects step does not show when saving from it', () => {
-    const base = inputsFromSheet(view)
+    const base = inputsFromSheet({ ...view, creationMethod: 'PointBuy' })
     const inputs: CharacterSheetInputs = {
       ...base,
       characteristics: { ...base.characteristics, EDU: 50 },
@@ -123,7 +269,7 @@ describe('characterSheetForm', () => {
       },
     }
 
-    expect(inputsForSave(inputs, 'age', bracket45).ageEffects).toEqual({
+    expect(inputsForSave(inputs, 'age', bracket45, rules).ageEffects).toEqual({
       deductions: { STR: 3 },
       eduImprovementChecks: [
         { check: 30, gain: null },

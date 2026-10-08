@@ -23,6 +23,10 @@ export const Calculated: Story = {
       movementRate: 8,
       damageBonus: '0',
       build: 0,
+      occupationPoints: null,
+      personalInterestPoints: null,
+      creditRating: null,
+      wealth: null,
     },
   },
 }
@@ -39,6 +43,10 @@ export const NotYetCalculatedWithProblems: Story = {
       movementRate: null,
       damageBonus: null,
       build: null,
+      occupationPoints: null,
+      personalInterestPoints: null,
+      creditRating: null,
+      wealth: null,
     },
   },
 }

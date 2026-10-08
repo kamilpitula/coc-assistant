@@ -1,0 +1,154 @@
+{
+  "catalog": "WealthTable",
+  "era": "1920s",
+  "schemaVersion": 1,
+  "currency": "USD",
+  "verificationStatus": "1920s table moved unchanged from section 11 on 2026-10-07; awaiting project owner verification; pageReference values still to be added",
+  "conventions": "creditRatingMinimum null means the band has no lower bound (the published '0 or less' row). An amount with orMore true is a lower bound (the published '$5M+'). kind 'none' means no assets.",
+  "entries": [
+    {
+      "id": "credit-rating-0-or-less",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": null,
+      "data": {
+        "creditRatingMinimum": null,
+        "creditRatingMaximum": 0,
+        "cash": {
+          "kind": "fixed",
+          "amount": 0.5
+        },
+        "assets": {
+          "kind": "none"
+        },
+        "spendingLevel": {
+          "kind": "fixed",
+          "amount": 0.5
+        }
+      }
+    },
+    {
+      "id": "credit-rating-1-9",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": null,
+      "data": {
+        "creditRatingMinimum": 1,
+        "creditRatingMaximum": 9,
+        "cash": {
+          "kind": "perCreditRating",
+          "multiplier": 1
+        },
+        "assets": {
+          "kind": "perCreditRating",
+          "multiplier": 10
+        },
+        "spendingLevel": {
+          "kind": "fixed",
+          "amount": 2
+        }
+      }
+    },
+    {
+      "id": "credit-rating-10-49",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": null,
+      "data": {
+        "creditRatingMinimum": 10,
+        "creditRatingMaximum": 49,
+        "cash": {
+          "kind": "perCreditRating",
+          "multiplier": 2
+        },
+        "assets": {
+          "kind": "perCreditRating",
+          "multiplier": 50
+        },
+        "spendingLevel": {
+          "kind": "fixed",
+          "amount": 10
+        }
+      }
+    },
+    {
+      "id": "credit-rating-50-89",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": null,
+      "data": {
+        "creditRatingMinimum": 50,
+        "creditRatingMaximum": 89,
+        "cash": {
+          "kind": "perCreditRating",
+          "multiplier": 5
+        },
+        "assets": {
+          "kind": "perCreditRating",
+          "multiplier": 500
+        },
+        "spendingLevel": {
+          "kind": "fixed",
+          "amount": 50
+        }
+      }
+    },
+    {
+      "id": "credit-rating-90-98",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": null,
+      "data": {
+        "creditRatingMinimum": 90,
+        "creditRatingMaximum": 98,
+        "cash": {
+          "kind": "perCreditRating",
+          "multiplier": 20
+        },
+        "assets": {
+          "kind": "perCreditRating",
+          "multiplier": 2000
+        },
+        "spendingLevel": {
+          "kind": "fixed",
+          "amount": 250
+        }
+      }
+    },
+    {
+      "id": "credit-rating-99",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": "1920s",
+      "lastVerified": null,
+      "data": {
+        "creditRatingMinimum": 99,
+        "creditRatingMaximum": 99,
+        "cash": {
+          "kind": "fixed",
+          "amount": 50000
+        },
+        "assets": {
+          "kind": "fixed",
+          "amount": 5000000,
+          "orMore": true
+        },
+        "spendingLevel": {
+          "kind": "fixed",
+          "amount": 5000
+        }
+      }
+    }
+  ]
+}

@@ -18,6 +18,31 @@ describe('visibleErrors', () => {
     expect(merged).toEqual([ageOutOfRange, gainRequired])
   })
 
+  it.each([
+    'OccupationNotAvailable',
+    'OccupationFormulaChoiceRequired',
+    'OccupationSkillChoiceRequired',
+    'OccupationSkillChoiceNotAllowed',
+    'SpecializationRequired',
+    'SpecializationNotAllowed',
+    'UnknownSkill',
+    'OccupationPointsOutsideOccupationSkills',
+    'OccupationPointsOverspent',
+    'CreditRatingOutOfRange',
+    'PersonalInterestPointsOverspent',
+    'QuickFireSkillAssignmentMismatch',
+    'QuickFireSkillNotOccupationSkill',
+    'QuickFireCreditRatingValue',
+    'QuickFirePersonalInterestNotAllowed',
+    'QuickFireExtraSkillRequired',
+    'QuickFireExtraSkillNotAllowed',
+    'QuickFireExtraSkillNotNeeded',
+  ])('keeps the server-only %s result after the client checks run', (code) => {
+    const serverOnly = problem(code, 'occupationPoints', 'From the server.')
+
+    expect(mergeClientAndServerErrors([], [serverOnly])).toEqual([serverOnly])
+  })
+
   it('lists the errors (not warnings) that belong to a step', () => {
     expect(errorsOfStep([nameRequired, totalMismatch, intWarning, gainRequired], 'characteristics')).toEqual([totalMismatch])
   })

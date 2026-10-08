@@ -16,3 +16,5 @@ export const Entered: Story = { args: { value: 11 } }
 export const Empty: Story = { args: { value: null } }
 
 export const OutOfRange: Story = { args: { value: 19, error: 'Enter a 3D6 result between 3 and 18.' } }
+
+export const WithBonus: Story = { args: { field: 'characteristicRolls.SIZ', rollLabel: 'SIZ', dice: '2D6', bonus: 6, value: 7 } }

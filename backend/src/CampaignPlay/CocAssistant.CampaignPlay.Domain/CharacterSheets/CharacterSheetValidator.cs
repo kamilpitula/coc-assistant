@@ -10,13 +10,16 @@ public static class CharacterSheetValidator
     public static IReadOnlyList<ValidationError> Validate(
         CharacterSheet sheet,
         AllowedCreationMethods allowedCreationMethods,
-        CharacterSheetComputation computation) =>
+        CharacterSheetComputation computation,
+        CreationRuleSet rules) =>
         IdentityProblems(sheet.Identity)
             .Concat(CreationMethodProblems(sheet.CreationMethod, allowedCreationMethods))
-            .Concat(CharacteristicPresenceProblems(sheet.AssignedCharacteristics))
-            .Concat(sheet.CreationMethod == CreationMethod.PointBuy ? PointBuyProblems(sheet.AssignedCharacteristics) : [])
+            .Concat(CharacteristicProblems(sheet))
             .Concat(AgeEffectsValidation.LuckProblems(sheet, computation.Bracket))
             .Concat(AgeDependentProblems(sheet, computation))
+            .Concat(OccupationValidation.Problems(sheet, computation.Occupation, rules))
+            .Concat(SkillProblems(sheet, computation, rules))
+            .Concat(SkillValueWarnings(computation))
             .ToList();
 
     // Skipped while the age is missing or out of range: the age error already blocks submission.
@@ -57,11 +60,43 @@ public static class CharacterSheetValidator
         }
     }
 
-    // Section 15: exactly eight core characteristics exist.
+    // Section 15: exactly eight core characteristics, valid under the selected Creation Method (sections 2.1 to 2.3).
+    private static IEnumerable<ValidationError> CharacteristicProblems(CharacterSheet sheet) =>
+        sheet.CreationMethod switch
+        {
+            CreationMethod.StandardRolling => StandardRollingProblems(sheet.CharacteristicRolls),
+            CreationMethod.PointBuy => CharacteristicPresenceProblems(sheet.AssignedCharacteristics).Concat(PointBuyProblems(sheet.AssignedCharacteristics)),
+            CreationMethod.QuickFire => CharacteristicPresenceProblems(sheet.AssignedCharacteristics)
+                .Concat(QuickFireValidation.CharacteristicProblems(sheet.AssignedCharacteristics)),
+            _ => CharacteristicPresenceProblems(sheet.AssignedCharacteristics),
+        };
+
     private static IEnumerable<ValidationError> CharacteristicPresenceProblems(CharacteristicValues assigned) =>
         CharacteristicCodes.All
             .Where(characteristic => assigned[characteristic] is null)
             .Select(ValidationErrors.CharacteristicRequired);
+
+    // Section 2.1: a raw total for every characteristic that its dice can produce.
+    private static IEnumerable<ValidationError> StandardRollingProblems(CharacteristicValues rolls) =>
+        CharacteristicCodes.All.SelectMany(characteristic => rolls[characteristic] switch
+        {
+            null => [ValidationErrors.CharacteristicRollRequired(characteristic)],
+            { } roll when !StandardRolling.FormulaFor(characteristic).Dice.CanProduce(roll) =>
+                [ValidationErrors.DiceResultOutOfRange(ValidationErrors.CharacteristicRollField(characteristic), StandardRolling.FormulaFor(characteristic).Dice, roll)],
+            _ => Array.Empty<ValidationError>(),
+        });
+
+    // Section 2.3 and 18: Quick Fire assigns skill values; the other methods spend occupation and personal interest points.
+    private static IEnumerable<ValidationError> SkillProblems(CharacterSheet sheet, CharacterSheetComputation computation, CreationRuleSet rules) =>
+        sheet.CreationMethod == CreationMethod.QuickFire
+            ? QuickFireValidation.SkillProblems(sheet, computation, rules)
+            : SkillAllocationValidation.Problems(sheet, computation, rules);
+
+    // App-level advice (specs/character-sheet/ux.md section 12): any skill above the threshold warns.
+    private static IEnumerable<ValidationError> SkillValueWarnings(CharacterSheetComputation computation) =>
+        computation.Skills
+            .Where(row => row.Value > SkillValueWarning.Threshold)
+            .Select(row => ValidationErrors.SkillAboveWarningThreshold(row.Skill, row.Value!.Value));
 
     // Section 2.2: bounds per value, the exact total, and the INT and SIZ recommendation.
     private static IEnumerable<ValidationError> PointBuyProblems(CharacteristicValues assigned)

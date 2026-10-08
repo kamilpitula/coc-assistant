@@ -10,10 +10,15 @@ public class CharacterSheetValidatorTests
     private static readonly AllowedCreationMethods PointBuyAllowed = AllowedCreationMethods.Create([CreationMethod.PointBuy]);
 
     private static readonly ICreationRuleData RuleData = new EmbeddedResourceCreationRuleData();
-    private static readonly CharacterSheetCalculator Calculator = new(RuleData.AgeRules, RuleData.CharacteristicsRules);
+    private static readonly CharacterSheetCalculator Calculator = TestRules.Calculator;
+
+    // Changing characteristics changes the occupation and personal interest budgets (sections 7.1 and 8); those
+    // results are covered by CreationValidationTests, so these identity, Point Buy, and age tests leave them out.
+    private static readonly string[] BudgetCodes =
+        ["OccupationPointsOverspent", "OccupationPointsUnspent", "PersonalInterestPointsOverspent", "PersonalInterestPointsUnspent"];
 
     private static IReadOnlyList<ValidationError> Validate(CharacterSheet sheet, AllowedCreationMethods? allowed = null) =>
-        CharacterSheetValidator.Validate(sheet, allowed ?? PointBuyAllowed, Calculator.Calculate(sheet));
+        TestRules.Validate(sheet, allowed ?? PointBuyAllowed).Where(error => !BudgetCodes.Contains(error.Code)).ToList();
 
     private static CharacterSheetBuilder APointBuySheet() => new();
 

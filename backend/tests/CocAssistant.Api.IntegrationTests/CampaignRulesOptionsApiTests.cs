@@ -174,6 +174,38 @@ public class CampaignRulesOptionsApiTests : IClassFixture<IdentityApiFactory>, I
     }
 
     [Fact]
+    public async Task Given_a_campaign_player_When_reading_skills_Then_the_1920s_skills_specializations_and_suggestions_are_returned()
+    {
+        var client = _factory.CreateClient();
+        var campaign = await CreateCampaignAsync(client, "rules-keeper-11");
+        await JoinAsPlayerAsync(client, campaign.Id, "rules-keeper-11", "rules-player-11");
+
+        var response = await client.SendAsync(BuildRequest(HttpMethod.Get, $"/api/campaigns/{campaign.Id}/rules/skills", "rules-player-11"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var skills = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = skills.RootElement;
+        Assert.Equal("1920s", root.GetProperty("era").GetString());
+        var dodge = root.GetProperty("skills").EnumerateArray().Single(skill => skill.GetProperty("skill").GetString() == "Dodge");
+        Assert.Equal(("characteristic", "DEX", 2), (dodge.GetProperty("base").GetProperty("kind").GetString(), dodge.GetProperty("base").GetProperty("characteristic").GetString(), dodge.GetProperty("base").GetProperty("divisor").GetInt32()));
+        var firearms = root.GetProperty("closedFamilies").EnumerateArray().Single(family => family.GetProperty("skill").GetString() == "Firearms");
+        Assert.Contains(firearms.GetProperty("specializations").EnumerateArray(), specialization => specialization.GetProperty("specialization").GetString() == "Bow");
+        Assert.Contains("Art/Craft", root.GetProperty("openFamilies").EnumerateArray().Select(family => family.GetString()));
+        Assert.Contains("Photography", root.GetProperty("specializationSuggestions").GetProperty("Art/Craft").EnumerateArray().Select(suggestion => suggestion.GetString()));
+    }
+
+    [Fact]
+    public async Task Given_a_non_member_When_reading_skills_Then_the_campaign_is_not_found()
+    {
+        var client = _factory.CreateClient();
+        var campaign = await CreateCampaignAsync(client, "rules-keeper-12");
+
+        var response = await client.SendAsync(BuildRequest(HttpMethod.Get, $"/api/campaigns/{campaign.Id}/rules/skills", "rules-stranger-12"));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public void Given_the_assembled_application_When_resolving_rule_data_Then_every_supported_era_has_rule_data()
     {
         using var scope = _factory.Services.CreateScope();

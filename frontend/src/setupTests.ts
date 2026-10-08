@@ -8,3 +8,9 @@ class NoopResizeObserver implements ResizeObserver {
 }
 
 globalThis.ResizeObserver ??= NoopResizeObserver
+
+// jsdom lacks the pointer-capture and scrolling APIs Radix Select calls when it opens.
+Element.prototype.hasPointerCapture ??= () => false
+Element.prototype.setPointerCapture ??= () => {}
+Element.prototype.releasePointerCapture ??= () => {}
+Element.prototype.scrollIntoView ??= () => {}

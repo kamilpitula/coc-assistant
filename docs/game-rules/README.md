@@ -13,6 +13,8 @@ instead of restating rules.
 | [project_ruleset.md](project_ruleset.md) | Supported Eras and Creation Methods, disabled optional rules, and project house rules |
 | [catalogs/occupations.1920s.json](catalogs/occupations.1920s.json) | 1920s Occupation catalog (section 7 data), with provenance per section 20. Verified 2026-10-02; page references still to be added |
 | [catalogs/skills.1920s.json](catalogs/skills.1920s.json) | 1920s skill bases (section 6.1 data), with provenance per section 20. Moved unchanged from section 6.1 and verified 2026-10-02; page references still to be added |
+| [catalogs/skill-specializations.json](catalogs/skill-specializations.json) | Fighting and Firearms specialization bases (section 6.2 data) and the specialized skill families, with provenance per section 20. Moved unchanged from section 6.2 on 2026-10-07; awaiting project owner verification; page references still to be added |
+| [catalogs/wealth.1920s.json](catalogs/wealth.1920s.json) | 1920s wealth table (section 11 data), with provenance per section 20. Moved unchanged from section 11 on 2026-10-07; awaiting project owner verification; page references still to be added |
 | [catalogs/age-rules.json](catalogs/age-rules.json) | Creation age brackets (section 3.1 data), with provenance per section 20. Moved unchanged from section 3.1 on 2026-10-02; awaiting project owner verification; page references still to be added |
 | [catalogs/characteristics-rules.json](catalogs/characteristics-rules.json) | Damage Bonus and Build table (section 5.8 data), with provenance per section 20. Moved unchanged from section 5.8 on 2026-10-02; awaiting project owner verification; page references still to be added |
 

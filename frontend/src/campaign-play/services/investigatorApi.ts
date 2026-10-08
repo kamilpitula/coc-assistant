@@ -52,6 +52,8 @@ const characteristicViewSchema = z.object({
 
 const characteristicInputsSchema = z.partialRecord(characteristicCodeSchema, nullableNumber)
 
+export const occupationPointTermSchema = z.object({ characteristics: z.array(z.string()), multiplier: z.number().int() })
+
 const identitySchema = z.object({
   name: z.string().nullable(),
   age: nullableNumber,
@@ -60,11 +62,55 @@ const identitySchema = z.object({
   birthplace: z.string().nullable(),
 })
 
+const skillReferenceSchema = z.object({ skill: z.string(), specialization: z.string().nullable() })
+
+const pointBudgetSchema = z.object({ budget: z.number().int(), spent: z.number().int(), left: z.number().int() }).nullable()
+
+const moneySchema = z.object({ amount: z.number(), orMore: z.boolean() })
+
+const occupationViewSchema = z.object({
+  catalogId: z.string().nullable(),
+  custom: z
+    .object({
+      name: z.string().nullable(),
+      formulaId: z.string().nullable(),
+      skills: z.array(skillReferenceSchema.nullable()),
+      creditRatingMin: nullableNumber,
+      creditRatingMax: nullableNumber,
+    })
+    .nullable(),
+  formulaCharacteristics: z.array(z.string().nullable()),
+  skillChoices: z.array(z.array(skillReferenceSchema)),
+  name: z.string().nullable(),
+  creditRatingMin: nullableNumber,
+  creditRatingMax: nullableNumber,
+  isCustom: z.boolean(),
+  formulaId: z.string().nullable(),
+  quickFireCreditRating: z.object({ value: z.number().int(), freedValue: nullableNumber }).nullable(),
+})
+
+const skillRowSchema = skillReferenceSchema.extend({
+  base: nullableNumber,
+  occupationPoints: nullableNumber,
+  personalInterestPoints: nullableNumber,
+  value: nullableNumber,
+  hard: nullableNumber,
+  extreme: nullableNumber,
+  isOccupationSkill: z.boolean(),
+})
+
+const quickFireSchema = z.object({
+  values: z.array(skillReferenceSchema.extend({ value: nullableNumber })),
+  personalInterests: z.array(skillReferenceSchema),
+  extraSkill: skillReferenceSchema.nullable(),
+})
+
 const characterSheetViewSchema = z.object({
   schemaVersion: z.number().int(),
   identity: identitySchema,
   creationMethod: creationMethodSchema.nullable(),
   characteristics: z.record(characteristicCodeSchema, characteristicViewSchema),
+  characteristicRolls: characteristicInputsSchema,
   ageEffects: z.object({
     bracket: z
       .object({
@@ -83,6 +129,9 @@ const characterSheetViewSchema = z.object({
     ),
   }),
   luckRolls: z.array(nullableNumber),
+  occupation: occupationViewSchema.nullable(),
+  skills: z.array(skillRowSchema),
+  quickFire: quickFireSchema,
   derived: z.object({
     luck: nullableNumber,
     hitPoints: nullableNumber,
@@ -92,6 +141,12 @@ const characterSheetViewSchema = z.object({
     movementRate: nullableNumber,
     damageBonus: z.string().nullable(),
     build: nullableNumber,
+    occupationPoints: pointBudgetSchema,
+    personalInterestPoints: pointBudgetSchema,
+    creditRating: nullableNumber,
+    wealth: z
+      .object({ currency: z.string(), spendingLevel: moneySchema, cash: moneySchema, assets: moneySchema.nullable() })
+      .nullable(),
   }),
   rollRecords: z.array(
     z.object({ purpose: z.string(), dice: z.string(), result: z.number().int(), source: z.string() }),
@@ -111,6 +166,21 @@ const rulesSchema = z.object({
   eduImprovementGainDice: z.string(),
   eduMaximum: z.number().int(),
   luckMultiplier: z.number().int(),
+  standardRolling: z.record(
+    characteristicCodeSchema,
+    z.object({ dice: z.string(), bonus: z.number().int(), multiplier: z.number().int() }),
+  ),
+  quickFireCharacteristicValues: z.array(z.number().int()),
+  quickFireSkillValues: z.array(z.number().int()),
+  quickFirePersonalInterestBonus: z.number().int(),
+  quickFirePersonalInterestCount: z.number().int(),
+  occupationPointFormulas: z.array(z.object({ id: z.string(), terms: z.array(occupationPointTermSchema) })),
+  customOccupationSkillCount: z.number().int(),
+  creditRatingMinimum: z.number().int(),
+  creditRatingMaximum: z.number().int(),
+  skillValueWarningThreshold: z.number().int(),
+  creditRatingSkill: z.string(),
+  cthulhuMythosSkill: z.string(),
 })
 
 const myCharacterSheetSchema = z.object({

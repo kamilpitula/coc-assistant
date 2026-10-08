@@ -76,16 +76,15 @@ public class PlayerInvestigatorServiceTests : IDisposable
         Assert.Single(await _scenario.Fixture.CreateInvestigatorRepository(readContext).ListForCampaignAsync(campaignId, CancellationToken.None));
     }
 
-    // Scenario: Player cannot create an Investigator without a supported Creation Method
+    // PBI-CP-009 supports every Creation Method, so a Campaign without Point Buy no longer blocks creation.
     [Fact]
-    public async Task Given_the_campaign_allows_no_supported_creation_method_When_creating_Then_creation_methods_are_unavailable()
+    public async Task Given_the_campaign_allows_only_standard_rolling_and_quick_fire_When_creating_Then_the_draft_is_created()
     {
         var campaignId = await CampaignWithPlayerAsync(AllowedCreationMethods.Create([CreationMethod.StandardRolling, CreationMethod.QuickFire]));
 
         var result = await AsPlayerAsync(service => service.CreateAsync(campaignId, Player, CancellationToken.None));
 
-        Assert.Equal(InvestigatorCommandOutcome.CreationMethodsUnavailable, result.Outcome);
-        Assert.Null(await AsPlayerAsync(service => service.GetMineAsync(campaignId, Player, CancellationToken.None)));
+        Assert.Equal(InvestigatorCommandOutcome.Succeeded, result.Outcome);
     }
 
     // Scenario: Player cannot read another Player's Investigator

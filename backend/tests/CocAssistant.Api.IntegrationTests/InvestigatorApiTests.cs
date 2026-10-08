@@ -38,24 +38,7 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         return document.RootElement.Clone();
     }
 
-    private static object ValidSheet(string name = "Harvey Walters") => new
-    {
-        identity = new { name, age = 25, gender = (string?)null, residence = "Boston", birthplace = (string?)null },
-        creationMethod = "PointBuy",
-        characteristics = new Dictionary<string, int?>
-        {
-            ["STR"] = 60,
-            ["CON"] = 60,
-            ["DEX"] = 60,
-            ["APP"] = 50,
-            ["POW"] = 60,
-            ["SIZ"] = 60,
-            ["INT"] = 60,
-            ["EDU"] = 50,
-        },
-        ageEffects = new { deductions = new Dictionary<string, int?>(), eduImprovementChecks = new[] { new { check = (int?)30, gain = (int?)null } } },
-        luckRolls = new int?[] { 11 },
-    };
+    private static object ValidSheet(string name = "Harvey Walters") => ValidCharacterSheet(name);
 
     private async Task<Guid> CreateDraftAsync(string playerOid = Player)
     {
@@ -126,17 +109,16 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Post, Investigators, oid)).StatusCode);
     }
 
-    // Scenario: Player cannot create an Investigator without a supported Creation Method
+    // PBI-CP-009 supports every Creation Method, so a Campaign allowing only Quick Fire can create Investigators.
     [Fact]
-    public async Task Given_a_campaign_without_a_supported_creation_method_When_creating_an_investigator_Then_it_is_a_conflict()
+    public async Task Given_a_campaign_allowing_only_quick_fire_When_creating_an_investigator_Then_the_draft_is_created()
     {
         (await SendAsync(HttpMethod.Put, $"/api/campaigns/{_campaignId}/allowed-creation-methods", Keeper, new { allowedCreationMethods = new[] { "QuickFire" } }))
             .EnsureSuccessStatusCode();
 
         var response = await SendAsync(HttpMethod.Post, Investigators, Player);
 
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Get, $"{Investigators}/mine", Player)).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
     [Fact]
@@ -152,7 +134,7 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         Assert.Equal("Draft", body.GetProperty("status").GetString());
         Assert.Equal(0, body.GetProperty("validationErrors").GetArrayLength());
         var sheet = body.GetProperty("characterSheet");
-        Assert.Equal(1, sheet.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(3, sheet.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("Boston", sheet.GetProperty("identity").GetProperty("residence").GetString());
         var strength = sheet.GetProperty("characteristics").GetProperty("STR");
         Assert.Equal((60, 60, 30, 12), (strength.GetProperty("assigned").GetInt32(), strength.GetProperty("value").GetInt32(), strength.GetProperty("hard").GetInt32(), strength.GetProperty("extreme").GetInt32()));
@@ -194,13 +176,135 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
     }
 
     [Fact]
-    public async Task Given_a_creation_method_this_version_does_not_support_When_saving_the_sheet_Then_it_is_a_bad_request()
+    public async Task Given_an_unknown_creation_method_When_saving_the_sheet_Then_it_is_a_bad_request()
     {
         await CreateDraftAsync();
-        var body = new { identity = new { name = "Harvey" }, creationMethod = "QuickFire", characteristics = new Dictionary<string, int?>() };
+        var body = new { identity = new { name = "Harvey" }, creationMethod = "Freeform", characteristics = new Dictionary<string, int?>() };
 
         Assert.Equal(HttpStatusCode.BadRequest, (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body)).StatusCode);
     }
+
+    // Scenario: Standard Rolling records every Player-entered roll
+    [Fact]
+    public async Task Given_standard_rolling_rolls_When_saving_the_sheet_Then_each_roll_is_a_player_entered_record_and_values_are_computed_from_them()
+    {
+        await CreateDraftAsync();
+        var body = new
+        {
+            identity = new { name = "Harvey Walters", age = 25 },
+            creationMethod = "StandardRolling",
+            characteristicRolls = new Dictionary<string, int?> { ["STR"] = 12, ["CON"] = 12, ["DEX"] = 12, ["APP"] = 10, ["POW"] = 12, ["SIZ"] = 6, ["INT"] = 6, ["EDU"] = 4 },
+            ageEffects = new { deductions = new Dictionary<string, int?>(), eduImprovementChecks = new[] { new { check = (int?)30, gain = (int?)null } } },
+            luckRolls = new int?[] { 11 },
+            occupation = ValidAntiquarian,
+            skills = ValidSkillAllocations,
+        };
+
+        var response = await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await JsonAsync(response);
+        Assert.Equal(0, json.GetProperty("validationErrors").GetArrayLength());
+        var sheet = json.GetProperty("characterSheet");
+        Assert.Equal(6, sheet.GetProperty("characteristicRolls").GetProperty("SIZ").GetInt32());
+        Assert.Equal(60, sheet.GetProperty("characteristics").GetProperty("SIZ").GetProperty("assigned").GetInt32());
+        var records = sheet.GetProperty("rollRecords").EnumerateArray().ToList();
+        Assert.Equal(10, records.Count);
+        Assert.All(records, record => Assert.Equal("PlayerEntered", record.GetProperty("source").GetString()));
+        var size = records.Single(record => record.GetProperty("purpose").GetString() == "Characteristic:SIZ");
+        Assert.Equal(("2D6", 6), (size.GetProperty("dice").GetString(), size.GetProperty("result").GetInt32()));
+    }
+
+    [Fact]
+    public async Task Given_a_valid_quick_fire_sheet_When_saving_it_Then_it_has_no_errors_and_skills_take_their_quick_fire_values()
+    {
+        await CreateDraftAsync();
+        var body = new
+        {
+            identity = new { name = "Harvey Walters", age = 25 },
+            creationMethod = "QuickFire",
+            characteristics = new Dictionary<string, int?> { ["STR"] = 50, ["CON"] = 60, ["DEX"] = 50, ["APP"] = 40, ["POW"] = 60, ["SIZ"] = 50, ["INT"] = 80, ["EDU"] = 70 },
+            ageEffects = new { deductions = new Dictionary<string, int?>(), eduImprovementChecks = new[] { new { check = (int?)30, gain = (int?)null } } },
+            luckRolls = new int?[] { 11 },
+            occupation = ValidAntiquarian,
+            quickFire = new
+            {
+                values = new object[]
+                {
+                    new { skill = "Credit Rating", value = 30 }, new { skill = "Appraise", value = 70 },
+                    new { skill = "Art/Craft", specialization = "Painting", value = 60 }, new { skill = "History", value = 60 },
+                    new { skill = "Library Use", value = 50 }, new { skill = "Language (Other)", specialization = "Latin", value = 50 },
+                    new { skill = "Charm", value = 50 }, new { skill = "Spot Hidden", value = 40 },
+                    new { skill = "Firearms", specialization = "Handgun", value = 40 },
+                },
+                extraSkill = new { skill = "Drive Auto" },
+                personalInterests = new[] { new { skill = "Listen" }, new { skill = "Stealth" }, new { skill = "Psychology" }, new { skill = "Persuade" } },
+            },
+        };
+
+        var response = await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await JsonAsync(response);
+        Assert.Equal(0, json.GetProperty("validationErrors").GetArrayLength());
+        var sheet = json.GetProperty("characterSheet");
+        Assert.Equal(JsonValueKind.Null, sheet.GetProperty("derived").GetProperty("occupationPoints").ValueKind);
+        Assert.Equal(30, sheet.GetProperty("derived").GetProperty("creditRating").GetInt32());
+        var listen = sheet.GetProperty("skills").EnumerateArray().Single(row => row.GetProperty("skill").GetString() == "Listen");
+        Assert.Equal(40, listen.GetProperty("value").GetInt32());
+        Assert.Equal(4, sheet.GetProperty("quickFire").GetProperty("personalInterests").GetArrayLength());
+        Assert.Equal("Drive Auto", sheet.GetProperty("quickFire").GetProperty("extraSkill").GetProperty("skill").GetString());
+        var driveAuto = sheet.GetProperty("skills").EnumerateArray().Single(row => row.GetProperty("skill").GetString() == "Drive Auto");
+        Assert.Equal((40, true), (driveAuto.GetProperty("value").GetInt32(), driveAuto.GetProperty("isOccupationSkill").GetBoolean()));
+        var creditRating = sheet.GetProperty("occupation").GetProperty("quickFireCreditRating");
+        Assert.Equal((30, 40), (creditRating.GetProperty("value").GetInt32(), creditRating.GetProperty("freedValue").GetInt32()));
+    }
+
+    [Theory]
+    [InlineData("StandardRolling")]
+    [InlineData("QuickFire")]
+    public async Task Given_inputs_of_another_creation_method_When_saving_the_sheet_Then_it_is_a_bad_request(string creationMethod)
+    {
+        await CreateDraftAsync();
+        var body = new
+        {
+            identity = new { name = "Harvey" },
+            creationMethod,
+            characteristics = new Dictionary<string, int?> { ["STR"] = 50 },
+            characteristicRolls = new Dictionary<string, int?> { ["STR"] = 10 },
+            skills = new[] { new { skill = "Listen", personalInterestPoints = 10 } },
+        };
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_a_valid_sheet_When_saving_it_Then_the_occupation_budgets_skills_credit_rating_wealth_and_rules_are_returned()
+    {
+        await CreateDraftAsync();
+
+        var json = await JsonAsync(await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, ValidSheet()));
+
+        var sheet = json.GetProperty("characterSheet");
+        Assert.Equal("Antiquarian", sheet.GetProperty("occupation").GetProperty("name").GetString());
+        Assert.Equal(30, sheet.GetProperty("occupation").GetProperty("creditRatingMin").GetInt32());
+        var derived = sheet.GetProperty("derived");
+        Assert.Equal((200, 200, 0), Budget(derived.GetProperty("occupationPoints")));
+        Assert.Equal((120, 120, 0), Budget(derived.GetProperty("personalInterestPoints")));
+        Assert.Equal(30, derived.GetProperty("creditRating").GetInt32());
+        Assert.Equal("USD", derived.GetProperty("wealth").GetProperty("currency").GetString());
+        Assert.Equal(60m, derived.GetProperty("wealth").GetProperty("cash").GetProperty("amount").GetDecimal());
+        var libraryUse = sheet.GetProperty("skills").EnumerateArray().Single(row => row.GetProperty("skill").GetString() == "Library Use");
+        Assert.Equal((20, 50, 70, true), (libraryUse.GetProperty("base").GetInt32(), libraryUse.GetProperty("occupationPoints").GetInt32(), libraryUse.GetProperty("value").GetInt32(), libraryUse.GetProperty("isOccupationSkill").GetBoolean()));
+        var rules = json.GetProperty("rules");
+        Assert.Equal("2D6", rules.GetProperty("standardRolling").GetProperty("EDU").GetProperty("dice").GetString());
+        Assert.Equal(9, rules.GetProperty("quickFireSkillValues").GetArrayLength());
+        Assert.Equal("EDUx4", rules.GetProperty("occupationPointFormulas")[0].GetProperty("id").GetString());
+        Assert.Equal("Cthulhu Mythos", rules.GetProperty("cthulhuMythosSkill").GetString());
+    }
+
+    private static (int Budget, int Spent, int Left) Budget(JsonElement budget) =>
+        (budget.GetProperty("budget").GetInt32(), budget.GetProperty("spent").GetInt32(), budget.GetProperty("left").GetInt32());
 
     [Fact]
     public async Task Given_a_draft_with_errors_When_submitting_Then_422_lists_the_validation_errors_and_it_stays_a_draft()

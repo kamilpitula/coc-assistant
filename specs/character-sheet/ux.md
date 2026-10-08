@@ -118,7 +118,7 @@ The existing `InviteManagement` stays as is. Two sections are added below it, ea
 
 ### 4.2 Summary rail (`investigator-summary`)
 - `aside` with the heading "Your Investigator".
-- A definition list showing HP, MP, SAN, Luck, MOV, Build, Damage Bonus, Dodge, then "Occupation points left" and "Personal interest points left" once those budgets exist. Values that can't be calculated yet show an em dash with the visually hidden text "not yet calculated".
+- A definition list showing HP, MP, SAN, Luck, MOV, Build, Damage Bonus, Dodge, then "Occupation points left" and "Personal interest points left" once those budgets exist. With Quick fire there are no budgets; the rail shows "Skill values left" (the count of Quick fire skill values not yet assigned) and "Personal interests left" instead. Values that can't be calculated yet show an em dash with the visually hidden text "not yet calculated".
 - The last line shows "No problems", or "2 problems" as a link to the error summary.
 - Below 1024px the rail becomes a Collapsible button "Summary: HP 12, SAN 65, 120 points left" placed above the step actions, collapsed by default.
 - Announcements: a single polite live region (`role="status"`) announces only budget changes, after the field loses focus, for example "120 occupation points left". Other rail values are not announced.
@@ -150,12 +150,14 @@ The existing `InviteManagement` stays as is. Two sections are added below it, ea
 ### 5.3 Resume
 `/investigator` opens the first step that is not completed. If every step is completed, it opens `sheet`. Steps after the first incomplete one are Not started and can't be opened.
 
+A step is completed when it is started and has no errors. A step is started once the Player has entered any of its inputs. Personal interests has no required input (unspent points only warn), so it also counts as started once Occupation skills is completed (decided 2026-10-07).
+
 ### 5.4 Changing an earlier step
 Later inputs are kept. When the Player saves, any later step whose inputs became invalid switches to "Needs attention" in the stepper, and the status message "Some later steps need attention." is announced.
 
 ### 5.5 Destructive actions
 - **Start over**: an AlertDialog titled "Start over?" with the body "This deletes your draft Investigator. You can't undo this." Buttons: "Delete draft" (destructive, sends `DELETE .../investigators/mine`) and "Keep draft" (default focus). On success the Player returns to the Campaign page with the status message "Draft deleted."
-- **Changing the creation method** after values have been entered: an AlertDialog titled "Switch to Point buy?" with the body "Your characteristic values will be cleared." Buttons: "Switch and clear" and "Keep current method" (default focus). Choosing "Keep current method" puts the radio back to its previous value.
+- **Changing the creation method** after values have been entered: an AlertDialog titled "Switch to Point buy?" with the body "Your characteristic values will be cleared." Buttons: "Switch and clear" and "Keep current method" (default focus). Choosing "Keep current method" puts the radio back to its previous value. When the switch is to or from Quick fire and skill values have been entered, the body adds "Your skill values will be cleared too.", because Quick fire's skill values are never mixed with occupation and personal interest points (PBI-CP-009).
 - Both dialogs return focus to the control that opened them when cancelled.
 
 ## 6. Steps
@@ -197,15 +199,29 @@ Later inputs are kept. When the Player saves, any later step whose inputs became
   - The Alert: "Your Keeper will review a custom occupation before approving your Investigator."
 
 ### 6.5 Occupation skills (`occupation-skills`)
-- At the top: choice controls for the occupation's open slots. For example, a Select "Choose 1 interpersonal skill". Specialized skills get a text Input with suggestions from a `datalist` ("Art/Craft specialization").
-- Below that, the `skill-allocation-table`, with columns Skill, Base, Points (number input), Total. **Credit Rating comes first**, with the hint "Must be between 30 and 70".
-- The budget counter reads "Occupation points left: 120 of 280". When it goes below zero it shows "40 over budget" with an error icon and text.
+Choices first, then values, in one guided list (selected 2026-10-08, option A of three; alternatives were values that follow the slot, and inline guidance only). The step has two sections, each with an `h2`:
+- **"1. Make your skill choices"**: the choice controls for the occupation's open slots. For example, a Select "Choose 1 interpersonal skill". Specialized skills get a text Input with suggestions from a `datalist` ("Art/Craft specialization").
+- **"2. Assign values"**: the `skill-allocation-table`, with columns Skill, Base, Points (number input), Total.
+  - **Credit Rating comes first**, with the hint "Must be between 30 and 70". The other rows follow the occupation's skill slots in catalog order (a custom occupation's eight skills in their order), so rows never reorder after a save.
+  - A row whose slot has no skill chosen yet is named after the slot (for example "Choose 1 interpersonal skill"), its input is disabled, and it reads "Choose this skill above first".
+  - The budget counter reads "Occupation points left: 120 of 280". When it goes below zero it shows "40 over budget" with an error icon and text.
+- **"No longer occupation skills"** (an `h3` under section 2, shown only when needed): every skill that still holds occupation points but is no longer an occupation skill (after a slot choice, a specialization, or the occupation changed). Each row shows the skill, its points, its error, and a "Remove value" button (accessible name "Remove value from {skill}") that clears them. The error summary link focuses that button.
 
 ### 6.6 Personal interests (`personal-interests`)
 - The same table covers all skills, filtered by a toggle "Show: All skills / Skills with points".
 - The budget counter reads "Personal interest points left: 60 of 140".
 - The Cthulhu Mythos row has a disabled input with the text "Not available at creation".
-- An "Add another specialization" button (for example a second Language (Other)) adds a row whose specialization field receives focus.
+- **"No longer personal interests"** (an `h3`, shown only when needed): personal interest points on Credit Rating ([project_ruleset.md section 4.6](../../docs/game-rules/project_ruleset.md#46-credit-rating-takes-occupation-points-only)) or Cthulhu Mythos, each with its error and a "Remove" button (accessible name "Remove personal interest points from {skill}"). The error summary link focuses that button.
+- An "Add another specialization" button (for example a second Language (Other)) opens a "Skill to specialize" Select, which receives focus, and the specialization field for the chosen skill; "Add row" then adds the row.
+
+### 6.5a Quick fire skills (selected 2026-10-07, option A of three: table with value Selects; alternatives were a value-centred list and drag-and-drop chips)
+Quick fire assigns fixed values instead of spending points ([spec.md](spec.md), Delivery scope PBI-CP-009). The steps reuse `skill-allocation-table`:
+- **Occupation** (`occupation`): the option cards hide the points line and the formula choice, because Quick fire has no occupation points.
+- **Occupation skills** (`occupation-skills`): the same two sections and row order as 6.5. In the table the Points column is replaced by a Select labelled "{skill}, Quick fire value" on Credit Rating (first) and on each chosen occupation skill. Each Select offers "No value" (which clears the row), the values not yet assigned elsewhere, and its own current value, like the Quick fire characteristics in 6.2. Credit Rating shows the hint "Must be {value} for this occupation". A line "Values left to assign: 50, 40" shows what remains.
+  - When the occupation's Credit Rating does not take a Quick fire value, the last row is "Extra skill (freed {value})": its control is a skill picker "Extra skill for the freed {value}" with the help text "Your Credit Rating doesn't use a Quick fire value, so the freed {value} goes to one more skill of your choice." The chosen skill is stored as the extra skill and takes the freed value; its Total shows that value.
+  - "No longer occupation skills" lists every skill that still holds a Quick fire value but is no longer an occupation skill, with the value, its error, and "Remove value".
+- **Personal interests** (`personal-interests`): the Points column is replaced by a Checkbox "{skill}, +{bonus}" on every skill that is not an occupation skill, Credit Rating, or Cthulhu Mythos. The counter reads "Personal interests chosen: 2 of 4" and counts every stored choice. A chosen skill that can no longer be a personal interest (it became an occupation skill, the extra skill, or took a Quick fire value, or it is chosen twice) is listed under "No longer personal interests" with its error and a "Remove" button (accessible name "Remove {skill} from your personal interests"), which the error summary link focuses. When it reaches the count, the unchecked Checkboxes stay enabled, and choosing another shows the error from the server and the client validator. The Total column shows the base plus the bonus.
+- Every number in this copy comes from the rules data.
 
 ### 6.7 Sheet and submit (`sheet`)
 Uses the shared `character-sheet-view` in edit mode for its narrative sections and read-only mode for the rest. Sections, each with an `h2`:
@@ -260,8 +276,12 @@ Tokens: `--destructive` (defined) and `--warning` (added in PBI-CP-003), each wi
 |---|---|
 | PBI-CP-008 | Section 2; section 3.1 Rules options |
 | PBI-CP-003 | Section 3 (both roles); sections 4 and 5, including the summary rail without the occupation and personal interest budget lines; step 6.1; step 6.2 for Point buy, including its Luck rows; step 6.3 Age effects; a `sheet` step with Summary and Submit; section 7, including Dice results |
-| PBI-CP-009 | Step 6.2 (Standard rolling, Quick fire, the creation method RadioGroup, and the switch confirmation); steps 6.4 to 6.6; the summary rail's budget lines |
+| PBI-CP-009 | Step 6.2 (Standard rolling, Quick fire, the creation method RadioGroup, and the switch confirmation); steps 6.4 to 6.6 and 6.5a, including UX-22 to UX-26; the summary rail's budget lines; step 6.7 Skills (read-only, also on the Keeper's review) |
 | PBI-CP-010 | Step 6.7 Backstory, Weapons, Gear, Wealth |
+
+In PBI-CP-009:
+- The stepper shows all seven steps, so the Draft card reads "Step N of 7".
+- Every creation method is available, so the state of UX-19 can't occur while every method is supported. Its card state is kept for a future method that isn't available yet.
 
 In PBI-CP-003:
 - The stepper shows Identity, Characteristics, Age effects, and Sheet and submit, so the Draft card reads "Step N of 4".
@@ -297,6 +317,11 @@ In PBI-CP-003:
 - **UX-19** When the Campaign allows no creation method that is available yet, the Your Investigator card explains it, names the methods to ask the Keeper for, and offers no create action.
 - **UX-20** A Point buy Player enters Luck on the Characteristics step; Luck is not counted in "Points used", and a second Luck row appears only in the two-roll age bracket.
 - **UX-21** A non-member opening a Campaign URL sees "We couldn't find that Campaign" with a link back to Campaigns.
+- **UX-22** On Occupation skills, a row whose slot has no skill chosen is disabled and reads "Choose this skill above first"; rows keep the occupation's slot order after every save.
+- **UX-23** A Quick fire value Select offers "No value", which clears the row and returns its value to "Values left to assign".
+- **UX-24** Changing a slot choice after assigning moves the old skill to "No longer occupation skills" with its value, its error, and "Remove value"; removing it returns the value to the pool.
+- **UX-25** When Credit Rating frees a Quick fire value, "Extra skill (freed {value})" is a row of the table; the chosen skill takes the freed value.
+- **UX-26** A personal interest choice the rules no longer allow (a Quick fire personal interest that became an occupation skill, the extra skill, or a valued skill, or one chosen twice; personal interest points on Credit Rating or Cthulhu Mythos) is listed under "No longer personal interests" with its error and "Remove"; removing it updates the count.
 
 ## 11. Accessibility acceptance criteria (WCAG 2.2 AA)
 
@@ -311,6 +336,8 @@ In PBI-CP-003:
 - **A11Y-9** Interactive targets are at least 24 by 24 CSS pixels (2.5.8).
 - **A11Y-10** Identity data entered in step 1 is never asked for again in later steps (3.3.7).
 - **A11Y-11** Collapsibles expose `aria-expanded`, and the Rules options summary is part of the trigger's accessible name (4.1.2).
+
+Occupation skills (6.5, 6.5a) and Personal interests (6.6) against these criteria ("No longer personal interests" follows the same pattern as "No longer occupation skills"): the two sections are headed (`h2`) and "No longer occupation skills" is an `h3` (A11Y-1, 1.3.1); every control keeps a label naming its skill, and a disabled row says why in text (A11Y-3); each error is linked from the error summary to its row control, including the "Remove value" button (A11Y-4); clearing or removing a value is announced through the step's polite status region as the new "Values left to assign" or points left (A11Y-5); disabled and left-over states are shown with text, never colour alone (A11Y-6); "Remove value" and the Select options are at least 24 by 24 pixels (A11Y-9).
 
 ## 12. Open decisions and research gaps
 

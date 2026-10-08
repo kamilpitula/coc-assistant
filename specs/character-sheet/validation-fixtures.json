@@ -1,5 +1,5 @@
 {
-  "description": "Shared ValidationError fixtures for the Character Sheet validators (specs/character-sheet/spec.md, Validation). The backend must produce exactly the expected items for every case; the frontend must do the same for every case with scope 'shared'. Item order is not significant.",
+  "description": "Shared ValidationError fixtures for the Character Sheet validators (specs/character-sheet/spec.md, Validation). The backend must produce exactly the expected items for every case; the frontend must do the same for every case with scope 'shared'. Item order is not significant. Unless a case says otherwise, the Investigator is a 1920s Antiquarian with every skill choice made and every occupation (EDU x 4) and personal interest (INT x 2) point spent.",
   "rules": {
     "pointBuyBudget": 460,
     "pointBuyMinimum": 15,
@@ -12,7 +12,178 @@
     "eduImprovementCheckDice": "D100",
     "eduImprovementGainDice": "1D10",
     "eduMaximum": 99,
-    "luckMultiplier": 5
+    "luckMultiplier": 5,
+    "standardRolling": {
+      "STR": {
+        "dice": "3D6",
+        "bonus": 0,
+        "multiplier": 5
+      },
+      "CON": {
+        "dice": "3D6",
+        "bonus": 0,
+        "multiplier": 5
+      },
+      "DEX": {
+        "dice": "3D6",
+        "bonus": 0,
+        "multiplier": 5
+      },
+      "APP": {
+        "dice": "3D6",
+        "bonus": 0,
+        "multiplier": 5
+      },
+      "POW": {
+        "dice": "3D6",
+        "bonus": 0,
+        "multiplier": 5
+      },
+      "SIZ": {
+        "dice": "2D6",
+        "bonus": 6,
+        "multiplier": 5
+      },
+      "INT": {
+        "dice": "2D6",
+        "bonus": 6,
+        "multiplier": 5
+      },
+      "EDU": {
+        "dice": "2D6",
+        "bonus": 6,
+        "multiplier": 5
+      }
+    },
+    "quickFireCharacteristicValues": [
+      40,
+      50,
+      50,
+      50,
+      60,
+      60,
+      70,
+      80
+    ],
+    "quickFireSkillValues": [
+      70,
+      60,
+      60,
+      50,
+      50,
+      50,
+      40,
+      40,
+      40
+    ],
+    "quickFirePersonalInterestBonus": 20,
+    "quickFirePersonalInterestCount": 4,
+    "occupationPointFormulas": [
+      {
+        "id": "EDUx4",
+        "terms": [
+          {
+            "characteristics": [
+              "EDU"
+            ],
+            "multiplier": 4
+          }
+        ]
+      },
+      {
+        "id": "EDUx2+DEXx2",
+        "terms": [
+          {
+            "characteristics": [
+              "EDU"
+            ],
+            "multiplier": 2
+          },
+          {
+            "characteristics": [
+              "DEX"
+            ],
+            "multiplier": 2
+          }
+        ]
+      },
+      {
+        "id": "EDUx2+STRx2",
+        "terms": [
+          {
+            "characteristics": [
+              "EDU"
+            ],
+            "multiplier": 2
+          },
+          {
+            "characteristics": [
+              "STR"
+            ],
+            "multiplier": 2
+          }
+        ]
+      },
+      {
+        "id": "EDUx2+APPx2",
+        "terms": [
+          {
+            "characteristics": [
+              "EDU"
+            ],
+            "multiplier": 2
+          },
+          {
+            "characteristics": [
+              "APP"
+            ],
+            "multiplier": 2
+          }
+        ]
+      },
+      {
+        "id": "EDUx2+POWx2",
+        "terms": [
+          {
+            "characteristics": [
+              "EDU"
+            ],
+            "multiplier": 2
+          },
+          {
+            "characteristics": [
+              "POW"
+            ],
+            "multiplier": 2
+          }
+        ]
+      },
+      {
+        "id": "EDUx2+APP|DEX|STRx2",
+        "terms": [
+          {
+            "characteristics": [
+              "EDU"
+            ],
+            "multiplier": 2
+          },
+          {
+            "characteristics": [
+              "APP",
+              "DEX",
+              "STR"
+            ],
+            "multiplier": 2
+          }
+        ]
+      }
+    ],
+    "customOccupationSkillCount": 8,
+    "creditRatingMinimum": 0,
+    "creditRatingMaximum": 99,
+    "skillValueWarningThreshold": 90,
+    "creditRatingSkill": "Credit Rating",
+    "cthulhuMythosSkill": "Cthulhu Mythos"
   },
   "cases": [
     {
@@ -51,7 +222,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": []
     },
@@ -86,7 +342,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -143,7 +484,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -187,7 +613,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -231,7 +742,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -280,7 +876,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -329,7 +1010,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -378,7 +1144,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -427,7 +1278,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -476,7 +1412,86 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -525,7 +1540,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -574,7 +1674,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 10
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -629,7 +1814,92 @@
             }
           ]
         },
-        "luckRolls": []
+        "luckRolls": [],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -678,7 +1948,92 @@
         },
         "luckRolls": [
           19
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -726,7 +2081,92 @@
         "luckRolls": [
           11,
           13
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": []
     },
@@ -764,7 +2204,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -814,7 +2339,92 @@
         "luckRolls": [
           11,
           13
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -870,7 +2480,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": []
     },
@@ -916,7 +2611,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -972,7 +2752,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -1028,7 +2893,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -1080,7 +3030,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -1133,7 +3168,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -1182,7 +3302,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -1231,7 +3436,98 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Charm",
+            "specialization": null,
+            "occupationPoints": 14,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -1280,7 +3576,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -1329,7 +3710,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -1385,7 +3851,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 40,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": []
     },
@@ -1432,7 +3983,92 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 40,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -1497,7 +4133,80 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 40,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 20
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -1562,7 +4271,86 @@
         },
         "luckRolls": [
           11
-        ]
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 10,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 40
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
       },
       "expected": [
         {
@@ -1571,6 +4359,4023 @@
           "message": "STR can't go below 0 after age effects.",
           "expected": "0",
           "actual": "-15",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 2.1: a valid Standard Rolling sheet has no problems",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "StandardRolling",
+        "characteristics": {},
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {
+          "STR": 12,
+          "CON": 12,
+          "DEX": 12,
+          "APP": 10,
+          "POW": 12,
+          "SIZ": 6,
+          "INT": 6,
+          "EDU": 4
+        },
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "Section 2.1: every characteristic needs a roll its dice can produce",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "StandardRolling",
+        "characteristics": {},
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {
+          "STR": null,
+          "CON": 12,
+          "DEX": 12,
+          "APP": 10,
+          "POW": 12,
+          "SIZ": 13,
+          "INT": 6,
+          "EDU": 4
+        },
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "CharacteristicRollRequired",
+          "field": "characteristicRolls.STR",
+          "message": "Enter the 3D6 total for STR.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        },
+        {
+          "code": "DiceResultOutOfRange",
+          "field": "characteristicRolls.SIZ",
+          "message": "Enter a 2D6 result between 2 and 12.",
+          "expected": "2-12",
+          "actual": "13",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 2.3 and 18: a valid Quick Fire sheet has no problems",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "QuickFire",
+        "characteristics": {
+          "STR": 50,
+          "CON": 60,
+          "DEX": 50,
+          "APP": 40,
+          "POW": 60,
+          "SIZ": 50,
+          "INT": 80,
+          "EDU": 70
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [],
+        "quickFire": {
+          "values": [
+            {
+              "skill": "Credit Rating",
+              "specialization": null,
+              "value": 30
+            },
+            {
+              "skill": "Appraise",
+              "specialization": null,
+              "value": 70
+            },
+            {
+              "skill": "Art/Craft",
+              "specialization": "Painting",
+              "value": 60
+            },
+            {
+              "skill": "History",
+              "specialization": null,
+              "value": 60
+            },
+            {
+              "skill": "Library Use",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Language (Other)",
+              "specialization": "Latin",
+              "value": 50
+            },
+            {
+              "skill": "Charm",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Spot Hidden",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "Firearms",
+              "specialization": "Handgun",
+              "value": 40
+            }
+          ],
+          "personalInterests": [
+            {
+              "skill": "Listen",
+              "specialization": null
+            },
+            {
+              "skill": "Stealth",
+              "specialization": null
+            },
+            {
+              "skill": "Psychology",
+              "specialization": null
+            },
+            {
+              "skill": "Persuade",
+              "specialization": null
+            }
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "Section 2.3: a characteristic outside the Quick Fire pool",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "QuickFire",
+        "characteristics": {
+          "STR": 45,
+          "CON": 60,
+          "DEX": 50,
+          "APP": 40,
+          "POW": 60,
+          "SIZ": 50,
+          "INT": 80,
+          "EDU": 70
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [],
+        "quickFire": {
+          "values": [
+            {
+              "skill": "Credit Rating",
+              "specialization": null,
+              "value": 30
+            },
+            {
+              "skill": "Appraise",
+              "specialization": null,
+              "value": 70
+            },
+            {
+              "skill": "Art/Craft",
+              "specialization": "Painting",
+              "value": 60
+            },
+            {
+              "skill": "History",
+              "specialization": null,
+              "value": 60
+            },
+            {
+              "skill": "Library Use",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Language (Other)",
+              "specialization": "Latin",
+              "value": 50
+            },
+            {
+              "skill": "Charm",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Spot Hidden",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "Firearms",
+              "specialization": "Handgun",
+              "value": 40
+            }
+          ],
+          "personalInterests": [
+            {
+              "skill": "Listen",
+              "specialization": null
+            },
+            {
+              "skill": "Stealth",
+              "specialization": null
+            },
+            {
+              "skill": "Psychology",
+              "specialization": null
+            },
+            {
+              "skill": "Persuade",
+              "specialization": null
+            }
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
+        }
+      },
+      "expected": [
+        {
+          "code": "QuickFireValueNotInPool",
+          "field": "characteristics.STR",
+          "message": "STR must be one of the Quick fire values: 40, 50, 60, 70, 80.",
+          "expected": "40, 50, 60, 70, 80",
+          "actual": "45",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 2.3: pool values not used exactly once",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "QuickFire",
+        "characteristics": {
+          "STR": 50,
+          "CON": 60,
+          "DEX": 50,
+          "APP": 80,
+          "POW": 60,
+          "SIZ": 50,
+          "INT": 80,
+          "EDU": 70
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [],
+        "quickFire": {
+          "values": [
+            {
+              "skill": "Credit Rating",
+              "specialization": null,
+              "value": 30
+            },
+            {
+              "skill": "Appraise",
+              "specialization": null,
+              "value": 70
+            },
+            {
+              "skill": "Art/Craft",
+              "specialization": "Painting",
+              "value": 60
+            },
+            {
+              "skill": "History",
+              "specialization": null,
+              "value": 60
+            },
+            {
+              "skill": "Library Use",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Language (Other)",
+              "specialization": "Latin",
+              "value": 50
+            },
+            {
+              "skill": "Charm",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Spot Hidden",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "Firearms",
+              "specialization": "Handgun",
+              "value": 40
+            }
+          ],
+          "personalInterests": [
+            {
+              "skill": "Listen",
+              "specialization": null
+            },
+            {
+              "skill": "Stealth",
+              "specialization": null
+            },
+            {
+              "skill": "Psychology",
+              "specialization": null
+            },
+            {
+              "skill": "Persuade",
+              "specialization": null
+            }
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
+        }
+      },
+      "expected": [
+        {
+          "code": "QuickFireAssignmentMismatch",
+          "field": "characteristics",
+          "message": "Use each Quick fire value exactly once: 40, 50, 50, 50, 60, 60, 70, 80.",
+          "expected": "40, 50, 50, 50, 60, 60, 70, 80",
+          "actual": "50, 50, 50, 60, 60, 70, 80, 80",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 15: an occupation is required",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": null,
+        "skills": [
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "OccupationRequired",
+          "field": "occupation",
+          "message": "Choose an occupation.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 7: a custom occupation needs a name, a listed formula, eight skills, and a valid Credit Rating range",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": null,
+          "custom": {
+            "name": " ",
+            "formulaId": "EDUx3",
+            "skills": [
+              {
+                "skill": "Drive Auto",
+                "specialization": null
+              },
+              null
+            ],
+            "creditRatingMin": 40,
+            "creditRatingMax": 20
+          },
+          "formulaCharacteristics": [],
+          "skillChoices": []
+        },
+        "skills": [
+          {
+            "skill": "Stealth",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "CustomOccupationNameRequired",
+          "field": "occupation.custom.name",
+          "message": "Enter a name for your occupation.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        },
+        {
+          "code": "CustomOccupationFormulaNotAllowed",
+          "field": "occupation.custom.formulaId",
+          "message": "Choose a point formula from the list.",
+          "expected": null,
+          "actual": "EDUx3",
+          "severity": "Error"
+        },
+        {
+          "code": "CustomOccupationCreditRatingRangeInvalid",
+          "field": "occupation.custom.creditRating",
+          "message": "Enter a Credit Rating range between 0 and 99, with the minimum no higher than the maximum.",
+          "expected": "0-99",
+          "actual": "40-20",
+          "severity": "Error"
+        },
+        {
+          "code": "CustomOccupationSkillRequired",
+          "field": "occupation.custom.skills[1]",
+          "message": "Choose occupation skill 2.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        },
+        {
+          "code": "CustomOccupationSkillRequired",
+          "field": "occupation.custom.skills[2]",
+          "message": "Choose occupation skill 3.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        },
+        {
+          "code": "CustomOccupationSkillRequired",
+          "field": "occupation.custom.skills[3]",
+          "message": "Choose occupation skill 4.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        },
+        {
+          "code": "CustomOccupationSkillRequired",
+          "field": "occupation.custom.skills[4]",
+          "message": "Choose occupation skill 5.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        },
+        {
+          "code": "CustomOccupationSkillRequired",
+          "field": "occupation.custom.skills[5]",
+          "message": "Choose occupation skill 6.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        },
+        {
+          "code": "CustomOccupationSkillRequired",
+          "field": "occupation.custom.skills[6]",
+          "message": "Choose occupation skill 7.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        },
+        {
+          "code": "CustomOccupationSkillRequired",
+          "field": "occupation.custom.skills[7]",
+          "message": "Choose occupation skill 8.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Sections 7.2 and 8, project_ruleset 4.6: negative points, Cthulhu Mythos points, and personal interest points on Credit Rating",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": 10
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 15,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 48
+          },
+          {
+            "skill": "Swim",
+            "specialization": null,
+            "occupationPoints": -5,
+            "personalInterestPoints": -3
+          },
+          {
+            "skill": "Cthulhu Mythos",
+            "specialization": null,
+            "occupationPoints": 10,
+            "personalInterestPoints": 5
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "SkillPointsNegative",
+          "field": "skills[7].occupationPoints",
+          "message": "Enter 0 or more points for Swim.",
+          "expected": null,
+          "actual": "-5",
+          "severity": "Error"
+        },
+        {
+          "code": "SkillPointsNegative",
+          "field": "skills[7].personalInterestPoints",
+          "message": "Enter 0 or more points for Swim.",
+          "expected": null,
+          "actual": "-3",
+          "severity": "Error"
+        },
+        {
+          "code": "CreationPointsOnCthulhuMythos",
+          "field": "skills[8].occupationPoints",
+          "message": "Cthulhu Mythos can't take points at creation.",
+          "expected": null,
+          "actual": "10",
+          "severity": "Error"
+        },
+        {
+          "code": "CreationPointsOnCthulhuMythos",
+          "field": "skills[8].personalInterestPoints",
+          "message": "Cthulhu Mythos can't take points at creation.",
+          "expected": null,
+          "actual": "5",
+          "severity": "Error"
+        },
+        {
+          "code": "PersonalInterestPointsOnCreditRating",
+          "field": "skills[0].personalInterestPoints",
+          "message": "Credit Rating can only take occupation points.",
+          "expected": null,
+          "actual": "10",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 18: more personal interest skills than allowed",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "QuickFire",
+        "characteristics": {
+          "STR": 50,
+          "CON": 60,
+          "DEX": 50,
+          "APP": 40,
+          "POW": 60,
+          "SIZ": 50,
+          "INT": 80,
+          "EDU": 70
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [],
+        "quickFire": {
+          "values": [
+            {
+              "skill": "Credit Rating",
+              "specialization": null,
+              "value": 30
+            },
+            {
+              "skill": "Appraise",
+              "specialization": null,
+              "value": 70
+            },
+            {
+              "skill": "Art/Craft",
+              "specialization": "Painting",
+              "value": 60
+            },
+            {
+              "skill": "History",
+              "specialization": null,
+              "value": 60
+            },
+            {
+              "skill": "Library Use",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Language (Other)",
+              "specialization": "Latin",
+              "value": 50
+            },
+            {
+              "skill": "Charm",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Spot Hidden",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "Firearms",
+              "specialization": "Handgun",
+              "value": 40
+            }
+          ],
+          "personalInterests": [
+            {
+              "skill": "Listen",
+              "specialization": null
+            },
+            {
+              "skill": "Stealth",
+              "specialization": null
+            },
+            {
+              "skill": "Psychology",
+              "specialization": null
+            },
+            {
+              "skill": "Persuade",
+              "specialization": null
+            },
+            {
+              "skill": "Swim",
+              "specialization": null
+            }
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
+        }
+      },
+      "expected": [
+        {
+          "code": "QuickFirePersonalInterestsTooMany",
+          "field": "quickFire.personalInterests",
+          "message": "Choose 4 personal interest skills. You have chosen 5.",
+          "expected": "4",
+          "actual": "5",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 18: fewer personal interest skills than allowed only warns",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "QuickFire",
+        "characteristics": {
+          "STR": 50,
+          "CON": 60,
+          "DEX": 50,
+          "APP": 40,
+          "POW": 60,
+          "SIZ": 50,
+          "INT": 80,
+          "EDU": 70
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [],
+        "quickFire": {
+          "values": [
+            {
+              "skill": "Credit Rating",
+              "specialization": null,
+              "value": 30
+            },
+            {
+              "skill": "Appraise",
+              "specialization": null,
+              "value": 70
+            },
+            {
+              "skill": "Art/Craft",
+              "specialization": "Painting",
+              "value": 60
+            },
+            {
+              "skill": "History",
+              "specialization": null,
+              "value": 60
+            },
+            {
+              "skill": "Library Use",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Language (Other)",
+              "specialization": "Latin",
+              "value": 50
+            },
+            {
+              "skill": "Charm",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Spot Hidden",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "Firearms",
+              "specialization": "Handgun",
+              "value": 40
+            }
+          ],
+          "personalInterests": [
+            {
+              "skill": "Listen",
+              "specialization": null
+            },
+            {
+              "skill": "Stealth",
+              "specialization": null
+            },
+            {
+              "skill": "Psychology",
+              "specialization": null
+            }
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
+        }
+      },
+      "expected": [
+        {
+          "code": "QuickFirePersonalInterestsUnchosen",
+          "field": "quickFire.personalInterests",
+          "message": "Choose 4 personal interest skills. You have chosen 3.",
+          "expected": "4",
+          "actual": "3",
+          "severity": "Warning"
+        }
+      ]
+    },
+    {
+      "name": "Section 15: an occupation outside the Era's catalog is not available",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "astronaut",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": []
+        },
+        "skills": [
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "OccupationNotAvailable",
+          "field": "occupation.catalogId",
+          "message": "This occupation isn't available in this Campaign's era.",
+          "expected": null,
+          "actual": "astronaut",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 7.1: a formula term with a choice needs the Player's pick",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "police-detective",
+          "custom": null,
+          "formulaCharacteristics": [
+            null,
+            null
+          ],
+          "skillChoices": [
+            [
+              {
+                "skill": "Disguise",
+                "specialization": null
+              }
+            ],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Drive Auto",
+                "specialization": null
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Stealth",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Swim",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "OccupationFormulaChoiceRequired",
+          "field": "occupation.formulaCharacteristics[1]",
+          "message": "Choose which characteristic your occupation points use.",
+          "expected": "DEX, STR",
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 7.2: an open slot needs its picks",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "OccupationSkillChoiceRequired",
+          "field": "occupation.skillChoices[5]",
+          "message": "Choose 1 skill for this part of your occupation.",
+          "expected": "1",
+          "actual": "0",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "project_ruleset 4.5: a pick the slot does not offer is not allowed",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Library Use",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "OccupationSkillChoiceNotAllowed",
+          "field": "occupation.skillChoices[5][0]",
+          "message": "Choose a skill this occupation allows that isn't already one of its skills.",
+          "expected": null,
+          "actual": "Library Use",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 6: specialized picks need an allowed specialization",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": null
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Laser"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "SpecializationRequired",
+          "field": "occupation.skillChoices[1][0].specialization",
+          "message": "Enter a specialization for Art/Craft.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        },
+        {
+          "code": "SpecializationNotAllowed",
+          "field": "occupation.skillChoices[7][0].specialization",
+          "message": "Choose a Firearms specialization from the list.",
+          "expected": null,
+          "actual": "Laser",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 6.1: a skill outside the catalog is unknown",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Basket Weaving",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 0
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "UnknownSkill",
+          "field": "skills[7].skill",
+          "message": "Choose a skill from the list.",
+          "expected": null,
+          "actual": "Basket Weaving",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 7.2: occupation points go only to occupation skills and Credit Rating",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 10,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": 10,
+            "personalInterestPoints": 50
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 70
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "OccupationPointsOutsideOccupationSkills",
+          "field": "skills[5].occupationPoints",
+          "message": "Drive Auto is no longer one of your occupation skills. Remove its occupation points to use them elsewhere.",
+          "expected": null,
+          "actual": "10",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Sections 7.1 and 8: overspent budgets are errors",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Charm",
+            "specialization": null,
+            "occupationPoints": 10,
+            "personalInterestPoints": 5
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "OccupationPointsOverspent",
+          "field": "occupationPoints",
+          "message": "You've spent 210 occupation points. You have 200.",
+          "expected": "200",
+          "actual": "210",
+          "severity": "Error"
+        },
+        {
+          "code": "PersonalInterestPointsOverspent",
+          "field": "personalInterestPoints",
+          "message": "You've spent 125 personal interest points. You have 120.",
+          "expected": "120",
+          "actual": "125",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Sections 7.2 and 8: unspent budgets only warn",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "OccupationPointsUnspent",
+          "field": "occupationPoints",
+          "message": "You have 170 occupation points left. Unspent points are lost.",
+          "expected": "200",
+          "actual": "30",
+          "severity": "Warning"
+        },
+        {
+          "code": "PersonalInterestPointsUnspent",
+          "field": "personalInterestPoints",
+          "message": "You have 120 personal interest points left. Unspent points are lost.",
+          "expected": "120",
+          "actual": "0",
+          "severity": "Warning"
+        }
+      ]
+    },
+    {
+      "name": "Section 7.3: Credit Rating outside the occupation's range",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "CreditRatingOutOfRange",
+          "field": "creditRating",
+          "message": "Credit Rating must be between 30 and 70.",
+          "expected": "30-70",
+          "actual": "20",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "ux.md section 12: a skill above 90 warns",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": 30
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 90
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "SkillAboveWarningThreshold",
+          "field": "skills",
+          "message": "Library Use is above 90. Check with your Keeper.",
+          "expected": "90",
+          "actual": "100",
+          "severity": "Warning"
+        },
+        {
+          "code": "SkillAboveWarningThreshold",
+          "field": "skills",
+          "message": "Listen is above 90. Check with your Keeper.",
+          "expected": "90",
+          "actual": "110",
+          "severity": "Warning"
+        }
+      ]
+    },
+    {
+      "name": "Section 18: a skill value outside the Quick Fire pool",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "QuickFire",
+        "characteristics": {
+          "STR": 50,
+          "CON": 60,
+          "DEX": 50,
+          "APP": 40,
+          "POW": 60,
+          "SIZ": 50,
+          "INT": 80,
+          "EDU": 70
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [],
+        "quickFire": {
+          "values": [
+            {
+              "skill": "Credit Rating",
+              "specialization": null,
+              "value": 30
+            },
+            {
+              "skill": "Appraise",
+              "specialization": null,
+              "value": 45
+            },
+            {
+              "skill": "Art/Craft",
+              "specialization": "Painting",
+              "value": 60
+            },
+            {
+              "skill": "History",
+              "specialization": null,
+              "value": 60
+            },
+            {
+              "skill": "Library Use",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Language (Other)",
+              "specialization": "Latin",
+              "value": 50
+            },
+            {
+              "skill": "Charm",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Spot Hidden",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "Firearms",
+              "specialization": "Handgun",
+              "value": 40
+            }
+          ],
+          "personalInterests": [
+            {
+              "skill": "Listen",
+              "specialization": null
+            },
+            {
+              "skill": "Stealth",
+              "specialization": null
+            },
+            {
+              "skill": "Psychology",
+              "specialization": null
+            },
+            {
+              "skill": "Persuade",
+              "specialization": null
+            }
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
+        }
+      },
+      "expected": [
+        {
+          "code": "QuickFireSkillValueNotInPool",
+          "field": "quickFire.values[1].value",
+          "message": "Use one of the Quick fire skill values: 70, 60, 50, 40.",
+          "expected": "70, 60, 50, 40",
+          "actual": "45",
+          "severity": "Error"
+        },
+        {
+          "code": "QuickFireSkillAssignmentMismatch",
+          "field": "quickFire.values",
+          "message": "Use each Quick fire skill value exactly once: 70, 60, 60, 50, 50, 50, 40, 40.",
+          "expected": "70, 60, 60, 50, 50, 50, 40, 40",
+          "actual": "60, 60, 50, 50, 50, 45, 40, 40",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 18: a freed value needs the extra skill that takes it",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "QuickFire",
+        "characteristics": {
+          "STR": 50,
+          "CON": 60,
+          "DEX": 50,
+          "APP": 40,
+          "POW": 60,
+          "SIZ": 50,
+          "INT": 80,
+          "EDU": 70
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [],
+        "quickFire": {
+          "values": [
+            {
+              "skill": "Credit Rating",
+              "specialization": null,
+              "value": 30
+            },
+            {
+              "skill": "Appraise",
+              "specialization": null,
+              "value": 70
+            },
+            {
+              "skill": "Art/Craft",
+              "specialization": "Painting",
+              "value": 60
+            },
+            {
+              "skill": "History",
+              "specialization": null,
+              "value": 60
+            },
+            {
+              "skill": "Library Use",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Language (Other)",
+              "specialization": "Latin",
+              "value": 50
+            },
+            {
+              "skill": "Charm",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Spot Hidden",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "Firearms",
+              "specialization": "Handgun",
+              "value": 40
+            }
+          ],
+          "personalInterests": [
+            {
+              "skill": "Listen",
+              "specialization": null
+            },
+            {
+              "skill": "Stealth",
+              "specialization": null
+            },
+            {
+              "skill": "Psychology",
+              "specialization": null
+            },
+            {
+              "skill": "Persuade",
+              "specialization": null
+            }
+          ],
+          "extraSkill": null
+        }
+      },
+      "expected": [
+        {
+          "code": "QuickFireExtraSkillRequired",
+          "field": "quickFire.extraSkill",
+          "message": "Choose the skill that takes the freed 40.",
+          "expected": "40",
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 18: a value on a skill outside the occupation is reported",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "QuickFire",
+        "characteristics": {
+          "STR": 50,
+          "CON": 60,
+          "DEX": 50,
+          "APP": 40,
+          "POW": 60,
+          "SIZ": 50,
+          "INT": 80,
+          "EDU": 70
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [],
+        "quickFire": {
+          "values": [
+            {
+              "skill": "Credit Rating",
+              "specialization": null,
+              "value": 30
+            },
+            {
+              "skill": "Appraise",
+              "specialization": null,
+              "value": 70
+            },
+            {
+              "skill": "Art/Craft",
+              "specialization": "Painting",
+              "value": 60
+            },
+            {
+              "skill": "History",
+              "specialization": null,
+              "value": 60
+            },
+            {
+              "skill": "Library Use",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Language (Other)",
+              "specialization": "Latin",
+              "value": 50
+            },
+            {
+              "skill": "Charm",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Spot Hidden",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "Firearms",
+              "specialization": "Handgun",
+              "value": 40
+            },
+            {
+              "skill": "Swim",
+              "specialization": null,
+              "value": 40
+            }
+          ],
+          "personalInterests": [
+            {
+              "skill": "Listen",
+              "specialization": null
+            },
+            {
+              "skill": "Stealth",
+              "specialization": null
+            },
+            {
+              "skill": "Psychology",
+              "specialization": null
+            },
+            {
+              "skill": "Persuade",
+              "specialization": null
+            }
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
+        }
+      },
+      "expected": [
+        {
+          "code": "QuickFireSkillNotOccupationSkill",
+          "field": "quickFire.values[9].skill",
+          "message": "Swim is no longer one of your occupation skills. Remove its value to use it elsewhere.",
+          "expected": null,
+          "actual": "Swim",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 18: Credit Rating takes the value for the occupation's minimum",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "QuickFire",
+        "characteristics": {
+          "STR": 50,
+          "CON": 60,
+          "DEX": 50,
+          "APP": 40,
+          "POW": 60,
+          "SIZ": 50,
+          "INT": 80,
+          "EDU": 70
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [],
+        "quickFire": {
+          "values": [
+            {
+              "skill": "Credit Rating",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "Appraise",
+              "specialization": null,
+              "value": 70
+            },
+            {
+              "skill": "Art/Craft",
+              "specialization": "Painting",
+              "value": 60
+            },
+            {
+              "skill": "History",
+              "specialization": null,
+              "value": 60
+            },
+            {
+              "skill": "Library Use",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Language (Other)",
+              "specialization": "Latin",
+              "value": 50
+            },
+            {
+              "skill": "Charm",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Spot Hidden",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "Firearms",
+              "specialization": "Handgun",
+              "value": 40
+            }
+          ],
+          "personalInterests": [
+            {
+              "skill": "Listen",
+              "specialization": null
+            },
+            {
+              "skill": "Stealth",
+              "specialization": null
+            },
+            {
+              "skill": "Psychology",
+              "specialization": null
+            },
+            {
+              "skill": "Persuade",
+              "specialization": null
+            }
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
+        }
+      },
+      "expected": [
+        {
+          "code": "QuickFireCreditRatingValue",
+          "field": "creditRating",
+          "message": "Credit Rating must be 30 for this occupation.",
+          "expected": "30",
+          "actual": "40",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 18: an occupation skill cannot be a personal interest",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "QuickFire",
+        "characteristics": {
+          "STR": 50,
+          "CON": 60,
+          "DEX": 50,
+          "APP": 40,
+          "POW": 60,
+          "SIZ": 50,
+          "INT": 80,
+          "EDU": 70
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [],
+        "quickFire": {
+          "values": [
+            {
+              "skill": "Credit Rating",
+              "specialization": null,
+              "value": 30
+            },
+            {
+              "skill": "Appraise",
+              "specialization": null,
+              "value": 70
+            },
+            {
+              "skill": "Art/Craft",
+              "specialization": "Painting",
+              "value": 60
+            },
+            {
+              "skill": "History",
+              "specialization": null,
+              "value": 60
+            },
+            {
+              "skill": "Library Use",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Language (Other)",
+              "specialization": "Latin",
+              "value": 50
+            },
+            {
+              "skill": "Charm",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Spot Hidden",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "Firearms",
+              "specialization": "Handgun",
+              "value": 40
+            }
+          ],
+          "personalInterests": [
+            {
+              "skill": "Listen",
+              "specialization": null
+            },
+            {
+              "skill": "Stealth",
+              "specialization": null
+            },
+            {
+              "skill": "Psychology",
+              "specialization": null
+            },
+            {
+              "skill": "History",
+              "specialization": null
+            }
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
+        }
+      },
+      "expected": [
+        {
+          "code": "QuickFirePersonalInterestNotAllowed",
+          "field": "quickFire.personalInterests[3]",
+          "message": "Choose a skill that isn't an occupation skill, Credit Rating, Cthulhu Mythos, or already chosen.",
+          "expected": null,
+          "actual": "History",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 18: the extra skill cannot be an occupation skill",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "QuickFire",
+        "characteristics": {
+          "STR": 50,
+          "CON": 60,
+          "DEX": 50,
+          "APP": 40,
+          "POW": 60,
+          "SIZ": 50,
+          "INT": 80,
+          "EDU": 70
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [],
+        "quickFire": {
+          "values": [
+            {
+              "skill": "Credit Rating",
+              "specialization": null,
+              "value": 30
+            },
+            {
+              "skill": "Appraise",
+              "specialization": null,
+              "value": 70
+            },
+            {
+              "skill": "Art/Craft",
+              "specialization": "Painting",
+              "value": 60
+            },
+            {
+              "skill": "History",
+              "specialization": null,
+              "value": 60
+            },
+            {
+              "skill": "Library Use",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Language (Other)",
+              "specialization": "Latin",
+              "value": 50
+            },
+            {
+              "skill": "Charm",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Spot Hidden",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "Firearms",
+              "specialization": "Handgun",
+              "value": 40
+            }
+          ],
+          "personalInterests": [
+            {
+              "skill": "Listen",
+              "specialization": null
+            },
+            {
+              "skill": "Stealth",
+              "specialization": null
+            },
+            {
+              "skill": "Psychology",
+              "specialization": null
+            },
+            {
+              "skill": "Persuade",
+              "specialization": null
+            }
+          ],
+          "extraSkill": {
+            "skill": "History",
+            "specialization": null
+          }
+        }
+      },
+      "expected": [
+        {
+          "code": "QuickFireExtraSkillNotAllowed",
+          "field": "quickFire.extraSkill",
+          "message": "Choose a skill for the freed value that isn't an occupation skill, Credit Rating, or Cthulhu Mythos.",
+          "expected": null,
+          "actual": "History",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 18: an occupation that frees no value needs no extra skill",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "QuickFire",
+        "characteristics": {
+          "STR": 50,
+          "CON": 60,
+          "DEX": 50,
+          "APP": 40,
+          "POW": 60,
+          "SIZ": 50,
+          "INT": 80,
+          "EDU": 70
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "dilettante",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [
+              {
+                "skill": "Library Use",
+                "specialization": null
+              },
+              {
+                "skill": "History",
+                "specialization": null
+              },
+              {
+                "skill": "Spot Hidden",
+                "specialization": null
+              }
+            ]
+          ]
+        },
+        "skills": [],
+        "quickFire": {
+          "values": [
+            {
+              "skill": "Credit Rating",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Art/Craft",
+              "specialization": "Painting",
+              "value": 70
+            },
+            {
+              "skill": "Firearms",
+              "specialization": "Handgun",
+              "value": 60
+            },
+            {
+              "skill": "Language (Other)",
+              "specialization": "Latin",
+              "value": 60
+            },
+            {
+              "skill": "Ride",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Charm",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Library Use",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "History",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "Spot Hidden",
+              "specialization": null,
+              "value": 40
+            }
+          ],
+          "personalInterests": [
+            {
+              "skill": "Listen",
+              "specialization": null
+            },
+            {
+              "skill": "Stealth",
+              "specialization": null
+            },
+            {
+              "skill": "Psychology",
+              "specialization": null
+            },
+            {
+              "skill": "Persuade",
+              "specialization": null
+            }
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
+        }
+      },
+      "expected": [
+        {
+          "code": "QuickFireExtraSkillNotNeeded",
+          "field": "quickFire.extraSkill",
+          "message": "This occupation frees no Quick fire value. Remove the extra skill.",
+          "expected": null,
+          "actual": "Drive Auto",
           "severity": "Error"
         }
       ]

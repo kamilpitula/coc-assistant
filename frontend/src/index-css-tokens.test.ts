@@ -1,6 +1,6 @@
 /// <reference types="node" />
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
@@ -71,5 +71,24 @@ describe('index.css colour tokens', () => {
     const white = { lightness: 1, chroma: 0, hue: 0 }
     const black = { lightness: 0, chroma: 0, hue: 0 }
     expect(contrastRatio(white, black)).toBeCloseTo(21, 1)
+  })
+
+  // A class such as bg-popover silently renders transparent when its token is missing (the Select list did).
+  it('maps every semantic colour token the components use into the Tailwind theme', () => {
+    const sourceFiles = (directory: string): string[] =>
+      readdirSync(directory).flatMap((name) => {
+        const path = join(directory, name)
+        return statSync(path).isDirectory() ? sourceFiles(path) : /\.tsx?$/.test(name) ? [path] : []
+      })
+    const used = new Set(
+      sourceFiles(resolve(process.cwd(), 'src')).flatMap((file) =>
+        [...readFileSync(file, 'utf-8').matchAll(/\b(?:bg|text|border|ring|fill|outline)-(background|foreground|primary|secondary|accent|muted|popover|card|border|input|ring|destructive|warning|success)(-foreground)?\b/g)].map(
+          (match) => `${match[1]}${match[2] ?? ''}`,
+        ),
+      ),
+    )
+
+    const missing = [...used].filter((token) => !new RegExp(`--color-${token}:\\s*var\\(--${token}\\)`).test(indexCss))
+    expect(missing).toEqual([])
   })
 })

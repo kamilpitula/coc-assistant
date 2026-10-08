@@ -51,10 +51,10 @@ describe('playerAttentionItem', () => {
     expect(playerAttentionItem(campaign, null)).toEqual({ kind: 'create' })
   })
 
-  it('explains that no allowed Creation Method is available yet', () => {
+  it('asks a Player to create an Investigator whatever creation method the Campaign allows (PBI-CP-009)', () => {
     const rollingOnly: PlayerCampaign = { ...campaign, allowedCreationMethods: ['StandardRolling'] }
 
-    expect(playerAttentionItem(rollingOnly, null)).toEqual({ kind: 'creationUnavailable' })
+    expect(playerAttentionItem(rollingOnly, null)).toEqual({ kind: 'create' })
   })
 
   it('asks a Player to continue their Draft, naming it when it has a name', () => {

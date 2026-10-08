@@ -58,6 +58,10 @@ describe('useMyInvestigator mutations', () => {
         identity: { name: 'Harvey', age: 25, gender: null, residence: null, birthplace: null },
         creationMethod: 'PointBuy',
         characteristics: {},
+        characteristicRolls: {},
+        occupation: null,
+        skills: [],
+        quickFire: { values: [], personalInterests: [] },
         ageEffects: { deductions: {}, eduImprovementChecks: [] },
         luckRolls: [],
       })

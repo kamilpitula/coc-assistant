@@ -116,7 +116,7 @@ public class PlayerInvestigatorService
             return new InvestigatorResult(InvestigatorCommandOutcome.StatusConflict);
         }
 
-        var (_, errors) = _evaluator.Evaluate(investigator.CharacterSheet, campaign.AllowedCreationMethods);
+        var (_, errors) = _evaluator.Evaluate(investigator.CharacterSheet, campaign);
         if (!investigator.Submit(errors, _timeProvider.GetUtcNow()))
         {
             return new InvestigatorResult(InvestigatorCommandOutcome.ValidationFailed, investigator, errors);

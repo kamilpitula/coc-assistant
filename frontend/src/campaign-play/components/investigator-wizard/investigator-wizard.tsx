@@ -10,17 +10,26 @@ import { InvestigatorCreationStepper } from '@/campaign-play/components/investig
 import { InvestigatorNotFound } from '@/campaign-play/components/investigator-not-found/investigator-not-found'
 import { InvestigatorStatusBadge } from '@/campaign-play/components/investigator-status-badge/investigator-status-badge'
 import { InvestigatorSummary } from '@/campaign-play/components/investigator-summary/investigator-summary'
+import { OccupationSkillsStep } from '@/campaign-play/components/occupation-skills-step/occupation-skills-step'
+import { OccupationStep } from '@/campaign-play/components/occupation-step/occupation-step'
+import { PersonalInterestsStep } from '@/campaign-play/components/personal-interests-step/personal-interests-step'
 import { StartOverDialog } from '@/campaign-play/components/start-over-dialog/start-over-dialog'
+import { WorthCheckingAlert } from '@/campaign-play/components/worth-checking-alert/worth-checking-alert'
 import { ValidationErrorSummary } from '@/campaign-play/components/validation-error-summary/validation-error-summary'
+import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import { useMyCharacterSheet } from '@/campaign-play/hooks/useMyInvestigator'
+import { useOccupationCatalog, useSkillCatalog } from '@/campaign-play/hooks/useRuleData'
 import { useWizardMoves, type PendingAction, type WizardMove } from '@/campaign-play/hooks/useWizardMoves'
 import { validateCharacterSheet } from '@/campaign-play/services/characterSheetValidation'
 import { fieldId } from '@/campaign-play/services/fieldIds'
+import { skillValuesLeft } from '@/campaign-play/services/quickFireValues'
 import { inlineErrorsForStep, isFieldTouched, mergeClientAndServerErrors } from '@/campaign-play/services/visibleErrors'
 import { stepOfField, stepStates, WIZARD_STEPS, type WizardStep } from '@/campaign-play/services/wizardProgress'
 import { characterSheetFormReducer, inputsForSave, inputsFromSheet } from '@/campaign-play/state/characterSheetForm'
-import type { ValidationError } from '@/campaign-play/types/CharacterSheet'
+import type { CreationMethod } from '@/campaign-play/types/Campaign'
+import type { CharacterSheetInputs, CharacterSheetView as CharacterSheetData, ValidationError } from '@/campaign-play/types/CharacterSheet'
 import type { MyCharacterSheet } from '@/campaign-play/types/Investigator'
+import type { OccupationCatalog, SkillCatalog } from '@/campaign-play/types/RuleData'
 import '@/campaign-play/types/navigationState'
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
@@ -38,8 +47,11 @@ interface InvestigatorWizardProps {
  */
 export function InvestigatorWizard({ campaignId, step }: InvestigatorWizardProps) {
   const sheet = useMyCharacterSheet(campaignId)
+  const campaign = useCampaign(campaignId)
+  const occupations = useOccupationCatalog(campaignId)
+  const skills = useSkillCatalog(campaignId)
 
-  if (sheet.isPending) {
+  if (sheet.isPending || campaign.isPending || occupations.isPending || skills.isPending) {
     return (
       <div aria-busy="true" className="flex flex-col gap-4">
         <Skeleton className="h-8 w-64" />
@@ -48,7 +60,7 @@ export function InvestigatorWizard({ campaignId, step }: InvestigatorWizardProps
     )
   }
 
-  if (sheet.isError) {
+  if (sheet.isError || campaign.isError || occupations.isError || skills.isError) {
     return (
       <div className="flex flex-col items-start gap-3">
         <p className="text-sm">We couldn&apos;t load your Investigator.</p>
@@ -59,7 +71,7 @@ export function InvestigatorWizard({ campaignId, step }: InvestigatorWizardProps
     )
   }
 
-  if (!sheet.data) {
+  if (!sheet.data || !campaign.data || !occupations.data || !skills.data) {
     return <InvestigatorNotFound campaignId={campaignId} />
   }
 
@@ -68,7 +80,17 @@ export function InvestigatorWizard({ campaignId, step }: InvestigatorWizardProps
   }
 
   // Remounting per step resets the step's touched fields, error summary, and focus (A11Y-1).
-  return <WizardForm key={`${sheet.data.investigatorId}-${step}`} campaignId={campaignId} step={step} sheet={sheet.data} />
+  return (
+    <WizardForm
+      key={`${sheet.data.investigatorId}-${step}`}
+      campaignId={campaignId}
+      step={step}
+      sheet={sheet.data}
+      allowedMethods={campaign.data.allowedCreationMethods}
+      occupationCatalog={occupations.data}
+      skillCatalog={skills.data}
+    />
+  )
 }
 
 function useFocusedHeading() {
@@ -97,13 +119,40 @@ interface WizardFormProps {
   campaignId: string
   step: WizardStep
   sheet: MyCharacterSheet
+  allowedMethods: CreationMethod[]
+  occupationCatalog: OccupationCatalog
+  skillCatalog: SkillCatalog
 }
 
-function WizardForm({ campaignId, step, sheet }: WizardFormProps) {
+/** The saved inputs, starting a new Draft on the only method a Campaign allows (ux.md section 6.2; UX-10). */
+function initialInputs(sheet: CharacterSheetData, allowedMethods: CreationMethod[]): CharacterSheetInputs {
+  const inputs = inputsFromSheet(sheet)
+  return inputs.creationMethod === null && allowedMethods.length === 1 ? { ...inputs, creationMethod: allowedMethods[0] } : inputs
+}
+
+/** With Quick fire there are no budgets; the rail counts the skill values and personal interests left (ux.md 4.2). */
+function quickFireLeft(sheet: MyCharacterSheet): { values: number; interests: number } | undefined {
+  const { characterSheet, rules } = sheet
+  if (characterSheet.creationMethod !== 'QuickFire') {
+    return undefined
+  }
+
+  return {
+    values: skillValuesLeft(
+      rules.quickFireSkillValues,
+      characterSheet.quickFire.values.map((value) => value.value),
+      characterSheet.occupation?.quickFireCreditRating?.freedValue ?? null,
+      Boolean(characterSheet.quickFire.extraSkill),
+    ),
+    interests: Math.max(0, rules.quickFirePersonalInterestCount - characterSheet.quickFire.personalInterests.length),
+  }
+}
+
+function WizardForm({ campaignId, step, sheet, allowedMethods, occupationCatalog, skillCatalog }: WizardFormProps) {
   const heading = useFocusedHeading()
   const summary = useRef<HTMLDivElement>(null)
   const statusMessage = useRouterState({ select: (state) => state.location.state.statusMessage })
-  const [inputs, dispatch] = useReducer(characterSheetFormReducer, sheet.characterSheet, inputsFromSheet)
+  const [inputs, dispatch] = useReducer(characterSheetFormReducer, sheet.characterSheet, (saved) => initialInputs(saved, allowedMethods))
   const [savedInputs, setSavedInputs] = useState(() => JSON.stringify(inputsFromSheet(sheet.characterSheet)))
   const [touched, setTouched] = useState<ReadonlySet<string>>(() => new Set())
   const [clientErrors, setClientErrors] = useState<ValidationError[] | null>(null)
@@ -153,7 +202,7 @@ function WizardForm({ campaignId, step, sheet }: WizardFormProps) {
     setClientErrors(validateCharacterSheet(inputs, sheet.rules, bracket))
   }
 
-  const go = (move: WizardMove) => void moves.move(move, inputsForSave(inputs, step, bracket, sheet.rules.eduMaximum))
+  const go = (move: WizardMove) => void moves.move(move, inputsForSave(inputs, step, bracket, sheet.rules))
 
   const selectError = (field: string) => {
     const owner = stepOfField(field)
@@ -165,6 +214,7 @@ function WizardForm({ campaignId, step, sheet }: WizardFormProps) {
   }
 
   const stepProps = { inputs, errors: inlineErrors, onAction: dispatch, onBlur: handleBlur }
+  const skillStepProps = { ...stepProps, rules: sheet.rules, sheet: sheet.characterSheet, occupationCatalog, skillCatalog }
   const warnings = sheet.validationErrors.filter((error) => error.severity === 'Warning' && stepOfField(error.field) === step)
   const problemCount = sheet.validationErrors.filter((error) => error.severity === 'Error').length
 
@@ -192,8 +242,18 @@ function WizardForm({ campaignId, step, sheet }: WizardFormProps) {
           )}
 
           {step === 'identity' && <IdentityStep {...stepProps} playerName={sheet.playerName} />}
-          {step === 'characteristics' && <CharacteristicsStep {...stepProps} rules={sheet.rules} bracket={bracket} warnings={warnings} />}
+          {step === 'characteristics' && (
+            <CharacteristicsStep {...stepProps} rules={sheet.rules} bracket={bracket} warnings={warnings} allowedMethods={allowedMethods} />
+          )}
           {step === 'age' && <AgeEffectsStep {...stepProps} rules={sheet.rules} bracket={bracket} />}
+          {step === 'occupation' && <OccupationStep {...skillStepProps} />}
+          {step === 'occupation-skills' && <OccupationSkillsStep {...skillStepProps} />}
+          {step === 'personal-interests' && (
+            <>
+              <WorthCheckingAlert warnings={warnings} />
+              <PersonalInterestsStep {...skillStepProps} />
+            </>
+          )}
           {step === 'sheet' && (
             <CharacterSheetView sheet={sheet.characterSheet} playerName={sheet.playerName} changeLinksFor={campaignId} />
           )}
@@ -203,6 +263,7 @@ function WizardForm({ campaignId, step, sheet }: WizardFormProps) {
         </div>
         <InvestigatorSummary
           derived={sheet.characterSheet.derived}
+          quickFireLeft={quickFireLeft(sheet)}
           problemCount={problemCount}
           onShowProblems={() => showSummary(sheet.validationErrors.filter((error) => error.severity === 'Error'))}
         />

@@ -1,0 +1,258 @@
+{
+  "catalog": "SkillSpecializationCatalog",
+  "schemaVersion": 1,
+  "verificationStatus": "Fighting and Firearms specializations moved unchanged from section 6.2 on 2026-10-07; awaiting project owner verification; pageReference values still to be added",
+  "closedFamilies": [
+    "Fighting",
+    "Firearms"
+  ],
+  "openFamilies": [
+    "Art/Craft",
+    "Language (Other)",
+    "Pilot",
+    "Science",
+    "Survival"
+  ],
+  "entries": [
+    {
+      "id": "fighting-axe",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "skill": "Fighting",
+        "specialization": "Axe",
+        "base": {
+          "kind": "fixed",
+          "value": 15
+        }
+      }
+    },
+    {
+      "id": "fighting-brawl",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "skill": "Fighting",
+        "specialization": "Brawl",
+        "base": {
+          "kind": "fixed",
+          "value": 25
+        }
+      }
+    },
+    {
+      "id": "fighting-chainsaw",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "skill": "Fighting",
+        "specialization": "Chainsaw",
+        "base": {
+          "kind": "fixed",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": "fighting-flail",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "skill": "Fighting",
+        "specialization": "Flail",
+        "base": {
+          "kind": "fixed",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": "fighting-garrote",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "skill": "Fighting",
+        "specialization": "Garrote",
+        "base": {
+          "kind": "fixed",
+          "value": 15
+        }
+      }
+    },
+    {
+      "id": "fighting-spear",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "skill": "Fighting",
+        "specialization": "Spear",
+        "base": {
+          "kind": "fixed",
+          "value": 20
+        }
+      }
+    },
+    {
+      "id": "fighting-sword",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "skill": "Fighting",
+        "specialization": "Sword",
+        "base": {
+          "kind": "fixed",
+          "value": 20
+        }
+      }
+    },
+    {
+      "id": "fighting-whip",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "skill": "Fighting",
+        "specialization": "Whip",
+        "base": {
+          "kind": "fixed",
+          "value": 5
+        }
+      }
+    },
+    {
+      "id": "firearms-bow",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "skill": "Firearms",
+        "specialization": "Bow",
+        "base": {
+          "kind": "fixed",
+          "value": 15
+        }
+      }
+    },
+    {
+      "id": "firearms-handgun",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "skill": "Firearms",
+        "specialization": "Handgun",
+        "base": {
+          "kind": "fixed",
+          "value": 20
+        }
+      }
+    },
+    {
+      "id": "firearms-heavy-weapons",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "skill": "Firearms",
+        "specialization": "Heavy Weapons",
+        "base": {
+          "kind": "fixed",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": "firearms-flamethrower",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "skill": "Firearms",
+        "specialization": "Flamethrower",
+        "base": {
+          "kind": "fixed",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": "firearms-machine-gun",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "skill": "Firearms",
+        "specialization": "Machine Gun",
+        "base": {
+          "kind": "fixed",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": "firearms-rifle-shotgun",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "skill": "Firearms",
+        "specialization": "Rifle/Shotgun",
+        "base": {
+          "kind": "fixed",
+          "value": 25
+        }
+      }
+    },
+    {
+      "id": "firearms-submachine-gun",
+      "sourceBook": "Call of Cthulhu Keeper Rulebook",
+      "edition": "7th Edition",
+      "pageReference": null,
+      "era": null,
+      "lastVerified": null,
+      "data": {
+        "skill": "Firearms",
+        "specialization": "Submachine Gun",
+        "base": {
+          "kind": "fixed",
+          "value": 15
+        }
+      }
+    }
+  ]
+}

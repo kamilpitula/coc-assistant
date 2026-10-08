@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { rules, sheetView } from '@/campaign-play/test-support/characterSheetFixtures'
 import type { CharacterSheetInputs } from '@/campaign-play/types/CharacterSheet'
 
 import {
@@ -23,63 +24,7 @@ const summary = {
   updatedAt: '2026-10-02T12:00:00+00:00',
 }
 
-const characteristic = { assigned: 60, value: 60, hard: 30, extreme: 12 }
-
-const characterSheet = {
-  schemaVersion: 1,
-  identity: { name: 'Harvey Walters', age: 25, gender: null, residence: null, birthplace: null },
-  creationMethod: 'PointBuy',
-  characteristics: {
-    STR: characteristic,
-    CON: characteristic,
-    DEX: characteristic,
-    APP: characteristic,
-    POW: characteristic,
-    SIZ: characteristic,
-    INT: characteristic,
-    EDU: characteristic,
-  },
-  ageEffects: {
-    bracket: {
-      minimumAge: 20,
-      maximumAge: 39,
-      physicalDeductionTotal: 0,
-      physicalDeductionCharacteristics: [],
-      appearanceModifier: 0,
-      eduImprovementChecks: 1,
-      luckRolls: 1,
-    },
-    deductions: {},
-    eduImprovementChecks: [{ check: 30, gain: null, eduBefore: 50, eduAfter: 50 }],
-  },
-  luckRolls: [11],
-  derived: {
-    luck: 55,
-    hitPoints: 12,
-    magicPoints: 12,
-    sanity: { current: 60, maximum: 99 },
-    dodge: 30,
-    movementRate: 8,
-    damageBonus: '0',
-    build: 0,
-  },
-  rollRecords: [{ purpose: 'Luck', dice: '3D6', result: 11, source: 'PlayerEntered' }],
-}
-
-const rules = {
-  pointBuyBudget: 460,
-  pointBuyMinimum: 15,
-  pointBuyMaximum: 90,
-  pointBuyRecommendedMinimum: 40,
-  minimumAge: 15,
-  maximumAge: 89,
-  characteristicFloor: 0,
-  luckDice: '3D6',
-  eduImprovementCheckDice: 'D100',
-  eduImprovementGainDice: '1D10',
-  eduMaximum: 99,
-  luckMultiplier: 5,
-}
+const characterSheet = sheetView()
 
 const nameError = {
   code: 'InvestigatorNameRequired',
@@ -114,8 +59,12 @@ const inputs: CharacterSheetInputs = {
   identity: { name: 'Harvey Walters', age: 25, gender: null, residence: null, birthplace: null },
   creationMethod: 'PointBuy',
   characteristics: { STR: 60 },
+  characteristicRolls: {},
   ageEffects: { deductions: {}, eduImprovementChecks: [{ check: 30, gain: null }] },
   luckRolls: [11],
+  occupation: null,
+  skills: [],
+  quickFire: { values: [], personalInterests: [] },
 }
 
 function jsonResponse(status: number, body?: unknown): Response {

@@ -122,6 +122,8 @@ pool = [40, 50, 50, 50, 60, 60, 70, 80]
 assign each value exactly once to STR/CON/DEX/APP/POW/SIZ/INT/EDU
 ```
 
+Each value is used exactly once. The pool contains no value below 40, so the recommended INT and SIZ minimum is always met.
+
 Then apply age rules and the normal derived-value calculations.
 
 The Quick Fire method is an official 7th Edition alternative; do not accidentally mix its fixed skill allocation with the full standard occupation-point method unless the user explicitly asks for that variant.
@@ -362,28 +364,10 @@ Important: skills such as Art/Craft, Fighting, Firearms, Language, Pilot, Scienc
 
 ### 6.2 Common specialization base values
 
-The core skill list establishes different starting values for individual Fighting and Firearms specializations. For the common specializations:
-
-```text
-Fighting:
-    Axe       = 15
-    Brawl     = 25
-    Chainsaw  = 10
-    Flail     = 10
-    Garrote   = 15
-    Spear     = 20
-    Sword     = 20
-    Whip      = 5
-
-Firearms:
-    Bow              = 15
-    Handgun          = 20
-    Heavy Weapons    = 10
-    Flamethrower     = 10
-    Machine Gun      = 10
-    Rifle/Shotgun    = 25
-    Submachine Gun   = 15
-```
+The core skill list establishes different starting values for individual Fighting and Firearms specializations. The base values of the common specializations are maintained as data in
+[catalogs/skill-specializations.json](catalogs/skill-specializations.json) (a `SkillSpecializationCatalog` with
+provenance per [section 20](#20-canonical-data-sources-the-implementation-should-maintain)).
+That catalog is the single source for these values; do not copy them here.
 
 Use the rulebook's specialization data as the authoritative source when adding era-specific or uncommon specializations.
 
@@ -504,6 +488,8 @@ for allocation in personalInterestAllocations:
 Unused points are lost.
 
 Personal Interest points are **one-for-one percentage points**.
+
+This section and [section 9](#9-skill-post-processing) ("CreditRating = allocated occupation points") disagree on whether Personal Interest points may raise Credit Rating; the project's resolution is recorded in [project_ruleset.md section 4.6](project_ruleset.md#46-credit-rating-takes-occupation-points-only).
 
 ---
 
@@ -657,16 +643,13 @@ gear[]
 
 Credit Rating determines the appropriate wealth band. Exact cash/assets/spending-level values depend on the **era**.
 
-For the standard 1920s table:
-
-| Credit Rating | Cash | Assets | Spending Level |
-|---|---:|---:|---:|
-| 0 or less | $0.50 | none | $0.50 |
-| 1–9 | CR × 1 | CR × 10 | $2 |
-| 10–49 | CR × 2 | CR × 50 | $10 |
-| 50–89 | CR × 5 | CR × 500 | $50 |
-| 90–98 | CR × 20 | CR × 2000 | $250 |
-| 99 | $50,000 | $5M+ | $5,000 |
+The standard 1920s table (Credit Rating band to cash, assets, and spending level)
+is maintained as data in [catalogs/wealth.1920s.json](catalogs/wealth.1920s.json)
+(a `WealthTablesByEra` entry with provenance per
+[section 20](#20-canonical-data-sources-the-implementation-should-maintain)).
+That catalog is the single source for these values; do not copy them here.
+It keeps the published "0 or less" row as a band without a lower bound and the
+published "$5M+" assets as an amount marked as a lower bound.
 
 For modern-day games the core rules use a different table, so a modern-era implementation must not reuse the 1920s multipliers.
 
@@ -1162,7 +1145,13 @@ Occupation skills + Credit Rating = direct 70/60/60/50/50/50/40/40/40 allocation
 Personal interest = four non-occupation skills +20 each
 ```
 
-If the selected occupation's Credit Rating minimum is below 40%, set Credit Rating to the appropriate lower value and redistribute the freed difference among the other occupation allocations as allowed by the Quick Fire rules. Do not treat the Quick Fire direct values as additive to the printed skill base values.
+The nine Quick Fire values are assigned one each to the investigator's eight occupation skills and Credit Rating, in any order the player chooses. These values are final skill values: they replace the printed skill base value. They are not additive. Skills with a choice, any, or group slot are chosen first and then take one of the nine values. The personal interest skills are different: each of the four chosen non-occupation skills ends at its printed base value + 20, so the +20 IS additive. Cthulhu Mythos receives no points at creation and cannot be a personal interest skill. If the occupation's Credit Rating minimum is below 40, Credit Rating takes the lower appropriate value and the freed 40 goes to another occupation skill of the player's choice. [ASSUMPTION: no source states how the freed value is redistributed.]
+
+**Project assumptions (not official rules), decided by the project owner on 2026-10-07:**
+
+- [ASSUMPTION] *Credit Rating value.* Credit Rating takes the value from 40, 50, 60, and 70 that is closest to the occupation's Credit Rating minimum and at least that minimum. When the minimum is below 40, Credit Rating takes the minimum itself. When the minimum is above 70, Credit Rating also takes the minimum itself.
+- [ASSUMPTION] *Freed value.* When Credit Rating does not take a value from the pool, the value it would have taken (the 40, or the 70 when the minimum is above 70) is freed. The player assigns it to one additional skill of their choice that is not Credit Rating, not Cthulhu Mythos, and not already an occupation skill; that skill then counts as an occupation skill.
+- [ASSUMPTION] *Personal interests.* The same personal interest skill cannot be chosen twice.
 
 
 These are **different generation algorithms**.

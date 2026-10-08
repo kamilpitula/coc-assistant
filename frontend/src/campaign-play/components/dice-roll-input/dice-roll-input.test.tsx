@@ -33,4 +33,12 @@ describe('DiceRollInput', () => {
     expect(screen.queryByText(/^= /)).not.toBeInTheDocument()
     expect(screen.getByLabelText('Luck, 3D6 total')).toHaveAttribute('aria-invalid', 'true')
   })
+
+  it('section 2.1: shows a bonus in the expression and adds it before multiplying', () => {
+    render(<DiceRollInput field="characteristicRolls.SIZ" rollLabel="SIZ" dice="2D6" bonus={6} multiplier={5} value={7} onChange={vi.fn()} />)
+
+    expect(screen.getByLabelText('SIZ, 2D6 total')).toHaveAccessibleDescription('2 to 12')
+    expect(screen.getByText('(2D6 + 6) x 5')).toBeInTheDocument()
+    expect(screen.getByText('= 65')).toBeInTheDocument()
+  })
 })
