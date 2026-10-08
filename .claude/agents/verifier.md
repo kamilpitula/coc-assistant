@@ -38,6 +38,9 @@ root unless noted. These mirror the jobs in `.github/workflows/ci.yml`.
 
 - PBI file check: `node tools/backlog/src/cli.ts --check` (CI runs it on
   every pull request)
+- ASCII check: `node tools/ascii-check/src/cli.ts` (CI runs it on every
+  pull request; for changes under `tools/ascii-check/`, also run
+  `npm run typecheck` and `npm test` there)
 
 ## Backend (`backend/**/*.cs`)
 
