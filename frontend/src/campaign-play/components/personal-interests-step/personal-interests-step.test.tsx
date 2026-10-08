@@ -53,7 +53,7 @@ describe('PersonalInterestsStep', () => {
     expect(rows.map((row) => within(row).getAllByRole('cell')[0].textContent)).toEqual(['Library Use', 'Drive Auto'])
   })
 
-  it('adds another specialization as a new row whose specialization field takes focus', async () => {
+  it('starts another specialization by moving focus to the skill family Select', async () => {
     renderStep(validInputs)
 
     await userEvent.click(screen.getByRole('button', { name: 'Add another specialization' }))

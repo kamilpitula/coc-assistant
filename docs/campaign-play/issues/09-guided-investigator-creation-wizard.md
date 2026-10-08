@@ -45,8 +45,6 @@ Missing or conflicting rules are added to `docs/game-rules/` first. A `Server` r
 - Add more 1920s Occupations to `docs/game-rules/catalogs/occupations.1920s.json`; the catalog has 10, enough for the flows but thin for real play.
 - Project owner verification and page references for the new `catalogs/wealth.1920s.json` and `catalogs/skill-specializations.json` (marked awaiting verification).
 - Run the dice-entry usability test with one or two first-time Players (`specs/character-sheet/ux.md` section 12) before release.
-- Confirm the method-switch dialog sentence "Your skill values will be cleared too." (ux.md section 5.5), added in implementation because Quick fire skill values and points cannot be saved together; it was not in the approved plan.
-- "Add another specialization" focuses the skill family Select first, then the specialization field (ux.md section 6.6 says the specialization field); confirm or adjust.
 - Remove the now-unreachable "no available creation method" state (UX-19 card state, `CreationMethodsUnavailable` outcome) or keep it for a future method, and reword the campaign-play Scenario "Player cannot create an Investigator without a supported Creation Method".
 - Upgrade `System.Security.Cryptography.Xml` 9.0.0 (NU1903 high severity advisory, pre-existing in Infrastructure).
 - Local `npm run lint` also lints the git-ignored `storybook-static` build output; add it to the ESLint ignores.
