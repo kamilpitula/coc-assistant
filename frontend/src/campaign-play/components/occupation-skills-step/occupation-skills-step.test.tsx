@@ -78,4 +78,37 @@ describe('OccupationSkillsStep', () => {
     expect(onAction).toHaveBeenCalledWith({ type: 'quickFireValue', skill: skill('History'), value: 60 })
     expect(screen.queryByText(/Occupation points left/)).not.toBeInTheDocument()
   })
+
+  // The Player assigned 60 to Swim through the any slot, then picked Persuade there instead: Swim is no longer an
+  // occupation skill but keeps its value (spec.md: later inputs are kept and surfaced, never discarded).
+  it('section 18: shows a Quick fire value left on a skill that is no longer an occupation skill, with its error', () => {
+    const inputs: CharacterSheetInputs = {
+      ...validInputs,
+      creationMethod: 'QuickFire',
+      skills: [],
+      quickFire: {
+        values: [{ ...skill('Credit Rating'), value: 30 }, { ...skill('Drive Auto'), value: 40 }, { ...skill('Swim'), value: 60 }],
+        personalInterests: [],
+      },
+    }
+    renderStep(inputs, vi.fn(), { 'quickFire.values[2].skill': "Swim isn't one of your occupation skills." })
+
+    const swim = screen.getByRole('combobox', { name: 'Swim, Quick fire value' })
+    expect(swim).toHaveTextContent('60')
+    expect(swim).toHaveAccessibleDescription("Swim isn't one of your occupation skills.")
+    expect(swim).toHaveAttribute('id', 'field-quickFire-values-2-skill')
+    expect(screen.queryByRole('combobox', { name: 'Drive Auto, Quick fire value' })).not.toBeInTheDocument()
+  })
+
+  it('section 7.2: shows occupation points left on a skill that is no longer an occupation skill, with its error', () => {
+    const inputs: CharacterSheetInputs = {
+      ...validInputs,
+      skills: [...validInputs.skills, { ...skill('Swim'), occupationPoints: 20, personalInterestPoints: null }],
+    }
+    renderStep(inputs, vi.fn(), { 'skills[3].occupationPoints': "Swim isn't one of your occupation skills." })
+
+    const swim = screen.getByLabelText('Swim, occupation points')
+    expect(swim).toHaveValue(20)
+    expect(swim).toHaveAccessibleDescription("Swim isn't one of your occupation skills.")
+  })
 })

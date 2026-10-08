@@ -309,10 +309,32 @@ test.describe('Investigator lifecycle', () => {
         await chooseAntiquarianViaUi(playerPage)
         await pickAntiquarianSkillsViaUi(playerPage)
         await expect(playerPage.getByText('Must be 30 for this occupation')).toBeVisible()
+        await chooseOption(playerPage, 'Extra skill for the freed 40', 'Drive Auto')
         for (const [skill, value] of QUICK_FIRE_SKILLS) {
           await chooseOption(playerPage, `${skill}, Quick fire value`, value)
         }
-        await chooseOption(playerPage, 'Extra skill for the freed 40', 'Drive Auto')
+        await expect(playerPage.getByText('Every value is assigned.')).toBeVisible()
+      })
+
+      await test.step('the value list opens on an opaque surface, so its options are readable', async () => {
+        await playerPage.getByRole('combobox', { name: 'Appraise, Quick fire value', exact: true }).click()
+        const list = playerPage.getByRole('listbox')
+        await expect(list).toBeVisible()
+        await playerPage.screenshot({ path: test.info().outputPath('quick-fire-value-list.png') })
+        expect(await list.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
+        await playerPage.keyboard.press('Escape')
+      })
+
+      await test.step('a value left on a skill that stops being an occupation skill stays visible with its error', async () => {
+        await chooseOption(playerPage, 'Choose 1 interpersonal skill', 'Persuade')
+        await playerPage.getByRole('button', { name: 'Save and continue' }).click()
+        const summary = playerPage.getByRole('alert').filter({ hasText: "There's a problem" })
+        await expect(summary.getByRole('link', { name: "Charm isn't one of your occupation skills." })).toBeVisible()
+        await expect(playerPage.getByRole('combobox', { name: 'Charm, Quick fire value', exact: true })).toHaveText('50')
+        await summary.getByRole('link', { name: "Charm isn't one of your occupation skills." }).click()
+        await expect(playerPage.getByRole('combobox', { name: 'Charm, Quick fire value', exact: true })).toBeFocused()
+        await chooseOption(playerPage, 'Choose 1 interpersonal skill', 'Charm')
+        await expect(playerPage.getByRole('combobox', { name: 'Persuade, Quick fire value', exact: true })).toHaveCount(0)
         await pressWizardAction(playerPage, 'Save and continue')
       })
 

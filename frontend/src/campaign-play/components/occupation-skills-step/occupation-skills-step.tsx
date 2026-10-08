@@ -43,6 +43,7 @@ export function OccupationSkillsStep(props: SkillStepProps) {
     isOccupationSkill: false,
   }
   const occupationEntries = entries.filter((entry) => entry.isOccupationSkill)
+  const leftOverEntries = entries.filter((entry) => isLeftOver(entry, props))
   const budget = sheet.derived.occupationPoints?.budget ?? null
   const spent = inputs.skills.reduce((sum, allocation) => sum + (allocation.occupationPoints ?? 0), 0)
 
@@ -53,7 +54,7 @@ export function OccupationSkillsStep(props: SkillStepProps) {
     onBlur(field, nextFocus)
   }
 
-  const rows = [creditRating, ...occupationEntries].map((entry) =>
+  const rows = [creditRating, ...occupationEntries, ...leftOverEntries].map((entry) =>
     quickFire ? quickFireRow(entry, props) : pointsRow(entry, props, announceBudget),
   )
 
@@ -156,6 +157,34 @@ function assignedValues(inputs: CharacterSheetInputs): (number | null)[] {
   return inputs.quickFire.values.map((value) => value.value)
 }
 
+/** The Quick fire skill that takes the value Credit Rating frees: the first assigned skill outside the occupation (section 18). */
+function extraSkillOf({ inputs, rules }: SkillStepProps, occupationSkills: SkillTableEntry[]): SkillReference | undefined {
+  return inputs.quickFire.values.find(
+    (value) => value.skill !== rules.creditRatingSkill && !occupationSkills.some((entry) => sameSkill(entry.skill, value)),
+  )
+}
+
+/**
+ * A skill that is no longer an occupation skill (after a slot pick, specialization, or Occupation changed) but still
+ * holds occupation points or a Quick fire value. Its row stays on this step so the now-invalid input is surfaced with
+ * its error instead of being discarded or hidden (spec.md, User journey; ux.md section 5.4).
+ */
+function isLeftOver(entry: SkillTableEntry, props: SkillStepProps): boolean {
+  const { inputs, rules, sheet, occupationCatalog, skillCatalog } = props
+  if (entry.isOccupationSkill || entry.skill.skill === rules.creditRatingSkill) {
+    return false
+  }
+
+  if (inputs.creationMethod !== 'QuickFire') {
+    return inputs.skills.some((allocation) => sameSkill(allocation, entry.skill) && allocation.occupationPoints !== null)
+  }
+
+  const occupationSkills = skillTableEntries(sheet, inputs, skillCatalog, occupationCatalog, []).filter((candidate) => candidate.isOccupationSkill)
+  const extra = sheet.occupation?.quickFireCreditRating?.freedValue != null ? extraSkillOf(props, occupationSkills) : undefined
+  const assigned = inputs.quickFire.values.some((value) => sameSkill(value, entry.skill))
+  return assigned && !(extra && sameSkill(extra, entry.skill))
+}
+
 function quickFireRow(entry: SkillTableEntry, props: SkillStepProps): SkillAllocationRow {
   const { inputs, errors, rules, sheet, onAction, onBlur } = props
   const name = nameOf(entry.skill)
@@ -168,7 +197,9 @@ function quickFireRow(entry: SkillTableEntry, props: SkillStepProps): SkillAlloc
     ...(isCreditRating && creditRatingValue !== undefined && !rules.quickFireSkillValues.includes(creditRatingValue) ? [creditRatingValue] : []),
     ...optionsFor(rules.quickFireSkillValues, elsewhere, own),
   ]
-  const field = index >= 0 ? `quickFire.values[${index}].value` : `quickFireRows.${name}.value`
+  // A skill outside the occupation is reported on its skill field (QuickFireSkillNotOccupationSkill).
+  const property = entry.isOccupationSkill || isCreditRating ? 'value' : 'skill'
+  const field = index >= 0 ? `quickFire.values[${index}].${property}` : `quickFireRows.${name}.value`
   return {
     key: name,
     name,
@@ -196,9 +227,7 @@ function QuickFireSummary(props: SkillStepProps) {
   const left = valuesLeft(rules.quickFireSkillValues, assignedValues(inputs))
   const freed = sheet.occupation?.quickFireCreditRating?.freedValue ?? null
   const occupationSkills = skillTableEntries(sheet, inputs, skillCatalog, occupationCatalog, []).filter((entry) => entry.isOccupationSkill)
-  const extra = inputs.quickFire.values.find(
-    (value) => value.skill !== rules.creditRatingSkill && !occupationSkills.some((entry) => sameSkill(entry.skill, value)),
-  )
+  const extra = extraSkillOf(props, occupationSkills)
 
   return (
     <div className="flex flex-col gap-3">
