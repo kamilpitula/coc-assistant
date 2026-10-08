@@ -22,7 +22,7 @@ import { attentionList, memberRow, ownRow } from '../fixtures/overview'
  * effects before Hard and Extreme values", "Draft resumes after leaving the wizard", "Standard Rolling records every
  * Player-entered roll", "Changing characteristics keeps later allocations", and "Changing the Creation Method clears
  * characteristics after confirmation"; and to specs/character-sheet/ux.md sections 3 to 7 (UX-3, UX-4, UX-5, UX-7,
- * UX-8, UX-9, UX-10, UX-11, UX-12, UX-13, UX-14, UX-15, UX-20, UX-22, UX-23, UX-24, UX-25), with the Campaign page as the overview of
+ * UX-8, UX-9, UX-10, UX-11, UX-12, UX-13, UX-14, UX-15, UX-20, UX-22, UX-23, UX-24, UX-25, UX-26), with the Campaign page as the overview of
  * specs/campaign-overview/ux.md (CO-UX-4, CO-UX-6, CO-UX-9).
  */
 test.describe('Investigator lifecycle', () => {
@@ -367,6 +367,31 @@ test.describe('Investigator lifecycle', () => {
         }
         await expect(playerPage.getByText('Personal interests chosen: 4 of 4')).toBeVisible()
         await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Sheet and submit' })).toBeVisible()
+      })
+
+      await test.step('UX-26: a personal interest that becomes the extra skill stays visible with its error and can be removed', async () => {
+        await playerPage.getByRole('link', { name: /^Occupation skills ?, completed$/ }).click()
+        await chooseOption(playerPage, 'Extra skill for the freed 40', 'Charm')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Personal interests' })).toBeVisible()
+        const error = "Choose a skill that isn't an occupation skill, Credit Rating, Cthulhu Mythos, or already chosen."
+        const stranded = playerPage.getByRole('region', { name: 'No longer personal interests' })
+        await expect(stranded).toContainText('Charm')
+        await expect(stranded).toContainText(error)
+        await playerPage.getByRole('button', { name: 'Save and continue' }).click()
+        const summary = playerPage.getByRole('alert').filter({ hasText: "There's a problem" })
+        await summary.getByRole('link', { name: error }).click()
+        const remove = stranded.getByRole('button', { name: 'Remove Charm from your personal interests' })
+        await expect(remove).toBeFocused()
+        await remove.click()
+        await expect(stranded).toHaveCount(0)
+        await expect(playerPage.getByText('Personal interests chosen: 3 of 4')).toBeVisible()
+        await playerPage.getByRole('checkbox', { name: 'Drive Auto, +20' }).check()
+        await pressWizardAction(playerPage, 'Save and continue')
+      })
+
+      await test.step('the Player submits the Quick fire Investigator', async () => {
         await expect(playerPage.getByRole('heading', { level: 1, name: 'Sheet and submit' })).toBeVisible()
         await expect(playerPage.getByRole('row', { name: /^Listen/ })).toContainText('40')
         await playerPage.getByRole('button', { name: 'Submit to Keeper' }).click()

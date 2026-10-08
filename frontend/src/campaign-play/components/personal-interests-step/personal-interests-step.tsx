@@ -6,7 +6,10 @@ import { PointsLeftCounter } from '@/campaign-play/components/points-left-counte
 import { SkillAllocationTable, type SkillAllocationRow } from '@/campaign-play/components/skill-allocation-table/skill-allocation-table'
 import { SkillPicker } from '@/campaign-play/components/skill-picker/skill-picker'
 import { WizardField } from '@/campaign-play/components/wizard-field/wizard-field'
-import { fieldId } from '@/campaign-play/services/fieldIds'
+import { CircleAlert } from 'lucide-react'
+
+import { errorId, fieldId } from '@/campaign-play/services/fieldIds'
+import { occupationSkillsOf } from '@/campaign-play/services/occupationSkills'
 import { pointsField, skillTableEntries, skillTotal, type SkillTableEntry } from '@/campaign-play/services/skillTableEntries'
 import { skillDisplayName } from '@/campaign-play/services/skillValidation'
 import { sameSkill } from '@/campaign-play/state/characterSheetForm'
@@ -58,6 +61,7 @@ export function PersonalInterestsStep(props: SkillStepProps) {
       )}
       <FieldGroupError field="personalInterestPoints" error={errors.personalInterestPoints} />
       <FieldGroupError field="quickFire.personalInterests" error={errors['quickFire.personalInterests']} />
+      <StrandedInterests {...props} />
       <AddSpecialization {...props} onAdd={(skill) => setAdded((previous) => [...previous, skill])} />
       <p role="status" className="sr-only">
         {announcement}
@@ -213,5 +217,111 @@ function AddSpecialization({ skillCatalog, onAdd }: SkillStepProps & { onAdd: (s
         Add row
       </Button>
     </div>
+  )
+}
+
+interface Stranded {
+  key: string
+  name: string
+  field: string
+  label: string
+  remove: () => void
+}
+
+// A Quick fire personal interest that is now an occupation skill, the extra skill, valued, Cthulhu Mythos, or a repeat.
+function strandedQuickFireInterests({ inputs, rules, occupationCatalog, onAction }: SkillStepProps): Stranded[] {
+  const occupationSkills = occupationSkillsOf(inputs.occupation, occupationCatalog)
+  const extra = inputs.quickFire.extraSkill ?? null
+  const interests = inputs.quickFire.personalInterests
+  return interests.flatMap((interest, index) => {
+    const notAllowed =
+      interest.skill === rules.creditRatingSkill ||
+      interest.skill === rules.cthulhuMythosSkill ||
+      occupationSkills.some((skill) => sameSkill(skill, interest)) ||
+      (extra !== null && sameSkill(extra, interest)) ||
+      inputs.quickFire.values.some((value) => sameSkill(value, interest)) ||
+      interests.findIndex((other) => sameSkill(other, interest)) < index
+    const name = skillDisplayName(interest.skill, interest.specialization)
+    const skill = { skill: interest.skill, specialization: interest.specialization }
+    return notAllowed
+      ? [
+          {
+            key: `interest-${index}`,
+            name,
+            field: `quickFire.personalInterests[${index}]`,
+            label: `Remove ${name} from your personal interests`,
+            // Unchecking removes every copy, which also clears a repeat (section 18 assumption: each skill once).
+            remove: () => onAction({ type: 'quickFireInterest', skill, chosen: false }),
+          },
+        ]
+      : []
+  })
+}
+
+// Personal interest points on Credit Rating (project_ruleset.md 4.6) or Cthulhu Mythos (section 8).
+function strandedInterestPoints({ inputs, rules, onAction }: SkillStepProps): Stranded[] {
+  return inputs.skills.flatMap((allocation, index) => {
+    const notAllowed = allocation.skill === rules.creditRatingSkill || allocation.skill === rules.cthulhuMythosSkill
+    const skill = { skill: allocation.skill, specialization: allocation.specialization }
+    const name = skillDisplayName(allocation.skill, allocation.specialization)
+    return notAllowed && allocation.personalInterestPoints !== null
+      ? [
+          {
+            key: `points-${index}`,
+            name,
+            field: `skills[${index}].personalInterestPoints`,
+            label: `Remove personal interest points from ${name}`,
+            remove: () => onAction({ type: 'skillPoints', skill, column: 'personalInterestPoints', value: null }),
+          },
+        ]
+      : []
+  })
+}
+
+/**
+ * Personal interest choices the rules no longer allow stay visible with their error and a way to remove them, so a
+ * stranded choice never blocks submission without a target (specs/character-sheet/ux.md section 6.6; UX-26).
+ */
+function StrandedInterests(props: SkillStepProps) {
+  const headingId = useId()
+  const stranded = props.inputs.creationMethod === 'QuickFire' ? strandedQuickFireInterests(props) : strandedInterestPoints(props)
+  if (stranded.length === 0) {
+    return null
+  }
+
+  return (
+    <section aria-labelledby={headingId} className="flex flex-col gap-3 rounded-lg border p-4">
+      <h3 id={headingId} className="font-semibold">
+        No longer personal interests
+      </h3>
+      <ul className="flex flex-col gap-3">
+        {stranded.map((entry) => {
+          const error = props.errors[entry.field]
+          return (
+            <li key={entry.key} className="flex flex-wrap items-center gap-3">
+              <span className="font-medium">{entry.name}</span>
+              <Button
+                id={fieldId(entry.field)}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-6"
+                aria-label={entry.label}
+                aria-describedby={error ? errorId(entry.field) : undefined}
+                onClick={entry.remove}
+              >
+                Remove
+              </Button>
+              {error && (
+                <p id={errorId(entry.field)} className="flex basis-full items-center gap-1 text-sm text-destructive">
+                  <CircleAlert aria-hidden="true" className="size-4 shrink-0" />
+                  {error}
+                </p>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }
