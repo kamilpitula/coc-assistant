@@ -1,8 +1,15 @@
 import { ESLint } from 'eslint'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 // Vitest runs from frontend/, so ESLint resolves eslint.config.js from the working directory.
 const eslint = new ESLint()
+
+// The first lint loads eslint.config.js and its plugins, which takes tens of seconds on a cold or busy run.
+const configLoadTimeoutMs = 120_000
+
+beforeAll(async () => {
+  await eslint.lintText('', { filePath: 'src/fixture.tsx' })
+}, configLoadTimeoutMs)
 
 async function ruleIdsFor(code: string, filePath = 'src/fixture.tsx'): Promise<(string | null)[]> {
   const [result] = await eslint.lintText(code, { filePath })
