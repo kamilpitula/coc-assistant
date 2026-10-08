@@ -16,6 +16,11 @@ function rolledFor(purpose: string): string {
     return 'Luck, second roll'
   }
 
+  const characteristic = /^Characteristic:([A-Z]{3})$/.exec(purpose)
+  if (characteristic) {
+    return characteristic[1]
+  }
+
   const check = /^EduImprovement\[(\d+)\]\.(Check|Gain)$/.exec(purpose)
   if (check) {
     return check[2] === 'Check' ? `EDU check ${check[1]}` : `EDU check ${check[1]} gain`

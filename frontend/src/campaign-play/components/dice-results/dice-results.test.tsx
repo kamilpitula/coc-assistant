@@ -40,4 +40,12 @@ describe('DiceResults', () => {
       'EDU check 1 gain1D105Player',
     ])
   })
+
+  it('section 2.1: names a Standard rolling roll by its characteristic', async () => {
+    render(<DiceResults rollRecords={[{ purpose: 'Characteristic:SIZ', dice: '2D6', result: 6, source: 'PlayerEntered' }]} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Dice results' }))
+
+    expect(within(screen.getByRole('table')).getAllByRole('row')[1].textContent).toBe('SIZ2D66Player')
+  })
 })

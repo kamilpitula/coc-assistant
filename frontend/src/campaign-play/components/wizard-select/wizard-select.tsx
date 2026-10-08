@@ -50,7 +50,7 @@ export function WizardSelect({ field, label, value, options, placeholder = 'Choo
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent position="popper" className="max-h-72">
           {options.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}

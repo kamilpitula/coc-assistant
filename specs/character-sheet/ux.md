@@ -157,7 +157,7 @@ Later inputs are kept. When the Player saves, any later step whose inputs became
 
 ### 5.5 Destructive actions
 - **Start over**: an AlertDialog titled "Start over?" with the body "This deletes your draft Investigator. You can't undo this." Buttons: "Delete draft" (destructive, sends `DELETE .../investigators/mine`) and "Keep draft" (default focus). On success the Player returns to the Campaign page with the status message "Draft deleted."
-- **Changing the creation method** after values have been entered: an AlertDialog titled "Switch to Point buy?" with the body "Your characteristic values will be cleared." Buttons: "Switch and clear" and "Keep current method" (default focus). Choosing "Keep current method" puts the radio back to its previous value.
+- **Changing the creation method** after values have been entered: an AlertDialog titled "Switch to Point buy?" with the body "Your characteristic values will be cleared." Buttons: "Switch and clear" and "Keep current method" (default focus). Choosing "Keep current method" puts the radio back to its previous value. When the switch is to or from Quick fire and skill values have been entered, the body adds "Your skill values will be cleared too.", because Quick fire's skill values are never mixed with occupation and personal interest points (PBI-CP-009; awaiting human confirmation).
 - Both dialogs return focus to the control that opened them when cancelled.
 
 ## 6. Steps
