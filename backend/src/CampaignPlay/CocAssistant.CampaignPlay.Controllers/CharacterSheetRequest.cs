@@ -56,7 +56,10 @@ public record SkillAllocationRequest(
     int? OccupationPoints,
     int? PersonalInterestPoints);
 
-public record QuickFireRequest([MaxLength(20)] QuickFireValueRequest[]? Values, [MaxLength(20)] SkillReferenceRequest[]? PersonalInterests);
+public record QuickFireRequest(
+    [MaxLength(20)] QuickFireValueRequest[]? Values,
+    [MaxLength(20)] SkillReferenceRequest[]? PersonalInterests,
+    SkillReferenceRequest? ExtraSkill = null);
 
 public record QuickFireValueRequest([Required, MaxLength(100)] string Skill, [MaxLength(100)] string? Specialization, int? Value);
 
@@ -124,7 +127,7 @@ public static class CharacterSheetRequestRules
     private static bool HasValues(Dictionary<string, int?>? values) => values?.Values.Any(value => value is not null) == true;
 
     private static bool HasQuickFireInputs(QuickFireRequest? quickFire) =>
-        quickFire is not null && ((quickFire.Values?.Length ?? 0) > 0 || (quickFire.PersonalInterests?.Length ?? 0) > 0);
+        quickFire is not null && ((quickFire.Values?.Length ?? 0) > 0 || (quickFire.PersonalInterests?.Length ?? 0) > 0 || quickFire.ExtraSkill is not null);
 
     private static bool HasDuplicates(IEnumerable<string> keys)
     {

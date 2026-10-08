@@ -118,7 +118,8 @@ public static class CharacterSheetWireFormat
             computation.Skills.Select(ToSkillRow).ToList(),
             new QuickFireResponse(
                 sheet.QuickFire.Values.Select(value => new QuickFireValueResponse(value.Skill.Skill, value.Skill.Specialization, value.Value)).ToList(),
-                sheet.QuickFire.PersonalInterests.Select(ToSkillResponse).ToList()),
+                sheet.QuickFire.PersonalInterests.Select(ToSkillResponse).ToList(),
+                sheet.QuickFire.ExtraSkill is null ? null : ToSkillResponse(sheet.QuickFire.ExtraSkill)),
             ToDerived(computation.Derived),
             sheet.RollRecords.Select(record => new RollRecordResponse(record.Purpose, record.Dice, record.Result, record.Source.ToString())).ToList());
     }
@@ -222,7 +223,8 @@ public static class CharacterSheetWireFormat
             ? QuickFireSkills.Empty
             : new QuickFireSkills(
                 (quickFire.Values ?? []).Select(value => new QuickFireSkillValue(ToSkill(value.Skill, value.Specialization), value.Value)).ToList(),
-                (quickFire.PersonalInterests ?? []).Select(skill => ToSkill(skill.Skill, skill.Specialization)).ToList());
+                (quickFire.PersonalInterests ?? []).Select(skill => ToSkill(skill.Skill, skill.Specialization)).ToList(),
+                quickFire.ExtraSkill is null ? null : ToSkill(quickFire.ExtraSkill.Skill, quickFire.ExtraSkill.Specialization));
 
     private static CharacteristicRollFormulaResponse ToFormula(CharacteristicRollFormula formula) =>
         new(formula.Dice.ToString(), formula.Bonus, formula.Multiplier);

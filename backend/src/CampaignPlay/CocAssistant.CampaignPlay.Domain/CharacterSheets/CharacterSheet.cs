@@ -19,7 +19,7 @@ public sealed record CharacterSheet(
     QuickFireSkills QuickFire)
 {
     /// <summary>The schema version of the stored Character Sheet (ADR 0005, ADR 0007).</summary>
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     public static readonly CharacterSheet Empty =
         new(InvestigatorIdentity.Empty, null, CharacteristicValues.Empty, CharacteristicValues.Empty, [], null, [], QuickFireSkills.Empty);

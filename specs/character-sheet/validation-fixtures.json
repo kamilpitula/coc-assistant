@@ -305,7 +305,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": []
@@ -424,7 +425,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -565,7 +567,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -693,7 +696,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -821,7 +825,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -954,7 +959,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -1087,7 +1093,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -1220,7 +1227,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -1353,7 +1361,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -1480,7 +1489,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -1613,7 +1623,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -1746,7 +1757,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -1885,7 +1897,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -2018,7 +2031,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -2150,7 +2164,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": []
@@ -2272,7 +2287,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -2406,7 +2422,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -2546,7 +2563,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": []
@@ -2676,7 +2694,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -2816,7 +2835,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -2956,7 +2976,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -3092,7 +3113,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -3229,7 +3251,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -3362,7 +3385,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -3501,7 +3525,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -3634,7 +3659,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -3767,7 +3793,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -3907,7 +3934,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": []
@@ -4038,7 +4066,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -4175,7 +4204,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -4318,7 +4348,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -4453,7 +4484,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": []
@@ -4579,7 +4611,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -4723,11 +4756,6 @@
               "skill": "Firearms",
               "specialization": "Handgun",
               "value": 40
-            },
-            {
-              "skill": "Drive Auto",
-              "specialization": null,
-              "value": 40
             }
           ],
           "personalInterests": [
@@ -4747,7 +4775,11 @@
               "skill": "Persuade",
               "specialization": null
             }
-          ]
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
         }
       },
       "expected": []
@@ -4874,11 +4906,6 @@
               "skill": "Firearms",
               "specialization": "Handgun",
               "value": 40
-            },
-            {
-              "skill": "Drive Auto",
-              "specialization": null,
-              "value": 40
             }
           ],
           "personalInterests": [
@@ -4898,7 +4925,11 @@
               "skill": "Persuade",
               "specialization": null
             }
-          ]
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
         }
       },
       "expected": [
@@ -5034,11 +5065,6 @@
               "skill": "Firearms",
               "specialization": "Handgun",
               "value": 40
-            },
-            {
-              "skill": "Drive Auto",
-              "specialization": null,
-              "value": 40
             }
           ],
           "personalInterests": [
@@ -5058,7 +5084,11 @@
               "skill": "Persuade",
               "specialization": null
             }
-          ]
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
         }
       },
       "expected": [
@@ -5129,7 +5159,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -5217,7 +5248,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -5436,7 +5468,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -5604,11 +5637,6 @@
               "skill": "Firearms",
               "specialization": "Handgun",
               "value": 40
-            },
-            {
-              "skill": "Drive Auto",
-              "specialization": null,
-              "value": 40
             }
           ],
           "personalInterests": [
@@ -5632,7 +5660,11 @@
               "skill": "Swim",
               "specialization": null
             }
-          ]
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
         }
       },
       "expected": [
@@ -5768,11 +5800,6 @@
               "skill": "Firearms",
               "specialization": "Handgun",
               "value": 40
-            },
-            {
-              "skill": "Drive Auto",
-              "specialization": null,
-              "value": 40
             }
           ],
           "personalInterests": [
@@ -5788,7 +5815,11 @@
               "skill": "Psychology",
               "specialization": null
             }
-          ]
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
         }
       },
       "expected": [
@@ -5864,7 +5895,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -5978,7 +6010,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -6108,7 +6141,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -6243,7 +6277,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -6378,7 +6413,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -6527,7 +6563,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -6662,14 +6699,15 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
         {
           "code": "OccupationPointsOutsideOccupationSkills",
           "field": "skills[5].occupationPoints",
-          "message": "Drive Auto isn't one of your occupation skills.",
+          "message": "Drive Auto is no longer one of your occupation skills. Remove its occupation points to use them elsewhere.",
           "expected": null,
           "actual": "10",
           "severity": "Error"
@@ -6803,7 +6841,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -6910,7 +6949,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -7053,7 +7093,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -7182,7 +7223,8 @@
         ],
         "quickFire": {
           "values": [],
-          "personalInterests": []
+          "personalInterests": [],
+          "extraSkill": null
         }
       },
       "expected": [
@@ -7326,11 +7368,6 @@
               "skill": "Firearms",
               "specialization": "Handgun",
               "value": 40
-            },
-            {
-              "skill": "Drive Auto",
-              "specialization": null,
-              "value": 40
             }
           ],
           "personalInterests": [
@@ -7350,7 +7387,11 @@
               "skill": "Persuade",
               "specialization": null
             }
-          ]
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
         }
       },
       "expected": [
@@ -7365,15 +7406,15 @@
         {
           "code": "QuickFireSkillAssignmentMismatch",
           "field": "quickFire.values",
-          "message": "Use each Quick fire skill value exactly once: 70, 60, 60, 50, 50, 50, 40, 40, 40.",
-          "expected": "70, 60, 60, 50, 50, 50, 40, 40, 40",
-          "actual": "60, 60, 50, 50, 50, 45, 40, 40, 40",
+          "message": "Use each Quick fire skill value exactly once: 70, 60, 60, 50, 50, 50, 40, 40.",
+          "expected": "70, 60, 60, 50, 50, 50, 40, 40",
+          "actual": "60, 60, 50, 50, 50, 45, 40, 40",
           "severity": "Error"
         }
       ]
     },
     {
-      "name": "Section 18: the freed value must go to one extra skill",
+      "name": "Section 18: a freed value needs the extra skill that takes it",
       "scope": "server",
       "allowedCreationMethods": [
         "StandardRolling",
@@ -7513,22 +7554,23 @@
               "skill": "Persuade",
               "specialization": null
             }
-          ]
+          ],
+          "extraSkill": null
         }
       },
       "expected": [
         {
-          "code": "QuickFireSkillAssignmentMismatch",
-          "field": "quickFire.values",
-          "message": "Use each Quick fire skill value exactly once: 70, 60, 60, 50, 50, 50, 40, 40, 40.",
-          "expected": "70, 60, 60, 50, 50, 50, 40, 40, 40",
-          "actual": "70, 60, 60, 50, 50, 50, 40, 40",
+          "code": "QuickFireExtraSkillRequired",
+          "field": "quickFire.extraSkill",
+          "message": "Choose the skill that takes the freed 40.",
+          "expected": "40",
+          "actual": null,
           "severity": "Error"
         }
       ]
     },
     {
-      "name": "Section 18: only one skill outside the occupation takes a value",
+      "name": "Section 18: a value on a skill outside the occupation is reported",
       "scope": "server",
       "allowedCreationMethods": [
         "StandardRolling",
@@ -7648,11 +7690,6 @@
             {
               "skill": "Firearms",
               "specialization": "Handgun",
-              "value": 40
-            },
-            {
-              "skill": "Drive Auto",
-              "specialization": null,
               "value": 40
             },
             {
@@ -7678,14 +7715,18 @@
               "skill": "Persuade",
               "specialization": null
             }
-          ]
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
         }
       },
       "expected": [
         {
           "code": "QuickFireSkillNotOccupationSkill",
-          "field": "quickFire.values[10].skill",
-          "message": "Swim isn't one of your occupation skills.",
+          "field": "quickFire.values[9].skill",
+          "message": "Swim is no longer one of your occupation skills. Remove its value to use it elsewhere.",
           "expected": null,
           "actual": "Swim",
           "severity": "Error"
@@ -7814,11 +7855,6 @@
               "skill": "Firearms",
               "specialization": "Handgun",
               "value": 40
-            },
-            {
-              "skill": "Drive Auto",
-              "specialization": null,
-              "value": 40
             }
           ],
           "personalInterests": [
@@ -7838,7 +7874,11 @@
               "skill": "Persuade",
               "specialization": null
             }
-          ]
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
         }
       },
       "expected": [
@@ -7974,11 +8014,6 @@
               "skill": "Firearms",
               "specialization": "Handgun",
               "value": 40
-            },
-            {
-              "skill": "Drive Auto",
-              "specialization": null,
-              "value": 40
             }
           ],
           "personalInterests": [
@@ -7998,7 +8033,11 @@
               "skill": "History",
               "specialization": null
             }
-          ]
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
         }
       },
       "expected": [
@@ -8008,6 +8047,335 @@
           "message": "Choose a skill that isn't an occupation skill, Credit Rating, Cthulhu Mythos, or already chosen.",
           "expected": null,
           "actual": "History",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 18: the extra skill cannot be an occupation skill",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "QuickFire",
+        "characteristics": {
+          "STR": 50,
+          "CON": 60,
+          "DEX": 50,
+          "APP": 40,
+          "POW": 60,
+          "SIZ": 50,
+          "INT": 80,
+          "EDU": 70
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [],
+        "quickFire": {
+          "values": [
+            {
+              "skill": "Credit Rating",
+              "specialization": null,
+              "value": 30
+            },
+            {
+              "skill": "Appraise",
+              "specialization": null,
+              "value": 70
+            },
+            {
+              "skill": "Art/Craft",
+              "specialization": "Painting",
+              "value": 60
+            },
+            {
+              "skill": "History",
+              "specialization": null,
+              "value": 60
+            },
+            {
+              "skill": "Library Use",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Language (Other)",
+              "specialization": "Latin",
+              "value": 50
+            },
+            {
+              "skill": "Charm",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Spot Hidden",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "Firearms",
+              "specialization": "Handgun",
+              "value": 40
+            }
+          ],
+          "personalInterests": [
+            {
+              "skill": "Listen",
+              "specialization": null
+            },
+            {
+              "skill": "Stealth",
+              "specialization": null
+            },
+            {
+              "skill": "Psychology",
+              "specialization": null
+            },
+            {
+              "skill": "Persuade",
+              "specialization": null
+            }
+          ],
+          "extraSkill": {
+            "skill": "History",
+            "specialization": null
+          }
+        }
+      },
+      "expected": [
+        {
+          "code": "QuickFireExtraSkillNotAllowed",
+          "field": "quickFire.extraSkill",
+          "message": "Choose a skill for the freed value that isn't an occupation skill, Credit Rating, or Cthulhu Mythos.",
+          "expected": null,
+          "actual": "History",
+          "severity": "Error"
+        }
+      ]
+    },
+    {
+      "name": "Section 18: an occupation that frees no value needs no extra skill",
+      "scope": "server",
+      "allowedCreationMethods": [
+        "StandardRolling",
+        "PointBuy",
+        "QuickFire"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "QuickFire",
+        "characteristics": {
+          "STR": 50,
+          "CON": 60,
+          "DEX": 50,
+          "APP": 40,
+          "POW": 60,
+          "SIZ": 50,
+          "INT": 80,
+          "EDU": 70
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "dilettante",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [
+              {
+                "skill": "Library Use",
+                "specialization": null
+              },
+              {
+                "skill": "History",
+                "specialization": null
+              },
+              {
+                "skill": "Spot Hidden",
+                "specialization": null
+              }
+            ]
+          ]
+        },
+        "skills": [],
+        "quickFire": {
+          "values": [
+            {
+              "skill": "Credit Rating",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Art/Craft",
+              "specialization": "Painting",
+              "value": 70
+            },
+            {
+              "skill": "Firearms",
+              "specialization": "Handgun",
+              "value": 60
+            },
+            {
+              "skill": "Language (Other)",
+              "specialization": "Latin",
+              "value": 60
+            },
+            {
+              "skill": "Ride",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Charm",
+              "specialization": null,
+              "value": 50
+            },
+            {
+              "skill": "Library Use",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "History",
+              "specialization": null,
+              "value": 40
+            },
+            {
+              "skill": "Spot Hidden",
+              "specialization": null,
+              "value": 40
+            }
+          ],
+          "personalInterests": [
+            {
+              "skill": "Listen",
+              "specialization": null
+            },
+            {
+              "skill": "Stealth",
+              "specialization": null
+            },
+            {
+              "skill": "Psychology",
+              "specialization": null
+            },
+            {
+              "skill": "Persuade",
+              "specialization": null
+            }
+          ],
+          "extraSkill": {
+            "skill": "Drive Auto",
+            "specialization": null
+          }
+        }
+      },
+      "expected": [
+        {
+          "code": "QuickFireExtraSkillNotNeeded",
+          "field": "quickFire.extraSkill",
+          "message": "This occupation frees no Quick fire value. Remove the extra skill.",
+          "expected": null,
+          "actual": "Drive Auto",
           "severity": "Error"
         }
       ]

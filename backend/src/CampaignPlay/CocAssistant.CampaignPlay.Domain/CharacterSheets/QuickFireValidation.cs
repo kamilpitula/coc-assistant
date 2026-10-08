@@ -25,7 +25,8 @@ internal static class QuickFireValidation
         var quickFire = sheet.QuickFire;
         var valueProblems = quickFire.Values.SelectMany((value, index) => ValueProblems(value, index, rules));
         var occupationProblems = computation.Occupation is { CreditRatingMin: { } minimum } occupation
-            ? OccupationValueProblems(quickFire, occupation, QuickFireRules.CreditRatingFor(minimum), computation.QuickFireExtraSkill)
+            ? OccupationValueProblems(quickFire, occupation, QuickFireRules.CreditRatingFor(minimum))
+                .Concat(ExtraSkillProblems(quickFire.ExtraSkill, occupation, QuickFireRules.CreditRatingFor(minimum), rules))
             : [];
 
         return valueProblems
@@ -48,12 +49,11 @@ internal static class QuickFireValidation
     private static IEnumerable<ValidationError> OccupationValueProblems(
         QuickFireSkills quickFire,
         ResolvedOccupation occupation,
-        QuickFireCreditRating creditRating,
-        SkillReference? extraSkill)
+        QuickFireCreditRating creditRating)
     {
         var outside = quickFire.Values
             .Select((value, index) => (value, index))
-            .Where(pair => !IsAssignable(pair.value.Skill, pair.index, quickFire, occupation, extraSkill))
+            .Where(pair => !IsAssignable(pair.value.Skill, occupation))
             .Select(pair => ValidationErrors.QuickFireSkillNotOccupationSkill(pair.index, pair.value.Skill));
 
         var creditRatingValue = ValueOf(quickFire, SkillReference.CreditRating);
@@ -61,31 +61,43 @@ internal static class QuickFireValidation
             ? [ValidationErrors.QuickFireCreditRatingValue(creditRating.Value, creditRatingValue)]
             : Array.Empty<ValidationError>();
 
-        return outside.Concat(creditRatingProblem).Concat(AssignmentProblems(quickFire, occupation, creditRating, extraSkill));
+        return outside.Concat(creditRatingProblem).Concat(AssignmentProblems(quickFire, occupation, creditRating));
     }
 
-    // A value may go to Credit Rating, an occupation skill, or (first occurrence only) the extra skill for a freed value.
-    private static bool IsAssignable(SkillReference skill, int index, QuickFireSkills quickFire, ResolvedOccupation occupation, SkillReference? extraSkill) =>
-        skill.Equals(SkillReference.CreditRating)
-        || (occupation.IsOccupationSkill(skill) && !skill.Equals(SkillReference.CthulhuMythos))
-        || (skill.Equals(extraSkill) && FirstIndexOf(quickFire, skill) == index && !skill.Equals(SkillReference.CthulhuMythos));
+    // A value goes to Credit Rating or an occupation skill; the extra skill takes the freed value without a listed value.
+    private static bool IsAssignable(SkillReference skill, ResolvedOccupation occupation) =>
+        skill.Equals(SkillReference.CreditRating) || (occupation.IsOccupationSkill(skill) && !skill.Equals(SkillReference.CthulhuMythos));
 
-    // Section 18: the occupation skills take the pool less Credit Rating's value; a freed value goes to the extra skill.
-    private static IEnumerable<ValidationError> AssignmentProblems(
-        QuickFireSkills quickFire,
+    // Section 18: the occupation skills take the pool less the value Credit Rating takes or frees.
+    private static IEnumerable<ValidationError> AssignmentProblems(QuickFireSkills quickFire, ResolvedOccupation occupation, QuickFireCreditRating creditRating)
+    {
+        var assigned = occupation.OccupationSkills.Select(skill => ValueOf(quickFire, skill)).OfType<int>().ToList();
+        var expected = QuickFireRules.OccupationSkillValues(creditRating);
+
+        var matches = assigned.Order().SequenceEqual(expected.Order()) && assigned.Count == occupation.OccupationSkills.Count;
+        return matches ? [] : [ValidationErrors.QuickFireSkillAssignmentMismatch(expected, assigned)];
+    }
+
+    // Section 18 assumption: a freed value needs one extra skill outside the occupation; no freed value needs none.
+    private static IEnumerable<ValidationError> ExtraSkillProblems(
+        SkillReference? extraSkill,
         ResolvedOccupation occupation,
         QuickFireCreditRating creditRating,
-        SkillReference? extraSkill)
+        CreationRuleSet rules)
     {
-        var occupationValues = occupation.OccupationSkills.Select(skill => ValueOf(quickFire, skill)).OfType<int>().ToList();
-        var extraValue = extraSkill is null ? null : ValueOf(quickFire, extraSkill);
-        var assigned = occupationValues.Concat(extraValue is { } value ? [value] : Array.Empty<int>()).ToList();
-        var expected = creditRating.FreedValue is null ? QuickFireRules.OccupationSkillValues(creditRating) : QuickFireRules.SkillValues;
+        if (creditRating.FreedValue is not { } freed)
+        {
+            return extraSkill is null ? [] : [ValidationErrors.QuickFireExtraSkillNotNeeded(extraSkill)];
+        }
 
-        var matches = assigned.Order().SequenceEqual(expected.Order())
-            && (creditRating.FreedValue is null || extraValue == creditRating.FreedValue)
-            && occupationValues.Count == occupation.OccupationSkills.Count;
-        return matches ? [] : [ValidationErrors.QuickFireSkillAssignmentMismatch(expected, assigned)];
+        if (extraSkill is null)
+        {
+            return [ValidationErrors.QuickFireExtraSkillRequired(freed)];
+        }
+
+        return SkillReferenceValidation.IsCreditRatingOrCthulhuMythos(extraSkill) || occupation.IsOccupationSkill(extraSkill)
+            ? [ValidationErrors.QuickFireExtraSkillNotAllowed(extraSkill)]
+            : SkillReferenceValidation.Problems(extraSkill, ValidationErrors.QuickFireExtraSkillField, rules, () => ValidationErrors.QuickFireExtraSkillNotAllowed(extraSkill));
     }
 
     private static IEnumerable<ValidationError> PersonalInterestCountProblems(int chosen) =>
@@ -113,6 +125,4 @@ internal static class QuickFireValidation
     private static int? ValueOf(QuickFireSkills quickFire, SkillReference skill) =>
         quickFire.Values.FirstOrDefault(value => value.Skill.Equals(skill))?.Value;
 
-    private static int FirstIndexOf(QuickFireSkills quickFire, SkillReference skill) =>
-        quickFire.Values.Select((value, index) => (value, index)).First(pair => pair.value.Skill.Equals(skill)).index;
 }

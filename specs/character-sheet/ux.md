@@ -199,9 +199,13 @@ Later inputs are kept. When the Player saves, any later step whose inputs became
   - The Alert: "Your Keeper will review a custom occupation before approving your Investigator."
 
 ### 6.5 Occupation skills (`occupation-skills`)
-- At the top: choice controls for the occupation's open slots. For example, a Select "Choose 1 interpersonal skill". Specialized skills get a text Input with suggestions from a `datalist` ("Art/Craft specialization").
-- Below that, the `skill-allocation-table`, with columns Skill, Base, Points (number input), Total. **Credit Rating comes first**, with the hint "Must be between 30 and 70".
-- The budget counter reads "Occupation points left: 120 of 280". When it goes below zero it shows "40 over budget" with an error icon and text.
+Choices first, then values, in one guided list (selected 2026-10-08, option A of three; alternatives were values that follow the slot, and inline guidance only). The step has two sections, each with an `h2`:
+- **"1. Make your skill choices"**: the choice controls for the occupation's open slots. For example, a Select "Choose 1 interpersonal skill". Specialized skills get a text Input with suggestions from a `datalist` ("Art/Craft specialization").
+- **"2. Assign values"**: the `skill-allocation-table`, with columns Skill, Base, Points (number input), Total.
+  - **Credit Rating comes first**, with the hint "Must be between 30 and 70". The other rows follow the occupation's skill slots in catalog order (a custom occupation's eight skills in their order), so rows never reorder after a save.
+  - A row whose slot has no skill chosen yet is named after the slot (for example "Choose 1 interpersonal skill"), its input is disabled, and it reads "Choose this skill above first".
+  - The budget counter reads "Occupation points left: 120 of 280". When it goes below zero it shows "40 over budget" with an error icon and text.
+- **"No longer occupation skills"** (an `h3` under section 2, shown only when needed): every skill that still holds occupation points but is no longer an occupation skill (after a slot choice, a specialization, or the occupation changed). Each row shows the skill, its points, its error, and a "Remove value" button (accessible name "Remove value from {skill}") that clears them. The error summary link focuses that button.
 
 ### 6.6 Personal interests (`personal-interests`)
 - The same table covers all skills, filtered by a toggle "Show: All skills / Skills with points".
@@ -212,8 +216,9 @@ Later inputs are kept. When the Player saves, any later step whose inputs became
 ### 6.5a Quick fire skills (selected 2026-10-07, option A of three: table with value Selects; alternatives were a value-centred list and drag-and-drop chips)
 Quick fire assigns fixed values instead of spending points ([spec.md](spec.md), Delivery scope PBI-CP-009). The steps reuse `skill-allocation-table`:
 - **Occupation** (`occupation`): the option cards hide the points line and the formula choice, because Quick fire has no occupation points.
-- **Occupation skills** (`occupation-skills`): the same choice controls as 6.5 at the top. In the table the Points column is replaced by a Select labelled "{skill}, Quick fire value" on each occupation skill row and on Credit Rating (first). Each Select offers the values not yet assigned elsewhere plus its own current value, like the Quick fire characteristics in 6.2. Credit Rating shows the hint "Must be {value} for this occupation". A line "Values left to assign: 50, 40" shows what remains.
-  - When the occupation's Credit Rating does not take a Quick fire value, a skill picker "Extra skill for the freed {value}" appears below the table, with the help text "Your Credit Rating doesn't use a Quick fire value, so the freed {value} goes to one more skill of your choice."
+- **Occupation skills** (`occupation-skills`): the same two sections and row order as 6.5. In the table the Points column is replaced by a Select labelled "{skill}, Quick fire value" on Credit Rating (first) and on each chosen occupation skill. Each Select offers "No value" (which clears the row), the values not yet assigned elsewhere, and its own current value, like the Quick fire characteristics in 6.2. Credit Rating shows the hint "Must be {value} for this occupation". A line "Values left to assign: 50, 40" shows what remains.
+  - When the occupation's Credit Rating does not take a Quick fire value, the last row is "Extra skill (freed {value})": its control is a skill picker "Extra skill for the freed {value}" with the help text "Your Credit Rating doesn't use a Quick fire value, so the freed {value} goes to one more skill of your choice." The chosen skill is stored as the extra skill and takes the freed value; its Total shows that value.
+  - "No longer occupation skills" lists every skill that still holds a Quick fire value but is no longer an occupation skill, with the value, its error, and "Remove value".
 - **Personal interests** (`personal-interests`): the Points column is replaced by a Checkbox "{skill}, +{bonus}" on every skill that is not an occupation skill, Credit Rating, or Cthulhu Mythos. The counter reads "Personal interests chosen: 2 of 4". When it reaches the count, the unchecked Checkboxes stay enabled, and choosing another shows the error from the server and the client validator. The Total column shows the base plus the bonus.
 - Every number in this copy comes from the rules data.
 
@@ -270,7 +275,7 @@ Tokens: `--destructive` (defined) and `--warning` (added in PBI-CP-003), each wi
 |---|---|
 | PBI-CP-008 | Section 2; section 3.1 Rules options |
 | PBI-CP-003 | Section 3 (both roles); sections 4 and 5, including the summary rail without the occupation and personal interest budget lines; step 6.1; step 6.2 for Point buy, including its Luck rows; step 6.3 Age effects; a `sheet` step with Summary and Submit; section 7, including Dice results |
-| PBI-CP-009 | Step 6.2 (Standard rolling, Quick fire, the creation method RadioGroup, and the switch confirmation); steps 6.4 to 6.6 and 6.5a; the summary rail's budget lines; step 6.7 Skills (read-only, also on the Keeper's review) |
+| PBI-CP-009 | Step 6.2 (Standard rolling, Quick fire, the creation method RadioGroup, and the switch confirmation); steps 6.4 to 6.6 and 6.5a, including UX-22 to UX-25; the summary rail's budget lines; step 6.7 Skills (read-only, also on the Keeper's review) |
 | PBI-CP-010 | Step 6.7 Backstory, Weapons, Gear, Wealth |
 
 In PBI-CP-009:
@@ -311,6 +316,10 @@ In PBI-CP-003:
 - **UX-19** When the Campaign allows no creation method that is available yet, the Your Investigator card explains it, names the methods to ask the Keeper for, and offers no create action.
 - **UX-20** A Point buy Player enters Luck on the Characteristics step; Luck is not counted in "Points used", and a second Luck row appears only in the two-roll age bracket.
 - **UX-21** A non-member opening a Campaign URL sees "We couldn't find that Campaign" with a link back to Campaigns.
+- **UX-22** On Occupation skills, a row whose slot has no skill chosen is disabled and reads "Choose this skill above first"; rows keep the occupation's slot order after every save.
+- **UX-23** A Quick fire value Select offers "No value", which clears the row and returns its value to "Values left to assign".
+- **UX-24** Changing a slot choice after assigning moves the old skill to "No longer occupation skills" with its value, its error, and "Remove value"; removing it returns the value to the pool.
+- **UX-25** When Credit Rating frees a Quick fire value, "Extra skill (freed {value})" is a row of the table; the chosen skill takes the freed value.
 
 ## 11. Accessibility acceptance criteria (WCAG 2.2 AA)
 
@@ -325,6 +334,8 @@ In PBI-CP-003:
 - **A11Y-9** Interactive targets are at least 24 by 24 CSS pixels (2.5.8).
 - **A11Y-10** Identity data entered in step 1 is never asked for again in later steps (3.3.7).
 - **A11Y-11** Collapsibles expose `aria-expanded`, and the Rules options summary is part of the trigger's accessible name (4.1.2).
+
+Occupation skills (6.5, 6.5a) against these criteria: the two sections are headed (`h2`) and "No longer occupation skills" is an `h3` (A11Y-1, 1.3.1); every control keeps a label naming its skill, and a disabled row says why in text (A11Y-3); each error is linked from the error summary to its row control, including the "Remove value" button (A11Y-4); clearing or removing a value is announced through the step's polite status region as the new "Values left to assign" or points left (A11Y-5); disabled and left-over states are shown with text, never colour alone (A11Y-6); "Remove value" and the Select options are at least 24 by 24 pixels (A11Y-9).
 
 ## 12. Open decisions and research gaps
 

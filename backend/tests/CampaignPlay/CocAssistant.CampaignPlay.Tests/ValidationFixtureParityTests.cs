@@ -150,7 +150,8 @@ public class ValidationFixtureParityTests
 
             return new QuickFireSkills(
                 OptionalArray(quickFire, "values").Select(value => new QuickFireSkillValue(Skill(value), OptionalInt(value, "value"))).ToList(),
-                OptionalArray(quickFire, "personalInterests").Select(Skill).ToList());
+                OptionalArray(quickFire, "personalInterests").Select(Skill).ToList(),
+                quickFire.TryGetProperty("extraSkill", out var extra) && extra.ValueKind != JsonValueKind.Null ? Skill(extra) : null);
         }
 
         private static SkillReference Skill(JsonElement skill) => new(skill.GetProperty("skill").GetString()!, OptionalString(skill, "specialization"));

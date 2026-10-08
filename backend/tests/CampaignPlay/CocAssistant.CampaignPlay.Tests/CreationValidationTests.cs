@@ -45,7 +45,9 @@ public class CreationValidationTests
         [Characteristic.Education] = 70,
     };
 
-    // The Antiquarian's minimum of 30 is below 40, so Credit Rating is 30 and the freed 40 goes to Drive Auto (section 18).
+    // The Antiquarian's minimum of 30 is below 40, so Credit Rating is 30 and the freed 40 goes to the extra skill (section 18).
+    private static readonly SkillReference ValidExtraSkill = new("Drive Auto");
+
     private static readonly IReadOnlyList<QuickFireSkillValue> ValidQuickFireValues =
     [
         new(SkillReference.CreditRating, 30),
@@ -57,18 +59,21 @@ public class CreationValidationTests
         new(Skill("Charm"), 50),
         new(Skill("Spot Hidden"), 40),
         new(Skill("Firearms", "Handgun"), 40),
-        new(Skill("Drive Auto"), 40),
     ];
 
     private static readonly IReadOnlyList<SkillReference> ValidPersonalInterests = [Skill("Listen"), Skill("Stealth"), Skill("Psychology"), Skill("Persuade")];
 
     private static CharacterSheetBuilder AStandardRollingSheet() => new CharacterSheetBuilder().WithCharacteristicRolls(ValidRolls);
 
-    private static CharacterSheetBuilder AQuickFireSheet(IReadOnlyList<QuickFireSkillValue>? values = null, IReadOnlyList<SkillReference>? interests = null) =>
+    private static CharacterSheetBuilder AQuickFireSheet(
+        IReadOnlyList<QuickFireSkillValue>? values = null,
+        IReadOnlyList<SkillReference>? interests = null,
+        SkillReference? extraSkill = null,
+        bool noExtraSkill = false) =>
         new CharacterSheetBuilder()
             .WithQuickFireCharacteristics(QuickFireCharacteristics)
             .WithSkills()
-            .WithQuickFireSkills(new QuickFireSkills(values ?? ValidQuickFireValues, interests ?? ValidPersonalInterests));
+            .WithQuickFireSkills(new QuickFireSkills(values ?? ValidQuickFireValues, interests ?? ValidPersonalInterests, noExtraSkill ? null : extraSkill ?? ValidExtraSkill));
 
     private static CharacterSheetBuilder WithAllocations(params SkillAllocation[] allocations) => new CharacterSheetBuilder().WithSkills(allocations);
 
@@ -269,7 +274,12 @@ public class CreationValidationTests
         var errors = Validate(WithAllocations(allocations));
 
         Assert.Contains(
-            Error("OccupationPointsOutsideOccupationSkills", "skills[5].occupationPoints", "Drive Auto isn't one of your occupation skills.", null, "10"),
+            Error(
+                "OccupationPointsOutsideOccupationSkills",
+                "skills[5].occupationPoints",
+                "Drive Auto is no longer one of your occupation skills. Remove its occupation points to use them elsewhere.",
+                null,
+                "10"),
             errors);
     }
 
@@ -342,16 +352,16 @@ public class CreationValidationTests
     [Fact]
     public void Section_18_Given_quick_fire_skill_values_not_used_exactly_once_When_validating_Then_the_assignment_is_reported()
     {
-        var errors = Validate(AQuickFireSheet(ValidQuickFireValues.Take(9).ToList()));
+        var errors = Validate(AQuickFireSheet(ValidQuickFireValues.Take(8).ToList()));
 
         Assert.Equal(
             [
                 Error(
                     "QuickFireSkillAssignmentMismatch",
                     "quickFire.values",
-                    "Use each Quick fire skill value exactly once: 70, 60, 60, 50, 50, 50, 40, 40, 40.",
-                    "70, 60, 60, 50, 50, 50, 40, 40, 40",
-                    "70, 60, 60, 50, 50, 50, 40, 40"),
+                    "Use each Quick fire skill value exactly once: 70, 60, 60, 50, 50, 50, 40, 40.",
+                    "70, 60, 60, 50, 50, 50, 40, 40",
+                    "70, 60, 60, 50, 50, 50, 40"),
             ],
             errors);
     }
@@ -361,7 +371,51 @@ public class CreationValidationTests
     {
         var errors = Validate(AQuickFireSheet([.. ValidQuickFireValues, new QuickFireSkillValue(Skill("Swim"), 40)]));
 
-        Assert.Contains(Error("QuickFireSkillNotOccupationSkill", "quickFire.values[10].skill", "Swim isn't one of your occupation skills.", null, "Swim"), errors);
+        Assert.Contains(
+            Error(
+                "QuickFireSkillNotOccupationSkill",
+                "quickFire.values[9].skill",
+                "Swim is no longer one of your occupation skills. Remove its value to use it elsewhere.",
+                null,
+                "Swim"),
+            errors);
+    }
+
+    [Fact]
+    public void Section_18_Given_a_freed_value_and_no_extra_skill_When_validating_Then_the_extra_skill_is_required()
+    {
+        var errors = Validate(AQuickFireSheet(noExtraSkill: true));
+
+        Assert.Equal([Error("QuickFireExtraSkillRequired", "quickFire.extraSkill", "Choose the skill that takes the freed 40.", "40", null)], errors);
+    }
+
+    [Theory]
+    [InlineData("History")]
+    [InlineData("Credit Rating")]
+    [InlineData("Cthulhu Mythos")]
+    public void Section_18_Given_an_extra_skill_that_is_an_occupation_skill_or_not_allowed_When_validating_Then_it_is_rejected(string skill)
+    {
+        var errors = Validate(AQuickFireSheet(extraSkill: Skill(skill)));
+
+        Assert.Contains(
+            Error(
+                "QuickFireExtraSkillNotAllowed",
+                "quickFire.extraSkill",
+                "Choose a skill for the freed value that isn't an occupation skill, Credit Rating, or Cthulhu Mythos.",
+                null,
+                skill),
+            errors);
+    }
+
+    [Fact]
+    public void Section_18_Given_an_extra_skill_for_an_occupation_that_frees_no_value_When_validating_Then_it_is_not_needed()
+    {
+        // The Dilettante's Credit Rating minimum of 50 takes a Quick fire value, so nothing is freed.
+        var errors = Validate(AQuickFireSheet().WithCatalogOccupation("dilettante"));
+
+        Assert.Contains(
+            Error("QuickFireExtraSkillNotNeeded", "quickFire.extraSkill", "This occupation frees no Quick fire value. Remove the extra skill.", null, "Drive Auto"),
+            errors);
     }
 
     [Fact]

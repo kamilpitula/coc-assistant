@@ -36,17 +36,23 @@ public sealed record SkillAllocation(SkillReference Skill, int? OccupationPoints
 /// <summary>A Quick Fire value assigned to an occupation skill or Credit Rating (section 18).</summary>
 public sealed record QuickFireSkillValue(SkillReference Skill, int? Value);
 
-/// <summary>The Quick Fire skill assignment: final values for occupation skills and the personal interest skills (section 18).</summary>
-public sealed record QuickFireSkills(IReadOnlyList<QuickFireSkillValue> Values, IReadOnlyList<SkillReference> PersonalInterests)
+/// <summary>
+/// The Quick Fire skill assignment (section 18): final values for Credit Rating and the occupation skills, the personal
+/// interest skills, and the extra skill that takes the value Credit Rating frees (the section 18 project assumption).
+/// </summary>
+public sealed record QuickFireSkills(IReadOnlyList<QuickFireSkillValue> Values, IReadOnlyList<SkillReference> PersonalInterests, SkillReference? ExtraSkill = null)
 {
     public static readonly QuickFireSkills Empty = new([], []);
 
-    public bool IsEmpty => Values.Count == 0 && PersonalInterests.Count == 0;
+    public bool IsEmpty => Values.Count == 0 && PersonalInterests.Count == 0 && ExtraSkill is null;
 
     public bool Equals(QuickFireSkills? other) =>
-        other is not null && Values.SequenceEqual(other.Values) && PersonalInterests.SequenceEqual(other.PersonalInterests);
+        other is not null
+        && Values.SequenceEqual(other.Values)
+        && PersonalInterests.SequenceEqual(other.PersonalInterests)
+        && Equals(ExtraSkill, other.ExtraSkill);
 
-    public override int GetHashCode() => HashCode.Combine(Values.Count, PersonalInterests.Count);
+    public override int GetHashCode() => HashCode.Combine(Values.Count, PersonalInterests.Count, ExtraSkill);
 }
 
 /// <summary>A Player-defined Occupation the Keeper judges during review (specs/character-sheet/spec.md, Occupation).</summary>

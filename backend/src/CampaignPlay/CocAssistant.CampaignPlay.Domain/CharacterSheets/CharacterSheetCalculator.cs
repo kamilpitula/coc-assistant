@@ -37,8 +37,11 @@ public sealed record CharacterSheetComputation(
 
     public ResolvedOccupation? Occupation { get; init; }
 
-    /// <summary>The Quick Fire skill that takes the value Credit Rating frees (section 18 assumption), if any.</summary>
+    /// <summary>The stored Quick Fire skill that takes the value Credit Rating frees (section 18 assumption), when one is freed.</summary>
     public SkillReference? QuickFireExtraSkill { get; init; }
+
+    /// <summary>The value Credit Rating frees under Quick Fire (section 18 assumption), or null when none is freed.</summary>
+    public int? QuickFireFreedValue { get; init; }
 
     public IReadOnlyList<SkillRow> Skills { get; init; } = [];
 
@@ -100,9 +103,11 @@ public sealed class CharacterSheetCalculator
     private CharacterSheetComputation WithSkills(CharacterSheetComputation computation, CharacterSheet sheet)
     {
         var occupation = OccupationResolution.Resolve(sheet.Occupation, _rules.Occupations);
-        var extraSkill = QuickFireExtraSkillOf(sheet, occupation);
+        var freedValue = QuickFireFreedValueOf(sheet, occupation);
+        var extraSkill = freedValue is null ? null : sheet.QuickFire.ExtraSkill;
+        var extra = extraSkill is null ? null : new QuickFireExtra(extraSkill, freedValue!.Value);
         var occupationSkills = (occupation?.OccupationSkills ?? []).Concat(extraSkill is null ? [] : [extraSkill]).ToList();
-        var skills = SkillPostProcessing.Compute(sheet, computation.FinalCharacteristics, occupationSkills, _rules);
+        var skills = SkillPostProcessing.Compute(sheet, computation.FinalCharacteristics, occupationSkills, _rules, extra);
         var creditRating = skills.First(row => row.Skill.Equals(SkillReference.CreditRating)).Value;
 
         var derived = computation.Derived with
@@ -113,22 +118,21 @@ public sealed class CharacterSheetCalculator
             Wealth = creditRating is { } value ? Wealth.For(value, _rules.Wealth) : null,
         };
 
-        return computation with { Occupation = occupation, QuickFireExtraSkill = extraSkill, Skills = skills, Derived = derived };
-    }
-
-    // Section 18 assumption: when Credit Rating frees a value, the first other skill outside the occupation takes it.
-    private static SkillReference? QuickFireExtraSkillOf(CharacterSheet sheet, ResolvedOccupation? occupation)
-    {
-        if (sheet.CreationMethod != CreationMethod.QuickFire || occupation?.CreditRatingMin is not { } minimum
-            || QuickFireRules.CreditRatingFor(minimum).FreedValue is null)
+        return computation with
         {
-            return null;
-        }
-
-        return sheet.QuickFire.Values
-            .Select(value => value.Skill)
-            .FirstOrDefault(skill => !skill.Equals(SkillReference.CreditRating) && !occupation.IsOccupationSkill(skill));
+            Occupation = occupation,
+            QuickFireExtraSkill = extraSkill,
+            QuickFireFreedValue = freedValue,
+            Skills = skills,
+            Derived = derived,
+        };
     }
+
+    // Section 18 assumption: the value Credit Rating frees when the occupation's minimum takes none from the pool.
+    private static int? QuickFireFreedValueOf(CharacterSheet sheet, ResolvedOccupation? occupation) =>
+        sheet.CreationMethod == CreationMethod.QuickFire && occupation?.CreditRatingMin is { } minimum
+            ? QuickFireRules.CreditRatingFor(minimum).FreedValue
+            : null;
 
     private static PointBudget? OccupationBudget(CharacterSheet sheet, ResolvedOccupation? occupation, CharacteristicValues final)
     {

@@ -1,5 +1,8 @@
 namespace CocAssistant.CampaignPlay.Domain.CharacterSheets;
 
+/// <summary>The stored Quick Fire extra skill and the freed value it takes (section 18 assumption).</summary>
+public sealed record QuickFireExtra(SkillReference Skill, int Value);
+
 /// <summary>One skill on the sheet with its base, the points or Quick Fire values on it, and its levels (section 9).</summary>
 public sealed record SkillRow(
     SkillReference Skill,
@@ -22,7 +25,8 @@ public static class SkillPostProcessing
         CharacterSheet sheet,
         CharacteristicValues final,
         IReadOnlyList<SkillReference> occupationSkills,
-        CreationRuleSet rules)
+        CreationRuleSet rules,
+        QuickFireExtra? extra = null)
     {
         var catalogSkills = rules.Skills.Skills.Select(definition => definition.Reference);
         var addedSkills = sheet.SkillAllocations.Select(allocation => allocation.Skill)
@@ -32,7 +36,7 @@ public static class SkillPostProcessing
 
         return catalogSkills.Concat(addedSkills)
             .Distinct()
-            .Select(skill => RowFor(skill, sheet, final, occupationSkills, rules))
+            .Select(skill => RowFor(skill, sheet, final, occupationSkills, rules, extra))
             .ToList();
     }
 
@@ -41,12 +45,13 @@ public static class SkillPostProcessing
         CharacterSheet sheet,
         CharacteristicValues final,
         IReadOnlyList<SkillReference> occupationSkills,
-        CreationRuleSet rules)
+        CreationRuleSet rules,
+        QuickFireExtra? extra)
     {
         var baseValue = SkillBases.Resolve(skill, rules).Base?.For(final);
         var allocation = sheet.SkillAllocations.FirstOrDefault(candidate => candidate.Skill.Equals(skill));
         var value = sheet.CreationMethod == CreationMethod.QuickFire
-            ? QuickFireValue(skill, baseValue, sheet.QuickFire)
+            ? (extra is not null && extra.Skill.Equals(skill) ? extra.Value : QuickFireValue(skill, baseValue, sheet.QuickFire))
             : baseValue + (allocation?.OccupationPoints ?? 0) + (allocation?.PersonalInterestPoints ?? 0);
         var levels = value is { } regular ? CharacteristicLevels.For(regular) : null;
 

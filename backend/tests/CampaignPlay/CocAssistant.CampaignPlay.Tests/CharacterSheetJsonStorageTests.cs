@@ -44,7 +44,7 @@ public class CharacterSheetJsonStorageTests
         var stored = CharacterSheetJsonStorage.ToStorage(new CharacterSheetBuilder().Build());
 
         using var document = JsonDocument.Parse(stored);
-        Assert.Equal(2, document.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(3, document.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("PointBuy", document.RootElement.GetProperty("creationMethod").GetString());
         Assert.Equal(60, document.RootElement.GetProperty("assignedCharacteristics").GetProperty("STR").GetInt32());
     }
@@ -56,7 +56,10 @@ public class CharacterSheetJsonStorageTests
         var sheet = new CharacterSheetBuilder()
             .WithOccupation(new OccupationSelection("police-detective", custom, [null, "DEX"], [[new SkillReference("Disguise")], []]))
             .WithSkills(new SkillAllocation(new SkillReference("Firearms", "Handgun"), 40, null), new SkillAllocation(SkillReference.CreditRating, 30, 5))
-            .WithQuickFireSkills(new QuickFireSkills([new QuickFireSkillValue(new SkillReference("Law"), 70)], [new SkillReference("Art/Craft", "Painting")]))
+            .WithQuickFireSkills(new QuickFireSkills(
+                [new QuickFireSkillValue(new SkillReference("Law"), 70)],
+                [new SkillReference("Art/Craft", "Painting")],
+                new SkillReference("Drive Auto")))
             .Build();
 
         var read = CharacterSheetJsonStorage.FromStorage(CharacterSheetJsonStorage.ToStorage(sheet));
@@ -99,6 +102,25 @@ public class CharacterSheetJsonStorageTests
         Assert.Null(read.Occupation);
         Assert.Empty(read.SkillAllocations);
         Assert.Equal(QuickFireSkills.Empty, read.QuickFire);
+    }
+
+    [Fact]
+    public void Given_a_schema_version_2_document_When_reading_it_Then_it_is_upgraded_without_an_extra_skill()
+    {
+        const string stored = """
+            {
+              "schemaVersion": 2,
+              "identity": { "name": "Harvey Walters", "age": 25 },
+              "creationMethod": "QuickFire",
+              "assignedCharacteristics": {},
+              "quickFire": { "values": [ { "skill": "Drive Auto", "specialization": null, "value": 40 } ], "personalInterests": [] }
+            }
+            """;
+
+        var read = CharacterSheetJsonStorage.FromStorage(stored);
+
+        Assert.Null(read.QuickFire.ExtraSkill);
+        Assert.Equal(40, Assert.Single(read.QuickFire.Values).Value);
     }
 
     [Fact]

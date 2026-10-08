@@ -137,6 +137,21 @@ public class SkillComputationTests
     }
 
     [Fact]
+    public void Section_18_Given_a_stored_extra_skill_When_calculating_Then_it_takes_the_freed_value_as_an_occupation_skill()
+    {
+        var sheet = AnAntiquarian()
+            .WithQuickFireCharacteristics(CharacteristicCodes.All.Zip(QuickFireRules.CharacteristicValues)
+                .ToDictionary(pair => pair.First, pair => (int?)pair.Second))
+            .WithQuickFireSkills(new QuickFireSkills([new QuickFireSkillValue(SkillReference.CreditRating, 30)], [], Skill("Drive Auto")))
+            .Build();
+
+        var computation = TestRules.Calculator.Calculate(sheet);
+
+        Assert.Equal(Skill("Drive Auto"), computation.QuickFireExtraSkill);
+        Assert.Equal((40, true), (Row(computation, Skill("Drive Auto")).Value, Row(computation, Skill("Drive Auto")).IsOccupationSkill));
+    }
+
+    [Fact]
     public void Section_7_Given_a_custom_occupation_When_calculating_Then_its_formula_and_skills_apply()
     {
         var custom = new CustomOccupation("Bootlegger", "EDUx2+DEXx2", [Skill("Drive Auto"), Skill("Fast Talk")], 5, 30);

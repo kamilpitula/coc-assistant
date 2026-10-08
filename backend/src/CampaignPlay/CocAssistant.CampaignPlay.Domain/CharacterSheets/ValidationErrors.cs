@@ -224,7 +224,7 @@ public static class ValidationErrors
         Error(
             "OccupationPointsOutsideOccupationSkills",
             OccupationPointsField(index),
-            $"{skill.DisplayName} isn't one of your occupation skills.",
+            $"{skill.DisplayName} is no longer one of your occupation skills. Remove its occupation points to use them elsewhere.",
             null,
             Text(points));
 
@@ -294,9 +294,30 @@ public static class ValidationErrors
         Error(
             "QuickFireSkillNotOccupationSkill",
             $"{QuickFireValueField(index)}.skill",
-            $"{skill.DisplayName} isn't one of your occupation skills.",
+            $"{skill.DisplayName} is no longer one of your occupation skills. Remove its value to use it elsewhere.",
             null,
             skill.DisplayName);
+
+    public static ValidationError QuickFireExtraSkillRequired(int freedValue) =>
+        Error("QuickFireExtraSkillRequired", QuickFireExtraSkillField, $"Choose the skill that takes the freed {freedValue}.", Text(freedValue));
+
+    public static ValidationError QuickFireExtraSkillNotAllowed(SkillReference skill) =>
+        Error(
+            "QuickFireExtraSkillNotAllowed",
+            QuickFireExtraSkillField,
+            "Choose a skill for the freed value that isn't an occupation skill, Credit Rating, or Cthulhu Mythos.",
+            null,
+            skill.DisplayName);
+
+    public static ValidationError QuickFireExtraSkillNotNeeded(SkillReference skill) =>
+        Error(
+            "QuickFireExtraSkillNotNeeded",
+            QuickFireExtraSkillField,
+            "This occupation frees no Quick fire value. Remove the extra skill.",
+            null,
+            skill.DisplayName);
+
+    public const string QuickFireExtraSkillField = "quickFire.extraSkill";
 
     public static ValidationError QuickFireCreditRatingValue(int expected, int? actual) =>
         Error(

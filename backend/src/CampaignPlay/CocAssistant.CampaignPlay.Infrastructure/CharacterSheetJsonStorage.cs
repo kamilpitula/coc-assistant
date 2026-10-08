@@ -3,8 +3,8 @@ namespace CocAssistant.CampaignPlay.Infrastructure;
 /// <summary>
 /// Stored JSON form of the Character Sheet with an explicit schema version (ADR 0005, ADR 0007). Only the Player's
 /// inputs are stored; a future schema version adds an upgrade step in <see cref="FromStorage"/>. Version 2 adds the
-/// Occupation, the skill allocations, and the Quick Fire skills; a version 1 document is upgraded on read with none of
-/// them.
+/// Occupation, the skill allocations, and the Quick Fire skills; version 3 the Quick Fire extra skill. Earlier
+/// documents are upgraded on read with the missing fields empty.
 /// </summary>
 public static class CharacterSheetJsonStorage
 {
@@ -29,7 +29,7 @@ public static class CharacterSheetJsonStorage
                 $"Unsupported Character Sheet schema version {document.SchemaVersion}; expected {CharacterSheet.CurrentSchemaVersion}.");
         }
 
-        // Upgrade from version 1: the fields added in version 2 are absent and read as empty.
+        // Upgrades: version 1 lacks the version 2 fields and version 2 the Quick Fire extra skill; absent fields read as empty.
         return document.ToCharacterSheet();
     }
 
@@ -132,17 +132,22 @@ public static class CharacterSheetJsonStorage
 
     private sealed record QuickFireValueDocument(string Skill, string? Specialization, int? Value);
 
-    private sealed record QuickFireDocument(IReadOnlyList<QuickFireValueDocument>? Values, IReadOnlyList<SkillDocument>? PersonalInterests)
+    private sealed record QuickFireDocument(
+        IReadOnlyList<QuickFireValueDocument>? Values,
+        IReadOnlyList<SkillDocument>? PersonalInterests,
+        SkillDocument? ExtraSkill)
     {
         public static QuickFireDocument From(QuickFireSkills quickFire) =>
             new(
                 quickFire.Values.Select(value => new QuickFireValueDocument(value.Skill.Skill, value.Skill.Specialization, value.Value)).ToList(),
-                quickFire.PersonalInterests.Select(SkillDocument.From).ToList());
+                quickFire.PersonalInterests.Select(SkillDocument.From).ToList(),
+                quickFire.ExtraSkill is null ? null : SkillDocument.From(quickFire.ExtraSkill));
 
         public QuickFireSkills ToQuickFire() =>
             new(
                 (Values ?? []).Select(value => new QuickFireSkillValue(new SkillReference(value.Skill, value.Specialization), value.Value)).ToList(),
-                (PersonalInterests ?? []).Select(skill => skill.ToReference()).ToList());
+                (PersonalInterests ?? []).Select(skill => skill.ToReference()).ToList(),
+                ExtraSkill?.ToReference());
     }
 
     private sealed record IdentityDocument(string? Name, int? Age, string? Gender, string? Residence, string? Birthplace)

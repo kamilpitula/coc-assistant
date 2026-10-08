@@ -71,7 +71,7 @@ A Player builds the Character Sheet for their Investigator before the Keeper can
     | `SkillPointsNegative` | `skills[i].occupationPoints` or `skills[i].personalInterestPoints` | Error | section 7.2, [section 8](../../docs/game-rules/coc7_character_creation_and_development_rules.md#8-personal-interest-skills) | Enter 0 or more points for {skill}. | shared |
     | `CreationPointsOnCthulhuMythos` | `skills[i].occupationPoints` or `skills[i].personalInterestPoints` | Error | section 8, section 15 | Cthulhu Mythos can't take points at creation. | shared |
     | `PersonalInterestPointsOnCreditRating` | `skills[i].personalInterestPoints` | Error | [project_ruleset.md section 4.6](../../docs/game-rules/project_ruleset.md#46-credit-rating-takes-occupation-points-only) | Credit Rating can only take occupation points. | shared |
-    | `OccupationPointsOutsideOccupationSkills` | `skills[i].occupationPoints` | Error | section 7.2 | {skill} isn't one of your occupation skills. | server |
+    | `OccupationPointsOutsideOccupationSkills` | `skills[i].occupationPoints` | Error | section 7.2 | {skill} is no longer one of your occupation skills. Remove its occupation points to use them elsewhere. | server |
     | `OccupationPointsOverspent` | `occupationPoints` | Error | section 7.1 | You've spent {spent} occupation points. You have {budget}. | server |
     | `OccupationPointsUnspent` | `occupationPoints` | Warning | section 7.2 | You have {left} occupation points left. Unspent points are lost. | server |
     | `CreditRatingOutOfRange` | `creditRating` | Error | section 7.2, section 7.3 | Credit Rating must be between {minimum} and {maximum}. | server |
@@ -79,7 +79,10 @@ A Player builds the Character Sheet for their Investigator before the Keeper can
     | `PersonalInterestPointsUnspent` | `personalInterestPoints` | Warning | section 8 | You have {left} personal interest points left. Unspent points are lost. | server |
     | `QuickFireSkillValueNotInPool` | `quickFire.values[i].value` | Error | section 18 | Use one of the Quick fire skill values: {values}. | shared |
     | `QuickFireSkillAssignmentMismatch` | `quickFire.values` | Error | section 18 | Use each Quick fire skill value exactly once: {values}. | server |
-    | `QuickFireSkillNotOccupationSkill` | `quickFire.values[i].skill` | Error | section 18 | {skill} isn't one of your occupation skills. | server |
+    | `QuickFireSkillNotOccupationSkill` | `quickFire.values[i].skill` | Error | section 18 | {skill} is no longer one of your occupation skills. Remove its value to use it elsewhere. | server |
+    | `QuickFireExtraSkillRequired` | `quickFire.extraSkill` | Error | section 18 (project assumption) | Choose the skill that takes the freed {value}. | server |
+    | `QuickFireExtraSkillNotAllowed` | `quickFire.extraSkill` | Error | section 18 (project assumption) | Choose a skill for the freed value that isn't an occupation skill, Credit Rating, or Cthulhu Mythos. | server |
+    | `QuickFireExtraSkillNotNeeded` | `quickFire.extraSkill` | Error | section 18 (project assumption) | This occupation frees no Quick fire value. Remove the extra skill. | server |
     | `QuickFireCreditRatingValue` | `creditRating` | Error | section 18 (project assumption) | Credit Rating must be {expected} for this occupation. | server |
     | `QuickFirePersonalInterestNotAllowed` | `quickFire.personalInterests[i]` | Error | section 18 | Choose a skill that isn't an occupation skill, Credit Rating, Cthulhu Mythos, or already chosen. | server |
     | `QuickFirePersonalInterestsTooMany` | `quickFire.personalInterests` | Error | section 18 | Choose {count} personal interest skills. You have chosen {chosen}. | shared |
@@ -95,7 +98,7 @@ A Player builds the Character Sheet for their Investigator before the Keeper can
   - The Draft is saved to the server whenever the Player completes a step or navigates between steps, and the Player can leave and resume.
   - Changing an earlier choice keeps later inputs, recomputes all derived values, and surfaces now-invalid inputs as validation errors on their steps. Changing the Creation Method clears characteristics after the Player confirms.
   - UX specification: [ux.md](ux.md).
-- **Persistence:** The Character Sheet is a value object of the `Investigator` aggregate, stored as a JSON column with an explicit schema version so new Eras and roll sources evolve without table migrations.
+- **Persistence:** The Character Sheet is a value object of the `Investigator` aggregate, stored as a JSON column with an explicit schema version so new Eras and roll sources evolve without table migrations. Schema version 2 added the Occupation, skill allocations, and Quick Fire skills; version 3 stores the Quick Fire extra skill explicitly (an upgraded earlier document has none, so a value it left on that skill is reported until the Player removes it).
 - **API Contracts:**
   - `GET /api/campaigns/{campaignId}/investigators/mine/character-sheet` - returns the caller's Character Sheet, its computed values, and its `ValidationError` list.
   - `PUT /api/campaigns/{campaignId}/investigators/mine/character-sheet` - replaces the Draft or Changes Requested Character Sheet with the Player's inputs; returns the recomputed sheet and `ValidationError` list. Rejected when the Investigator is Submitted or Approved.
@@ -106,7 +109,7 @@ A Player builds the Character Sheet for their Investigator before the Keeper can
     - `characteristicRolls` (Standard Rolling) are raw dice totals; each becomes a Roll Record with purpose `Characteristic:{C}`.
     - `occupation`: null or `{catalogId, custom, formulaCharacteristics: [code|null], skillChoices: [[skillReference]]}`; `custom` is null or `{name, formulaId, skills: [skillReference|null], creditRatingMin, creditRatingMax}`. `formulaCharacteristics` has one entry per formula term; `skillChoices` has one list per occupation skill slot, holding the Player's picks for that slot. A `skillReference` is `{skill, specialization}`.
     - `skills` (Standard Rolling and Point Buy): `[{skill, specialization, occupationPoints: int|null, personalInterestPoints: int|null}]`.
-    - `quickFire` (Quick Fire): `{values: [{skill, specialization, value: int|null}], personalInterests: [skillReference]}`; Credit Rating is one of the `values`.
+    - `quickFire` (Quick Fire): `{values: [{skill, specialization, value: int|null}], personalInterests: [skillReference], extraSkill: skillReference|null}`; Credit Rating is one of the `values`. `extraSkill` is the skill that takes the value Credit Rating frees (section 18); it takes that value and is not listed in `values`.
   - Response: `{investigatorId, status, playerName, changeRequestComment, characterSheet, rules, validationErrors}`.
     - `characterSheet` (the Character Sheet view, also used by the Keeper's review): `{schemaVersion, identity, creationMethod, characteristics, characteristicRolls, ageEffects, luckRolls, occupation, skills, quickFire, derived, rollRecords}`.
       - `characteristics`: `{"STR": {assigned, value, hard, extreme}, ...}` for all eight; `assigned` is the Point Buy or Quick Fire value, or the value computed from the Standard Rolling Roll Record, and `value` the value after age effects.

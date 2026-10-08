@@ -85,7 +85,10 @@ public record SkillRowResponse(
 
 public record QuickFireValueResponse(string Skill, string? Specialization, int? Value);
 
-public record QuickFireResponse(IReadOnlyList<QuickFireValueResponse> Values, IReadOnlyList<SkillReferenceResponse> PersonalInterests);
+public record QuickFireResponse(
+    IReadOnlyList<QuickFireValueResponse> Values,
+    IReadOnlyList<SkillReferenceResponse> PersonalInterests,
+    SkillReferenceResponse? ExtraSkill);
 
 public record PointBudgetResponse(int Budget, int Spent, int Left);
 

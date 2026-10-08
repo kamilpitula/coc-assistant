@@ -134,7 +134,7 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         Assert.Equal("Draft", body.GetProperty("status").GetString());
         Assert.Equal(0, body.GetProperty("validationErrors").GetArrayLength());
         var sheet = body.GetProperty("characterSheet");
-        Assert.Equal(2, sheet.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(3, sheet.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("Boston", sheet.GetProperty("identity").GetProperty("residence").GetString());
         var strength = sheet.GetProperty("characteristics").GetProperty("STR");
         Assert.Equal((60, 60, 30, 12), (strength.GetProperty("assigned").GetInt32(), strength.GetProperty("value").GetInt32(), strength.GetProperty("hard").GetInt32(), strength.GetProperty("extreme").GetInt32()));
@@ -235,8 +235,9 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
                     new { skill = "Art/Craft", specialization = "Painting", value = 60 }, new { skill = "History", value = 60 },
                     new { skill = "Library Use", value = 50 }, new { skill = "Language (Other)", specialization = "Latin", value = 50 },
                     new { skill = "Charm", value = 50 }, new { skill = "Spot Hidden", value = 40 },
-                    new { skill = "Firearms", specialization = "Handgun", value = 40 }, new { skill = "Drive Auto", value = 40 },
+                    new { skill = "Firearms", specialization = "Handgun", value = 40 },
                 },
+                extraSkill = new { skill = "Drive Auto" },
                 personalInterests = new[] { new { skill = "Listen" }, new { skill = "Stealth" }, new { skill = "Psychology" }, new { skill = "Persuade" } },
             },
         };
@@ -252,6 +253,9 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         var listen = sheet.GetProperty("skills").EnumerateArray().Single(row => row.GetProperty("skill").GetString() == "Listen");
         Assert.Equal(40, listen.GetProperty("value").GetInt32());
         Assert.Equal(4, sheet.GetProperty("quickFire").GetProperty("personalInterests").GetArrayLength());
+        Assert.Equal("Drive Auto", sheet.GetProperty("quickFire").GetProperty("extraSkill").GetProperty("skill").GetString());
+        var driveAuto = sheet.GetProperty("skills").EnumerateArray().Single(row => row.GetProperty("skill").GetString() == "Drive Auto");
+        Assert.Equal((40, true), (driveAuto.GetProperty("value").GetInt32(), driveAuto.GetProperty("isOccupationSkill").GetBoolean()));
         var creditRating = sheet.GetProperty("occupation").GetProperty("quickFireCreditRating");
         Assert.Equal((30, 40), (creditRating.GetProperty("value").GetInt32(), creditRating.GetProperty("freedValue").GetInt32()));
     }
