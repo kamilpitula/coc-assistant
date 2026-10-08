@@ -80,6 +80,9 @@ unless asked. The convention is `docs/backlog.md`.
 - **Show evidence, not assertions.** When reporting what you verified,
   include the actual command you ran and its output (or the relevant part
   of it), not just "tests pass."
+- **Report only what you observed.** Never cite a verification, approval,
+  or test run you did not observe in this conversation; a failed required
+  check blocks any push that was made conditional on it.
 
 # Workflow
 
@@ -119,6 +122,12 @@ Dependency Map here — this is where you decide what to reuse vs. build new.
 Keep this proportional to the task: a one-file bug fix needs a sentence, not
 a section; a multi-file feature deserves an actual numbered plan. Don't
 produce a formal planning document for its own sake.
+
+**Phase large plans.** When the plan touches more than about 30 files or
+crosses more than one layer (for example backend, frontend, E2E, and
+docs), propose phased commits with a checkpoint list: what each phase
+commits, so a resumed agent finds its state from `git log` plus that list.
+Offer the human a split into separate branches or PRs under the same PBI.
 
 **Consult existing ADRs before deciding anything.** If this repo has an ADR
 directory (commonly `docs/adr/`, `docs/decisions/`, or similar — check for
@@ -200,6 +209,12 @@ _(omit if the task changes no user-facing UI)_
 _(omit for a no-PBI task)_
 
 - <PBI id> — branch `<type>/<area>-<nnn>-<slug>`; final commit closes the PBI (step 6)
+
+### Phases
+
+_(omit unless the plan is phased, see Phase large plans)_
+
+- Phase <N>: <what is committed>; checkpoint: <commit subject>
 
 ### Risks / open questions
 

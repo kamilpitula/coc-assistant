@@ -50,7 +50,10 @@ If the task touches Call of Cthulhu game rules, also locate the governing
 sections in `docs/game-rules/` and list each one in Relevant Files & Symbols
 (document path plus section anchor in the Symbol column). Report them as
 references only; do not summarize the rule itself. If a rule the task needs
-is not covered there, record that under Gaps / Open Questions.
+is not covered there, record that under Gaps / Open Questions. Read every
+section the task cites before reporting a gap. A claimed gap or missing
+data quotes the passage you read and says what it lacks; never list a
+section as not read while treating its content as an open question.
 
 If the task introduces or changes user-facing UI, also locate the context the
 UX/UI designer skill needs for its Phase 0: existing `specs/<feature>/ux.md`
