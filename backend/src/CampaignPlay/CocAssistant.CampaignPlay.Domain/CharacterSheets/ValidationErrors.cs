@@ -159,6 +159,9 @@ public static class ValidationErrors
             "Choose which characteristic your occupation points use.",
             string.Join(", ", options));
 
+    public static ValidationError WeaponNameRequired(int index) =>
+        Error("WeaponNameRequired", $"weapons[{index}].name", "Enter a name for this weapon.");
+
     public static ValidationError CustomOccupationNameRequired() =>
         Error("CustomOccupationNameRequired", "occupation.custom.name", "Enter a name for your occupation.");
 

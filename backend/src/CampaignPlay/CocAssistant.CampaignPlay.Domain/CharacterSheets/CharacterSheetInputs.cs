@@ -17,7 +17,8 @@ public sealed record CharacterSheetInputs(
     CharacteristicValues? CharacteristicRolls = null,
     OccupationSelection? Occupation = null,
     IReadOnlyList<SkillAllocation>? SkillAllocations = null,
-    QuickFireSkills? QuickFire = null)
+    QuickFireSkills? QuickFire = null,
+    BackstoryAndPossessions? BackstoryAndPossessions = null)
 {
     public CharacterSheet ToCharacterSheet(IRollSource rollSource)
     {
@@ -49,6 +50,7 @@ public sealed record CharacterSheetInputs(
             rollRecords,
             Occupation,
             SkillAllocations ?? [],
-            QuickFire ?? QuickFireSkills.Empty);
+            QuickFire ?? QuickFireSkills.Empty,
+            BackstoryAndPossessions ?? BackstoryAndPossessions.Empty);
     }
 }

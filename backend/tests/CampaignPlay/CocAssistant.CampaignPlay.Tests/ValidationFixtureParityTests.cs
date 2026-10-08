@@ -111,7 +111,31 @@ public class ValidationFixtureParityTests
                 sheet.TryGetProperty("characteristicRolls", out var rolls) ? Characteristics(rolls) : null,
                 Occupation(sheet),
                 OptionalArray(sheet, "skills").Select(Allocation).ToList(),
-                QuickFire(sheet));
+                QuickFire(sheet),
+                BackstoryAndPossessions(sheet));
+        }
+
+        private static BackstoryAndPossessions BackstoryAndPossessions(JsonElement sheet)
+        {
+            var entries = sheet.TryGetProperty("backstory", out var backstory) && backstory.ValueKind == JsonValueKind.Object
+                ? Enum.GetValues<BackstoryEntry>()
+                    .Select(entry => (entry, text: OptionalString(backstory, JsonNamingPolicy.CamelCase.ConvertName(entry.ToString()))))
+                    .Where(pair => pair.text is not null)
+                    .ToDictionary(pair => pair.entry, pair => pair.text!)
+                : [];
+            var keyConnection = OptionalString(sheet, "keyConnection") is { } key ? Enum.Parse<BackstoryEntry>(key, ignoreCase: true) : (BackstoryEntry?)null;
+            var weapons = OptionalArray(sheet, "weapons")
+                .Select(weapon => new CustomWeapon(
+                    OptionalString(weapon, "name"),
+                    OptionalString(weapon, "skill"),
+                    OptionalString(weapon, "damage"),
+                    OptionalString(weapon, "attacks"),
+                    OptionalString(weapon, "range"),
+                    OptionalString(weapon, "ammo"),
+                    OptionalString(weapon, "malfunction")))
+                .ToList();
+            var myStory = backstory.ValueKind == JsonValueKind.Object ? OptionalString(backstory, "myStory") : null;
+            return new BackstoryAndPossessions(new Backstory(myStory, entries), keyConnection, weapons, OptionalString(sheet, "gear"));
         }
 
         private static OccupationSelection? Occupation(JsonElement sheet)

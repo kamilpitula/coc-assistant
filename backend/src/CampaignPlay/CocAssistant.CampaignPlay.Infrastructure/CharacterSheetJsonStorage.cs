@@ -3,8 +3,9 @@ namespace CocAssistant.CampaignPlay.Infrastructure;
 /// <summary>
 /// Stored JSON form of the Character Sheet with an explicit schema version (ADR 0005, ADR 0007). Only the Player's
 /// inputs are stored; a future schema version adds an upgrade step in <see cref="FromStorage"/>. Version 2 adds the
-/// Occupation, the skill allocations, and the Quick Fire skills; version 3 the Quick Fire extra skill. Earlier
-/// documents are upgraded on read with the missing fields empty.
+/// Occupation, the skill allocations, and the Quick Fire skills; version 3 the Quick Fire extra skill; version 4 the
+/// Backstory, Key Connection, Custom Weapons, and Gear. Earlier documents are upgraded on read with the missing fields
+/// empty.
 /// </summary>
 public static class CharacterSheetJsonStorage
 {
@@ -29,7 +30,8 @@ public static class CharacterSheetJsonStorage
                 $"Unsupported Character Sheet schema version {document.SchemaVersion}; expected {CharacterSheet.CurrentSchemaVersion}.");
         }
 
-        // Upgrades: version 1 lacks the version 2 fields and version 2 the Quick Fire extra skill; absent fields read as empty.
+        // Upgrades: version 1 lacks the version 2 fields, version 2 the Quick Fire extra skill, and version 3 the
+        // Backstory, Key Connection, Custom Weapons, and Gear; absent fields read as empty.
         return document.ToCharacterSheet();
     }
 
@@ -42,7 +44,11 @@ public static class CharacterSheetJsonStorage
         IReadOnlyList<RollRecordDocument>? RollRecords,
         OccupationDocument? Occupation,
         IReadOnlyList<SkillAllocationDocument>? SkillAllocations,
-        QuickFireDocument? QuickFire)
+        QuickFireDocument? QuickFire,
+        BackstoryDocument? Backstory,
+        BackstoryEntry? KeyConnection,
+        IReadOnlyList<CustomWeaponDocument>? Weapons,
+        string? Gear)
     {
         public static CharacterSheetDocument From(CharacterSheet sheet) =>
             new(
@@ -54,7 +60,11 @@ public static class CharacterSheetJsonStorage
                 sheet.RollRecords.Select(RollRecordDocument.From).ToList(),
                 sheet.Occupation is null ? null : OccupationDocument.From(sheet.Occupation),
                 sheet.SkillAllocations.Select(SkillAllocationDocument.From).ToList(),
-                QuickFireDocument.From(sheet.QuickFire));
+                QuickFireDocument.From(sheet.QuickFire),
+                BackstoryDocument.From(sheet.BackstoryAndPossessions.Backstory),
+                sheet.BackstoryAndPossessions.KeyConnection,
+                sheet.BackstoryAndPossessions.Weapons.Select(CustomWeaponDocument.From).ToList(),
+                sheet.BackstoryAndPossessions.Gear);
 
         public CharacterSheet ToCharacterSheet() =>
             new(
@@ -65,7 +75,34 @@ public static class CharacterSheetJsonStorage
                 (RollRecords ?? []).Select(record => record.ToRollRecord()).ToList(),
                 Occupation?.ToSelection(),
                 (SkillAllocations ?? []).Select(allocation => allocation.ToAllocation()).ToList(),
-                QuickFire?.ToQuickFire() ?? QuickFireSkills.Empty);
+                QuickFire?.ToQuickFire() ?? QuickFireSkills.Empty,
+                new BackstoryAndPossessions(
+                    Backstory?.ToBackstory() ?? Domain.CharacterSheets.Backstory.Empty,
+                    KeyConnection,
+                    (Weapons ?? []).Select(weapon => weapon.ToWeapon()).ToList(),
+                    Gear));
+    }
+
+    private sealed record BackstoryDocument(string? MyStory, Dictionary<BackstoryEntry, string>? Entries)
+    {
+        public static BackstoryDocument From(Backstory backstory) => new(backstory.MyStory, backstory.Entries.ToDictionary());
+
+        public Backstory ToBackstory() => new(MyStory, Entries ?? []);
+    }
+
+    private sealed record CustomWeaponDocument(
+        string? Name,
+        string? Skill,
+        string? Damage,
+        string? Attacks,
+        string? Range,
+        string? Ammo,
+        string? Malfunction)
+    {
+        public static CustomWeaponDocument From(CustomWeapon weapon) =>
+            new(weapon.Name, weapon.Skill, weapon.Damage, weapon.Attacks, weapon.Range, weapon.Ammo, weapon.Malfunction);
+
+        public CustomWeapon ToWeapon() => new(Name, Skill, Damage, Attacks, Range, Ammo, Malfunction);
     }
 
     private sealed record RollRecordDocument(string Purpose, string Dice, int Result, RollSource Source)

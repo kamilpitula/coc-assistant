@@ -53,7 +53,8 @@ public static class CharacterSheetWireFormat
             (request.Skills ?? [])
                 .Select(skill => new SkillAllocation(ToSkill(skill.Skill, skill.Specialization), skill.OccupationPoints, skill.PersonalInterestPoints))
                 .ToList(),
-            ToQuickFire(request.QuickFire));
+            ToQuickFire(request.QuickFire),
+            BackstoryWireFormat.ToDomain(request));
 
     /// <summary>A skill as the Player named it, trimmed, with a blank specialization read as none.</summary>
     public static SkillReference ToSkill(string skill, string? specialization) =>
@@ -120,6 +121,10 @@ public static class CharacterSheetWireFormat
                 sheet.QuickFire.Values.Select(value => new QuickFireValueResponse(value.Skill.Skill, value.Skill.Specialization, value.Value)).ToList(),
                 sheet.QuickFire.PersonalInterests.Select(ToSkillResponse).ToList(),
                 sheet.QuickFire.ExtraSkill is null ? null : ToSkillResponse(sheet.QuickFire.ExtraSkill)),
+            BackstoryWireFormat.ToBackstoryResponse(sheet.BackstoryAndPossessions.Backstory),
+            sheet.BackstoryAndPossessions.KeyConnection is { } keyConnection ? BackstoryWireFormat.KeyOf(keyConnection) : null,
+            sheet.BackstoryAndPossessions.Weapons.Select(BackstoryWireFormat.ToWeaponResponse).ToList(),
+            sheet.BackstoryAndPossessions.Gear,
             ToDerived(computation.Derived),
             sheet.RollRecords.Select(record => new RollRecordResponse(record.Purpose, record.Dice, record.Result, record.Source.ToString())).ToList());
     }
@@ -195,7 +200,9 @@ public static class CharacterSheetWireFormat
             derived.CreditRating,
             derived.Wealth is { } wealth
                 ? new WealthResponse(wealth.Currency, ToMoney(wealth.SpendingLevel), ToMoney(wealth.Cash), wealth.Assets is null ? null : ToMoney(wealth.Assets))
-                : null);
+                : null,
+            derived.Idea,
+            derived.Know);
 
     private static PointBudgetResponse? ToBudget(PointBudget? budget) =>
         budget is null ? null : new PointBudgetResponse(budget.Budget, budget.Spent, budget.Left);

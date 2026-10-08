@@ -33,6 +33,35 @@ public class CharacterSheetCalculatorTests
     }
 
     [Fact]
+    public void Section_5_1_Given_INT_60_and_EDU_after_an_improvement_When_calculating_Then_idea_is_INT_and_know_is_EDU_after_age_effects()
+    {
+        var sheet = new CharacterSheetBuilder()
+            .WithAge(45)
+            .WithDeduction(Characteristic.Strength, 5)
+            .WithEduImprovementChecks(new EduImprovementCheckInput(70, 5), new EduImprovementCheckInput(20, null))
+            .Build();
+
+        var derived = Calculator.Calculate(sheet).Derived;
+
+        Assert.Equal(60, derived.Idea);
+        Assert.Equal(55, derived.Know);
+    }
+
+    [Fact]
+    public void Section_5_1_Given_no_INT_or_EDU_When_calculating_Then_idea_and_know_are_not_calculated()
+    {
+        var sheet = new CharacterSheetBuilder()
+            .WithAssigned(Characteristic.Intelligence, null)
+            .WithAssigned(Characteristic.Education, null)
+            .Build();
+
+        var derived = Calculator.Calculate(sheet).Derived;
+
+        Assert.Null(derived.Idea);
+        Assert.Null(derived.Know);
+    }
+
+    [Fact]
     public void Section_5_Given_a_complete_sheet_at_age_45_When_calculating_Then_every_derived_value_uses_the_values_after_age_effects()
     {
         var sheet = new CharacterSheetBuilder()
@@ -55,7 +84,9 @@ public class CharacterSheetCalculatorTests
             Dodge: 29,
             MovementRate: 6,
             DamageBonus: "0",
-            Build: 0), SectionFiveValuesOf(derived));
+            Build: 0,
+            Idea: 60,
+            Know: 50), SectionFiveValuesOf(derived));
     }
 
     [Fact]

@@ -8379,6 +8379,175 @@
           "severity": "Error"
         }
       ]
+    },
+    {
+      "name": "ux.md section 6.7: every custom weapon needs a name",
+      "scope": "shared",
+      "allowedCreationMethods": [
+        "PointBuy"
+      ],
+      "sheet": {
+        "identity": {
+          "name": "Harvey Walters",
+          "age": 25,
+          "gender": null,
+          "residence": null,
+          "birthplace": null
+        },
+        "creationMethod": "PointBuy",
+        "characteristics": {
+          "STR": 60,
+          "CON": 60,
+          "DEX": 60,
+          "APP": 50,
+          "POW": 60,
+          "SIZ": 60,
+          "INT": 60,
+          "EDU": 50
+        },
+        "ageEffects": {
+          "deductions": {},
+          "eduImprovementChecks": [
+            {
+              "check": 30,
+              "gain": null
+            }
+          ]
+        },
+        "luckRolls": [
+          11
+        ],
+        "characteristicRolls": {},
+        "occupation": {
+          "catalogId": "antiquarian",
+          "custom": null,
+          "formulaCharacteristics": [],
+          "skillChoices": [
+            [],
+            [
+              {
+                "skill": "Art/Craft",
+                "specialization": "Painting"
+              }
+            ],
+            [],
+            [],
+            [
+              {
+                "skill": "Language (Other)",
+                "specialization": "Latin"
+              }
+            ],
+            [
+              {
+                "skill": "Charm",
+                "specialization": null
+              }
+            ],
+            [],
+            [
+              {
+                "skill": "Firearms",
+                "specialization": "Handgun"
+              }
+            ]
+          ]
+        },
+        "skills": [
+          {
+            "skill": "Credit Rating",
+            "specialization": null,
+            "occupationPoints": 30,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Library Use",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Appraise",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "History",
+            "specialization": null,
+            "occupationPoints": 50,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Spot Hidden",
+            "specialization": null,
+            "occupationPoints": 20,
+            "personalInterestPoints": null
+          },
+          {
+            "skill": "Drive Auto",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          },
+          {
+            "skill": "Listen",
+            "specialization": null,
+            "occupationPoints": null,
+            "personalInterestPoints": 60
+          }
+        ],
+        "quickFire": {
+          "values": [],
+          "personalInterests": [],
+          "extraSkill": null
+        },
+        "backstory": {
+          "myStory": null,
+          "personalDescription": null,
+          "traits": "Stubborn",
+          "ideologyAndBeliefs": null,
+          "injuriesAndScars": null,
+          "significantPeople": null,
+          "phobiasAndManias": null,
+          "meaningfulLocations": null,
+          "arcaneTomesAndSpells": null,
+          "treasuredPossessions": null,
+          "encountersWithStrangeEntities": null
+        },
+        "keyConnection": "traits",
+        "weapons": [
+          {
+            "name": "Knife",
+            "skill": "Fighting (Brawl)",
+            "damage": "1D4",
+            "attacks": "1",
+            "range": null,
+            "ammo": null,
+            "malfunction": null
+          },
+          {
+            "name": " ",
+            "skill": null,
+            "damage": null,
+            "attacks": null,
+            "range": null,
+            "ammo": null,
+            "malfunction": null
+          }
+        ],
+        "gear": "Notebook"
+      },
+      "expected": [
+        {
+          "code": "WeaponNameRequired",
+          "field": "weapons[1].name",
+          "message": "Enter a name for this weapon.",
+          "expected": null,
+          "actual": null,
+          "severity": "Error"
+        }
+      ]
     }
   ]
 }

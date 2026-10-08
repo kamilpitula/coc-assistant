@@ -20,6 +20,7 @@ public static class CharacterSheetValidator
             .Concat(OccupationValidation.Problems(sheet, computation.Occupation, rules))
             .Concat(SkillProblems(sheet, computation, rules))
             .Concat(SkillValueWarnings(computation))
+            .Concat(WeaponProblems(sheet.BackstoryAndPossessions.Weapons))
             .ToList();
 
     // Skipped while the age is missing or out of range: the age error already blocks submission.
@@ -97,6 +98,13 @@ public static class CharacterSheetValidator
         computation.Skills
             .Where(row => row.Value > SkillValueWarning.Threshold)
             .Select(row => ValidationErrors.SkillAboveWarningThreshold(row.Skill, row.Value!.Value));
+
+    // ux.md section 6.7 (app-level, like the Investigator name): every Custom Weapon needs a name.
+    private static IEnumerable<ValidationError> WeaponProblems(IReadOnlyList<CustomWeapon> weapons) =>
+        weapons
+            .Select((weapon, index) => (weapon, index))
+            .Where(pair => string.IsNullOrWhiteSpace(pair.weapon.Name))
+            .Select(pair => ValidationErrors.WeaponNameRequired(pair.index));
 
     // Section 2.2: bounds per value, the exact total, and the INT and SIZ recommendation.
     private static IEnumerable<ValidationError> PointBuyProblems(CharacteristicValues assigned)

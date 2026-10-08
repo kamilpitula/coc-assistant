@@ -14,7 +14,11 @@ public record CharacterSheetRequest(
     [CharacteristicCodes] Dictionary<string, int?>? CharacteristicRolls = null,
     OccupationRequest? Occupation = null,
     [MaxLength(200)] SkillAllocationRequest[]? Skills = null,
-    QuickFireRequest? QuickFire = null) : IValidatableObject
+    QuickFireRequest? QuickFire = null,
+    [BackstoryTexts] Dictionary<string, string?>? Backstory = null,
+    [MaxLength(30)] string? KeyConnection = null,
+    [MaxLength(BackstoryWireFormat.WeaponCountMax)] CustomWeaponRequest[]? Weapons = null,
+    [MaxLength(BackstoryWireFormat.TextLengthMax)] string? Gear = null) : IValidatableObject
 {
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
         CharacterSheetRequestRules.Problems(this).Select(message => new ValidationResult(message));
@@ -62,6 +66,30 @@ public record QuickFireRequest(
     SkillReferenceRequest? ExtraSkill = null);
 
 public record QuickFireValueRequest([Required, MaxLength(100)] string Skill, [MaxLength(100)] string? Specialization, int? Value);
+
+/// <summary>A Custom Weapon's free-text details (docs/game-rules/project_ruleset.md section 4.2).</summary>
+public record CustomWeaponRequest(
+    [MaxLength(BackstoryWireFormat.WeaponTextLengthMax)] string? Name,
+    [MaxLength(BackstoryWireFormat.WeaponTextLengthMax)] string? Skill,
+    [MaxLength(BackstoryWireFormat.WeaponTextLengthMax)] string? Damage,
+    [MaxLength(BackstoryWireFormat.WeaponTextLengthMax)] string? Attacks,
+    [MaxLength(BackstoryWireFormat.WeaponTextLengthMax)] string? Range,
+    [MaxLength(BackstoryWireFormat.WeaponTextLengthMax)] string? Ammo,
+    [MaxLength(BackstoryWireFormat.WeaponTextLengthMax)] string? Malfunction);
+
+/// <summary>Accepts only Backstory keys (My Story and the section 12 Background entries) with texts within the limit.</summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter)]
+public sealed class BackstoryTextsAttribute : ValidationAttribute
+{
+    public BackstoryTextsAttribute()
+        : base("Every backstory key must be myStory or a Background entry, with at most 2000 characters.")
+    {
+    }
+
+    public override bool IsValid(object? value) =>
+        value is not IDictionary<string, string?> texts
+        || texts.All(text => BackstoryWireFormat.IsKey(text.Key) && (text.Value?.Length ?? 0) <= BackstoryWireFormat.TextLengthMax);
+}
 
 /// <summary>A Keeper's Change Request: a required comment of at most 2000 characters.</summary>
 public record RequestChangesRequest([Required, MaxLength(Investigator.ChangeRequestCommentMaxLength)] string Comment);
@@ -113,6 +141,7 @@ public static class CharacterSheetRequestRules
         AddIf(problems, request.Occupation is { CatalogId: not null, Custom: not null }, "Choose a catalog occupation or a custom one, not both.");
         AddIf(problems, HasDuplicates((request.Skills ?? []).Select(skill => Key(skill.Skill, skill.Specialization))), "Each skill may be listed once in skills.");
         AddIf(problems, HasDuplicates((request.QuickFire?.Values ?? []).Select(value => Key(value.Skill, value.Specialization))), "Each skill may take one Quick fire value.");
+        AddIf(problems, !BackstoryWireFormat.HasValidKeyConnection(request), "The Key Connection must be a filled-in Background entry.");
         return problems;
     }
 
