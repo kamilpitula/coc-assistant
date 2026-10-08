@@ -3,7 +3,7 @@
 ## Blueprint
 
 ### Context
-Every change to `master` must be proven buildable and tested before it lands. Continuous Integration runs the backend, frontend, authenticated E2E, Terraform, and PBI file checks on GitHub Actions for every pull request targeting `master` and every push to `master`, and exposes a single required status check that branch protection relies on. The scope is CI only; deployment is out of scope until an Azure environment exists (`infrastructure/terraform/main.tf` defines no resources yet).
+Every change to `master` must be proven buildable and tested before it lands. Continuous Integration runs the backend, frontend, authenticated E2E, Terraform, PBI file, and ASCII checks on GitHub Actions for every pull request targeting `master` and every push to `master`, and exposes a single required status check that branch protection relies on. The scope is CI only; deployment is out of scope until an Azure environment exists (`infrastructure/terraform/main.tf` defines no resources yet).
 
 The existing integration tests and E2E harness were written local-first against SQL Server LocalDB, which only runs on Windows, while the E2E mock OIDC issuer is a Linux container. CI therefore runs on Linux runners against a SQL Server service container, with the SQL Server connection made configurable and LocalDB kept as the local default.
 
@@ -21,9 +21,10 @@ The existing integration tests and E2E harness were written local-first against 
     | `e2e` | `backend/**`, `frontend/**`, or `e2e/**` changed | SQL Server service container, per-run dev certificate, Playwright chromium suite |
     | `terraform` | `infrastructure/**` changed | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate` |
     | `backlog` | always | `npm ci`, `typecheck`, `test`, and `check` (`--check` on every PBI file, see `docs/backlog.md`) in `tools/backlog/` |
+    | `ascii` | always | `npm ci`, `typecheck`, `test`, and `check` (non-ASCII characters in tracked files, minus the exclusions and baseline in `tools/ascii-check/src/asciiPolicy.ts`) in `tools/ascii-check/` |
     | `ci-success` | always | aggregates the results of all jobs above; the only required status check |
   - A change to `.github/workflows/**`, `.github/actions/**`, `global.json`, `.nvmrc`, or `.config/dotnet-tools.json` runs every job. A `push` to `master` runs every job.
-  - Caches: NuGet packages, npm for `frontend/package-lock.json`, `e2e/package-lock.json`, and `tools/backlog/package-lock.json`, Playwright browsers keyed on the Playwright version.
+  - Caches: NuGet packages, npm for `frontend/package-lock.json`, `e2e/package-lock.json`, `tools/backlog/package-lock.json`, and `tools/ascii-check/package-lock.json`, Playwright browsers keyed on the Playwright version.
 - **SQL Server connection configuration:**
   - Environment variable `COC_SQLSERVER_CONNECTION` holds the server portion of a connection string (server, credentials, `TrustServerCertificate`) without a database.
   - Each consumer appends its own database name: `CocAssistantIdentityTests` (`backend/tests/CocAssistant.Api.IntegrationTests/IdentityApiFactory.cs`), `CocAssistantCampaignPlayMigrationTests` (`backend/tests/CocAssistant.Api.IntegrationTests/CampaignPlayMigrationTests.cs`), and `CocAssistantE2E` (`e2e/playwright.config.ts`, `e2e/globalSetup.ts`).
@@ -66,6 +67,7 @@ The existing integration tests and E2E harness were written local-first against 
 - `ci-success` remains the single required status check, and it fails whenever any job it aggregates fails or is cancelled.
 - A skipped job (no relevant changes) never causes `ci-success` to fail.
 - The `backlog` job runs on every pull request and push, and a PBI file that fails `--check` fails `ci-success`.
+- The `ascii` job runs on every pull request and push, and a non-ASCII character in a scanned file fails `ci-success`.
 - Every `push` to `master` runs every job regardless of changed paths.
 - With `COC_SQLSERVER_CONNECTION` unset, integration tests and the E2E harness target LocalDB exactly as before.
 - Each SQL Server consumer keeps its own database name; consumers never share a database through the connection helper.
@@ -93,7 +95,7 @@ Scenario: Runs on master are never cancelled
 Scenario: A push to master runs every job
   Given a commit pushed to master that changes only files under docs/
   When the CI workflow runs
-  Then the backend, backend-integration, frontend, e2e, terraform, and backlog jobs all run
+  Then the backend, backend-integration, frontend, e2e, terraform, backlog, and ascii jobs all run
 
 Scenario: A Terraform-only pull request skips application jobs
   Given a pull request that changes only files under infrastructure/
@@ -106,8 +108,8 @@ Scenario: A documentation-only pull request passes without running jobs
   Given a pull request that changes only files under docs/
   When the CI workflow runs
   Then the backend, backend-integration, frontend, e2e, and terraform jobs are skipped
-  And the backlog job runs
-  And ci-success passes when the backlog job passes
+  And the backlog and ascii jobs run
+  And ci-success passes when the backlog and ascii jobs pass
 
 Scenario: A workflow change runs every job
   Given a pull request that changes .github/workflows/ci.yml
@@ -124,6 +126,12 @@ Scenario: An invalid PBI file fails the required check
   Given a pull request whose PBI file under docs/<area>/issues/ fails a --check rule in docs/backlog.md
   When the CI workflow runs
   Then the backlog job fails
+  And ci-success fails
+
+Scenario: A non-ASCII character fails the required check
+  Given a pull request that adds a non-ASCII character to a file the ASCII check scans
+  When the CI workflow runs
+  Then the ascii job fails
   And ci-success fails
 
 Scenario: A frontend change runs E2E
