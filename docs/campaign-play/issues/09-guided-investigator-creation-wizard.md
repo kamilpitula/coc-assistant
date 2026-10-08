@@ -1,6 +1,6 @@
 ---
 id: PBI-CP-009
-status: todo
+status: done
 blocked_by: [PBI-CP-003]
 ---
 
@@ -31,12 +31,22 @@ Read: `docs/game-rules/coc7_character_creation_and_development_rules.md` section
 UX: follows `specs/character-sheet/ux.md`.
 
 ## Verification
-- [ ] A Player can create a valid Investigator with each allowed Creation Method.
-- [ ] Every derived value matches its rule section in unit tests named after that section.
-- [ ] Standard Rolling stores one `PlayerEntered` Roll Record per dice result.
-- [ ] Every error and warning in the spec's Validation list is produced by the validator.
-- [ ] Changing an earlier step recomputes values and surfaces now-invalid inputs without discarding them.
-- [ ] E2E: one creation flow each for Standard Rolling and Quick Fire, extending the PBI-CP-003 lifecycle flow.
+- [x] A Player can create a valid Investigator with each allowed Creation Method.
+- [x] Every derived value matches its rule section in unit tests named after that section.
+- [x] Standard Rolling stores one `PlayerEntered` Roll Record per dice result.
+- [x] Every error and warning in the spec's Validation list is produced by the validator.
+- [x] Changing an earlier step recomputes values and surfaces now-invalid inputs without discarding them.
+- [x] E2E: one creation flow each for Standard Rolling and Quick Fire, extending the PBI-CP-003 lifecycle flow.
 
 ## Refinement Protocol
 Missing or conflicting rules are added to `docs/game-rules/` first. A `Server` roll source must plug in through `IRollSource` without changing the Character Sheet shape beyond a schema version bump.
+
+## Follow-ups
+- Add more 1920s Occupations to `docs/game-rules/catalogs/occupations.1920s.json`; the catalog has 10, enough for the flows but thin for real play.
+- Project owner verification and page references for the new `catalogs/wealth.1920s.json` and `catalogs/skill-specializations.json` (marked awaiting verification).
+- Run the dice-entry usability test with one or two first-time Players (`specs/character-sheet/ux.md` section 12) before release.
+- Confirm the method-switch dialog sentence "Your skill values will be cleared too." (ux.md section 5.5), added in implementation because Quick fire skill values and points cannot be saved together; it was not in the approved plan.
+- "Add another specialization" focuses the skill family Select first, then the specialization field (ux.md section 6.6 says the specialization field); confirm or adjust.
+- Remove the now-unreachable "no available creation method" state (UX-19 card state, `CreationMethodsUnavailable` outcome) or keep it for a future method, and reword the campaign-play Scenario "Player cannot create an Investigator without a supported Creation Method".
+- Upgrade `System.Security.Cryptography.Xml` 9.0.0 (NU1903 high severity advisory, pre-existing in Infrastructure).
+- Local `npm run lint` also lints the git-ignored `storybook-static` build output; add it to the ESLint ignores.
