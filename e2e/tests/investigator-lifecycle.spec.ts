@@ -10,6 +10,7 @@ import {
   joinAsNewPlayer,
   pickAntiquarianSkillsViaUi,
   pressWizardAction,
+  saveDraftUpToAgeEffectsViaUi,
   spendAntiquarianPointsViaUi,
   VALID_POINT_BUY,
 } from '../fixtures/investigators'
@@ -20,9 +21,10 @@ import { attentionList, memberRow, ownRow } from '../fixtures/overview'
  * "Player submits a valid Character Sheet", "Keeper requests changes", "Request changes requires a comment", and
  * "Keeper approves an Investigator"; to specs/character-sheet/spec.md Scenarios "Point Buy Investigator applies age
  * effects before Hard and Extreme values", "Draft resumes after leaving the wizard", "Standard Rolling records every
- * Player-entered roll", "Changing characteristics keeps later allocations", and "Changing the Creation Method clears
- * characteristics after confirmation"; and to specs/character-sheet/ux.md sections 3 to 7 (UX-3, UX-4, UX-5, UX-7,
- * UX-8, UX-9, UX-10, UX-11, UX-12, UX-13, UX-14, UX-15, UX-20, UX-22, UX-23, UX-24, UX-25, UX-26), with the Campaign page as the overview of
+ * Player-entered roll", "Changing characteristics keeps later allocations", "Changing the Creation Method clears
+ * characteristics after confirmation", and "Unspent personal interest points only warn"; and to
+ * specs/character-sheet/ux.md sections 3 to 7 (UX-3, UX-4, UX-5, UX-7, UX-8, UX-9, UX-10, UX-11, UX-12, UX-13, UX-14,
+ * UX-15, UX-20, UX-22, UX-23, UX-24, UX-25, UX-26, UX-27, UX-28, UX-29, UX-30), with the Campaign page as the overview of
  * specs/campaign-overview/ux.md (CO-UX-4, CO-UX-6, CO-UX-9).
  */
 test.describe('Investigator lifecycle', () => {
@@ -180,6 +182,94 @@ test.describe('Investigator lifecycle', () => {
       await test.step('the Player sees the Investigator approved and ready for play', async () => {
         await playerPage.goto(`/campaigns/${campaignId}`)
         await expect(ownRow(playerPage)).toContainText('Approved - ready for play')
+      })
+    } finally {
+      await player.context.close()
+    }
+  })
+
+  test('A Player records the Backstory, Key Connection, a Custom Weapon, and Gear and submits despite unspent points; the Keeper reviews them', async ({
+    page,
+    browser,
+  }) => {
+    test.slow()
+
+    const keeper = newAccount('Keeper')
+    await signIn(page, keeper)
+    const campaignId = await createCampaignViaUi(page, `Backstory ${keeper.oid.slice(0, 6)}`)
+    const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, campaignId))
+    const playerPage = player.page
+    const unspentWarning = 'You have 60 personal interest points left. Unspent points are lost.'
+
+    try {
+      await test.step('the Player creates a 25-year-old Antiquarian and spends every point', async () => {
+        await saveDraftUpToAgeEffectsViaUi(playerPage, campaignId, 'Ida Marsh')
+        await playerPage.getByRole('group', { name: 'EDU check 1 of 1' }).getByLabel('D100 roll').fill('30')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await chooseAntiquarianViaUi(playerPage)
+        await pickAntiquarianSkillsViaUi(playerPage)
+        await spendAntiquarianPointsViaUi(playerPage)
+      })
+
+      await test.step('the Player leaves 60 personal interest points unspent', async () => {
+        await playerPage.getByRole('link', { name: /^Personal interests ?, completed$/ }).click()
+        await playerPage.getByLabel('Listen, personal interest points').fill('')
+        await expect(playerPage.getByText('Personal interest points left: 60 of 120')).toBeVisible()
+        await playerPage.getByRole('link', { name: /^Sheet and submit ?, completed$/ }).click()
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Sheet and submit' })).toBeVisible()
+      })
+
+      await test.step('UX-29: "Worth checking" on Sheet and submit lists the unspent points warning', async () => {
+        await expect(playerPage.getByRole('heading', { name: 'Worth checking' })).toBeVisible()
+        await expect(playerPage.getByRole('listitem').filter({ hasText: unspentWarning })).toBeVisible()
+      })
+
+      await test.step('UX-27: the Player records My Story, a Background entry as the Key Connection, and Gear', async () => {
+        await playerPage.getByRole('textbox', { name: 'My story' }).fill('Grew up above a bookshop in Arkham.')
+        await playerPage.getByRole('textbox', { name: 'Significant people' }).fill('My sister Ada')
+        const keyConnection = playerPage.getByRole('radiogroup', { name: 'Which of these is your Key Connection?' })
+        await keyConnection.getByRole('radio', { name: 'Significant people' }).click()
+        await playerPage.getByRole('textbox', { name: 'Gear and possessions' }).fill('Camera, notebook, lantern')
+      })
+
+      await test.step('UX-11: a weapon without a name blocks submission, and its error link focuses the name', async () => {
+        await playerPage.getByRole('button', { name: 'Add weapon' }).click()
+        await expect(playerPage.getByLabel('Weapon 1 name')).toBeFocused()
+        await playerPage.getByRole('button', { name: 'Submit to Keeper' }).click()
+        const summary = playerPage.getByRole('alert').filter({ hasText: "There's a problem" })
+        await summary.getByRole('link', { name: 'Enter a name for this weapon.' }).click()
+        await expect(playerPage.getByLabel('Weapon 1 name')).toBeFocused()
+      })
+
+      await test.step('UX-27: the Player names the Custom Weapon and submits with the warning', async () => {
+        await playerPage.getByLabel('Weapon 1 name').fill('.38 Revolver')
+        await playerPage.getByLabel('Weapon 1 skill').fill('Firearms (Handgun)')
+        await playerPage.getByLabel('Weapon 1 damage').fill('1D10')
+        await playerPage.getByRole('button', { name: 'Submit to Keeper' }).click()
+        await expect(ownRow(playerPage)).toContainText('Submitted - waiting for your Keeper')
+      })
+
+      await test.step("UX-28: the Player's View shows the Backstory, weapon, Gear, and Wealth read-only", async () => {
+        await ownRow(playerPage).getByRole('link', { name: 'View Ida Marsh' }).click()
+        await expect(playerPage.getByRole('heading', { level: 3, name: 'Significant people (Key Connection)' })).toBeVisible()
+        await expect(playerPage.getByRole('table', { name: 'Weapons' }).getByRole('row', { name: /\.38 Revolver/ })).toBeVisible()
+        await expect(playerPage.getByText('Camera, notebook, lantern')).toBeVisible()
+        await expect(playerPage.getByRole('heading', { level: 2, name: 'Wealth' })).toBeVisible()
+        await expect(playerPage.getByRole('textbox')).toHaveCount(0)
+      })
+
+      await test.step('UX-30: the Keeper sees the warning and the custom weapon under "Worth checking", the sheet, and the dice results', async () => {
+        await page.goto(`/campaigns/${campaignId}`)
+        await attentionList(page).getByRole('link', { name: 'Review Ida Marsh' }).click()
+        await expect(page.getByRole('heading', { name: 'Worth checking' })).toBeVisible()
+        await expect(page.getByRole('listitem').filter({ hasText: unspentWarning })).toBeVisible()
+        await expect(page.getByRole('listitem').filter({ hasText: '1 custom weapon' })).toBeVisible()
+        await expect(page.getByText('Grew up above a bookshop in Arkham.')).toBeVisible()
+        await expect(page.getByRole('heading', { level: 3, name: 'Significant people (Key Connection)' })).toBeVisible()
+        await expect(page.getByRole('table', { name: 'Weapons' }).getByRole('row', { name: /\.38 Revolver/ })).toBeVisible()
+        await expect(page.getByRole('textbox')).toHaveCount(0)
+        await page.getByRole('button', { name: 'Dice results' }).click()
+        await expect(page.getByRole('row', { name: /^Luck 3D6 11 Player$/ })).toBeVisible()
       })
     } finally {
       await player.context.close()
