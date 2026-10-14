@@ -66,6 +66,38 @@ export interface QuickFireInputs {
   extraSkill?: SkillReference | null
 }
 
+/** The Background entries of the backstory, in rule order (docs/game-rules section 12). */
+export const BACKSTORY_ENTRIES = [
+  'personalDescription',
+  'traits',
+  'ideologyAndBeliefs',
+  'injuriesAndScars',
+  'significantPeople',
+  'phobiasAndManias',
+  'meaningfulLocations',
+  'arcaneTomesAndSpells',
+  'treasuredPossessions',
+  'encountersWithStrangeEntities',
+] as const
+
+export type BackstoryEntry = (typeof BACKSTORY_ENTRIES)[number]
+
+/** My Story and the Background entries; only a Background entry can be the Key Connection. */
+export type BackstoryKey = 'myStory' | BackstoryEntry
+
+export type BackstoryInputs = Record<BackstoryKey, string | null>
+
+/** A Custom Weapon's free-text details (docs/game-rules project_ruleset.md section 4.2). */
+export interface CustomWeaponInputs {
+  name: string | null
+  skill: string | null
+  damage: string | null
+  attacks: string | null
+  range: string | null
+  ammo: string | null
+  malfunction: string | null
+}
+
 /** The body of PUT .../investigators/mine/character-sheet: the Player's inputs only; dice results are raw totals. */
 export interface CharacterSheetInputs {
   identity: IdentityInputs
@@ -80,6 +112,11 @@ export interface CharacterSheetInputs {
   occupation: OccupationInputs | null
   skills: SkillAllocationInputs[]
   quickFire: QuickFireInputs
+  backstory: BackstoryInputs
+  /** The Background entry that is the Key Connection (docs/game-rules section 12); it must be filled in. */
+  keyConnection: BackstoryEntry | null
+  weapons: CustomWeaponInputs[]
+  gear: string | null
 }
 
 export interface CharacteristicView {
@@ -127,6 +164,8 @@ export interface Wealth {
 
 export interface DerivedValues {
   luck: number | null
+  idea: number | null
+  know: number | null
   hitPoints: number | null
   magicPoints: number | null
   sanity: { current: number | null; maximum: number | null }
@@ -185,6 +224,11 @@ export interface CharacterSheetView {
   occupation: OccupationView | null
   skills: SkillRow[]
   quickFire: QuickFireInputs
+  backstory: BackstoryInputs
+  keyConnection: BackstoryEntry | null
+  /** Every v1 weapon is a Custom Weapon, so `isCustom` is always true. */
+  weapons: (CustomWeaponInputs & { isCustom: boolean })[]
+  gear: string | null
   derived: DerivedValues
   rollRecords: RollRecord[]
 }

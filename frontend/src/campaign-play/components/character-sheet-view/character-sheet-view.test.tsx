@@ -2,7 +2,8 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
-import { sheetView } from '@/campaign-play/test-support/characterSheetFixtures'
+import { EMPTY_BACKSTORY } from '@/campaign-play/state/characterSheetForm'
+import { sheetView, validInputs } from '@/campaign-play/test-support/characterSheetFixtures'
 
 import { CharacterSheetView } from './character-sheet-view'
 
@@ -37,6 +38,45 @@ describe('CharacterSheetView', () => {
     expect(within(derived).getByText('HP').nextElementSibling).toHaveTextContent('12')
     expect(within(derived).getByText('Luck').nextElementSibling).toHaveTextContent('55')
     expect(within(derived).getByText('SAN').nextElementSibling).toHaveTextContent('60 of 99')
+    expect(within(derived).getByText('Idea').nextElementSibling).toHaveTextContent('60')
+    expect(within(derived).getByText('Know').nextElementSibling).toHaveTextContent('50')
+  })
+
+  it('UX-28: shows the Backstory, weapons, Gear, and Wealth read-only before any extra sections', () => {
+    const sheet = sheetView({
+      backstory: { ...EMPTY_BACKSTORY, traits: 'Stubborn' },
+      keyConnection: 'traits',
+      weapons: [{ name: 'Knife', skill: null, damage: '1D4', attacks: null, range: null, ammo: null, malfunction: null, isCustom: true }],
+      gear: 'Lantern',
+    })
+    render(
+      <CharacterSheetView sheet={sheet} playerName="Ada Lovelace">
+        <h2>Dice results</h2>
+      </CharacterSheetView>,
+    )
+
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)
+    expect(headings).toEqual(['Summary', 'Skills', 'Backstory', 'Weapons', 'Gear and possessions', 'Wealth', 'Dice results'])
+    expect(screen.getByRole('heading', { level: 3, name: 'Traits (Key Connection)' })).toBeInTheDocument()
+    expect(screen.getByRole('row', { name: /Knife/ })).toBeInTheDocument()
+    expect(screen.getByText('Lantern')).toBeInTheDocument()
+    expect(screen.getByText('Cash').nextElementSibling).toHaveTextContent('$60')
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('UX-27: edits the Backstory, weapons, and Gear from the wizard inputs in edit mode', () => {
+    render(
+      <CharacterSheetView
+        sheet={at45}
+        playerName="Ada Lovelace"
+        changeLinksFor="c1"
+        editing={{ inputs: { ...validInputs, gear: 'Rope' }, errors: {}, onAction: vi.fn(), onBlur: vi.fn() }}
+      />,
+    )
+
+    expect(screen.getByRole('textbox', { name: 'My story' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add weapon' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Gear and possessions' })).toHaveValue('Rope')
   })
 
   it('offers "Change" links to the wizard steps in edit mode', () => {

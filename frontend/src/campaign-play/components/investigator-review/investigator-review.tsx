@@ -9,6 +9,7 @@ import { InvestigatorStatusBadge } from '@/campaign-play/components/investigator
 import { RequestChangesDialog } from '@/campaign-play/components/request-changes-dialog/request-changes-dialog'
 import { WorthCheckingAlert } from '@/campaign-play/components/worth-checking-alert/worth-checking-alert'
 import { useApproveInvestigator, useKeeperInvestigator, useRequestChanges } from '@/campaign-play/hooks/useKeeperInvestigators'
+import { customContentNotes } from '@/campaign-play/services/customContent'
 import { InvestigatorConflictError } from '@/campaign-play/services/investigatorApi'
 import type { KeeperInvestigator } from '@/campaign-play/types/Investigator'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
@@ -111,7 +112,7 @@ function Review({ campaignId, investigatorId, loaded, onReload }: ReviewProps) {
         {statusMessage}
       </p>
 
-      <WorthCheckingAlert warnings={investigator.warnings} />
+      <WorthCheckingAlert warnings={investigator.warnings} notes={customContentNotes(investigator.characterSheet)} />
 
       <CharacterSheetView sheet={investigator.characterSheet} playerName={investigator.playerName}>
         <DiceResults rollRecords={investigator.characterSheet.rollRecords} />

@@ -2,10 +2,15 @@ import { Link } from '@tanstack/react-router'
 import { useState, type ReactNode } from 'react'
 
 import { creationMethodLabels } from '@/campaign-play/components/creation-methods-fieldset/creationMethodLabels'
+import { SheetBackstorySection } from '@/campaign-play/components/sheet-backstory-section/sheet-backstory-section'
+import { SheetGearSection } from '@/campaign-play/components/sheet-gear-section/sheet-gear-section'
+import { SheetWealthSection } from '@/campaign-play/components/sheet-wealth-section/sheet-wealth-section'
+import { SheetWeaponsSection } from '@/campaign-play/components/sheet-weapons-section/sheet-weapons-section'
 import { skillDisplayName } from '@/campaign-play/services/skillValidation'
 
 import type { WizardStep } from '@/campaign-play/services/wizardProgress'
 import { CHARACTERISTIC_CODES, type CharacterSheetView as CharacterSheetData } from '@/campaign-play/types/CharacterSheet'
+import type { WizardStepProps } from '@/campaign-play/types/WizardStepProps'
 import { Button } from '@/shared/components/ui/button'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table'
 
@@ -14,6 +19,8 @@ interface CharacterSheetViewProps {
   playerName: string | null
   /** In edit mode, the Campaign id the "Change" links open the wizard steps of; omit for read-only. */
   changeLinksFor?: string
+  /** On the Sheet and submit step: edits the Backstory, weapons, and Gear from the wizard's inputs. */
+  editing?: WizardStepProps
   /** Extra read-only sections, such as the Keeper's Dice results. */
   children?: ReactNode
 }
@@ -44,11 +51,11 @@ function ChangeLink({ campaignId, step, label }: { campaignId?: string; step: Wi
 }
 
 /**
- * The shared Character Sheet view: read-only for the Player's View and the Keeper's review, with "Change" links on the
- * Sheet and submit step (specs/character-sheet/ux.md sections 6.7 and 7: Summary and Skills; the narrative sections
- * follow in PBI-CP-010).
+ * The shared Character Sheet view: read-only for the Player's View and the Keeper's review; on the Sheet and submit
+ * step it has "Change" links and edits the Backstory, weapons, and Gear (specs/character-sheet/ux.md sections 6.7
+ * and 7).
  */
-export function CharacterSheetView({ sheet, playerName, changeLinksFor, children }: CharacterSheetViewProps) {
+export function CharacterSheetView({ sheet, playerName, changeLinksFor, editing, children }: CharacterSheetViewProps) {
   const { identity, derived } = sheet
   const identityRows: [string, ReactNode][] = [
     ['Name', identity.name ?? 'Not named yet'],
@@ -64,6 +71,8 @@ export function CharacterSheetView({ sheet, playerName, changeLinksFor, children
     ['MP', display(derived.magicPoints)],
     ['SAN', derived.sanity.current === null ? display(null) : `${derived.sanity.current} of ${derived.sanity.maximum}`],
     ['Luck', display(derived.luck)],
+    ['Idea', display(derived.idea)],
+    ['Know', display(derived.know)],
     ['MOV', display(derived.movementRate)],
     ['Build', display(derived.build)],
     ['Damage Bonus', display(derived.damageBonus)],
@@ -145,6 +154,10 @@ export function CharacterSheetView({ sheet, playerName, changeLinksFor, children
         </div>
       </section>
       <SkillsSection sheet={sheet} changeLinksFor={changeLinksFor} />
+      <SheetBackstorySection backstory={sheet.backstory} keyConnection={sheet.keyConnection} editing={editing} />
+      <SheetWeaponsSection weapons={sheet.weapons} editing={editing} />
+      <SheetGearSection gear={sheet.gear} editing={editing} />
+      <SheetWealthSection wealth={derived.wealth} />
       {children}
     </div>
   )

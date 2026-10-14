@@ -20,3 +20,10 @@ export const PointBuyWarnings: Story = {
     ],
   },
 }
+
+export const KeeperCustomContent: Story = {
+  args: {
+    warnings: [problem('PersonalInterestPointsUnspent', 'personalInterestPoints', 'You have 60 personal interest points left. Unspent points are lost.', 'Warning')],
+    notes: ['Custom occupation: Bootlegger', '2 custom weapons'],
+  },
+}

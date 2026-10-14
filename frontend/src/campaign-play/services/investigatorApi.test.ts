@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { EMPTY_BACKSTORY } from '@/campaign-play/state/characterSheetForm'
 import { rules, sheetView } from '@/campaign-play/test-support/characterSheetFixtures'
 import type { CharacterSheetInputs } from '@/campaign-play/types/CharacterSheet'
 
@@ -65,6 +66,10 @@ const inputs: CharacterSheetInputs = {
   occupation: null,
   skills: [],
   quickFire: { values: [], personalInterests: [] },
+  backstory: EMPTY_BACKSTORY,
+  keyConnection: null,
+  weapons: [],
+  gear: null,
 }
 
 function jsonResponse(status: number, body?: unknown): Response {

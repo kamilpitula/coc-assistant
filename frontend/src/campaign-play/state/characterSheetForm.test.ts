@@ -41,6 +41,8 @@ const view: CharacterSheetView = {
   characteristicRolls: {},
   derived: {
     luck: null,
+    idea: null,
+    know: null,
     hitPoints: null,
     magicPoints: null,
     sanity: { current: null, maximum: null },
@@ -67,6 +69,49 @@ const bracket45: AgeBracket = {
 }
 
 describe('characterSheetForm', () => {
+  const weapon = { name: 'Knife', skill: 'Fighting (Brawl)', damage: '1D4', attacks: '1', range: null, ammo: null, malfunction: null }
+
+  it('starts from the saved backstory, Key Connection, weapons without the custom flag, and gear', () => {
+    const inputs = inputsFromSheet({
+      ...view,
+      backstory: { ...view.backstory, traits: 'Stubborn' },
+      keyConnection: 'traits',
+      weapons: [{ ...weapon, isCustom: true }],
+      gear: 'Lantern',
+    })
+
+    expect(inputs.backstory.traits).toBe('Stubborn')
+    expect(inputs.keyConnection).toBe('traits')
+    expect(inputs.weapons).toEqual([weapon])
+    expect(inputs.gear).toBe('Lantern')
+  })
+
+  it('section 12: records the backstory and the Key Connection, and clears the Key Connection when its entry is emptied', () => {
+    let inputs = characterSheetFormReducer(validInputs, { type: 'backstory', key: 'significantPeople', value: 'My sister Ada' })
+    inputs = characterSheetFormReducer(inputs, { type: 'backstory', key: 'myStory', value: 'A story' })
+    inputs = characterSheetFormReducer(inputs, { type: 'keyConnection', entry: 'significantPeople' })
+
+    expect(inputs.backstory).toMatchObject({ significantPeople: 'My sister Ada', myStory: 'A story' })
+    expect(inputs.keyConnection).toBe('significantPeople')
+
+    const kept = characterSheetFormReducer(inputs, { type: 'backstory', key: 'traits', value: '' })
+    expect(kept.keyConnection).toBe('significantPeople')
+
+    const emptied = characterSheetFormReducer(inputs, { type: 'backstory', key: 'significantPeople', value: '  ' })
+    expect(emptied.keyConnection).toBeNull()
+  })
+
+  it('adds, edits, and removes custom weapons, and records gear', () => {
+    let inputs = characterSheetFormReducer(validInputs, { type: 'addWeapon' })
+    inputs = characterSheetFormReducer(inputs, { type: 'addWeapon' })
+    inputs = characterSheetFormReducer(inputs, { type: 'weapon', index: 1, field: 'name', value: 'Knife' })
+    inputs = characterSheetFormReducer(inputs, { type: 'removeWeapon', index: 0 })
+    inputs = characterSheetFormReducer(inputs, { type: 'gear', value: 'Lantern' })
+
+    expect(inputs.weapons).toEqual([{ name: 'Knife', skill: null, damage: null, attacks: null, range: null, ammo: null, malfunction: null }])
+    expect(inputs.gear).toBe('Lantern')
+  })
+
   it('starts from the saved sheet, with its creation method', () => {
     const inputs = inputsFromSheet({ ...view, creationMethod: 'PointBuy' })
 

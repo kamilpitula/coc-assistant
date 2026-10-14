@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { EMPTY_BACKSTORY } from '@/campaign-play/state/characterSheetForm'
 import type {
   AgeBracket,
   CharacterSheetInputs,
@@ -18,7 +19,8 @@ import { validateCharacterSheet } from './characterSheetValidation'
 interface FixtureCase {
   name: string
   scope: 'shared' | 'server'
-  sheet: CharacterSheetInputs
+  // The PUT body may leave out the Backstory, Key Connection, weapons, and gear (schema version 4).
+  sheet: Omit<CharacterSheetInputs, 'backstory' | 'keyConnection' | 'weapons' | 'gear'> & Partial<CharacterSheetInputs>
   expected: ValidationError[]
 }
 
@@ -85,7 +87,8 @@ describe('validateCharacterSheet parity with the shared fixtures', () => {
   })
 
   it.each(sharedCases.map((fixtureCase) => [fixtureCase.name, fixtureCase] as const))('%s', (_name, fixtureCase) => {
-    const actual = validateCharacterSheet(fixtureCase.sheet, fixtures.rules, bracketFor(fixtureCase.sheet.identity.age))
+    const sheet: CharacterSheetInputs = { backstory: EMPTY_BACKSTORY, keyConnection: null, weapons: [], gear: null, ...fixtureCase.sheet }
+    const actual = validateCharacterSheet(sheet, fixtures.rules, bracketFor(sheet.identity.age))
 
     expect(sorted(actual)).toEqual(sorted(fixtureCase.expected))
   })

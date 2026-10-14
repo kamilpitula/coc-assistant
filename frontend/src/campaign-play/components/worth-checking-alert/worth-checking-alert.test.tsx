@@ -15,6 +15,13 @@ describe('WorthCheckingAlert', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('UX-30: lists notes after the warnings, and shows notes without warnings', () => {
+    render(<WorthCheckingAlert warnings={[]} notes={['Custom occupation: Bootlegger', '1 custom weapon']} />)
+
+    expect(screen.getByRole('heading', { name: 'Worth checking' })).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Custom occupation: Bootlegger', '1 custom weapon'])
+  })
+
   it('renders nothing without warnings', () => {
     const { container } = render(<WorthCheckingAlert warnings={[]} />)
 

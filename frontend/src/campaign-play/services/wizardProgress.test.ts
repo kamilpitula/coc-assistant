@@ -64,6 +64,8 @@ describe('wizardProgress', () => {
     ['skills', 'personal-interests'],
     ['personalInterestPoints', 'personal-interests'],
     ['quickFire.personalInterests[1]', 'personal-interests'],
+    ['weapons[0].name', 'sheet'],
+    ['backstory.traits', 'sheet'],
   ])('maps the field %s to the %s step', (field, step) => {
     expect(stepOfField(field)).toBe(step)
   })

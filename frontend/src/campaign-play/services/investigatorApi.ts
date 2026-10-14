@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { creationMethodSchema } from '@/campaign-play/services/campaignApi'
 import {
+  BACKSTORY_ENTRIES,
   CHARACTERISTIC_CODES,
   type CharacterSheetInputs,
 } from '@/campaign-play/types/CharacterSheet'
@@ -105,6 +106,33 @@ const quickFireSchema = z.object({
   extraSkill: skillReferenceSchema.nullable(),
 })
 
+const nullableText = z.string().nullable()
+
+const backstorySchema = z.object({
+  myStory: nullableText,
+  personalDescription: nullableText,
+  traits: nullableText,
+  ideologyAndBeliefs: nullableText,
+  injuriesAndScars: nullableText,
+  significantPeople: nullableText,
+  phobiasAndManias: nullableText,
+  meaningfulLocations: nullableText,
+  arcaneTomesAndSpells: nullableText,
+  treasuredPossessions: nullableText,
+  encountersWithStrangeEntities: nullableText,
+})
+
+const weaponSchema = z.object({
+  name: nullableText,
+  skill: nullableText,
+  damage: nullableText,
+  attacks: nullableText,
+  range: nullableText,
+  ammo: nullableText,
+  malfunction: nullableText,
+  isCustom: z.boolean(),
+})
+
 const characterSheetViewSchema = z.object({
   schemaVersion: z.number().int(),
   identity: identitySchema,
@@ -132,8 +160,14 @@ const characterSheetViewSchema = z.object({
   occupation: occupationViewSchema.nullable(),
   skills: z.array(skillRowSchema),
   quickFire: quickFireSchema,
+  backstory: backstorySchema,
+  keyConnection: z.enum(BACKSTORY_ENTRIES).nullable(),
+  weapons: z.array(weaponSchema),
+  gear: nullableText,
   derived: z.object({
     luck: nullableNumber,
+    idea: nullableNumber,
+    know: nullableNumber,
     hitPoints: nullableNumber,
     magicPoints: nullableNumber,
     sanity: z.object({ current: nullableNumber, maximum: nullableNumber }),
