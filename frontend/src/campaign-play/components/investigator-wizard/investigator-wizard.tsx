@@ -256,7 +256,7 @@ function WizardForm({ campaignId, step, sheet, allowedMethods, occupationCatalog
               <PersonalInterestsStep {...skillStepProps} />
             </>
           )}
-          {step === 'sheet' && <SheetStep campaignId={campaignId} sheet={sheet} editing={stepProps} />}
+          {step === 'sheet' && <SheetStep campaignId={campaignId} sheet={sheet} editing={stepProps} onChangeLink={(target) => go({ kind: 'stepper', target })} />}
 
           <StepActions step={step} pending={moves.pending} onMove={go} onSubmit={() => void moves.submitToKeeper(saveInputs())} />
           {sheet.status === 'Draft' && <StartOverDialog pending={moves.pending === 'delete'} onConfirm={() => void moves.startOver()} />}

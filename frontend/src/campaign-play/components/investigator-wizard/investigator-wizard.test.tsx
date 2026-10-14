@@ -278,6 +278,18 @@ describe('InvestigatorWizard', () => {
     expect(mockSave.mock.invocationCallOrder[0]).toBeLessThan(mockSubmit.mock.invocationCallOrder[0])
   })
 
+  it('a "Change" link on Sheet and submit saves the Backstory, weapons, and Gear before opening its step', async () => {
+    withSheet(myCharacterSheet())
+    mockSave.mockResolvedValue(myCharacterSheet())
+    render(<InvestigatorWizard campaignId="c1" step="sheet" />)
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Gear and possessions' }), 'Lantern')
+    await userEvent.click(screen.getByRole('link', { name: 'Change identity' }))
+
+    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith(expect.objectContaining({ params: { campaignId: 'c1', step: 'identity' } })))
+    expect(mockSave).toHaveBeenCalledWith(expect.objectContaining({ gear: 'Lantern' }))
+  })
+
   it('UX-29: lists every warning in "Worth checking" on Sheet and submit, and submits with them', async () => {
     const unspent = problem('PersonalInterestPointsUnspent', 'personalInterestPoints', 'You have 60 personal interest points left. Unspent points are lost.', 'Warning')
     const lowInt = problem('PointBuyBelowRecommendation', 'characteristics.INT', 'INT is below the recommended 40. Check with your Keeper.', 'Warning')

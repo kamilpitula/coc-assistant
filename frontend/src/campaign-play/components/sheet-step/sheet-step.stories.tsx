@@ -34,11 +34,12 @@ function EditingStep({ withWarnings }: { withWarnings: boolean }) {
       campaignId="story-campaign"
       sheet={myCharacterSheet({ validationErrors: withWarnings ? warnings : [] })}
       editing={{ inputs, errors: {}, onAction: dispatch, onBlur: () => {} }}
+      onChangeLink={() => {}}
     />
   )
 }
 
-const editingArgs = { campaignId: 'story-campaign', sheet: myCharacterSheet(), editing: { inputs: validInputs, errors: {}, onAction: () => {}, onBlur: () => {} } }
+const editingArgs = { campaignId: 'story-campaign', sheet: myCharacterSheet(), editing: { inputs: validInputs, errors: {}, onAction: () => {}, onBlur: () => {} }, onChangeLink: () => {} }
 
 export const WithWarnings: Story = { args: editingArgs, render: () => <EditingStep withWarnings /> }
 

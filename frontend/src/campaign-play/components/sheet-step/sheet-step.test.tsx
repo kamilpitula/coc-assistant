@@ -15,7 +15,7 @@ const lowSize = problem('PointBuyBelowRecommendation', 'characteristics.SIZ', 'S
 describe('SheetStep', () => {
   it('UX-29: lists every warning from every step in "Worth checking" above the sheet, without errors', () => {
     const nameError = problem('InvestigatorNameRequired', 'identity.name', "Enter your Investigator's name.")
-    render(<SheetStep campaignId="c1" sheet={myCharacterSheet({ validationErrors: [unspent, nameError, lowSize] })} editing={editing} />)
+    render(<SheetStep campaignId="c1" sheet={myCharacterSheet({ validationErrors: [unspent, nameError, lowSize] })} editing={editing} onChangeLink={vi.fn()} />)
 
     const alert = screen.getByText('Worth checking').parentElement!
     expect(alert).not.toHaveAttribute('role', 'alert')
@@ -26,7 +26,7 @@ describe('SheetStep', () => {
   })
 
   it('shows no "Worth checking" without warnings, and the sheet in edit mode', () => {
-    render(<SheetStep campaignId="c1" sheet={myCharacterSheet()} editing={editing} />)
+    render(<SheetStep campaignId="c1" sheet={myCharacterSheet()} editing={editing} onChangeLink={vi.fn()} />)
 
     expect(screen.queryByText('Worth checking')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Change identity' })).toBeInTheDocument()

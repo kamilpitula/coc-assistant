@@ -232,6 +232,8 @@ Uses the shared `character-sheet-view` in edit mode for its narrative sections a
 5. **Gear and possessions**: Textarea, at most 2000 characters.
 6. **Wealth**: read-only spending level, cash, and assets, from the server's values. Amounts that are a lower bound read "$5,000,000 or more"; no assets read "None". Before Credit Rating is calculable, each shows an em dash with the visually hidden text "not yet calculated".
 
+A "Change" link saves the step's inputs first, like a stepper link (section 4.1), so Backstory, weapons, and Gear are never lost.
+
 In read-only mode (section 7) sections 3 to 5 show the text with its line breaks, with no inputs. The Key Connection entry is marked "(Key Connection)" after its heading. An empty Backstory, Weapons, or Gear section reads "None recorded.". Each weapon is a row of a table with the columns Weapon, Skill, Damage, Attacks, Range, Ammo, and Malfunction.
 
 **Worth checking** (selected 2026-10-08, option A of three: an Alert at the top of the step; alternatives were warnings inline in each section and a confirmation dialog on Submit): when the sheet has warnings, the "Worth checking" Alert (section 5.2) sits below the error summary and above the sheet, listing every warning from every step. It does not block or confirm Submit.

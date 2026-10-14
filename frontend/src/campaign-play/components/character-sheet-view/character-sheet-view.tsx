@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { useState, type ReactNode } from 'react'
+import { useState, type MouseEvent, type ReactNode } from 'react'
 
 import { creationMethodLabels } from '@/campaign-play/components/creation-methods-fieldset/creationMethodLabels'
 import { SheetBackstorySection } from '@/campaign-play/components/sheet-backstory-section/sheet-backstory-section'
@@ -21,6 +21,8 @@ interface CharacterSheetViewProps {
   changeLinksFor?: string
   /** On the Sheet and submit step: edits the Backstory, weapons, and Gear from the wizard's inputs. */
   editing?: WizardStepProps
+  /** Called instead of following a "Change" link, so the step's inputs are saved first (ux.md section 5.1). */
+  onChangeLink?: (step: WizardStep) => void
   /** Extra read-only sections, such as the Keeper's Dice results. */
   children?: ReactNode
 }
@@ -34,15 +36,30 @@ function display(value: number | string | null): ReactNode {
   )
 }
 
-function ChangeLink({ campaignId, step, label }: { campaignId?: string; step: WizardStep; label: string }) {
+interface ChangeLinkProps {
+  campaignId?: string
+  step: WizardStep
+  label: string
+  onFollow?: (step: WizardStep) => void
+}
+
+function ChangeLink({ campaignId, step, label, onFollow }: ChangeLinkProps) {
   if (!campaignId) {
     return null
+  }
+
+  const follow = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (onFollow) {
+      event.preventDefault()
+      onFollow(step)
+    }
   }
 
   return (
     <Link
       to="/campaigns/$campaignId/investigator/$step"
       params={{ campaignId, step }}
+      onClick={follow}
       className="text-sm underline underline-offset-4"
     >
       Change <span className="sr-only">{label}</span>
@@ -55,7 +72,7 @@ function ChangeLink({ campaignId, step, label }: { campaignId?: string; step: Wi
  * step it has "Change" links and edits the Backstory, weapons, and Gear (specs/character-sheet/ux.md sections 6.7
  * and 7).
  */
-export function CharacterSheetView({ sheet, playerName, changeLinksFor, editing, children }: CharacterSheetViewProps) {
+export function CharacterSheetView({ sheet, playerName, changeLinksFor, editing, onChangeLink, children }: CharacterSheetViewProps) {
   const { identity, derived } = sheet
   const identityRows: [string, ReactNode][] = [
     ['Name', identity.name ?? 'Not named yet'],
@@ -90,8 +107,8 @@ export function CharacterSheetView({ sheet, playerName, changeLinksFor, editing,
           <div className="flex items-baseline justify-between gap-4">
             <h3 className="font-semibold">Identity</h3>
             <span className="flex gap-4">
-              <ChangeLink campaignId={changeLinksFor} step="identity" label="identity" />
-              <ChangeLink campaignId={changeLinksFor} step="occupation" label="occupation" />
+              <ChangeLink campaignId={changeLinksFor} onFollow={onChangeLink} step="identity" label="identity" />
+              <ChangeLink campaignId={changeLinksFor} onFollow={onChangeLink} step="occupation" label="occupation" />
             </span>
           </div>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
@@ -108,8 +125,8 @@ export function CharacterSheetView({ sheet, playerName, changeLinksFor, editing,
           <div className="flex items-baseline justify-between gap-4">
             <h3 className="font-semibold">Characteristics</h3>
             <span className="flex gap-4">
-              <ChangeLink campaignId={changeLinksFor} step="characteristics" label="characteristics" />
-              <ChangeLink campaignId={changeLinksFor} step="age" label="age effects" />
+              <ChangeLink campaignId={changeLinksFor} onFollow={onChangeLink} step="characteristics" label="characteristics" />
+              <ChangeLink campaignId={changeLinksFor} onFollow={onChangeLink} step="age" label="age effects" />
             </span>
           </div>
           <Table>
@@ -153,7 +170,7 @@ export function CharacterSheetView({ sheet, playerName, changeLinksFor, editing,
           </dl>
         </div>
       </section>
-      <SkillsSection sheet={sheet} changeLinksFor={changeLinksFor} />
+      <SkillsSection sheet={sheet} changeLinksFor={changeLinksFor} onChangeLink={onChangeLink} />
       <SheetBackstorySection backstory={sheet.backstory} keyConnection={sheet.keyConnection} editing={editing} />
       <SheetWeaponsSection weapons={sheet.weapons} editing={editing} />
       <SheetGearSection gear={sheet.gear} editing={editing} />
@@ -164,7 +181,13 @@ export function CharacterSheetView({ sheet, playerName, changeLinksFor, editing,
 }
 
 /** The read-only Skills section (ux.md section 6.7): the skills with points or Quick fire values, or every skill. */
-function SkillsSection({ sheet, changeLinksFor }: { sheet: CharacterSheetData; changeLinksFor?: string }) {
+interface SkillsSectionProps {
+  sheet: CharacterSheetData
+  changeLinksFor?: string
+  onChangeLink?: (step: WizardStep) => void
+}
+
+function SkillsSection({ sheet, changeLinksFor, onChangeLink }: SkillsSectionProps) {
   const [showAll, setShowAll] = useState(false)
   const assigned = new Set(sheet.quickFire.values.map((value) => skillDisplayName(value.skill, value.specialization)))
   const interests = new Set(sheet.quickFire.personalInterests.map((interest) => skillDisplayName(interest.skill, interest.specialization)))
@@ -181,8 +204,8 @@ function SkillsSection({ sheet, changeLinksFor }: { sheet: CharacterSheetData; c
           Skills
         </h2>
         <span className="flex gap-4">
-          <ChangeLink campaignId={changeLinksFor} step="occupation-skills" label="occupation skills" />
-          <ChangeLink campaignId={changeLinksFor} step="personal-interests" label="personal interests" />
+          <ChangeLink campaignId={changeLinksFor} onFollow={onChangeLink} step="occupation-skills" label="occupation skills" />
+          <ChangeLink campaignId={changeLinksFor} onFollow={onChangeLink} step="personal-interests" label="personal interests" />
         </span>
       </div>
       <Table>
