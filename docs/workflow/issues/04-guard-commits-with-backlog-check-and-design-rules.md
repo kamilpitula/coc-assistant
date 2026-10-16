@@ -1,6 +1,6 @@
 ---
 id: PBI-WF-004
-status: todo
+status: done
 blocked_by: []
 ---
 
@@ -25,10 +25,12 @@ Read: `docs/backlog.md`, `.claude/agents/architect.md`, `.github/workflows/ci.ym
 - CI stays the authoritative guard; the hook is opt-in per clone.
 
 ## Verification
-- [ ] `architect.md` runs the backlog check before committing and contains the citation rule.
-- [ ] The hook blocks a commit with a non-ASCII file and a commit with an inconsistent PBI file, and allows a clean commit.
+- [x] `architect.md` runs the backlog check before committing and contains the citation rule.
+- [x] The hook blocks a commit with a non-ASCII file and a commit with an inconsistent PBI file, and allows a clean commit.
 
 ## Refinement Protocol
 If the hook's checks change, update `.githooks/pre-commit`, `CLAUDE.md`, and the Architect commit step together.
 
 ## Follow-ups
+- Hook behavior was verified only under Git Bash on Windows; run it once on Linux.
+- Hooks are opt-in per clone; CI remains the only enforced guard.
