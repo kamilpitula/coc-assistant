@@ -2,6 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import { addWallEntry, getWallEntries, removeWallEntry } from '@/campaign-play/services/wallEntryApi'
+import { rememberOwnWallEntry } from '@/campaign-play/services/ownWallEntries'
 import { prependWallEntry, withoutWallEntry } from '@/campaign-play/services/wallEntryCache'
 import type { NewWallEntry } from '@/campaign-play/types/WallEntry'
 import { useAccessToken } from '@/shared/hooks/useAccessToken'
@@ -39,6 +40,7 @@ export function useAddWallEntry(campaignId: string) {
   return useMutation({
     mutationFn: async (entry: NewWallEntry) => addWallEntry(await getAccessToken(), campaignId, entry),
     onSuccess: (entry) => {
+      rememberOwnWallEntry(entry.id)
       queryClient.setQueryData(campaignQueryKeys.wall(campaignId), (cache: Parameters<typeof prependWallEntry>[0]) =>
         prependWallEntry(cache, entry),
       )

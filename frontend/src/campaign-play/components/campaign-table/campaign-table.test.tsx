@@ -47,8 +47,11 @@ function liveValue(
   return { connection, presence: { connection, presenceByMember }, retry }
 }
 
-function setup(initial: CampaignLiveConnectionValue) {
+function setup(initial: CampaignLiveConnectionValue, cachedMembers?: CampaignMember[]) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  if (cachedMembers) {
+    queryClient.setQueryData(['campaigns', 'c1', 'members'], cachedMembers)
+  }
   const wrap = (value: CampaignLiveConnectionValue, children: ReactNode) => (
     <QueryClientProvider client={queryClient}>
       <CampaignLiveConnectionContext.Provider value={value}>{children}</CampaignLiveConnectionContext.Provider>
@@ -242,5 +245,69 @@ describe('CampaignTable', () => {
 
     await waitFor(() => expect(tableRows()).toHaveLength(4))
     expect(document.querySelector('[aria-live="polite"]')).toHaveTextContent('Priya Nair joined the Campaign.')
+  })
+
+  describe('live Investigator changes (CO-UX-15 to CO-UX-18, CO-A11Y-7)', () => {
+    const keeperYou: CampaignMember = { ...keeper, isYou: true }
+    const submittedAlex: CampaignMember = {
+      ...alex,
+      investigator: { visibility: 'Visible', id: 'i-alex', name: 'Dr. Ames', status: 'Submitted' },
+    }
+
+    const liveRegion = () => document.querySelector('[aria-live="polite"]')!
+
+    it('announces a submission to the Keeper in the same polite region as Presence, and updates the row in place', async () => {
+      mockGetMembers.mockResolvedValue([keeperYou, { ...alex, investigator: { visibility: 'InProgress' } }])
+      const { queryClient, update } = setup(liveValue('connected', { k: 'Connected', a: 'Connected' }))
+      await waitFor(() => expect(tableRows()).toHaveLength(2))
+      mockGetMembers.mockResolvedValue([keeperYou, submittedAlex])
+
+      await act(() => queryClient.invalidateQueries())
+      update(liveValue('connected', { k: 'Connected', a: 'NotConnected' }))
+
+      await waitFor(() => expect(rowOf('Alex Brandt')).toHaveTextContent('Submitted'))
+      expect(rowOf('Alex Brandt')).toHaveTextContent('Review')
+      expect(document.querySelectorAll('[aria-live]')).toHaveLength(1)
+      expect(liveRegion()).toHaveTextContent('Dr. Ames by Alex Brandt was submitted.')
+      expect(liveRegion()).toHaveTextContent('Alex Brandt disconnected.')
+    })
+
+    it('announces the own Approved to a Player and an Approved Investigator of another Player as ready for play', async () => {
+      const ownSubmitted = you
+      mockGetMembers.mockResolvedValue([keeper, ownSubmitted, alex])
+      const { queryClient } = setup(liveValue('connected', { k: 'Connected', y: 'Connected' }))
+      await waitFor(() => expect(tableRows()).toHaveLength(3))
+      mockGetMembers.mockResolvedValue([
+        keeper,
+        { ...you, investigator: { visibility: 'Visible', name: 'Dr. Ames', status: 'Approved' } },
+        { ...alex, investigator: { visibility: 'Visible', name: 'Mae Doyle', status: 'Approved' } },
+      ])
+
+      await act(() => queryClient.invalidateQueries())
+
+      await waitFor(() => expect(liveRegion()).toHaveTextContent('Your Investigator was approved.'))
+      expect(liveRegion()).toHaveTextContent('Mae Doyle is ready for play.')
+    })
+
+    it('announces nothing when cached rows are replaced by the first fetch since opening', async () => {
+      mockGetMembers.mockResolvedValue([keeperYou, submittedAlex])
+      setup(liveValue('connected', { k: 'Connected' }), [keeperYou, { ...alex, investigator: { visibility: 'InProgress' } }])
+
+      await waitFor(() => expect(rowOf('Alex Brandt')).toHaveTextContent('Submitted'))
+
+      expect(liveRegion().textContent).toBe('')
+    })
+
+    it('changes a Draft row silently for the Keeper (CO-UX-18)', async () => {
+      mockGetMembers.mockResolvedValue([keeperYou, { ...alex, investigator: null }])
+      const { queryClient } = setup(liveValue('connected', { k: 'Connected', a: 'Connected' }))
+      await waitFor(() => expect(rowOf('Alex Brandt')).toHaveTextContent('No Investigator yet'))
+      mockGetMembers.mockResolvedValue([keeperYou, { ...alex, investigator: { visibility: 'InProgress' } }])
+
+      await act(() => queryClient.invalidateQueries())
+
+      await waitFor(() => expect(rowOf('Alex Brandt')).toHaveTextContent('In progress'))
+      expect(liveRegion().textContent).toBe('')
+    })
   })
 })

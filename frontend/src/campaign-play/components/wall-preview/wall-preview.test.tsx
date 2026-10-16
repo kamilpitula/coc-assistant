@@ -1,6 +1,6 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { WallEntry } from '@/campaign-play/types/WallEntry'
 
@@ -17,8 +17,8 @@ function entry(id: string, overrides: Partial<WallEntry> = {}): WallEntry {
   return { id, text: `Text ${id}`, visibility: 'Public', createdAt: '2026-10-03T19:02:00Z', authorDisplayName: 'Eleanor Hart', ...overrides }
 }
 
-function loaded(entries: WallEntry[]) {
-  return { data: { entries, nextCursor: null }, isPending: false, isError: false, refetch: vi.fn() }
+function loaded(entries: WallEntry[], isFetchedAfterMount = true) {
+  return { data: { entries, nextCursor: null }, isPending: false, isError: false, isFetchedAfterMount, refetch: vi.fn() }
 }
 
 describe('WallPreview', () => {
@@ -90,5 +90,71 @@ describe('WallPreview', () => {
 
     expect(screen.getByText("We couldn't load the Wall.")).toBeInTheDocument()
     expect(refetch).toHaveBeenCalledTimes(1)
+  })
+
+  describe('live updates (WL-UX-11, WL-UX-13, WL-UX-14, CO-A11Y-7)', () => {
+    beforeEach(() => vi.useFakeTimers())
+    afterEach(() => vi.useRealTimers())
+
+    const polite = () => document.querySelector('[aria-live="polite"]')
+
+    it('puts a new entry at the top, drops the sixth, and announces it politely in the one live region of the section', () => {
+      const five = ['e', 'd', 'c', 'b', 'a'].map((id) => entry(id, { createdAt: `2026-10-03T19:0${'abcde'.indexOf(id)}:00Z` }))
+      mockUseWallPreview.mockReturnValue(loaded(five))
+      const { rerender } = render(<WallPreview campaignId="c1" />)
+
+      const arrival = entry('f', { createdAt: '2026-10-03T19:30:00Z', authorDisplayName: 'Ana Ruiz' })
+      mockUseWallPreview.mockReturnValue(loaded([arrival, ...five.slice(0, 4)]))
+      rerender(<WallPreview campaignId="c1" />)
+
+      const items = within(screen.getByRole('region', { name: 'Wall' })).getAllByRole('listitem')
+      expect(items).toHaveLength(5)
+      expect(items[0]).toHaveTextContent('Text f')
+      expect(screen.queryByText('Text a')).not.toBeInTheDocument()
+      expect(document.querySelectorAll('[aria-live]')).toHaveLength(1)
+      expect(polite()).toHaveTextContent('New Wall Entry from Ana Ruiz.')
+    })
+
+    it('announces nothing on first load, even when cached entries showed first (WL-UX-14)', () => {
+      mockUseWallPreview.mockReturnValue(loaded([entry('a')], false))
+      const { rerender } = render(<WallPreview campaignId="c1" />)
+
+      mockUseWallPreview.mockReturnValue(loaded([entry('b', { createdAt: '2026-10-03T20:00:00Z' }), entry('a')], true))
+      rerender(<WallPreview campaignId="c1" />)
+
+      expect(polite()?.textContent).toBe('')
+    })
+
+    it('lets a removed entry go and the next older one fill in, without announcing (WL-UX-13)', () => {
+      const entries = [entry('c', { createdAt: '2026-10-03T19:30:00Z' }), entry('b', { createdAt: '2026-10-03T19:20:00Z' })]
+      mockUseWallPreview.mockReturnValue(loaded(entries))
+      const { rerender } = render(<WallPreview campaignId="c1" />)
+
+      mockUseWallPreview.mockReturnValue(loaded([entries[0], entry('a', { createdAt: '2026-10-03T19:10:00Z' })]))
+      rerender(<WallPreview campaignId="c1" />)
+
+      expect(screen.getByText('Text a')).toBeInTheDocument()
+      expect(screen.queryByText('Text b')).not.toBeInTheDocument()
+      expect(polite()?.textContent).toBe('')
+    })
+
+    it('merges entries that arrive within 5 seconds into one later announcement (WL-UX-14)', () => {
+      const first = entry('a', { createdAt: '2026-10-03T19:00:00Z' })
+      mockUseWallPreview.mockReturnValue(loaded([first]))
+      const { rerender } = render(<WallPreview campaignId="c1" />)
+      const second = entry('b', { createdAt: '2026-10-03T19:01:00Z' })
+      const third = entry('c', { createdAt: '2026-10-03T19:02:00Z' })
+      const fourth = entry('d', { createdAt: '2026-10-03T19:03:00Z' })
+
+      mockUseWallPreview.mockReturnValue(loaded([second, first]))
+      rerender(<WallPreview campaignId="c1" />)
+      mockUseWallPreview.mockReturnValue(loaded([fourth, third, second, first]))
+      rerender(<WallPreview campaignId="c1" />)
+      expect(polite()).toHaveTextContent('New Wall Entry from Eleanor Hart.')
+
+      act(() => vi.advanceTimersByTime(5000))
+
+      expect(polite()).toHaveTextContent('2 new Wall Entries from Eleanor Hart.')
+    })
   })
 })

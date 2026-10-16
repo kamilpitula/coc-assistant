@@ -91,4 +91,93 @@ describe('WallEntryList', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't remove that entry. Try again.")
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
   })
+
+  describe('live removal (WL-UX-13, WL-A11Y-11)', () => {
+    const [a, b, c] = [entry('a'), entry('b'), entry('c')]
+    const list = (entries: WallEntry[]) => (
+      <WallEntryList entries={entries} viewerRole="Keeper" fallbackFocusId="fallback" onRemove={vi.fn()} />
+    )
+    const removeButtonOf = (index: number) => within(screen.getAllByRole('listitem')[index]).getByRole('button', { name: /Remove/ })
+
+    it('moves focus to the next entry when the entry of the focused Remove button is removed elsewhere', () => {
+      const { rerender } = render(list([a, b, c]))
+      removeButtonOf(1).focus()
+
+      rerender(list([a, c]))
+
+      expect(removeButtonOf(1)).toHaveFocus()
+      expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    })
+
+    it('moves focus to the previous entry when the focused entry was the last, and to the fallback when it was the only one', () => {
+      const { rerender } = render(
+        <>
+          {list([a, b])}
+          <input id="fallback" />
+        </>,
+      )
+      removeButtonOf(1).focus()
+
+      rerender(
+        <>
+          {list([a])}
+          <input id="fallback" />
+        </>,
+      )
+      expect(removeButtonOf(0)).toHaveFocus()
+
+      rerender(
+        <>
+          {list([])}
+          <input id="fallback" />
+        </>,
+      )
+      expect(document.getElementById('fallback')).toHaveFocus()
+    })
+
+    it('leaves focus alone when another entry is removed or an entry arrives', () => {
+      const { rerender } = render(
+        <>
+          {list([a, b, c])}
+          <input id="outside" />
+        </>,
+      )
+      removeButtonOf(0).focus()
+
+      rerender(
+        <>
+          {list([a, c])}
+          <input id="outside" />
+        </>,
+      )
+      expect(removeButtonOf(0)).toHaveFocus()
+
+      rerender(
+        <>
+          {list([entry('new'), a, c])}
+          <input id="outside" />
+        </>,
+      )
+      expect(removeButtonOf(1)).toHaveFocus()
+    })
+
+    it('does not take focus when focus is elsewhere and an entry is removed', () => {
+      const { rerender } = render(
+        <>
+          {list([a, b])}
+          <input id="outside" />
+        </>,
+      )
+      document.getElementById('outside')?.focus()
+
+      rerender(
+        <>
+          {list([a])}
+          <input id="outside" />
+        </>,
+      )
+
+      expect(document.getElementById('outside')).toHaveFocus()
+    })
+  })
 })

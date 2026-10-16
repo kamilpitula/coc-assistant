@@ -15,6 +15,7 @@ import {
 } from '@/campaign-play/test-support/rosterFixtures'
 import type { CampaignMember } from '@/campaign-play/types/CampaignMember'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
+import { StoryLiveChange } from '@/shared/storybook/storyLiveChange'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 
 import { CampaignTable } from './campaign-table'
@@ -26,13 +27,24 @@ function liveValue(
   return { connection, presence: { connection, presenceByMember }, retry: () => {} }
 }
 
-function TableStory({ members, live }: { members: CampaignMember[]; live: CampaignLiveConnectionValue }) {
+function TableStory({
+  members,
+  live,
+  afterChange,
+}: {
+  members: CampaignMember[]
+  live: CampaignLiveConnectionValue
+  afterChange?: CampaignMember[]
+}) {
   return (
     <StoryMsal>
       <StoryProviders seed={(client) => client.setQueryData(campaignQueryKeys.members(STORY_CAMPAIGN_ID), members)}>
         <CampaignLiveConnectionContext.Provider value={live}>
           <CampaignTable campaignId={STORY_CAMPAIGN_ID} />
         </CampaignLiveConnectionContext.Provider>
+        {afterChange && (
+          <StoryLiveChange apply={(client) => client.setQueryData(campaignQueryKeys.members(STORY_CAMPAIGN_ID), afterChange)} />
+        )}
       </StoryProviders>
     </StoryMsal>
   )
@@ -71,4 +83,13 @@ export const NarrowWidth: Story = {
       </div>
     ),
   ],
+}
+
+/** The Keeper's roster as the Draft of Ana Ruiz turns into a submission about a second and a half after the story loads. */
+export const KeeperSeesLiveSubmission: Story = {
+  args: {
+    members: keeperRosterWithReviews.map((member) => (member.memberId === 'a' ? { ...member, investigator: { visibility: 'InProgress' as const } } : member)),
+    live: connected,
+    afterChange: keeperRosterWithReviews,
+  },
 }
