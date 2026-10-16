@@ -1,6 +1,6 @@
 ---
 id: PBI-CP-006
-status: todo
+status: done
 blocked_by: [PBI-CP-003, PBI-CP-004, PBI-CP-005]
 ---
 
@@ -35,11 +35,17 @@ Read: `specs/campaign-play/spec.md`
 - Regression Guardrails: Keeper-only Wall Entries never appear in Player live updates. A Keeper-only change never produces a signal to `campaign:{id}`.
 
 ## Verification
-- [ ] Connected Campaign members receive new Public Wall Entries without reloading.
-- [ ] Players receive live changes only for their own Investigator, and no signal for a Keeper-only Wall Entry reaches a Player.
-- [ ] The Keeper sees Investigator submissions without reloading.
+- [x] Connected Campaign members receive new Public Wall Entries without reloading.
+- [x] Players receive live changes only for their own Investigator, and no signal for a Keeper-only Wall Entry reaches a Player.
+- [x] The Keeper sees Investigator submissions without reloading.
 - [x] Presence changes and reconnect behavior preserve Campaign membership authorization.
-- [ ] Unit, integration, and E2E tests cover publication, audience routing, reconnect behavior, and end-to-end live updates.
+- [x] Unit, integration, and E2E tests cover publication, audience routing, reconnect behavior, and end-to-end live updates.
 
 ## Refinement Protocol
 If the SignalR contract or event topics change, update the server publication policy, client topic mapping, and live-update acceptance scenarios together. Keep authorization server-side and preserve the Keeper-only visibility invariant.
+
+## Follow-ups
+- Add a CONTEXT.md note that the UI label 'Keeper only' is the Keeper-Only Wall Entry visibility.
+- Announcement detection breaks a same-instant tie between two Wall Entries by comparing ids as text, while the server orders by the database's Guid order, so an entry created in the same instant as the previous newest may not be announced.
+- A Wall Entry added in this tab is excluded from announcements by remembering its id when the confirmed response arrives; if the live signal and its refetch ever win the race against that response, the viewer's own post would be announced once.
+- E2E "Campaign Presence Scenario 8" failed once and passed on retry in a full-suite run with 2 workers (three isolated repeats passed); its reconnect timing under load deserves a look.
