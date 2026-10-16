@@ -29,4 +29,17 @@ describe('formatWallEntryTime', () => {
       text: '16 Oct, 18:00',
     })
   })
+  // CI runs in a US English locale, where the date is month-first; the same instant must still read correctly.
+  it('follows the locale order for the date in the label', () => {
+    expect(formatWallEntryTime('2026-10-16T19:02:00+00:00', now, { locale: 'en-US', timeZone: 'UTC' })).toEqual({
+      text: '19:02',
+      label: 'October 16, 2026, 19:02',
+    })
+  })
+
+  it('shows the first hour of the day as 00, not 24, in any locale', () => {
+    const early = new Date('2026-10-16T08:00:00Z')
+
+    expect(formatWallEntryTime('2026-10-16T00:30:00Z', early, { locale: 'en-US', timeZone: 'UTC' }).text).toBe('00:30')
+  })
 })
