@@ -1,8 +1,8 @@
-namespace CocAssistant.CampaignPlay.Controllers;
+namespace CocAssistant.Identity.Application;
 
 /// <summary>
 /// Resolves an authenticated Entra identity to a persistent Account id, creating the Account on first contact.
-/// Shared by the CampaignPlay controllers and the Campaign hub so both map claims the same way.
+/// Shared by every functionality's controllers and the Campaign hub so all map claims the same way.
 /// </summary>
 public sealed class CallerAccountResolver
 {

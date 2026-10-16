@@ -81,6 +81,7 @@ export default defineConfig({
         ASPNETCORE_URLS: 'https://localhost:5059',
         ConnectionStrings__IdentityDb: E2E_CONNECTION_STRING,
         ConnectionStrings__CampaignPlayDb: E2E_CONNECTION_STRING,
+        ConnectionStrings__ScenarioPreparationDb: E2E_CONNECTION_STRING,
         ASPNETCORE_Kestrel__Certificates__Default__Path: PFX_PATH,
         ASPNETCORE_Kestrel__Certificates__Default__Password: certPassword,
       },

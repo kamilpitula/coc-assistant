@@ -14,6 +14,12 @@
     <Project Path="src/CampaignPlay/CocAssistant.CampaignPlay.Infrastructure/CocAssistant.CampaignPlay.Infrastructure.csproj" />
     <Project Path="src/CampaignPlay/CocAssistant.CampaignPlay.Controllers/CocAssistant.CampaignPlay.Controllers.csproj" />
   </Folder>
+  <Folder Name="/src/ScenarioPreparation/">
+    <Project Path="src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Domain/CocAssistant.ScenarioPreparation.Domain.csproj" />
+    <Project Path="src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Application/CocAssistant.ScenarioPreparation.Application.csproj" />
+    <Project Path="src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Infrastructure/CocAssistant.ScenarioPreparation.Infrastructure.csproj" />
+    <Project Path="src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Controllers/CocAssistant.ScenarioPreparation.Controllers.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CocAssistant.Api.Tests/CocAssistant.Api.Tests.csproj" />
     <Project Path="tests/CocAssistant.Api.IntegrationTests/CocAssistant.Api.IntegrationTests.csproj" />
@@ -23,5 +29,8 @@
   </Folder>
   <Folder Name="/tests/CampaignPlay/">
     <Project Path="tests/CampaignPlay/CocAssistant.CampaignPlay.Tests/CocAssistant.CampaignPlay.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/ScenarioPreparation/">
+    <Project Path="tests/ScenarioPreparation/CocAssistant.ScenarioPreparation.Tests/CocAssistant.ScenarioPreparation.Tests.csproj" />
   </Folder>
 </Solution>

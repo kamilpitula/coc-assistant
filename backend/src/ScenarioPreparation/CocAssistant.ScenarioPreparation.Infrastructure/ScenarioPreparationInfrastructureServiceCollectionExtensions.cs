@@ -1,0 +1,19 @@
+namespace CocAssistant.ScenarioPreparation.Infrastructure;
+
+public static class ScenarioPreparationInfrastructureServiceCollectionExtensions
+{
+    public static IServiceCollection AddScenarioPreparationInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddDbContext<ScenarioPreparationDbContext>(options =>
+            options.UseSqlServer(
+                configuration.GetConnectionString("ScenarioPreparationDb"),
+                sql => sql.MigrationsHistoryTable("__ScenarioPreparationMigrationsHistory")));
+
+        services.AddScoped<IScenarioRepository, EfScenarioRepository>();
+        services.AddScoped<ICampaignKeepers, CampaignPlayCampaignKeepers>();
+        services.AddScoped<ScenarioService>();
+        services.TryAddSingleton(TimeProvider.System);
+
+        return services;
+    }
+}

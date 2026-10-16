@@ -13,6 +13,7 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
             {
                 ["ConnectionStrings:IdentityDb"] = ConnectionString,
                 ["ConnectionStrings:CampaignPlayDb"] = ConnectionString,
+                ["ConnectionStrings:ScenarioPreparationDb"] = ConnectionString,
             });
         });
 
@@ -39,5 +40,8 @@ public class IdentityApiFactory : WebApplicationFactory<Program>
 
         var campaignPlayDbContext = scope.ServiceProvider.GetRequiredService<CampaignPlayDbContext>();
         await campaignPlayDbContext.Database.MigrateAsync();
+
+        var scenarioPreparationDbContext = scope.ServiceProvider.GetRequiredService<ScenarioPreparationDbContext>();
+        await scenarioPreparationDbContext.Database.MigrateAsync();
     }
 }
