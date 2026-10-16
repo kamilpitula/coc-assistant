@@ -12,7 +12,7 @@ Behavior and rules: [spec.md](spec.md). This document covers presentation only. 
 /campaigns                                   Campaign List (specs/campaign-list/ux.md)
 /campaigns/$campaignId                       layout: Campaign header + live connection
   (index)          Overview                  tab "Overview"
-  /wall            Campaign Wall             tab "Wall"      (PBI-CP-004; tab hidden until then)
+  /wall            Campaign Wall             tab "Wall"      (specs/campaign-wall/ux.md)
   /settings        Settings                  tab "Settings"  (Keeper only)
   /investigator, /investigator/$step         Player's sheet and wizard   -> Overview tab current
   /investigators/$investigatorId             Keeper's review / sheet     -> Overview tab current
@@ -40,7 +40,7 @@ Haunting of Corbitt House                                   (h1 on Overview only
 - **Tabs:** a `nav` with `aria-label="Campaign"` containing links, not ARIA tabs, because each one is its own route.
   - The current link has `aria-current="page"`, a 2px bottom border in `--foreground`, and `font-medium`. Other links use `--muted-foreground`, and hover switches them to `--foreground`.
   - Overview is current on the overview, sheet, wizard, and review pages.
-  - Wall is not rendered until PBI-CP-004 ships. Settings is rendered only for the Keeper.
+  - Wall is rendered for both roles. Settings is rendered only for the Keeper.
   - The row never wraps. With at most three short labels it fits at 320px. Each link is at least 44px high.
 - **Header states:**
   - **Campaign loading:** a Skeleton for the name and the tab row, with `aria-busy="true"`. The page below shows its own loading state.
@@ -198,7 +198,7 @@ Open the Wall                                     (link -> /wall)
 - **Loading:** three Skeleton entries.
 - **Error:** "We couldn't load the Wall." with a "Try again" button.
 - **Live:** new entries are inserted at the top through the `wallEntries` topic (PBI-CP-006), and the sixth entry drops off. A polite announcement "New Wall Entry from {author}." is made, at most once per 5 seconds, merging bursts.
-- **Wall entries in general:** the Wall page itself is specified with PBI-CP-004.
+- **Wall entries in general:** the Wall page is specified in [specs/campaign-wall/ux.md](../campaign-wall/ux.md). The preview uses the same list endpoint with a limit of 5, so the viewer's visibility is applied before the 5 are taken.
 
 ## 8. Settings (`campaign-settings`, Keeper only)
 
@@ -259,7 +259,7 @@ Stories cover:
 ## 11. UX acceptance criteria
 
 - **CO-UX-1** Opening a Campaign shows the Campaign header (back link, name, Era, tabs) and the overview. The Campaign name is the page `h1`.
-- **CO-UX-2** The Keeper sees the tabs Overview and Settings, and a Player sees only Overview, until PBI-CP-004 adds Wall for both.
+- **CO-UX-2** The Keeper sees the tabs Overview, Wall, and Settings, and a Player sees Overview and Wall.
 - **CO-UX-3** On the overview the Keeper sees no Invite link field and no Rules options. Both are on Settings.
 - **CO-UX-4** A Keeper with a Submitted Investigator sees "{name} by {Player} is ready for review" with "Review", which opens the review screen.
 - **CO-UX-5** A Keeper with no Players sees "No Players have joined yet." with "Invite Players". Once a Player joins, the item disappears without a reload.
