@@ -4,6 +4,7 @@ import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import type { CampaignView } from '@/campaign-play/types/Campaign'
 import type { WallEntryPage } from '@/campaign-play/types/WallEntry'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
+import { StoryLiveChange } from '@/shared/storybook/storyLiveChange'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 
 import { CampaignWall } from './campaign-wall'
@@ -37,9 +38,18 @@ const page: WallEntryPage = {
 interface WallStoryProps {
   campaign: CampaignView
   pages: WallEntryPage[]
+  liveArrival?: boolean
 }
 
-function WallStory({ campaign, pages }: WallStoryProps) {
+const liveEntry = {
+  id: 'e3',
+  text: 'A knock at the door, three slow raps.',
+  visibility: 'Public' as const,
+  createdAt: '2026-10-16T19:10:00Z',
+  authorDisplayName: 'Ana Ruiz',
+}
+
+function WallStory({ campaign, pages, liveArrival = false }: WallStoryProps) {
   return (
     <StoryMsal>
       <StoryProviders
@@ -49,6 +59,16 @@ function WallStory({ campaign, pages }: WallStoryProps) {
         }}
       >
         <CampaignWall campaignId={CAMPAIGN_ID} />
+        {liveArrival && (
+          <StoryLiveChange
+            apply={(client) =>
+              client.setQueryData(campaignQueryKeys.wall(CAMPAIGN_ID), {
+                pages: [{ ...pages[0], entries: [liveEntry, ...pages[0].entries] }, ...pages.slice(1)],
+                pageParams: [undefined],
+              })
+            }
+          />
+        )}
       </StoryProviders>
     </StoryMsal>
   )
@@ -67,3 +87,6 @@ export const Keeper: Story = { args: { campaign: keeper, pages: [page] } }
 export const Player: Story = { args: { campaign: player, pages: [{ nextCursor: null, entries: [page.entries[0]] }] } }
 
 export const Empty: Story = { args: { campaign: keeper, pages: [{ entries: [], nextCursor: null }] } }
+
+/** An entry from another member appears at the top about a second and a half after the story loads. */
+export const LiveArrival: Story = { args: { campaign: keeper, pages: [page], liveArrival: true } }

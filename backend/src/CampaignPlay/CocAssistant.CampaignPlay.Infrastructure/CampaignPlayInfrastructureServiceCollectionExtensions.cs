@@ -22,6 +22,13 @@ public static class CampaignPlayInfrastructureServiceCollectionExtensions
         services.AddScoped<CampaignPresenceService>();
         services.AddSingleton<IPresenceTracker, InMemoryPresenceTracker>();
         services.AddScoped<IDomainEventHandler<PlayerJoinedCampaign>, PublishMembersChangedOnPlayerJoined>();
+        services.AddScoped<IDomainEventHandler<WallEntryAdded>, PublishWallEntryChanges>();
+        services.AddScoped<IDomainEventHandler<WallEntryRemoved>, PublishWallEntryChanges>();
+        services.AddScoped<IDomainEventHandler<InvestigatorCreated>, PublishInvestigatorChanges>();
+        services.AddScoped<IDomainEventHandler<InvestigatorSubmitted>, PublishInvestigatorChanges>();
+        services.AddScoped<IDomainEventHandler<InvestigatorApproved>, PublishInvestigatorChanges>();
+        services.AddScoped<IDomainEventHandler<InvestigatorChangesRequested>, PublishInvestigatorChanges>();
+        services.AddScoped<IDomainEventHandler<InvestigatorStartedOver>, PublishInvestigatorChanges>();
         services.AddScoped<IAccountDisplayNames, IdentityAccountDisplayNames>();
         services.AddScoped<IInvestigatorRepository, EfInvestigatorRepository>();
         services.AddScoped<IWallEntryRepository, EfWallEntryRepository>();

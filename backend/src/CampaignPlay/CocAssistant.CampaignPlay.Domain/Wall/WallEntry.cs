@@ -56,6 +56,7 @@ public class WallEntry : AggregateRoot
         }
 
         var entry = new WallEntry(campaign.Id, authorAccountId, visibility, trimmed, now);
+        entry.Raise(new WallEntryAdded(entry.CampaignId, entry.Id, entry.Visibility));
         return new WallEntryAuthoring(WallEntryAuthoringOutcome.Created, entry);
     }
 
@@ -65,6 +66,21 @@ public class WallEntry : AggregateRoot
 
     /// <summary>Only the Keeper removes entries, including a Player's.</summary>
     public bool CanBeRemovedBy(Campaign campaign, Guid accountId) => campaign.IsKeeper(accountId);
+
+    /// <summary>
+    /// Records the removal when the account may remove the entry; the caller then deletes the entry.
+    /// Returns false and raises nothing otherwise.
+    /// </summary>
+    public bool Remove(Campaign campaign, Guid accountId)
+    {
+        if (!CanBeRemovedBy(campaign, accountId))
+        {
+            return false;
+        }
+
+        Raise(new WallEntryRemoved(CampaignId, Id, Visibility));
+        return true;
+    }
 
     private static WallEntryAuthoring Refused(WallEntryAuthoringOutcome outcome) => new(outcome, null);
 }

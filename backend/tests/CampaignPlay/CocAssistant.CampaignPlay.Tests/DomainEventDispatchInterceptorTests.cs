@@ -122,5 +122,55 @@ public class DomainEventDispatchInterceptorTests : IDisposable
         Assert.Empty(_dispatcher.Dispatches);
     }
 
+    private async Task<(Campaign Campaign, WallEntry Entry)> PersistedWallEntryAsync()
+    {
+        var (campaignId, _) = await CampaignWithActiveInviteAsync();
+        using var context = _fixture.CreateContext();
+        var campaign = (await _fixture.CreateRepository(context).FindByIdAsync(campaignId, CancellationToken.None))!;
+        var entry = WallEntry.Author(campaign, KeeperAccountId, "Gone soon.", WallEntryVisibility.KeeperOnly, _timeProvider.GetUtcNow()).Entry!;
+        entry.ClearDomainEvents();
+        _fixture.CreateWallEntryRepository(context).Add(entry);
+        await context.SaveChangesAsync(CancellationToken.None);
+        return (campaign, entry);
+    }
+
+    [Fact]
+    public async Task Given_a_removed_wall_entry_When_the_delete_commits_Then_its_event_is_still_dispatched()
+    {
+        var (campaign, persisted) = await PersistedWallEntryAsync();
+        using var context = _fixture.CreateContext(_dispatcher);
+        var repository = _fixture.CreateWallEntryRepository(context);
+        var entry = (await repository.FindByIdAsync(campaign.Id, persisted.Id, CancellationToken.None))!;
+        entry.Remove(campaign, KeeperAccountId);
+        repository.Remove(entry);
+
+        await context.SaveChangesAsync(CancellationToken.None);
+
+        Assert.Equal(
+            new WallEntryRemoved(campaign.Id, persisted.Id, WallEntryVisibility.KeeperOnly),
+            Assert.Single(_dispatcher.Dispatched));
+    }
+
+    [Fact]
+    public async Task Given_a_removed_wall_entry_When_the_delete_fails_Then_nothing_is_dispatched()
+    {
+        var (campaign, persisted) = await PersistedWallEntryAsync();
+        using var context = _fixture.CreateContext(_dispatcher);
+        var repository = _fixture.CreateWallEntryRepository(context);
+        var entry = (await repository.FindByIdAsync(campaign.Id, persisted.Id, CancellationToken.None))!;
+        entry.Remove(campaign, KeeperAccountId);
+        repository.Remove(entry);
+        using (var competingContext = _fixture.CreateContext())
+        {
+            var competing = _fixture.CreateWallEntryRepository(competingContext);
+            competing.Remove((await competing.FindByIdAsync(campaign.Id, persisted.Id, CancellationToken.None))!);
+            await competingContext.SaveChangesAsync(CancellationToken.None);
+        }
+
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => context.SaveChangesAsync(CancellationToken.None));
+
+        Assert.Empty(_dispatcher.Dispatches);
+    }
+
     public void Dispose() => _fixture.Dispose();
 }

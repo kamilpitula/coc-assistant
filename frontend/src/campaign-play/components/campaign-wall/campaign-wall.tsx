@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { WALL_COMPOSER_TEXT_ID, WallEntryComposer } from '@/campaign-play/components/wall-entry-composer/wall-entry-composer'
 import { WallEntryList } from '@/campaign-play/components/wall-entry-list/wall-entry-list'
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import { useAddWallEntry, useRemoveWallEntry, useWallEntries } from '@/campaign-play/hooks/useWallEntries'
+import { useWallEntryAnnouncement } from '@/campaign-play/hooks/useWallEntryAnnouncement'
 import type { NewWallEntry } from '@/campaign-play/types/WallEntry'
 import { Button } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
@@ -13,8 +14,9 @@ interface CampaignWallProps {
 }
 
 /**
- * The Campaign Wall page (specs/campaign-wall/ux.md): the compose box, then the entries newest first. The layout route
- * renders the Campaign header and handles a missing Campaign, so the Campaign is already in the query cache here.
+ * The Campaign Wall page (specs/campaign-wall/ux.md): the compose box, then the entries newest first, with entries
+ * from other members arriving live (section 4.5). The layout route renders the Campaign header and handles a missing
+ * Campaign, so the Campaign is already in the query cache here.
  */
 export function CampaignWall({ campaignId }: CampaignWallProps) {
   const campaign = useCampaign(campaignId)
@@ -23,6 +25,8 @@ export function CampaignWall({ campaignId }: CampaignWallProps) {
   const removeEntry = useRemoveWallEntry(campaignId)
   const [status, setStatus] = useState('')
   const [addFailed, setAddFailed] = useState(false)
+  const entries = useMemo(() => wall.data?.pages.flatMap((page) => page.entries), [wall.data])
+  const announcement = useWallEntryAnnouncement(entries, wall.isFetchedAfterMount)
 
   if (!campaign.data) {
     return null
@@ -50,8 +54,6 @@ export function CampaignWall({ campaignId }: CampaignWallProps) {
     }
   }
 
-  const entries = wall.data?.pages.flatMap((page) => page.entries)
-
   return (
     <div className="flex w-full max-w-3xl flex-col gap-6">
       <h1 className="text-2xl font-semibold">Wall</h1>
@@ -59,6 +61,9 @@ export function CampaignWall({ campaignId }: CampaignWallProps) {
       <p role="status" className="text-sm empty:hidden">
         {status}
       </p>
+      <div role="status" className="sr-only">
+        <span key={announcement.sequence}>{announcement.message}</span>
+      </div>
       {entries ? (
         <Entries
           entries={entries}

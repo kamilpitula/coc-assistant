@@ -1,6 +1,6 @@
 # Backlog Convention
 
-This document is the source of truth for how PBIs (product backlog items) are tracked. Every PBI lives in `docs/<area>/issues/NN-<slug>.md` and follows [pbi-template.md](pbi-template.md). The `backlog` tool in `tools/backlog/` reads these files and git, and reports on them.
+This document is the source of truth for how PBIs (product backlog items) are tracked. Every PBI lives in `docs/<area>/issues/NN-<slug>.md` and follows [pbi-template.md](pbi-template.md). Architect decision records next to it (`NN-<slug>.design.md`) are not PBIs, and the tool skips them. The `backlog` tool in `tools/backlog/` reads these files and git, and reports on them.
 
 ## Frontmatter
 

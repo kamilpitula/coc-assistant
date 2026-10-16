@@ -5,6 +5,7 @@ import { InvestigatorStatusBadge } from '@/campaign-play/components/investigator
 import { InvitePlayersDialog } from '@/campaign-play/components/invite-dialog/invite-dialog'
 import { PresenceIndicator } from '@/campaign-play/components/presence-indicator/presence-indicator'
 import { useCampaignMembers } from '@/campaign-play/hooks/useCampaignMembers'
+import { useInvestigatorAnnouncement } from '@/campaign-play/hooks/useInvestigatorAnnouncement'
 import { useCampaignLiveConnection } from '@/campaign-play/providers/campaignLiveConnectionContext'
 import { describePresenceChanges, type PresenceView } from '@/campaign-play/services/presenceAnnouncements'
 import { investigatorCellsFor, type InvestigatorCells, type RosterRowAction } from '@/campaign-play/services/rosterRows'
@@ -34,7 +35,9 @@ export function CampaignTable({ campaignId }: CampaignTableProps) {
   const headingId = useId()
   const members = useCampaignMembers(campaignId)
   const { presence, retry } = useCampaignLiveConnection()
-  const announcement = usePresenceAnnouncement(members.data ?? undefined, presence.presenceByMember)
+  const roster = members.data ?? undefined
+  const announcement = usePresenceAnnouncement(roster, presence.presenceByMember)
+  const investigatorAnnouncement = useInvestigatorAnnouncement(roster, members.isFetchedAfterMount)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const retryPressedRef = useRef(false)
 
@@ -77,7 +80,8 @@ export function CampaignTable({ campaignId }: CampaignTableProps) {
         />
       )}
       <div aria-live="polite" className="sr-only">
-        {announcement}
+        <p>{announcement}</p>
+        <p>{investigatorAnnouncement}</p>
       </div>
     </section>
   )

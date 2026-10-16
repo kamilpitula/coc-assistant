@@ -3,6 +3,7 @@ import { useId } from 'react'
 
 import { WallEntryTime } from '@/campaign-play/components/wall-entry-time/wall-entry-time'
 import { useWallPreview } from '@/campaign-play/hooks/useWallEntries'
+import { useWallEntryAnnouncement } from '@/campaign-play/hooks/useWallEntryAnnouncement'
 import type { WallEntry } from '@/campaign-play/types/WallEntry'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
@@ -13,10 +14,11 @@ interface WallPreviewProps {
   campaignId: string
 }
 
-/** The latest Wall Entries on the overview, read-only (specs/campaign-wall/ux.md section 7). */
+/** The latest Wall Entries on the overview, read-only, with live arrivals announced (specs/campaign-wall/ux.md sections 4.5 and 7). */
 export function WallPreview({ campaignId }: WallPreviewProps) {
   const preview = useWallPreview(campaignId)
   const headingId = useId()
+  const announcement = useWallEntryAnnouncement(preview.data?.entries, preview.isFetchedAfterMount)
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3">
@@ -29,6 +31,9 @@ export function WallPreview({ campaignId }: WallPreviewProps) {
           Open the Wall
         </Link>
       )}
+      <div aria-live="polite" className="sr-only">
+        <span key={announcement.sequence}>{announcement.message}</span>
+      </div>
     </section>
   )
 }

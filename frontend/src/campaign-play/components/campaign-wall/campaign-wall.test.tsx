@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { rememberOwnWallEntry } from '@/campaign-play/services/ownWallEntries'
 import type { WallEntry } from '@/campaign-play/types/WallEntry'
 
 import { CampaignWall } from './campaign-wall'
@@ -34,6 +35,7 @@ function loaded(pages: WallEntry[][], overrides: Record<string, unknown> = {}) {
     isFetchNextPageError: false,
     hasNextPage: false,
     isFetchingNextPage: false,
+    isFetchedAfterMount: true,
     fetchNextPage: vi.fn(),
     refetch: vi.fn(),
     ...overrides,
@@ -147,7 +149,7 @@ describe('CampaignWall', () => {
 
     expect(mockAdd).toHaveBeenCalledWith({ text: 'The lamp goes out.', visibility: 'Public' })
     expect(await screen.findByText('Wall Entry added.')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('Wall Entry added.')
+    expect(screen.getByText('Wall Entry added.')).toHaveAttribute('role', 'status')
   })
 
   it('keeps the text and reports the failure when a post fails (WL-UX-6)', async () => {
@@ -171,5 +173,84 @@ describe('CampaignWall', () => {
 
     expect(mockRemove).toHaveBeenCalledWith('a')
     expect(await screen.findByText('Wall Entry removed.')).toBeInTheDocument()
+  })
+
+  describe('live updates (WL-UX-11, WL-UX-13 to WL-UX-15, WL-A11Y-11, WL-A11Y-12)', () => {
+    const older = entry('a', { createdAt: '2026-10-03T19:00:00Z' })
+    const arrival = entry('b', { createdAt: '2026-10-03T19:30:00Z', authorDisplayName: 'Ana Ruiz' })
+
+    it('inserts an entry another member adds at the top and keeps the entries loaded through "Show older entries"', () => {
+      const oldest = entry('z', { createdAt: '2026-10-03T18:00:00Z' })
+      mockUseWallEntries.mockReturnValue(loaded([[older], [oldest]]))
+      const { rerender } = render(<CampaignWall campaignId="c1" />)
+
+      mockUseWallEntries.mockReturnValue(loaded([[arrival, older], [oldest]]))
+      rerender(<CampaignWall campaignId="c1" />)
+
+      expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+        expect.stringContaining('Text b'),
+        expect.stringContaining('Text a'),
+        expect.stringContaining('Text z'),
+      ])
+    })
+
+    it('announces the arrival in a status region of its own, separate from "Wall Entry added." (WL-A11Y-12)', async () => {
+      mockAdd.mockResolvedValue(entry('mine'))
+      mockUseWallEntries.mockReturnValue(loaded([[older]]))
+      const { rerender } = render(<CampaignWall campaignId="c1" />)
+      await userEvent.type(screen.getByRole('textbox', { name: 'New Wall Entry' }), 'Mine')
+      await userEvent.click(screen.getByRole('button', { name: 'Add to the Wall' }))
+
+      mockUseWallEntries.mockReturnValue(loaded([[arrival, older]]))
+      rerender(<CampaignWall campaignId="c1" />)
+
+      const added = await screen.findByText('Wall Entry added.')
+      const announced = screen.getByText('New Wall Entry from Ana Ruiz.')
+      expect(added).toHaveAttribute('role', 'status')
+      expect(announced.closest('[role="status"]')).not.toBe(added)
+      expect(within(announced.closest('[role="status"]') as HTMLElement).queryByText('Wall Entry added.')).not.toBeInTheDocument()
+    })
+
+    it('announces nothing on first load, for older pages, or for a removal (WL-UX-13, WL-UX-14)', () => {
+      mockUseWallEntries.mockReturnValue(loaded([[arrival]], { isFetchedAfterMount: false }))
+      const { rerender } = render(<CampaignWall campaignId="c1" />)
+
+      mockUseWallEntries.mockReturnValue(loaded([[arrival]]))
+      rerender(<CampaignWall campaignId="c1" />)
+      mockUseWallEntries.mockReturnValue(loaded([[arrival], [older]]))
+      rerender(<CampaignWall campaignId="c1" />)
+      mockUseWallEntries.mockReturnValue(loaded([[older]]))
+      rerender(<CampaignWall campaignId="c1" />)
+
+      expect(screen.queryByText(/^New Wall Entry from|^[0-9]+ new Wall Entries/)).not.toBeInTheDocument()
+    })
+
+    it('does not announce the own post of the viewer from this tab (WL-UX-14)', () => {
+      rememberOwnWallEntry('mine-here')
+      mockUseWallEntries.mockReturnValue(loaded([[older]]))
+      const { rerender } = render(<CampaignWall campaignId="c1" />)
+
+      mockUseWallEntries.mockReturnValue(loaded([[entry('mine-here', { createdAt: '2026-10-03T19:45:00Z' }), older]]))
+      rerender(<CampaignWall campaignId="c1" />)
+
+      expect(screen.getByText('Text mine-here')).toBeInTheDocument()
+      expect(screen.queryByText(/New Wall Entry from/)).not.toBeInTheDocument()
+    })
+
+    it('leaves the composer text, visibility, and focus untouched (WL-UX-15)', async () => {
+      mockUseWallEntries.mockReturnValue(loaded([[older]]))
+      const { rerender } = render(<CampaignWall campaignId="c1" />)
+      const textbox = screen.getByRole('textbox', { name: 'New Wall Entry' })
+      await userEvent.type(textbox, 'Half written')
+      await userEvent.click(screen.getByRole('radio', { name: /Keeper only/ }))
+      await userEvent.click(textbox)
+
+      mockUseWallEntries.mockReturnValue(loaded([[arrival, older]]))
+      rerender(<CampaignWall campaignId="c1" />)
+
+      expect(screen.getByRole('textbox', { name: 'New Wall Entry' })).toHaveValue('Half written')
+      expect(screen.getByRole('textbox', { name: 'New Wall Entry' })).toHaveFocus()
+      expect(screen.getByRole('radio', { name: /Keeper only/ })).toBeChecked()
+    })
   })
 })

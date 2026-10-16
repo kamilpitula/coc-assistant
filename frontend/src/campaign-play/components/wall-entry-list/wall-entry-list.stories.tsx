@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { useEffect, useState } from 'react'
 
 import type { WallEntry } from '@/campaign-play/types/WallEntry'
 
@@ -42,3 +43,18 @@ export const Keeper: Story = {}
 export const Player: Story = {
   args: { viewerRole: 'Player', entries: entries.filter((entry) => entry.visibility === 'Public') },
 }
+
+function LiveRemovalStory(props: React.ComponentProps<typeof WallEntryList>) {
+  const [current, setCurrent] = useState(props.entries)
+
+  useEffect(() => {
+    document.getElementById(`remove-wall-entry-${props.entries[1].id}`)?.focus()
+    const timer = setTimeout(() => setCurrent(props.entries.filter((entry) => entry.id !== props.entries[1].id)), 3000)
+    return () => clearTimeout(timer)
+  }, [props.entries])
+
+  return <WallEntryList {...props} entries={current} />
+}
+
+/** The focused Remove button of the middle entry loses its entry after three seconds; focus moves to the next one. */
+export const LiveRemovalOfTheFocusedEntry: Story = { render: (args) => <LiveRemovalStory {...args} /> }

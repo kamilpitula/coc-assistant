@@ -127,6 +127,34 @@ describe('CampaignLiveConnection', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: campaignQueryKeys.members('c1') })
   })
 
+  it('refetches the Wall, the preview, the investigators, the own Investigator, and the roster for the new topics', async () => {
+    const { invalidate } = setup()
+    await connect('initial')
+
+    serverSends('CampaignDataChanged', { campaignId: 'c1', topics: ['wallEntries'] })
+    serverSends('CampaignDataChanged', { campaignId: 'c1', topics: ['investigators'] })
+    serverSends('CampaignDataChanged', { campaignId: 'C1', topics: ['myInvestigator'] })
+
+    expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([
+      campaignQueryKeys.wall('c1'),
+      campaignQueryKeys.wallPreview('c1'),
+      campaignQueryKeys.investigators('c1'),
+      campaignQueryKeys.members('c1'),
+      campaignQueryKeys.myInvestigator('c1'),
+      campaignQueryKeys.members('c1'),
+    ])
+  })
+
+  it('ignores topics for another Campaign and topics it does not know', async () => {
+    const { invalidate } = setup()
+    await connect('initial')
+
+    serverSends('CampaignDataChanged', { campaignId: 'other', topics: ['wallEntries', 'investigators', 'myInvestigator'] })
+    serverSends('CampaignDataChanged', { campaignId: 'c1', topics: ['somethingNew'] })
+
+    expect(invalidate).not.toHaveBeenCalled()
+  })
+
   it('records a refused subscription for a non-member', async () => {
     liveConnection.invoke.mockRejectedValue(new Error('Campaign not found.'))
     setup()

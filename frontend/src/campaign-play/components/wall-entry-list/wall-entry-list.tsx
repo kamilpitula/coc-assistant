@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { WallEntryTime } from '@/campaign-play/components/wall-entry-time/wall-entry-time'
 import { RemoveWallEntryDialog } from '@/campaign-play/components/remove-wall-entry-dialog/remove-wall-entry-dialog'
-import { focusTargetAfterRemoval, removeWallEntryButtonId } from '@/campaign-play/services/wallEntryFocus'
+import { focusTargetAfterLiveRemoval, focusTargetAfterRemoval, removeWallEntryButtonId } from '@/campaign-play/services/wallEntryFocus'
 import { formatWallEntryTime } from '@/campaign-play/services/wallEntryTime'
 import type { CampaignRole } from '@/campaign-play/types/Campaign'
 import type { WallEntry } from '@/campaign-play/types/WallEntry'
@@ -19,12 +19,32 @@ interface WallEntryListProps {
   onRemove: (entryId: string) => Promise<boolean>
 }
 
-/** The Wall's entries, newest first, with the Keeper's removal (specs/campaign-wall/ux.md sections 2 and 4.3). */
+/**
+ * When the entry of the focused "Remove" button disappears from the list, focus moves on as after a removal here
+ * (specs/campaign-wall/ux.md section 4.5). Focus is read while rendering, before the old button leaves the page.
+ */
+function useFocusAfterLiveRemoval(entries: WallEntry[], fallbackFocusId: string) {
+  const [tracking, setTracking] = useState<{ entries: WallEntry[]; focusId: string | null }>({ entries, focusId: null })
+
+  if (tracking.entries !== entries) {
+    const focusedId = document.activeElement?.id
+    setTracking({ entries, focusId: focusTargetAfterLiveRemoval(tracking.entries, entries, focusedId, fallbackFocusId) })
+  }
+
+  useEffect(() => {
+    if (tracking.focusId !== null) {
+      document.getElementById(tracking.focusId)?.focus()
+    }
+  }, [tracking])
+}
+
+/** The Wall's entries, newest first, with the Keeper's removal (specs/campaign-wall/ux.md sections 2, 4.3, and 4.5). */
 export function WallEntryList({ entries, viewerRole, fallbackFocusId, onRemove }: WallEntryListProps) {
   const [removing, setRemoving] = useState<WallEntry | null>(null)
   const [pending, setPending] = useState(false)
   const [failed, setFailed] = useState(false)
   const focusAfterClose = useRef('')
+  useFocusAfterLiveRemoval(entries, fallbackFocusId)
 
   const open = (entry: WallEntry) => {
     focusAfterClose.current = removeWallEntryButtonId(entry.id)

@@ -153,6 +153,14 @@ At the table                                   [Invite Players]   (h2; button Ke
   - A Player hears: "{Investigator name} is ready for play." when another Player's Investigator is Approved.
   - A Player's own Approved / Changes Requested is announced by the attention list and row change: "Your Investigator was approved." / "Your Keeper asked for changes."
   - No announcement on first load.
+- **Live Investigator details (PBI-CP-006):**
+  - The Investigator announcements are their own element inside the section's one polite region, next to the Presence announcements. This includes the Player's own "Your Investigator was approved." / "Your Keeper asked for changes."; the attention list adds no region.
+  - "First load" means until the roster has been fetched since the overview opened, even when cached data showed first.
+  - Keeper: announced when a row's status becomes Submitted (first submission or resubmission). An unnamed Investigator reads "Unnamed Investigator".
+  - Player: announced when another Player's row changes from "Not ready yet" to Approved, and when their own status becomes Approved or Changes Requested.
+  - Not announced: the Keeper's own Approve or Request changes (the review page announces them), a Draft being started or abandoned (the Keeper's row changes silently between "No Investigator yet" and "In progress"), and any other transition.
+  - Several changes found by one refetch are announced in one message, in roster order. Changes found by the catch-up refetch after a reconnect follow the same rules.
+  - Other pages (the Player's Investigator view and resume, the Keeper's open review) update in place from the refetch and announce nothing.
 
 ## 6. Invite Players dialog (`invite-dialog`)
 
@@ -197,7 +205,7 @@ Open the Wall                                     (link -> /wall)
 - **Empty:** "Nothing on the Wall yet." and the "Open the Wall" link.
 - **Loading:** three Skeleton entries.
 - **Error:** "We couldn't load the Wall." with a "Try again" button.
-- **Live:** new entries are inserted at the top through the `wallEntries` topic (PBI-CP-006), and the sixth entry drops off. A polite announcement "New Wall Entry from {author}." is made, at most once per 5 seconds, merging bursts.
+- **Live:** new entries are inserted at the top through the `wallEntries` topic (PBI-CP-006), and the sixth entry drops off. A polite announcement "New Wall Entry from {author}." is made, at most once per 5 seconds, merging bursts. The merged copy, the first-load rule, and live removal are specified in [campaign-wall ux](../campaign-wall/ux.md) sections 4.5 and 7.
 - **Wall entries in general:** the Wall page is specified in [specs/campaign-wall/ux.md](../campaign-wall/ux.md). The preview uses the same list endpoint with a limit of 5, so the viewer's visibility is applied before the 5 are taken.
 
 ## 8. Settings (`campaign-settings`, Keeper only)
@@ -272,6 +280,10 @@ Stories cover:
 - **CO-UX-12** A Player opening `/campaigns/$campaignId/settings` sees the not-found message and no Invite or rules data.
 - **CO-UX-13** When the Keeper approves an Investigator, the Player's row and the other Players' rows show it as Approved without a reload (requires PBI-CP-006).
 - **CO-UX-14** (PBI-CP-004) The overview shows at most 5 latest Wall Entries with "Open the Wall". Keeper-only entries show "Keeper only" to the Keeper and never appear for Players.
+- **CO-UX-15** (PBI-CP-006) The Keeper sees a submission or resubmission in "At the table" and the attention list without a reload, and hears "{Investigator name} by {Player name} was submitted.".
+- **CO-UX-16** (PBI-CP-006) A Player sees their own Approved or Changes Requested in their row and the attention list without a reload, and hears "Your Investigator was approved." or "Your Keeper asked for changes.".
+- **CO-UX-17** (PBI-CP-006) A Player hears "{Investigator name} is ready for play." when another Player's Investigator is Approved, and never learns another Player's other statuses.
+- **CO-UX-18** (PBI-CP-006) A Player starting or abandoning a Draft changes the Keeper's row between "No Investigator yet" and "In progress" without a reload and without an announcement.
 
 ## 12. Accessibility acceptance criteria (WCAG 2.2 AA)
 

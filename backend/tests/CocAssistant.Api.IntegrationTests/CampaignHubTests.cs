@@ -192,6 +192,202 @@ public class CampaignHubTests : IClassFixture<IdentityApiFactory>, IAsyncLifetim
         Assert.Equal(HubConnectionState.Disconnected, hubClient.Connection.State);
     }
 
+    // Live Wall Entry and Investigator updates (PBI-CP-006). Presence messages are skipped when reading data signals;
+    // a negative check is a later, expected signal that must arrive next (the ordering sentinel).
+
+    private enum InvestigatorSetup
+    {
+        None,
+        Submitted,
+    }
+
+    private sealed record LiveTable(
+        Guid CampaignId,
+        Guid InvestigatorId,
+        string KeeperOid,
+        string OwnerOid,
+        CampaignHubTestClient Keeper,
+        CampaignHubTestClient Owner,
+        CampaignHubTestClient Bystander,
+        HttpClient Http);
+
+    /// <summary>A Campaign with a Keeper and two Players, all subscribed; any setup runs before they connect.</summary>
+    private async Task<LiveTable> CreateLiveTableAsync(string suffix, InvestigatorSetup setup = InvestigatorSetup.None)
+    {
+        var http = _factory.CreateClient();
+        var keeperOid = $"live-keeper-{suffix}";
+        var ownerOid = $"live-owner-{suffix}";
+        var bystanderOid = $"live-bystander-{suffix}";
+        var campaignId = (await CreateCampaignAsync(http, keeperOid)).Id;
+        await JoinAsPlayerAsync(http, campaignId, keeperOid, ownerOid);
+        await JoinAsPlayerAsync(http, campaignId, keeperOid, bystanderOid);
+        var investigatorId = setup == InvestigatorSetup.Submitted
+            ? await CreateSubmittedAsync(http, campaignId, ownerOid, "Harvey Walters")
+            : Guid.Empty;
+        var keeper = (await SubscribeAsync(keeperOid, campaignId)).Client;
+        var owner = (await SubscribeAsync(ownerOid, campaignId)).Client;
+        var bystander = (await SubscribeAsync(bystanderOid, campaignId)).Client;
+        return new LiveTable(campaignId, investigatorId, keeperOid, ownerOid, keeper, owner, bystander, http);
+    }
+
+    private static async Task<CampaignDataChangedMessage> NextDataChangedAsync(CampaignHubTestClient client)
+    {
+        while (true)
+        {
+            if (await client.NextMessageAsync() is CampaignDataChangedMessage message)
+            {
+                return message;
+            }
+        }
+    }
+
+    private static async Task AssertNextAsync(CampaignHubTestClient client, Guid campaignId, string topic) =>
+        Assert.Equal<object>(new CampaignDataChangedMessage(campaignId, [topic]), await NextDataChangedAsync(client), CampaignDataChangedComparer.Instance);
+
+    private static async Task<Guid> AddWallEntryAsync(LiveTable table, string visibility)
+    {
+        var response = await table.Http.SendAsync(BuildRequest(
+            HttpMethod.Post, $"/api/campaigns/{table.CampaignId}/wall-entries", table.KeeperOid, new { text = "The lamp goes out.", visibility }));
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+    }
+
+    private static async Task RemoveWallEntryAsync(LiveTable table, Guid entryId) =>
+        (await table.Http.SendAsync(BuildRequest(HttpMethod.Delete, $"/api/campaigns/{table.CampaignId}/wall-entries/{entryId}", table.KeeperOid)))
+            .EnsureSuccessStatusCode();
+
+    private static async Task SendInvestigatorCommandAsync(LiveTable table, HttpMethod method, string path, string oid, object? body = null) =>
+        (await table.Http.SendAsync(BuildRequest(method, $"/api/campaigns/{table.CampaignId}/investigators{path}", oid, body)))
+            .EnsureSuccessStatusCode();
+
+    /// <summary>Adds a Public entry and expects it as the target's next signal, proving nothing else arrived before it.</summary>
+    private static async Task AssertNothingElseBeforeSentinelAsync(LiveTable table, CampaignHubTestClient target)
+    {
+        await AddWallEntryAsync(table, "Public");
+        await AssertNextAsync(target, table.CampaignId, "wallEntries");
+    }
+
+    [Fact]
+    public async Task Given_connected_members_When_the_keeper_adds_a_public_entry_Then_the_keeper_and_the_players_receive_wall_entries()
+    {
+        var table = await CreateLiveTableAsync("1");
+
+        await AddWallEntryAsync(table, "Public");
+
+        await AssertNextAsync(table.Keeper, table.CampaignId, "wallEntries");
+        await AssertNextAsync(table.Owner, table.CampaignId, "wallEntries");
+        await AssertNextAsync(table.Bystander, table.CampaignId, "wallEntries");
+    }
+
+    [Fact]
+    public async Task Given_connected_members_When_the_keeper_adds_a_keeper_only_entry_Then_only_the_keeper_is_told()
+    {
+        var table = await CreateLiveTableAsync("2");
+
+        await AddWallEntryAsync(table, "KeeperOnly");
+        await AssertNothingElseBeforeSentinelAsync(table, table.Owner);
+
+        await AssertNextAsync(table.Keeper, table.CampaignId, "wallEntries");
+        await AssertNextAsync(table.Keeper, table.CampaignId, "wallEntries");
+    }
+
+    [Fact]
+    public async Task Given_public_and_keeper_only_entries_When_the_keeper_removes_them_Then_only_the_public_removal_reaches_a_player()
+    {
+        var table = await CreateLiveTableAsync("3");
+        var secret = await AddWallEntryAsync(table, "KeeperOnly");
+        var known = await AddWallEntryAsync(table, "Public");
+        await AssertNextAsync(table.Owner, table.CampaignId, "wallEntries");
+
+        await RemoveWallEntryAsync(table, secret);
+        await RemoveWallEntryAsync(table, known);
+
+        await AssertNextAsync(table.Owner, table.CampaignId, "wallEntries");
+        await AssertNothingElseBeforeSentinelAsync(table, table.Owner);
+    }
+
+    [Fact]
+    public async Task Given_a_player_When_they_create_and_start_over_a_draft_Then_the_keeper_and_the_owner_are_told()
+    {
+        var table = await CreateLiveTableAsync("4");
+
+        await SendInvestigatorCommandAsync(table, HttpMethod.Post, string.Empty, table.OwnerOid);
+        await AssertNextAsync(table.Keeper, table.CampaignId, "investigators");
+        await AssertNextAsync(table.Owner, table.CampaignId, "myInvestigator");
+
+        await SendInvestigatorCommandAsync(table, HttpMethod.Delete, "/mine", table.OwnerOid);
+        await AssertNextAsync(table.Keeper, table.CampaignId, "investigators");
+        await AssertNextAsync(table.Owner, table.CampaignId, "myInvestigator");
+        await AssertNothingElseBeforeSentinelAsync(table, table.Bystander);
+    }
+
+    [Fact]
+    public async Task Given_a_draft_When_the_player_submits_Then_the_keeper_and_the_owner_are_told_and_another_player_is_not()
+    {
+        var http = _factory.CreateClient();
+        var campaignId = (await CreateCampaignAsync(http, "live-keeper-5")).Id;
+        await JoinAsPlayerAsync(http, campaignId, "live-keeper-5", "live-owner-5");
+        await JoinAsPlayerAsync(http, campaignId, "live-keeper-5", "live-bystander-5");
+        await CreateNamedDraftAsync(http, campaignId, "live-owner-5", "Harvey Walters");
+        var table = new LiveTable(
+            campaignId,
+            Guid.Empty,
+            "live-keeper-5",
+            "live-owner-5",
+            (await SubscribeAsync("live-keeper-5", campaignId)).Client,
+            (await SubscribeAsync("live-owner-5", campaignId)).Client,
+            (await SubscribeAsync("live-bystander-5", campaignId)).Client,
+            http);
+
+        await SendInvestigatorCommandAsync(table, HttpMethod.Post, "/mine/submit", table.OwnerOid);
+
+        await AssertNextAsync(table.Keeper, table.CampaignId, "investigators");
+        await AssertNextAsync(table.Owner, table.CampaignId, "myInvestigator");
+        await AssertNothingElseBeforeSentinelAsync(table, table.Bystander);
+    }
+
+    [Fact]
+    public async Task Given_a_submitted_investigator_When_the_keeper_approves_Then_every_member_is_told_members_changed()
+    {
+        var table = await CreateLiveTableAsync("6", InvestigatorSetup.Submitted);
+
+        await SendInvestigatorCommandAsync(table, HttpMethod.Post, $"/{table.InvestigatorId}/approve", table.KeeperOid);
+
+        await AssertNextAsync(table.Keeper, table.CampaignId, "investigators");
+        await AssertNextAsync(table.Keeper, table.CampaignId, "members");
+        await AssertNextAsync(table.Owner, table.CampaignId, "myInvestigator");
+        await AssertNextAsync(table.Owner, table.CampaignId, "members");
+        await AssertNextAsync(table.Bystander, table.CampaignId, "members");
+        await AssertNothingElseBeforeSentinelAsync(table, table.Bystander);
+    }
+
+    [Fact]
+    public async Task Given_a_submitted_investigator_When_the_keeper_requests_changes_Then_only_the_keeper_and_the_owner_are_told()
+    {
+        var table = await CreateLiveTableAsync("7", InvestigatorSetup.Submitted);
+
+        await SendInvestigatorCommandAsync(
+            table, HttpMethod.Post, $"/{table.InvestigatorId}/request-changes", table.KeeperOid, new { comment = "Add a backstory." });
+
+        await AssertNextAsync(table.Keeper, table.CampaignId, "investigators");
+        await AssertNextAsync(table.Owner, table.CampaignId, "myInvestigator");
+        await AssertNothingElseBeforeSentinelAsync(table, table.Bystander);
+    }
+
+    [Fact]
+    public async Task Given_a_member_of_campaign_a_When_campaign_b_changes_Then_they_receive_only_campaign_a_signals()
+    {
+        var table = await CreateLiveTableAsync("8");
+        var otherCampaignId = (await CreateCampaignAsync(table.Http, "live-keeper-8b")).Id;
+        (await table.Http.SendAsync(BuildRequest(
+            HttpMethod.Post, $"/api/campaigns/{otherCampaignId}/wall-entries", "live-keeper-8b", new { text = "Elsewhere.", visibility = "Public" })))
+            .EnsureSuccessStatusCode();
+
+        await AddWallEntryAsync(table, "Public");
+
+        await AssertNextAsync(table.Owner, table.CampaignId, "wallEntries");
+    }
+
     /// <summary>Compares CampaignDataChanged messages by value, including their topic lists.</summary>
     private sealed class CampaignDataChangedComparer : IEqualityComparer<object>
     {
