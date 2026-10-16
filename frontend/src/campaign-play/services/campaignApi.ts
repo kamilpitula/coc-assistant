@@ -87,6 +87,8 @@ export const campaignQueryKeys = {
     ['campaigns', campaignId, 'investigators', 'mine', 'character-sheet'] as const,
   occupations: (campaignId: string) => ['campaigns', campaignId, 'rules', 'occupations'] as const,
   skills: (campaignId: string) => ['campaigns', campaignId, 'rules', 'skills'] as const,
+  wall: (campaignId: string) => ['campaigns', campaignId, 'wall'] as const,
+  wallPreview: (campaignId: string) => ['campaigns', campaignId, 'wall-preview'] as const,
 }
 
 /** Calls POST /api/campaigns, which records the authenticated caller as the new Campaign's Keeper. */

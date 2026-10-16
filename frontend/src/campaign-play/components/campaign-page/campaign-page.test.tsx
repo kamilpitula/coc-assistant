@@ -17,6 +17,9 @@ vi.mock('@/campaign-play/components/attention-list/attention-list', () => ({
 vi.mock('@/campaign-play/components/campaign-table/campaign-table', () => ({
   CampaignTable: () => <h2>At the table</h2>,
 }))
+vi.mock('@/campaign-play/components/wall-preview/wall-preview', () => ({
+  WallPreview: () => <h2>Wall</h2>,
+}))
 
 const keeperCampaign = {
   id: 'c1',
@@ -39,7 +42,7 @@ describe('CampaignPage (the overview)', () => {
   it.each([
     ['Keeper', keeperCampaign],
     ['Player', playerCampaign],
-  ])('shows the %s what needs them, then who is at the table, and no Invite or Rules options (CO-UX-3)', (role, campaign) => {
+  ])('shows the %s what needs them, then who is at the table, then the Wall, and no Invite or Rules options (CO-UX-3, CO-UX-14)', (role, campaign) => {
     mockUseCampaign.mockReturnValue({ data: campaign })
 
     render(<CampaignPage campaignId="c1" />)
@@ -47,7 +50,17 @@ describe('CampaignPage (the overview)', () => {
     expect(screen.getAllByRole('heading').map((heading) => heading.textContent)).toEqual([
       `Needs your attention (${role})`,
       'At the table',
+      'Wall',
     ])
+  })
+
+  // specs/campaign-overview/ux.md section 3: the Wall preview moves to a right column from 1024px.
+  it('puts the Wall preview in a second column from the lg breakpoint', () => {
+    mockUseCampaign.mockReturnValue({ data: keeperCampaign })
+
+    const { container } = render(<CampaignPage campaignId="c1" />)
+
+    expect(container.firstElementChild).toHaveClass('lg:grid-cols-[2fr_1fr]')
   })
 
   it.each([

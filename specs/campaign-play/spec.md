@@ -40,6 +40,12 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
 - **Campaign members API:** `GET /api/campaigns/{campaignId}/members` - Campaign members (Keeper or Player) only; non-members get 404. Returns the roster in the UX order ([ux.md](ux.md) section 5) as an array of `{memberId, displayName, role, isYou, investigator}`.
   - `memberId` is an opaque string, stable within the Campaign, that identifies a member in Presence events. It is not an Account id, so the roster exposes no Account ids to Players (consistent with the Player Campaign view). A Player's `memberId` is their `CampaignPlayer.Id`; the Keeper's is the `Campaign.Id`. The mapping from Account to `memberId` lives in one Application method.
   - `role` is `Keeper` or `Player`. `isYou` is true only on the caller's own entry. Each entry also has an `investigator` field, projected server-side for the caller as defined in [specs/campaign-overview/spec.md](../campaign-overview/spec.md) (Roster with Investigators).
+- **Wall Entry API:** `GET`, `POST`, and `DELETE /api/campaigns/{campaignId}/wall-entries[/{entryId}]` - Campaign members (Keeper or Player) only; non-members and missing Campaigns get 404 on every call. There is no read-by-id endpoint.
+  - `GET ?limit=&cursor=` returns `{entries, nextCursor}`, newest first (by creation time, then id). Each entry is `{id, text, visibility, createdAt, authorDisplayName}` with `visibility` `Public` or `KeeperOnly`. `limit` defaults to 20 and must be 1 to 50; otherwise 400. `cursor` is opaque; a malformed one returns 400. The overview preview calls it with `limit=5`.
+  - Visibility is applied in the query before ordering, limiting, and paging: a Player's result, its `nextCursor` (set only when more entries visible to the Player exist), and every id in it are built from Public entries only. The projection never includes an Account id; the author is shown by display name from the Identity read port.
+  - `POST` takes `{text, visibility?}` and returns 201 with the entry. `visibility` defaults to Public. The text is trimmed and must be 1 to 2000 characters, otherwise 400. The Keeper may choose Public or KeeperOnly; a Player choosing KeeperOnly gets 400 and nothing is stored. An unknown visibility value returns 400.
+  - `DELETE /{entryId}` removes the entry for good (hard delete; there is no edit and no restore) and returns 204. Only the Keeper may remove entries, including a Player's. A Player, a non-member, and a request for a missing entry or one in another Campaign all get the same 404, decided before any entry is looked up for a non-Keeper.
+  - Persistence: one `WallEntries` table (id, Campaign id with cascade delete, author Account id, visibility, text, creation time) indexed for the newest-first query per Campaign.
 - **Live connection contract:** Architecture decision: [ADR 0009](../../docs/adr/0009-live-updates-through-campaign-hub-with-invalidation-topics.md). One authenticated, strongly typed SignalR hub (`Hub<ICampaignClient>`) at `/hubs/campaign`, in `CocAssistant.CampaignPlay.Controllers`. `AddSignalR()` always runs; Azure SignalR Service (Default mode) is added only when `Azure:SignalR:ConnectionString` is configured, so local development, integration tests, and E2E run SignalR in-process.
   - Authentication: the Entra bearer token is sent through the SignalR `accessTokenFactory` (the `access_token` query string on the hub path only). Connections without a valid token are rejected. Connections close when the token expires (`CloseOnAuthenticationExpiration`); the client reconnects with a token from MSAL `acquireTokenSilent` and subscribes again, which re-checks membership.
   - On connect, the hub resolves the caller's Account id once and adds the connection to `account:{accountId}`.
@@ -70,6 +76,8 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
 - A Campaign's Era is required and determines which rule data applies to its Character Sheets.
 - The Keeper is the primary Wall Entry author. Players may add lightweight Wall Entries representing their own actions or notes.
 - Wall Entry visibility is either Public or Keeper-only. Keeper-only Wall Entries are never visible to Players.
+- Only the Keeper creates Keeper-only Wall Entries, and only the Keeper removes Wall Entries. A Player creates Public Wall Entries only and cannot edit or remove any entry. Wall Entries are not edited after they are created. Both rules are enforced server-side.
+- The Campaign Wall page, composer, removal, and Wall preview are specified in [specs/campaign-wall/ux.md](../campaign-wall/ux.md).
 - v1 provides live updates and Presence only; offline notifications, scheduling, dice automation, and billing are outside this feature.
 
 ## Contract
@@ -84,6 +92,7 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
 - [ ] A Player sees only their own Investigator; the Keeper sees non-Draft Investigators in full and Draft Investigators only as "In progress".
 - [ ] The Keeper can create Public and Keeper-only Wall Entries, and Players can create their permitted Public Wall Entries.
 - [ ] A Player cannot read a Keeper-only Wall Entry.
+- [ ] The Keeper can remove a Wall Entry, and a Player cannot remove any.
 - [ ] Connected Campaign members receive Wall Entry, own-Investigator, and Presence changes without manually reloading the Campaign view.
 
 ### Regression Guardrails
@@ -220,6 +229,16 @@ Scenario: Keeper-only Wall Entry stays hidden
   Given a Keeper has created a Keeper-only Wall Entry
   When a Player requests the Campaign Wall
   Then the Keeper-only Wall Entry is absent from the Player's result
+
+Scenario: Player cannot add or remove Keeper-only Wall Entries
+  Given a Keeper has created a Keeper-only Wall Entry
+  When a Player tries to create a Keeper-only Wall Entry and to remove that Wall Entry
+  Then the creation is refused and the removal is not found, as for a Wall Entry that does not exist
+
+Scenario: Keeper removes a Wall Entry
+  Given a Player has created a Public Wall Entry
+  When the Keeper removes it
+  Then it is absent for the Keeper and the Player
 
 Scenario: Live Wall Entry is delivered to connected members
   Given a Keeper and a Player are connected to the same Campaign

@@ -5,7 +5,7 @@ import type { CampaignRole, CampaignView } from '@/campaign-play/types/Campaign'
 import { cn } from '@/shared/components/utils'
 
 /** The Campaign navigation entry a page belongs to; sheet, wizard, and review pages belong to the overview. */
-export type CampaignSection = 'overview' | 'settings'
+export type CampaignSection = 'overview' | 'wall' | 'settings'
 
 interface CampaignHeaderProps {
   campaign: Pick<CampaignView, 'id' | 'name' | 'era'> & { role: CampaignRole }
@@ -33,6 +33,9 @@ export function CampaignHeader({ campaign, section, isOverview }: CampaignHeader
         <CampaignNavLink to="/campaigns/$campaignId" campaignId={campaign.id} current={section === 'overview'}>
           Overview
         </CampaignNavLink>
+        <CampaignNavLink to="/campaigns/$campaignId/wall" campaignId={campaign.id} current={section === 'wall'}>
+          Wall
+        </CampaignNavLink>
         {campaign.role === 'Keeper' && (
           <CampaignNavLink to="/campaigns/$campaignId/settings" campaignId={campaign.id} current={section === 'settings'}>
             Settings
@@ -44,7 +47,7 @@ export function CampaignHeader({ campaign, section, isOverview }: CampaignHeader
 }
 
 interface CampaignNavLinkProps {
-  to: '/campaigns/$campaignId' | '/campaigns/$campaignId/settings'
+  to: '/campaigns/$campaignId' | '/campaigns/$campaignId/wall' | '/campaigns/$campaignId/settings'
   campaignId: string
   current: boolean
   children: string

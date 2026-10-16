@@ -167,6 +167,37 @@ namespace CocAssistant.CampaignPlay.Infrastructure.Migrations
                     b.ToTable("Investigators");
                 });
 
+            modelBuilder.Entity("CocAssistant.CampaignPlay.Domain.Wall.WallEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AuthorAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CampaignId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Visibility")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampaignId", "CreatedAt", "Id");
+
+                    b.ToTable("WallEntries");
+                });
+
             modelBuilder.Entity("CocAssistant.CampaignPlay.Domain.CampaignInvite", b =>
                 {
                     b.HasOne("CocAssistant.CampaignPlay.Domain.Campaign", null)
@@ -186,6 +217,15 @@ namespace CocAssistant.CampaignPlay.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("CocAssistant.CampaignPlay.Domain.Investigators.Investigator", b =>
+                {
+                    b.HasOne("CocAssistant.CampaignPlay.Domain.Campaign", null)
+                        .WithMany()
+                        .HasForeignKey("CampaignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CocAssistant.CampaignPlay.Domain.Wall.WallEntry", b =>
                 {
                     b.HasOne("CocAssistant.CampaignPlay.Domain.Campaign", null)
                         .WithMany()

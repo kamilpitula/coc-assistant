@@ -29,11 +29,12 @@ describe('CampaignHeader', () => {
     expect(screen.queryByRole('heading')).not.toBeInTheDocument()
   })
 
-  it('gives the Keeper Overview and Settings, with Overview current (CO-UX-2, CO-A11Y-2)', () => {
+  it('gives the Keeper Overview, Wall, and Settings, with Overview current (CO-UX-2, CO-A11Y-2)', () => {
     render(<CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="overview" isOverview />)
 
     expect(navLinks().map((link) => [link.textContent, link.getAttribute('href'), link.getAttribute('aria-current')])).toEqual([
       ['Overview', '/campaigns/c1', 'page'],
+      ['Wall', '/campaigns/c1/wall', null],
       ['Settings', '/campaigns/c1/settings', null],
     ])
   })
@@ -41,12 +42,20 @@ describe('CampaignHeader', () => {
   it('marks Settings as current on the Settings page', () => {
     render(<CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="settings" isOverview={false} />)
 
-    expect(navLinks().map((link) => link.getAttribute('aria-current'))).toEqual([null, 'page'])
+    expect(navLinks().map((link) => link.getAttribute('aria-current'))).toEqual([null, null, 'page'])
   })
 
-  it('gives a Player only Overview (CO-UX-2)', () => {
+  // specs/campaign-wall/ux.md section 5; WL-UX-1.
+  it.each(['Keeper', 'Player'] as const)('marks Wall as current on the Wall page for the %s', (role) => {
+    render(<CampaignHeader campaign={{ ...campaign, role }} section="wall" isOverview={false} />)
+
+    const current = navLinks().filter((link) => link.getAttribute('aria-current') === 'page')
+    expect(current.map((link) => link.textContent)).toEqual(['Wall'])
+  })
+
+  it('gives a Player Overview and Wall, and no Settings (CO-UX-2)', () => {
     render(<CampaignHeader campaign={{ ...campaign, role: 'Player' }} section="overview" isOverview />)
 
-    expect(navLinks().map((link) => link.textContent)).toEqual(['Overview'])
+    expect(navLinks().map((link) => link.textContent)).toEqual(['Overview', 'Wall'])
   })
 })

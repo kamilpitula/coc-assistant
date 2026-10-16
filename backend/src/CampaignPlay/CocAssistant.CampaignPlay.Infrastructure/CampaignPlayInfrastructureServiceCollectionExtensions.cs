@@ -24,6 +24,8 @@ public static class CampaignPlayInfrastructureServiceCollectionExtensions
         services.AddScoped<IDomainEventHandler<PlayerJoinedCampaign>, PublishMembersChangedOnPlayerJoined>();
         services.AddScoped<IAccountDisplayNames, IdentityAccountDisplayNames>();
         services.AddScoped<IInvestigatorRepository, EfInvestigatorRepository>();
+        services.AddScoped<IWallEntryRepository, EfWallEntryRepository>();
+        services.AddScoped<WallEntryService>();
         services.AddScoped<PlayerInvestigatorService>();
         services.AddScoped<KeeperInvestigatorService>();
         services.AddSingleton<CreationRuleSets>();

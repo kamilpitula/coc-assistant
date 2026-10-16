@@ -54,8 +54,8 @@ test.describe('Campaign overview and navigation', () => {
         await expect(page.getByText('1920s', { exact: true })).toBeVisible()
       })
 
-      await test.step('CO-UX-2: the Campaign navigation shows "Overview" as current and "Settings"', async () => {
-        await expect(campaignNav(page).getByRole('link')).toHaveText(['Overview', 'Settings'])
+      await test.step('CO-UX-2: the Campaign navigation shows "Overview" as current, "Wall", and "Settings"', async () => {
+        await expect(campaignNav(page).getByRole('link')).toHaveText(['Overview', 'Wall', 'Settings'])
         await expect(navLink(page, 'Overview')).toHaveAttribute('aria-current', 'page')
         await expect(navLink(page, 'Settings')).not.toHaveAttribute('aria-current', 'page')
       })
@@ -79,9 +79,9 @@ test.describe('Campaign overview and navigation', () => {
     const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, campaignId))
 
     try {
-      await test.step('CO-UX-2: the Player\'s Campaign navigation shows only "Overview"', async () => {
+      await test.step('CO-UX-2: the Player\'s Campaign navigation shows "Overview" and "Wall", not "Settings"', async () => {
         await player.page.goto(`/campaigns/${campaignId}`)
-        await expect(campaignNav(player.page).getByRole('link')).toHaveText(['Overview'])
+        await expect(campaignNav(player.page).getByRole('link')).toHaveText(['Overview', 'Wall'])
       })
 
       await test.step('CO-UX-12: opening the Settings address shows that the page could not be found', async () => {

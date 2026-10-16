@@ -16,6 +16,8 @@ public class CampaignPlayDbContext : DbContext
 
     public DbSet<Investigator> Investigators => Set<Investigator>();
 
+    public DbSet<WallEntry> WallEntries => Set<WallEntry>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Campaign>(builder =>
@@ -107,6 +109,31 @@ public class CampaignPlayDbContext : DbContext
 
             builder.HasIndex(investigator => new { investigator.CampaignId, investigator.PlayerAccountId }, OneInvestigatorPerPlayerIndexName)
                 .IsUnique();
+        });
+
+        modelBuilder.Entity<WallEntry>(builder =>
+        {
+            builder.HasKey(entry => entry.Id);
+            builder.Ignore(entry => entry.DomainEvents);
+            builder.Property(entry => entry.Id).ValueGeneratedNever();
+            builder.Property(entry => entry.AuthorAccountId).IsRequired();
+            builder.Property(entry => entry.Visibility).IsRequired().HasConversion<string>().HasMaxLength(20);
+            builder.Property(entry => entry.Text).IsRequired().HasMaxLength(WallEntry.TextMaxLength);
+
+            // Stored as a UTC datetime2 so every provider can order and compare it (the Wall pages by CreatedAt).
+            builder.Property(entry => entry.CreatedAt)
+                .IsRequired()
+                .HasConversion(
+                    createdAt => createdAt.UtcDateTime,
+                    stored => new DateTimeOffset(DateTime.SpecifyKind(stored, DateTimeKind.Utc)));
+
+            builder.HasOne<Campaign>()
+                .WithMany()
+                .HasForeignKey(entry => entry.CampaignId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Serves the newest-first Wall query for a Campaign (specs/campaign-play/spec.md, Wall Entry API).
+            builder.HasIndex(entry => new { entry.CampaignId, entry.CreatedAt, entry.Id });
         });
     }
 }
