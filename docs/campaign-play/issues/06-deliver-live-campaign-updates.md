@@ -2,6 +2,7 @@
 id: PBI-CP-006
 status: done
 blocked_by: [PBI-CP-003, PBI-CP-004, PBI-CP-005]
+pr: 19
 ---
 
 # PBI-CP-006: Deliver Live Campaign Updates
