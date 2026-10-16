@@ -1,0 +1,8 @@
+#!/bin/sh
+# Enable once per clone: git config core.hooksPath .githooks
+set -e
+cd "$(git rev-parse --show-toplevel)"
+echo "pre-commit: ascii-check"
+node tools/ascii-check/src/cli.ts
+echo "pre-commit: backlog --check"
+node tools/backlog/src/cli.ts --check

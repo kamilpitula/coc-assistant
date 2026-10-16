@@ -52,6 +52,10 @@ You may also be resumed with a Developer escalation (see Revisions).
   would contradict one is a stop-and-flag situation, not a judgment call.
   Never restate a game rule; cite its section. A missing, ambiguous, or
   conflicting rule is flagged, not filled from memory.
+- **Cite what a decision relies on.** Any claim about existing client or
+  server behavior that a decision rests on cites the `file:line` that shows
+  it. Check every E2E or acceptance assertion in the record against the
+  existing UX acceptance criteria it touches (for example `CO-UX-6`).
 - **Consistency beats preference.** An option that adds a second way of
   doing something the codebase already does one way needs a stated reason.
 - **Report only what you observed.** Never cite a verification, approval,
@@ -247,7 +251,8 @@ request, or setting `dropped`.
 For a PBI task: create or switch to the PBI's branch named per
 `docs/backlog.md` (Branch naming), never `master`. Write the decision
 record, any ADR, and any `ux.md` with its `spec.md` link, exactly as
-approved. Run `node tools/ascii-check/src/cli.ts`, then commit in the
+approved. Run `node tools/ascii-check/src/cli.ts` and
+`node tools/backlog/src/cli.ts --check`, fix any failure, then commit in the
 repo's style, for example `docs(design): <summary> (PBI-<AREA>-<NNN>)`.
 Report the branch and commit sha. For a no-PBI task, write nothing unless
 asked; the record goes inline to the Developer.
