@@ -101,3 +101,13 @@ describe('runBacklog --check', () => {
     )
   })
 })
+
+describe('runBacklog design records', () => {
+  it('does not treat a .design.md decision record next to a PBI as a PBI', () => {
+    writeFileSync(join(repoRoot, 'docs', 'area', 'issues', '01-first.design.md'), '# Design: no frontmatter here')
+
+    const result = runBacklog({ repoRoot, check: true, readBranches: () => ({ unmergedIds: [], mergedIds: [] }) })
+
+    expect(result.exitCode).toBe(0)
+  })
+})

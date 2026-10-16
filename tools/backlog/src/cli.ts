@@ -45,7 +45,7 @@ function readPbiFiles(repoRoot: string): ParseResult[] {
 
 function markdownFilesIn(directory: string): string[] {
   try {
-    return readdirSync(directory).filter((file) => file.endsWith('.md'))
+    return readdirSync(directory).filter((file) => file.endsWith('.md') && !file.endsWith('.design.md'))
   } catch {
     return []
   }
