@@ -2,7 +2,7 @@
 id: PBI-WF-004
 status: done
 blocked_by: []
-pr: 20
+pr: 21
 ---
 
 # PBI-WF-004: Guard Commits with the Backlog Check and Design-Record Rules
