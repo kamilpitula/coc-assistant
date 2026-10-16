@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 
 import { newAccount, signIn, signInNewContext } from '../fixtures/auth'
 import { createCampaignViaUi, issueInviteViaUi } from '../fixtures/campaigns'
+import { controlHubSockets, HUB_NEGOTIATE } from '../fixtures/hub'
 import { joinAsNewPlayer } from '../fixtures/investigators'
 import { attentionList, atTheTable, memberRow, memberRows } from '../fixtures/overview'
 
@@ -27,25 +28,9 @@ import { attentionList, atTheTable, memberRow, memberRows } from '../fixtures/ov
 // Automatic reconnect waits 0, 2, 10, and 30 seconds between attempts (spec, Live connection contract), so assertions
 // that wait for a reconnect outcome use this local timeout instead of a global one.
 const RECONNECT_TIMEOUT = 60_000
-const HUB_NEGOTIATE = '**/hubs/campaign/negotiate**'
 
 async function expectPresence(page: Page, displayName: string, presence: 'Connected' | 'Not connected' | 'Unknown') {
   await expect(memberRow(page, displayName).getByText(presence, { exact: true })).toBeVisible()
-}
-
-/** Keeps a handle on the page's Campaign hub WebSockets so a test can drop them like a lost network would. */
-async function controlHubSockets(page: Page): Promise<{ dropAll: () => Promise<void> }> {
-  const sockets: Array<{ close: () => Promise<void> }> = []
-  await page.routeWebSocket(/\/hubs\/campaign/, (socket) => {
-    const server = socket.connectToServer()
-    sockets.push({
-      close: async () => {
-        await socket.close()
-        await server.close()
-      },
-    })
-  })
-  return { dropAll: async () => void (await Promise.all(sockets.splice(0).map((socket) => socket.close()))) }
 }
 
 test.describe('Campaign Presence: who is at the table', () => {
