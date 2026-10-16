@@ -63,7 +63,7 @@ public class PlayerInvestigatorService
             return InvestigatorCommandOutcome.NotFound;
         }
 
-        if (!mine.Value.Investigator.CanStartOver)
+        if (!mine.Value.Investigator.StartOver())
         {
             return InvestigatorCommandOutcome.StatusConflict;
         }

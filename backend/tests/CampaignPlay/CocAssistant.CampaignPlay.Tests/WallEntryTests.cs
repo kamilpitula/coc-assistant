@@ -127,4 +127,58 @@ public class WallEntryTests
         Assert.False(entry.CanBeRemovedBy(campaign, PlayerAccountId));
         Assert.False(entry.CanBeRemovedBy(campaign, StrangerAccountId));
     }
+
+    [Theory]
+    [InlineData(WallEntryVisibility.Public)]
+    [InlineData(WallEntryVisibility.KeeperOnly)]
+    public void Given_a_created_entry_When_authoring_Then_wall_entry_added_is_raised_with_the_visibility(WallEntryVisibility visibility)
+    {
+        var campaign = CampaignWithPlayer();
+
+        var entry = WallEntry.Author(campaign, KeeperAccountId, "The lamp goes out.", visibility, Now).Entry!;
+
+        var raised = Assert.Single(entry.DomainEvents);
+        Assert.Equal(new WallEntryAdded(campaign.Id, entry.Id, visibility), raised);
+    }
+
+    [Fact]
+    public void Given_a_refused_authoring_When_authoring_Then_no_event_is_raised()
+    {
+        var campaign = CampaignWithPlayer();
+
+        var refusedKeeperOnly = WallEntry.Author(campaign, PlayerAccountId, "A secret.", WallEntryVisibility.KeeperOnly, Now);
+        var refusedStranger = WallEntry.Author(campaign, StrangerAccountId, "Hello.", WallEntryVisibility.Public, Now);
+        var refusedText = WallEntry.Author(campaign, KeeperAccountId, " ", WallEntryVisibility.Public, Now);
+
+        Assert.All([refusedKeeperOnly, refusedStranger, refusedText], authoring => Assert.Null(authoring.Entry));
+    }
+
+    [Theory]
+    [InlineData(WallEntryVisibility.Public)]
+    [InlineData(WallEntryVisibility.KeeperOnly)]
+    public void Given_an_entry_When_the_keeper_removes_it_Then_wall_entry_removed_is_raised_with_the_visibility(WallEntryVisibility visibility)
+    {
+        var campaign = CampaignWithPlayer();
+        var entry = WallEntry.Author(campaign, KeeperAccountId, "Gone soon.", visibility, Now).Entry!;
+        entry.ClearDomainEvents();
+
+        var removed = entry.Remove(campaign, KeeperAccountId);
+
+        Assert.True(removed);
+        var raised = Assert.Single(entry.DomainEvents);
+        Assert.Equal(new WallEntryRemoved(campaign.Id, entry.Id, visibility), raised);
+    }
+
+    [Fact]
+    public void Given_an_entry_When_a_player_or_stranger_tries_to_remove_it_Then_it_returns_false_and_raises_nothing()
+    {
+        var campaign = CampaignWithPlayer();
+        var entry = WallEntry.Author(campaign, PlayerAccountId, "Mine.", WallEntryVisibility.Public, Now).Entry!;
+        entry.ClearDomainEvents();
+
+        Assert.False(entry.Remove(campaign, PlayerAccountId));
+        Assert.False(entry.Remove(campaign, StrangerAccountId));
+
+        Assert.Empty(entry.DomainEvents);
+    }
 }

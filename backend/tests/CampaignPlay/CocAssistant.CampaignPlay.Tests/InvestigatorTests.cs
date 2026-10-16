@@ -187,4 +187,128 @@ public class InvestigatorTests
         Assert.False(NewDraft().IsVisibleToKeeper);
         Assert.True(Submitted().IsVisibleToKeeper);
     }
+
+    [Fact]
+    public void Given_a_player_When_creating_an_investigator_Then_investigator_created_is_raised()
+    {
+        var investigator = NewDraft();
+
+        var raised = Assert.Single(investigator.DomainEvents);
+        Assert.Equal(new InvestigatorCreated(investigator.CampaignId, investigator.Id, investigator.PlayerAccountId), raised);
+    }
+
+    [Fact]
+    public void Given_a_draft_When_submitting_Then_investigator_submitted_is_raised()
+    {
+        var investigator = NewDraft();
+        investigator.ClearDomainEvents();
+
+        investigator.Submit(NoErrors, Later);
+
+        var raised = Assert.Single(investigator.DomainEvents);
+        Assert.Equal(new InvestigatorSubmitted(investigator.CampaignId, investigator.Id, investigator.PlayerAccountId), raised);
+    }
+
+    [Fact]
+    public void Given_changes_requested_When_resubmitting_Then_investigator_submitted_is_raised()
+    {
+        var investigator = Submitted();
+        investigator.RequestChanges("Add a backstory.", Later);
+        investigator.ClearDomainEvents();
+
+        investigator.Submit(NoErrors, Later);
+
+        Assert.IsType<InvestigatorSubmitted>(Assert.Single(investigator.DomainEvents));
+    }
+
+    [Fact]
+    public void Given_a_submitted_investigator_When_approving_Then_investigator_approved_is_raised()
+    {
+        var investigator = Submitted();
+        investigator.ClearDomainEvents();
+
+        investigator.Approve(Later);
+
+        var raised = Assert.Single(investigator.DomainEvents);
+        Assert.Equal(new InvestigatorApproved(investigator.CampaignId, investigator.Id, investigator.PlayerAccountId), raised);
+    }
+
+    [Fact]
+    public void Given_a_submitted_investigator_When_requesting_changes_Then_investigator_changes_requested_is_raised_without_the_comment()
+    {
+        var investigator = Submitted();
+        investigator.ClearDomainEvents();
+
+        investigator.RequestChanges("A private note.", Later);
+
+        var raised = Assert.Single(investigator.DomainEvents);
+        Assert.Equal(new InvestigatorChangesRequested(investigator.CampaignId, investigator.Id, investigator.PlayerAccountId), raised);
+    }
+
+    [Fact]
+    public void Given_refused_transitions_When_attempted_Then_no_event_is_raised()
+    {
+        var draft = NewDraft();
+        draft.ClearDomainEvents();
+        var invalidSubmission = draft.Submit([AnError], Later);
+        var approveDraft = draft.Approve(Later);
+        var requestOnDraft = draft.RequestChanges("Too early.", Later);
+
+        var submitted = Submitted();
+        submitted.ClearDomainEvents();
+        var blankComment = submitted.RequestChanges(" ", Later);
+        var submitAgain = submitted.Submit(NoErrors, Later);
+        var startOverSubmitted = submitted.StartOver();
+
+        Assert.False(invalidSubmission || approveDraft || requestOnDraft || blankComment || submitAgain || startOverSubmitted);
+        Assert.Empty(draft.DomainEvents);
+        Assert.Empty(submitted.DomainEvents);
+    }
+
+    [Fact]
+    public void Given_a_draft_When_replacing_its_character_sheet_Then_no_event_is_raised()
+    {
+        var investigator = NewDraft();
+        investigator.ClearDomainEvents();
+
+        investigator.ReplaceCharacterSheet(NamedSheet, Later);
+
+        Assert.Empty(investigator.DomainEvents);
+    }
+
+    [Fact]
+    public void Given_a_draft_When_starting_over_Then_investigator_started_over_is_raised()
+    {
+        var investigator = NewDraft();
+        investigator.ClearDomainEvents();
+
+        var startedOver = investigator.StartOver();
+
+        Assert.True(startedOver);
+        var raised = Assert.Single(investigator.DomainEvents);
+        Assert.Equal(new InvestigatorStartedOver(investigator.CampaignId, investigator.Id, investigator.PlayerAccountId), raised);
+    }
+
+    [Theory]
+    [InlineData(InvestigatorStatus.Submitted)]
+    [InlineData(InvestigatorStatus.ChangesRequested)]
+    [InlineData(InvestigatorStatus.Approved)]
+    public void Given_an_investigator_past_draft_When_starting_over_Then_it_returns_false_and_raises_nothing(InvestigatorStatus status)
+    {
+        var investigator = Submitted();
+        if (status == InvestigatorStatus.ChangesRequested)
+        {
+            investigator.RequestChanges("Add a backstory.", Later);
+        }
+
+        if (status == InvestigatorStatus.Approved)
+        {
+            investigator.Approve(Later);
+        }
+
+        investigator.ClearDomainEvents();
+
+        Assert.False(investigator.StartOver());
+        Assert.Empty(investigator.DomainEvents);
+    }
 }

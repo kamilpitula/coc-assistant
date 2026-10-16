@@ -210,5 +210,39 @@ public class PlayerInvestigatorServiceTests : IDisposable
         Assert.Equal(InvestigatorCommandOutcome.NotFound, await AsPlayerAsync(service => service.DeleteMineAsync(campaignId, Player, CancellationToken.None)));
     }
 
+    [Fact]
+    public async Task Given_a_draft_When_starting_over_Then_investigator_started_over_is_dispatched()
+    {
+        var campaignId = await CampaignWithPlayerAsync();
+        var investigatorId = await _scenario.CreateDraftAsync(campaignId, Player);
+        var dispatcher = new RecordingDomainEventDispatcher();
+
+        using (var context = _scenario.Fixture.CreateContext(dispatcher))
+        {
+            await _scenario.PlayerService(context).DeleteMineAsync(campaignId, Player, CancellationToken.None);
+        }
+
+        Assert.Equal(
+            new InvestigatorStartedOver(campaignId, investigatorId, Player),
+            Assert.Single(dispatcher.Dispatched));
+    }
+
+    [Fact]
+    public async Task Given_a_submitted_investigator_When_starting_over_Then_a_status_conflict_dispatches_nothing()
+    {
+        var campaignId = await CampaignWithPlayerAsync();
+        await _scenario.CreateSubmittedAsync(campaignId, Player);
+        var dispatcher = new RecordingDomainEventDispatcher();
+
+        InvestigatorCommandOutcome outcome;
+        using (var context = _scenario.Fixture.CreateContext(dispatcher))
+        {
+            outcome = await _scenario.PlayerService(context).DeleteMineAsync(campaignId, Player, CancellationToken.None);
+        }
+
+        Assert.Equal(InvestigatorCommandOutcome.StatusConflict, outcome);
+        Assert.Empty(dispatcher.Dispatches);
+    }
+
     public void Dispose() => _scenario.Dispose();
 }

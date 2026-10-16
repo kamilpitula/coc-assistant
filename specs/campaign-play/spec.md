@@ -240,10 +240,54 @@ Scenario: Keeper removes a Wall Entry
   When the Keeper removes it
   Then it is absent for the Keeper and the Player
 
+# Live update scenarios trace to specs/campaign-wall/ux.md (WL-UX-n) and specs/campaign-overview/ux.md (CO-UX-n).
+
 Scenario: Live Wall Entry is delivered to connected members
+  # WL-UX-11
   Given a Keeper and a Player are connected to the same Campaign
   When the Keeper creates a Public Wall Entry
   Then the Player receives the new Wall Entry without manually reloading
+  And the Wall Entry is announced politely on the Campaign overview preview
+  And a Player on the Wall sees it at the top of the list
+
+Scenario: Keeper-only Wall Entry never reaches a Player live
+  # WL-UX-12
+  Given a Keeper and a Player are connected to the same Campaign
+  When the Keeper creates a Keeper-only Wall Entry and then a Public Wall Entry
+  Then the Player sees only the Public Wall Entry
+  And no Keeper-only text or signal reaches the Player
+
+Scenario: A removed Wall Entry disappears for connected members
+  # WL-UX-13
+  Given a Keeper and a Player are connected to the same Campaign
+  And the Campaign has a Public Wall Entry
+  When the Keeper removes the Wall Entry
+  Then the Wall Entry disappears from the Player's Wall and preview without reloading
+
+Scenario: The Keeper sees a submission without reloading
+  # CO-UX-15
+  Given the Keeper has the Campaign overview open
+  When a Player submits their Investigator
+  Then the Keeper's row for that Player shows "Submitted" and the attention list offers the review without reloading
+
+Scenario: A Player sees their Investigator approved without reloading
+  # CO-UX-13, CO-UX-16, CO-UX-17
+  Given a Player with a Submitted Investigator and a second Player have the Campaign overview open
+  When the Keeper approves the Investigator
+  Then the owner's row shows Approved and the review-related attention item is gone without reloading
+  And the second Player sees the Investigator's name
+
+Scenario: A Player sees changes requested without reloading
+  # CO-UX-16
+  Given a Player with a Submitted Investigator has the Campaign overview open
+  When the Keeper requests changes
+  Then the Player sees the Changes Requested attention item without reloading
+
+Scenario: Changes made while disconnected are caught up
+  # WL-UX-11, PR-UX-8
+  Given a Player's live connection is cut
+  When the Keeper creates a Public Wall Entry and the connection is restored
+  Then the Player sees the Wall Entry after "Reconnected."
 
 # Presence scenarios trace to specs/campaign-play/ux.md section 9 (PR-UX-n).
 

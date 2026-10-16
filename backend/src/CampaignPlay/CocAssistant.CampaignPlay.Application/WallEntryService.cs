@@ -88,7 +88,7 @@ public class WallEntryService
         }
 
         var entry = await _wallEntries.FindByIdAsync(campaignId, entryId, cancellationToken);
-        if (entry is null || !entry.CanBeRemovedBy(campaign, callerAccountId))
+        if (entry is null || !entry.Remove(campaign, callerAccountId))
         {
             return RemoveWallEntryOutcome.NotFound;
         }

@@ -63,7 +63,9 @@ public class Investigator : AggregateRoot
             throw new ArgumentException("Player account is required.", nameof(playerAccountId));
         }
 
-        return new Investigator(campaignId, playerAccountId, createdAt);
+        var investigator = new Investigator(campaignId, playerAccountId, createdAt);
+        investigator.Raise(new InvestigatorCreated(campaignId, investigator.Id, playerAccountId));
+        return investigator;
     }
 
     public bool ReplaceCharacterSheet(CharacterSheet characterSheet, DateTimeOffset now)
@@ -88,6 +90,7 @@ public class Investigator : AggregateRoot
 
         Status = InvestigatorStatus.Submitted;
         Touch(now);
+        Raise(new InvestigatorSubmitted(CampaignId, Id, PlayerAccountId));
         return true;
     }
 
@@ -101,6 +104,7 @@ public class Investigator : AggregateRoot
 
         Status = InvestigatorStatus.Approved;
         Touch(now);
+        Raise(new InvestigatorApproved(CampaignId, Id, PlayerAccountId));
         return true;
     }
 
@@ -117,6 +121,22 @@ public class Investigator : AggregateRoot
         Status = InvestigatorStatus.ChangesRequested;
         ChangeRequestComment = comment;
         Touch(now);
+        Raise(new InvestigatorChangesRequested(CampaignId, Id, PlayerAccountId));
+        return true;
+    }
+
+    /// <summary>
+    /// Records "start over" when the Investigator is a Draft; the caller then deletes it. Returns false and raises
+    /// nothing otherwise.
+    /// </summary>
+    public bool StartOver()
+    {
+        if (!CanStartOver)
+        {
+            return false;
+        }
+
+        Raise(new InvestigatorStartedOver(CampaignId, Id, PlayerAccountId));
         return true;
     }
 

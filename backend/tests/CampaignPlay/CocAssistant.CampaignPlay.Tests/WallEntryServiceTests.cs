@@ -275,4 +275,55 @@ public class WallEntryServiceTests : IDisposable
         Assert.Equal(RemoveWallEntryOutcome.NotFound, await RemoveAsync(campaignId, Keeper, Guid.NewGuid()));
         Assert.Single((await ListAsync(campaignId, Keeper))!.Entries);
     }
+
+    [Fact]
+    public async Task Given_a_keeper_only_entry_When_the_keeper_removes_it_Then_wall_entry_removed_is_dispatched_with_its_visibility()
+    {
+        var campaignId = await CampaignWithPlayersAsync();
+        var entry = (await AddAsync(campaignId, Keeper, "Secret.", WallEntryVisibility.KeeperOnly)).Entry!;
+        var dispatcher = new RecordingDomainEventDispatcher();
+
+        using (var context = _scenario.Fixture.CreateContext(dispatcher))
+        {
+            await CreateService(context).RemoveAsync(campaignId, Keeper, entry.Id, CancellationToken.None);
+        }
+
+        Assert.Equal(
+            new WallEntryRemoved(campaignId, entry.Id, WallEntryVisibility.KeeperOnly),
+            Assert.Single(dispatcher.Dispatched));
+    }
+
+    [Fact]
+    public async Task Given_a_players_or_foreign_removal_When_removing_Then_not_found_and_no_event_is_dispatched()
+    {
+        var campaignId = await CampaignWithPlayersAsync();
+        var entry = (await AddAsync(campaignId, Player, "Mine.")).Entry!;
+        var dispatcher = new RecordingDomainEventDispatcher();
+
+        using (var context = _scenario.Fixture.CreateContext(dispatcher))
+        {
+            var service = CreateService(context);
+            Assert.Equal(RemoveWallEntryOutcome.NotFound, await service.RemoveAsync(campaignId, Player, entry.Id, CancellationToken.None));
+            Assert.Equal(RemoveWallEntryOutcome.NotFound, await service.RemoveAsync(campaignId, Keeper, Guid.NewGuid(), CancellationToken.None));
+        }
+
+        Assert.Empty(dispatcher.Dispatches);
+    }
+
+    [Fact]
+    public async Task Given_a_new_entry_When_it_is_saved_Then_wall_entry_added_is_dispatched()
+    {
+        var campaignId = await CampaignWithPlayersAsync();
+        var dispatcher = new RecordingDomainEventDispatcher();
+
+        AddWallEntryResult result;
+        using (var context = _scenario.Fixture.CreateContext(dispatcher))
+        {
+            result = await CreateService(context).AddAsync(campaignId, Keeper, "Hello.", WallEntryVisibility.Public, CancellationToken.None);
+        }
+
+        Assert.Equal(
+            new WallEntryAdded(campaignId, result.Entry!.Id, WallEntryVisibility.Public),
+            Assert.Single(dispatcher.Dispatched));
+    }
 }
