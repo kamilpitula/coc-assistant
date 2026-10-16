@@ -20,7 +20,8 @@ Behavior and rules: [specs/campaign-play/spec.md](../campaign-play/spec.md) (Pla
   - Keeper: reads all entries, adds Public or Keeper only entries, removes any entry.
   - Player: reads Public entries, adds Public entries. Cannot see, add, or infer Keeper only entries. Cannot remove.
 - Entries cannot be edited. A Keeper corrects an entry by removing it and adding a new one.
-- Out of scope: Play Session grouping or link (deferred), live delivery from other members (PBI-CP-006).
+- Out of scope: Play Session grouping or link (deferred).
+- Live delivery of other members' changes (PBI-CP-006, selected Option A "insert directly at the top", 2026-10-16) is in section 4.5. Rejected: holding new entries behind a "Show new entries" button (an extra step when liveness matters, and a second model next to the preview) and inserting or holding by scroll position (two mechanisms, unpredictable for assistive technology users).
 
 ## 2. Page layout (`campaign-wall`)
 
@@ -98,7 +99,18 @@ Wall                                                          (h1)
 
 ### 4.4 Player view
 - The same page without the visibility group, without any "Keeper only" badge, and without "Remove". A Player never receives Keeper only entries, so there is no placeholder, count, gap, or hint for them.
-- Entries added by other members appear after a reload or after "Try again" until live delivery ships (PBI-CP-006). No stale-data banner is shown.
+- Entries added or removed by other members arrive live (section 4.5). No stale-data banner is shown.
+
+### 4.5 Live updates (PBI-CP-006)
+- **Arrival:** an entry another member adds appears at the top of the list in place, with no animation and no reordering. Entries already loaded through "Show older entries" stay loaded: the number of loaded pages is kept, and an entry at a page boundary may move into the next "Show older entries" page. None is duplicated or lost.
+- **Removal:** an entry the Keeper removes elsewhere leaves the list in place, with no announcement. If keyboard focus was on that entry's "Remove" button, focus moves as in section 4.3 (the next entry, then the previous one, then the Textarea). An open remove dialog for an entry that is already gone stays open; confirming it treats "not found" as removed (section 4.3).
+- **Composer:** live updates never change the Textarea text, the chosen visibility, the counter, or focus.
+- **Announcements:** a visually hidden polite `role="status"` region of its own, so the visible "Wall Entry added." / "Wall Entry removed." text is untouched.
+  - The first batch of new entries is announced at once. New entries within the next 5 seconds are collected and announced as one merged message when the 5 seconds end, which starts a new window.
+  - One entry: "New Wall Entry from {author}." Several from one author: "{n} new Wall Entries from {author}." Several authors: "{n} new Wall Entries."
+  - Not announced: anything before the list has been fetched since the page opened (first load, even when cached data showed first); entries loaded by "Show older entries"; removals; the viewer's own post from this tab, which is already in the list.
+  - The viewer's own post from another tab is announced like any member's post.
+- **Reconnect:** changes found by the catch-up refetch follow the same arrival, removal, and announcement rules.
 
 ## 5. Navigation changes
 
@@ -119,7 +131,8 @@ Completes [campaign-overview ux](../campaign-overview/ux.md) section 7.
 - **"Open the Wall":** a link to `/campaigns/$campaignId/wall`, shown in every state except loading.
 - **Empty, loading, error:** as in campaign-overview ux section 7 ("Nothing on the Wall yet.", three Skeleton entries, "We couldn't load the Wall." with "Try again").
 - **Freshness:** when an entry is added or removed on the Wall page, the preview refreshes the next time the overview is shown.
-- **Live updates and announcements:** PBI-CP-006.
+- **Live updates (PBI-CP-006):** the arrival, removal, first-load, and reconnect rules of section 4.5 apply. A new entry goes to the top and the sixth drops off; after a removal the next older entry fills in.
+- **Announcements:** the copy and 5-second merge of section 4.5, through a visually hidden `aria-live="polite"` region inside the preview section, which is the section's one live region (campaign-overview ux CO-A11Y-7).
 
 ## 8. Content
 
@@ -145,6 +158,7 @@ Completes [campaign-overview ux](../campaign-overview/ux.md) section 7.
 | Older entries | Show older entries / Loading... / We couldn't load older entries. |
 | Empty | Nothing on the Wall yet. |
 | Load error | We couldn't load the Wall. |
+| Live arrival (one / one author / several authors) | New Wall Entry from {author}. / {n} new Wall Entries from {author}. / {n} new Wall Entries. |
 
 Never use "note", "log message", "event", or "private" in the UI (see root CONTEXT.md). The UI says "Keeper only" (the spec's wording); CONTEXT.md's term is "Keeper-Only Wall Entry", which is the same concept.
 
@@ -174,6 +188,11 @@ Stories cover: Keeper and Player compose boxes, empty, loading, load error, a pa
 - **WL-UX-8** Loading, empty, load error, and older-entries error states are shown as in section 4.1, with a working "Try again".
 - **WL-UX-9** The overview shows at most 5 entries in the Wall preview with "Open the Wall"; the Player's 5 are the 5 latest Public entries; Keeper only entries show the badge to the Keeper only (CO-UX-14).
 - **WL-UX-10** Opening the Wall of a Campaign the viewer is not a member of shows the not-found page.
+- **WL-UX-11** (PBI-CP-006) A Public entry another member adds appears at the top of the Wall and the preview without a reload; entries loaded through "Show older entries" stay.
+- **WL-UX-12** (PBI-CP-006) A Player receives nothing for a Keeper only entry: the list, the preview, and the announcements are unchanged.
+- **WL-UX-13** (PBI-CP-006) An entry the Keeper removes disappears from other members' Wall and preview without a reload and without an announcement.
+- **WL-UX-14** (PBI-CP-006) New entries are announced at most once per 5 seconds with the section 4.5 copy, merging bursts; nothing is announced on first load, for older pages, or for the viewer's own post in the same tab.
+- **WL-UX-15** (PBI-CP-006) Live updates never change the composer's text, visibility, or focus.
 
 ## 11. Accessibility acceptance criteria (WCAG 2.2 AA)
 
@@ -187,11 +206,13 @@ Stories cover: Keeper and Player compose boxes, empty, loading, load error, a pa
 - **WL-A11Y-8** At 320px and at 200% zoom the page fits without horizontal scrolling; long words wrap (1.4.10).
 - **WL-A11Y-9** Muted text meets 4.5:1 (1.4.3). No motion is used (2.3.3).
 - **WL-A11Y-10** Loading lists are marked `aria-busy="true"`; "Show older entries" does not move focus and the new rows are reachable after the button in tab order (2.4.3).
+- **WL-A11Y-11** (PBI-CP-006) Live arrivals and removals never move focus, except when the entry of the focused "Remove" button is removed, where the section 4.3 rule applies (2.4.3, 4.1.3).
+- **WL-A11Y-12** (PBI-CP-006) Live announcements use a polite status region separate from the visible status text (4.1.3).
+- **WL-A11Y-13** (PBI-CP-006) No motion is used for live changes (2.3.3).
 
 ## 12. Open decisions and research gaps
 
 - **Deferred:** Play Session grouping or link, until Play Sessions exist (PBI-CP-004 follow-up).
-- **Deferred:** live delivery, announcement of other members' entries, and the preview's "New Wall Entry from {author}." announcement (PBI-CP-006).
 - **Deferred:** editing entries, Player removal of their own entries.
 - **Research gap:** whether Keepers mistakenly post Public instead of Keeper only; the default is Public and the choice is explained next to the radios. Check with early Keepers.
 - **Research gap:** whether Players use the Wall for their own actions and how long entries get in practice (the 2000 limit is an assumption).
