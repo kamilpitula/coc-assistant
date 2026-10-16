@@ -15,6 +15,7 @@ import {
 import type { CampaignView } from '@/campaign-play/types/Campaign'
 import type { CampaignMember } from '@/campaign-play/types/CampaignMember'
 import type { InvestigatorSummary } from '@/campaign-play/types/Investigator'
+import { scenarioQueryKeys } from '@/scenario-preparation/services/scenarioApi'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 
@@ -39,6 +40,10 @@ function OverviewStory({ campaign, members, investigator = null }: StoryArgs) {
         seed={(client) => {
           client.setQueryData(campaignQueryKeys.detail(STORY_CAMPAIGN_ID), campaign)
           client.setQueryData(campaignQueryKeys.members(STORY_CAMPAIGN_ID), members)
+          client.setQueryData(scenarioQueryKeys.list(STORY_CAMPAIGN_ID), [
+            { id: 's1', title: 'The Haunting', keeperNotes: '' },
+            { id: 's2', title: 'Edge of Darkness', keeperNotes: '' },
+          ])
           client.setQueryData(campaignQueryKeys.myInvestigator(STORY_CAMPAIGN_ID), investigator)
           client.setQueryData(campaignQueryKeys.myCharacterSheet(STORY_CAMPAIGN_ID), myCharacterSheet({ characterSheet: sheetView() }))
         }}

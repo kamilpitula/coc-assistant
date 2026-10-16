@@ -20,6 +20,9 @@ vi.mock('@/campaign-play/components/campaign-table/campaign-table', () => ({
 vi.mock('@/campaign-play/components/wall-preview/wall-preview', () => ({
   WallPreview: () => <h2>Wall</h2>,
 }))
+vi.mock('@/scenario-preparation/components/scenario-list-section/scenario-list-section', () => ({
+  ScenarioListSection: () => <h2>Scenarios</h2>,
+}))
 
 const keeperCampaign = {
   id: 'c1',
@@ -39,17 +42,28 @@ describe('CampaignPage (the overview)', () => {
     routerState.location.state = {}
   })
 
-  it.each([
-    ['Keeper', keeperCampaign],
-    ['Player', playerCampaign],
-  ])('shows the %s what needs them, then who is at the table, then the Wall, and no Invite or Rules options (CO-UX-3, CO-UX-14)', (role, campaign) => {
-    mockUseCampaign.mockReturnValue({ data: campaign })
+  it('shows the Player what needs them, then who is at the table, then the Wall, and no Scenarios, Invite or Rules options (CO-UX-3, CO-UX-14, SP-UX-9)', () => {
+    mockUseCampaign.mockReturnValue({ data: playerCampaign })
 
     render(<CampaignPage campaignId="c1" />)
 
     expect(screen.getAllByRole('heading').map((heading) => heading.textContent)).toEqual([
-      `Needs your attention (${role})`,
+      'Needs your attention (Player)',
       'At the table',
+      'Wall',
+    ])
+  })
+
+  // specs/campaign-overview/ux.md section 3 and specs/scenario-preparation/ux.md section 2: the Keeper's Scenarios follow "At the table".
+  it('shows the Keeper what needs them, then who is at the table, then the Scenarios, then the Wall (CO-UX-3, SP-UX-1)', () => {
+    mockUseCampaign.mockReturnValue({ data: keeperCampaign })
+
+    render(<CampaignPage campaignId="c1" />)
+
+    expect(screen.getAllByRole('heading').map((heading) => heading.textContent)).toEqual([
+      'Needs your attention (Keeper)',
+      'At the table',
+      'Scenarios',
       'Wall',
     ])
   })

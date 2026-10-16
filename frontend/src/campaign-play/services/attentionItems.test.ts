@@ -14,8 +14,24 @@ function player(memberId: string, displayName: string, investigator: RosterInves
 }
 
 describe('keeperAttentionItems', () => {
+  // specs/scenario-preparation/ux.md section 3; SP-UX-2.
+  it('asks the Keeper to create a Scenario, after the other items, only while the Campaign has none', () => {
+    const members = [
+      keeper,
+      player('p1', 'Ana Ruiz', { visibility: 'Visible', id: 'i1', name: 'Dr. Ames', status: 'Submitted' }),
+    ]
+
+    expect(keeperAttentionItems([keeper], 0)).toEqual([{ kind: 'invitePlayers' }, { kind: 'createScenario' }])
+    expect(keeperAttentionItems(members, 0)).toEqual([
+      { kind: 'review', investigatorId: 'i1', investigatorName: 'Dr. Ames', playerName: 'Ana Ruiz' },
+      { kind: 'createScenario' },
+    ])
+    expect(keeperAttentionItems([keeper], 1)).toEqual([{ kind: 'invitePlayers' }])
+    expect(keeperAttentionItems([keeper, player('p1', 'Ana Ruiz', null)], 2)).toEqual([])
+  })
+
   it('asks the Keeper to invite Players when nobody has joined', () => {
-    expect(keeperAttentionItems([keeper])).toEqual([{ kind: 'invitePlayers' }])
+    expect(keeperAttentionItems([keeper], 1)).toEqual([{ kind: 'invitePlayers' }])
   })
 
   it('lists one review item per Submitted Investigator, in roster order', () => {
@@ -29,14 +45,14 @@ describe('keeperAttentionItems', () => {
       player('p6', 'Finn Lee', null),
     ]
 
-    expect(keeperAttentionItems(members)).toEqual([
+    expect(keeperAttentionItems(members, 1)).toEqual([
       { kind: 'review', investigatorId: 'i1', investigatorName: 'Dr. Ames', playerName: 'Ana Ruiz' },
       { kind: 'review', investigatorId: 'i4', investigatorName: 'Unnamed Investigator', playerName: 'Dan Moss' },
     ])
   })
 
   it('has nothing for the Keeper when no Investigator waits for review', () => {
-    expect(keeperAttentionItems([keeper, player('p1', 'Ana Ruiz', null)])).toEqual([])
+    expect(keeperAttentionItems([keeper, player('p1', 'Ana Ruiz', null)], 1)).toEqual([])
   })
 })
 
