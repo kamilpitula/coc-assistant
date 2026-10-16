@@ -70,6 +70,7 @@ Campaign Play gives a Keeper and Players a shared place to run a persistent Call
 - A Campaign's Era is required and determines which rule data applies to its Character Sheets.
 - The Keeper is the primary Wall Entry author. Players may add lightweight Wall Entries representing their own actions or notes.
 - Wall Entry visibility is either Public or Keeper-only. Keeper-only Wall Entries are never visible to Players.
+- The Campaign Wall page, composer, removal, and Wall preview are specified in [specs/campaign-wall/ux.md](../campaign-wall/ux.md).
 - v1 provides live updates and Presence only; offline notifications, scheduling, dice automation, and billing are outside this feature.
 
 ## Contract

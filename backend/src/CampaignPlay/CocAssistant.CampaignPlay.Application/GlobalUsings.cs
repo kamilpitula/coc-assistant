@@ -3,3 +3,7 @@ global using CocAssistant.CampaignPlay.Domain.RuleData;
 global using CocAssistant.CampaignPlay.Domain.CharacterSheets;
 global using CocAssistant.CampaignPlay.Domain.Investigators;
 global using CocAssistant.CampaignPlay.Domain.Presence;
+global using CocAssistant.CampaignPlay.Domain.Wall;
+global using System.Diagnostics.CodeAnalysis;
+global using System.Globalization;
+global using System.Text;
