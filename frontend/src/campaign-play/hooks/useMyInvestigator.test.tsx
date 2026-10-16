@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import { InvestigatorConflictError } from '@/campaign-play/services/investigatorApi'
+import { EMPTY_BACKSTORY } from '@/campaign-play/state/characterSheetForm'
 
 import { useCreateInvestigator, useDeleteInvestigator, useSaveCharacterSheet } from './useMyInvestigator'
 
@@ -64,6 +65,10 @@ describe('useMyInvestigator mutations', () => {
         quickFire: { values: [], personalInterests: [] },
         ageEffects: { deductions: {}, eduImprovementChecks: [] },
         luckRolls: [],
+        backstory: EMPTY_BACKSTORY,
+        keyConnection: null,
+        weapons: [],
+        gear: null,
       })
     })
 

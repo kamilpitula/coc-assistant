@@ -24,6 +24,7 @@ interface TextFieldProps extends WizardFieldBaseProps {
   value: string | null
   /** Offered through a datalist; any other text is accepted too. */
   suggestions?: string[]
+  maxLength?: number
   onChange: (value: string | null) => void
 }
 
@@ -50,6 +51,7 @@ export function WizardField(props: WizardFieldProps) {
   const helpId = `${inputId}-help`
   const describedBy = [help ? helpId : null, error ? errorId(field) : null].filter(Boolean).join(' ') || undefined
   const suggestions = props.type === 'number' ? undefined : props.suggestions
+  const maxLength = props.type === 'number' ? undefined : props.maxLength
   const suggestionsId = `${inputId}-suggestions`
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -76,6 +78,7 @@ export function WizardField(props: WizardFieldProps) {
         onBlur={(event) => onBlur?.(field, event.relatedTarget)}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
+        maxLength={maxLength}
         list={suggestions ? suggestionsId : undefined}
         autoComplete={suggestions ? 'off' : undefined}
       />

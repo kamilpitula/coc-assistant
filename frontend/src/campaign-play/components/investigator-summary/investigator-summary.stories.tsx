@@ -16,6 +16,8 @@ export const Calculated: Story = {
     problemCount: 0,
     derived: {
       luck: 55,
+      idea: 60,
+      know: 50,
       hitPoints: 12,
       magicPoints: 12,
       sanity: { current: 60, maximum: 99 },
@@ -36,6 +38,8 @@ export const NotYetCalculatedWithProblems: Story = {
     problemCount: 2,
     derived: {
       luck: null,
+      idea: null,
+      know: null,
       hitPoints: null,
       magicPoints: null,
       sanity: { current: null, maximum: null },

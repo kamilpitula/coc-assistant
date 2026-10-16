@@ -128,6 +128,22 @@ _Avoid_: Hobby points, free points
 The spending level, cash, and assets that follow from an Investigator's Credit Rating and the Campaign's Era, per the [finances rules](docs/game-rules/coc7_character_creation_and_development_rules.md#11-finances-gear-and-possessions).
 _Avoid_: Money, finances
 
+**Backstory**:
+The Player-written narrative of an Investigator: My Story and the Background entries of the [backstory fields](docs/game-rules/coc7_character_creation_and_development_rules.md#12-backstory-fields).
+_Avoid_: Bio, history, lore
+
+**Key Connection**:
+The one Backstory entry selected as the Investigator's especially important connection, per the [backstory fields](docs/game-rules/coc7_character_creation_and_development_rules.md#12-backstory-fields).
+_Avoid_: Anchor, key link, main bond
+
+**Custom Weapon**:
+A weapon whose details the Player enters as free text because no weapon catalog exists, approved by the Keeper through Character Approval per [project_ruleset.md section 4.2](docs/game-rules/project_ruleset.md#42-weapons-gear-and-specializations-without-catalogs).
+_Avoid_: Homebrew weapon, house weapon
+
+**Gear**:
+The significant possessions an Investigator carries, recorded as free text per the [finances rules](docs/game-rules/coc7_character_creation_and_development_rules.md#11-finances-gear-and-possessions).
+_Avoid_: Inventory, equipment list, items
+
 **Roll Record**:
 A recorded dice result used to create or develop an Investigator, naming what it was rolled for, the dice, the result, and who produced it.
 _Avoid_: Dice log, roll history

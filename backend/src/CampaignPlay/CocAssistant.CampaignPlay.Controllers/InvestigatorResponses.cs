@@ -43,8 +43,23 @@ public record CharacterSheetViewResponse(
     OccupationViewResponse? Occupation,
     IReadOnlyList<SkillRowResponse> Skills,
     QuickFireResponse QuickFire,
+    IReadOnlyDictionary<string, string?> Backstory,
+    string? KeyConnection,
+    IReadOnlyList<CustomWeaponResponse> Weapons,
+    string? Gear,
     DerivedResponse Derived,
     IReadOnlyList<RollRecordResponse> RollRecords);
+
+/// <summary>A Custom Weapon as entered; every v1 weapon is custom (docs/game-rules/project_ruleset.md section 4.2).</summary>
+public record CustomWeaponResponse(
+    string? Name,
+    string? Skill,
+    string? Damage,
+    string? Attacks,
+    string? Range,
+    string? Ammo,
+    string? Malfunction,
+    bool IsCustom);
 
 public record SkillReferenceResponse(string Skill, string? Specialization);
 
@@ -128,7 +143,9 @@ public record DerivedResponse(
     PointBudgetResponse? OccupationPoints,
     PointBudgetResponse? PersonalInterestPoints,
     int? CreditRating,
-    WealthResponse? Wealth);
+    WealthResponse? Wealth,
+    int? Idea,
+    int? Know);
 
 public record SanityResponse(int? Current, int? Maximum);
 

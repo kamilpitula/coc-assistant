@@ -1,13 +1,18 @@
 import type { WizardStep } from '@/campaign-play/services/wizardProgress'
 import type { CreationMethod } from '@/campaign-play/types/Campaign'
 import {
+  BACKSTORY_ENTRIES,
   CHARACTERISTIC_CODES,
   type AgeBracket,
+  type BackstoryEntry,
+  type BackstoryInputs,
+  type BackstoryKey,
   type CharacterSheetInputs,
   type CharacterSheetRules,
   type CharacterSheetView,
   type CharacteristicCode,
   type CustomOccupationInputs,
+  type CustomWeaponInputs,
   type EduImprovementCheckInputs,
   type IdentityInputs,
   type QuickFireInputs,
@@ -34,8 +39,26 @@ export type CharacterSheetFormAction =
   | { type: 'quickFireValue'; skill: SkillReference; value: number | null }
   | { type: 'quickFireInterest'; skill: SkillReference; chosen: boolean }
   | { type: 'quickFireExtraSkill'; skill: SkillReference | null }
+  | { type: 'backstory'; key: BackstoryKey; value: string | null }
+  | { type: 'keyConnection'; entry: BackstoryEntry | null }
+  | { type: 'addWeapon' }
+  | { type: 'weapon'; index: number; field: keyof CustomWeaponInputs; value: string | null }
+  | { type: 'removeWeapon'; index: number }
+  | { type: 'gear'; value: string | null }
 
 const NO_QUICK_FIRE: QuickFireInputs = { values: [], personalInterests: [], extraSkill: null }
+
+/** A Backstory with nothing filled in (docs/game-rules section 12). */
+export const EMPTY_BACKSTORY: BackstoryInputs = Object.fromEntries(
+  ['myStory', ...BACKSTORY_ENTRIES].map((key) => [key, null]),
+) as BackstoryInputs
+
+const EMPTY_WEAPON: CustomWeaponInputs = { name: null, skill: null, damage: null, attacks: null, range: null, ammo: null, malfunction: null }
+
+/** True when a Backstory text has content; a blank text is not filled in. */
+export function isFilled(text: string | null | undefined): boolean {
+  return Boolean(text?.trim())
+}
 
 /** True when two skill references name the same skill (names compare without regard to case). */
 export function sameSkill(first: SkillReference, second: SkillReference): boolean {
@@ -73,6 +96,10 @@ export function inputsFromSheet(sheet: CharacterSheetView): CharacterSheetInputs
       personalInterests: [...sheet.quickFire.personalInterests],
       extraSkill: sheet.quickFire.extraSkill ?? null,
     },
+    backstory: { ...sheet.backstory },
+    keyConnection: sheet.keyConnection,
+    weapons: sheet.weapons.map(({ name, skill, damage, attacks, range, ammo, malfunction }) => ({ name, skill, damage, attacks, range, ammo, malfunction })),
+    gear: sheet.gear,
   }
 }
 
@@ -151,6 +178,31 @@ function withQuickFireInterest(quickFire: QuickFireInputs, skill: SkillReference
   return { ...quickFire, personalInterests: chosen ? [...others, { skill: skill.skill, specialization: skill.specialization }] : others }
 }
 
+// Section 12: emptying the Key Connection's entry clears the choice (ux.md section 6.7).
+function withBackstory(inputs: CharacterSheetInputs, key: BackstoryKey, value: string | null): CharacterSheetInputs {
+  const clearsKeyConnection = key === inputs.keyConnection && !isFilled(value)
+  return { ...inputs, backstory: { ...inputs.backstory, [key]: value }, keyConnection: clearsKeyConnection ? null : inputs.keyConnection }
+}
+
+function backstoryAndPossessionsReducer(inputs: CharacterSheetInputs, action: CharacterSheetFormAction): CharacterSheetInputs {
+  switch (action.type) {
+    case 'backstory':
+      return withBackstory(inputs, action.key, action.value)
+    case 'keyConnection':
+      return { ...inputs, keyConnection: action.entry }
+    case 'addWeapon':
+      return { ...inputs, weapons: [...inputs.weapons, EMPTY_WEAPON] }
+    case 'weapon':
+      return { ...inputs, weapons: inputs.weapons.map((weapon, index) => (index === action.index ? { ...weapon, [action.field]: action.value } : weapon)) }
+    case 'removeWeapon':
+      return { ...inputs, weapons: inputs.weapons.filter((_, index) => index !== action.index) }
+    case 'gear':
+      return { ...inputs, gear: action.value }
+    default:
+      return inputs
+  }
+}
+
 function occupationReducer(inputs: CharacterSheetInputs, action: CharacterSheetFormAction): CharacterSheetInputs {
   switch (action.type) {
     case 'occupation':
@@ -171,7 +223,7 @@ function occupationReducer(inputs: CharacterSheetInputs, action: CharacterSheetF
         quickFire: { ...inputs.quickFire, extraSkill: action.skill ? { skill: action.skill.skill, specialization: action.skill.specialization } : null },
       }
     default:
-      return inputs
+      return backstoryAndPossessionsReducer(inputs, action)
   }
 }
 

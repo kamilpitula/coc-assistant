@@ -31,7 +31,15 @@ export function validateCharacterSheet(
     ...(bracket ? eduImprovementProblems(inputs.ageEffects.eduImprovementChecks, rules, bracket) : []),
     ...occupationProblems(inputs, rules),
     ...(inputs.creationMethod === 'QuickFire' ? quickFireSkillProblems(inputs, rules) : skillAllocationProblems(inputs.skills, rules)),
+    ...weaponProblems(inputs),
   ]
+}
+
+// ux.md section 6.7 (app-level, like the Investigator name): every Custom Weapon needs a name.
+function weaponProblems(inputs: CharacterSheetInputs): ValidationError[] {
+  return inputs.weapons.flatMap((weapon, index) =>
+    weapon.name?.trim() ? [] : [error('WeaponNameRequired', `weapons[${index}].name`, 'Enter a name for this weapon.')],
+  )
 }
 
 // docs/game-rules section 15: eight characteristics, valid under the Creation Method (sections 2.1 to 2.3).

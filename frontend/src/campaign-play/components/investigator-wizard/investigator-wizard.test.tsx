@@ -227,6 +227,7 @@ describe('InvestigatorWizard', () => {
 
   it('UX-11: "Submit to Keeper" with errors lists each error with a link to the step that owns it', async () => {
     withSheet(myCharacterSheet())
+    mockSave.mockResolvedValue(myCharacterSheet())
     mockSubmit.mockResolvedValue({ kind: 'invalid', validationErrors: [nameError] })
     render(<InvestigatorWizard campaignId="c1" step="sheet" />)
 
@@ -238,16 +239,103 @@ describe('InvestigatorWizard', () => {
 
   it('UX-11: a successful submit returns to the Campaign page with the submitted message', async () => {
     withSheet(myCharacterSheet())
+    mockSave.mockResolvedValue(myCharacterSheet())
     mockSubmit.mockResolvedValue({ kind: 'submitted', investigator: { id: 'i1', status: 'Submitted' } })
     render(<InvestigatorWizard campaignId="c1" step="sheet" />)
 
     await userEvent.click(screen.getByRole('button', { name: 'Submit to Keeper' }))
 
-    expect(navigateSpy).toHaveBeenCalledWith({
+    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith({
       to: '/campaigns/$campaignId',
       params: { campaignId: 'c1' },
       state: { statusMessage: 'Submitted. Your Keeper will review your Investigator.' },
-    })
+    }))
+  })
+
+  it('UX-27: records the Backstory, Key Connection, a Custom Weapon, and Gear, and saves them before submitting', async () => {
+    withSheet(myCharacterSheet())
+    mockSave.mockResolvedValue(myCharacterSheet())
+    mockSubmit.mockResolvedValue({ kind: 'submitted', investigator: { id: 'i1', status: 'Submitted' } })
+    render(<InvestigatorWizard campaignId="c1" step="sheet" />)
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'My story' }), 'Grew up above a bookshop.')
+    await userEvent.type(screen.getByRole('textbox', { name: 'Significant people' }), 'My sister Ada')
+    await userEvent.click(screen.getByRole('radio', { name: 'Significant people' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Add weapon' }))
+    await userEvent.type(screen.getByLabelText('Weapon 1 name'), 'Knife')
+    await userEvent.type(screen.getByRole('textbox', { name: 'Gear and possessions' }), 'Lantern')
+    await userEvent.click(screen.getByRole('button', { name: 'Submit to Keeper' }))
+
+    await waitFor(() => expect(mockSubmit).toHaveBeenCalled())
+    expect(mockSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backstory: expect.objectContaining({ myStory: 'Grew up above a bookshop.', significantPeople: 'My sister Ada' }),
+        keyConnection: 'significantPeople',
+        weapons: [expect.objectContaining({ name: 'Knife' })],
+        gear: 'Lantern',
+      }),
+    )
+    expect(mockSave.mock.invocationCallOrder[0]).toBeLessThan(mockSubmit.mock.invocationCallOrder[0])
+  })
+
+  it('a "Change" link on Sheet and submit saves the Backstory, weapons, and Gear before opening its step', async () => {
+    withSheet(myCharacterSheet())
+    mockSave.mockResolvedValue(myCharacterSheet())
+    render(<InvestigatorWizard campaignId="c1" step="sheet" />)
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Gear and possessions' }), 'Lantern')
+    await userEvent.click(screen.getByRole('link', { name: 'Change identity' }))
+
+    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith(expect.objectContaining({ params: { campaignId: 'c1', step: 'identity' } })))
+    expect(mockSave).toHaveBeenCalledWith(expect.objectContaining({ gear: 'Lantern' }))
+  })
+
+  it('UX-29: lists every warning in "Worth checking" on Sheet and submit, and submits with them', async () => {
+    const unspent = problem('PersonalInterestPointsUnspent', 'personalInterestPoints', 'You have 60 personal interest points left. Unspent points are lost.', 'Warning')
+    const lowInt = problem('PointBuyBelowRecommendation', 'characteristics.INT', 'INT is below the recommended 40. Check with your Keeper.', 'Warning')
+    withSheet(myCharacterSheet({ validationErrors: [unspent, lowInt] }))
+    mockSave.mockResolvedValue(myCharacterSheet({ validationErrors: [unspent, lowInt] }))
+    mockSubmit.mockResolvedValue({ kind: 'submitted', investigator: { id: 'i1', status: 'Submitted' } })
+    render(<InvestigatorWizard campaignId="c1" step="sheet" />)
+
+    const worthChecking = screen.getByText('Worth checking').parentElement!
+    expect(within(worthChecking).getByText(unspent.message)).toBeInTheDocument()
+    expect(within(worthChecking).getByText(lowInt.message)).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Submit to Keeper' }))
+
+    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith(expect.objectContaining({ to: '/campaigns/$campaignId' })))
+  })
+
+  it('UX-17: does not submit when saving before the submit fails, and "Try again" saves and submits', async () => {
+    withSheet(myCharacterSheet())
+    mockSave.mockRejectedValueOnce(new Error('Failed to save (500)')).mockResolvedValueOnce(myCharacterSheet())
+    mockSubmit.mockResolvedValue({ kind: 'submitted', investigator: { id: 'i1', status: 'Submitted' } })
+    render(<InvestigatorWizard campaignId="c1" step="sheet" />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Submit to Keeper' }))
+
+    expect(await screen.findByText("We couldn't save your Investigator. Your changes are still here - try again.")).toBeInTheDocument()
+    expect(mockSubmit).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(mockSubmit).toHaveBeenCalled())
+  })
+
+  it('UX-11: a weapon without a name is listed in the error summary and its link focuses the name', async () => {
+    const weaponError = problem('WeaponNameRequired', 'weapons[0].name', 'Enter a name for this weapon.')
+    const unnamed = { name: null, skill: null, damage: null, attacks: null, range: null, ammo: null, malfunction: null, isCustom: true }
+    const withWeapon = myCharacterSheet({ characterSheet: sheetView({ weapons: [unnamed] }), validationErrors: [weaponError] })
+    withSheet(withWeapon)
+    mockSave.mockResolvedValue(withWeapon)
+    mockSubmit.mockResolvedValue({ kind: 'invalid', validationErrors: [weaponError] })
+    render(<InvestigatorWizard campaignId="c1" step="sheet" />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Submit to Keeper' }))
+    await userEvent.click(within(await screen.findByRole('alert')).getByRole('link', { name: 'Enter a name for this weapon.' }))
+
+    expect(screen.getByLabelText('Weapon 1 name')).toHaveFocus()
+    expect(screen.getByLabelText('Weapon 1 name')).toHaveAttribute('aria-invalid', 'true')
   })
 
   it('UX-12: opens a Submitted Investigator read-only, with no edit controls', () => {

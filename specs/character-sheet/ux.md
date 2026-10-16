@@ -225,14 +225,21 @@ Quick fire assigns fixed values instead of spending points ([spec.md](spec.md), 
 
 ### 6.7 Sheet and submit (`sheet`)
 Uses the shared `character-sheet-view` in edit mode for its narrative sections and read-only mode for the rest. Sections, each with an `h2`:
-1. **Summary**: identity, characteristics with Hard and Extreme values, and derived values. Each has a "Change" link to its wizard step.
+1. **Summary**: identity, characteristics with Hard and Extreme values, and derived values (including Idea and Know). Each has a "Change" link to its wizard step.
 2. **Skills**: read-only table of skills with points, plus a "Show all skills" toggle. "Change" links point to the two skills steps.
-3. **Backstory**: a Textarea for each backstory field. **Key Connection** is a RadioGroup "Which of these is your Key Connection?" listing the backstory fields that are filled in.
-4. **Weapons**: an "Add weapon" button adds a row with Name, Skill, Damage, Attacks, Range, Ammo, and Malfunction inputs, plus "Remove". Help text: "Enter weapon details from your rulebook. Your Keeper checks them when approving."
-5. **Gear and possessions**: Textarea.
-6. **Wealth**: read-only spending level, cash, and assets.
+3. **Backstory**: a Textarea for "My Story" and for each Background entry, in the order of the rules section, each at most 2000 characters. **Key Connection** is a RadioGroup "Which of these is your Key Connection?" listing the Background entries that are filled in (not My Story), plus "None". Before any entry is filled in, it reads "Fill in a Background entry to choose your Key Connection." instead. Emptying the chosen entry clears the choice.
+4. **Weapons**: an "Add weapon" button adds a weapon, shown as a fieldset with the legend "Weapon 1" and the inputs Name, Skill, Damage, Attacks, Range, Ammo, and Malfunction (labels such as "Weapon 1 name"), plus a "Remove weapon 1" button. The inputs wrap into a grid, one column below 640px. Focus moves to the new weapon's Name after "Add weapon", and to "Add weapon" after a removal. Help text: "Enter weapon details from your rulebook. Your Keeper checks them when approving." A weapon without a name shows the `WeaponNameRequired` error inline and in the error summary on Submit.
+5. **Gear and possessions**: Textarea, at most 2000 characters.
+6. **Wealth**: read-only spending level, cash, and assets, from the server's values. Amounts that are a lower bound read "$5,000,000 or more"; no assets read "None". Before Credit Rating is calculable, each shows an em dash with the visually hidden text "not yet calculated".
+
+A "Change" link saves the step's inputs first, like a stepper link (section 4.1), so Backstory, weapons, and Gear are never lost.
+
+In read-only mode (section 7) sections 3 to 5 show the text with its line breaks, with no inputs. The Key Connection entry is marked "(Key Connection)" after its heading. An empty Backstory, Weapons, or Gear section reads "None recorded.". Each weapon is a row of a table with the columns Weapon, Skill, Damage, Attacks, Range, Ammo, and Malfunction.
+
+**Worth checking** (selected 2026-10-08, option A of three: an Alert at the top of the step; alternatives were warnings inline in each section and a confirmation dialog on Submit): when the sheet has warnings, the "Worth checking" Alert (section 5.2) sits below the error summary and above the sheet, listing every warning from every step. It does not block or confirm Submit.
 
 **Submit to Keeper**:
+- It saves the step's inputs first, as "Save and continue" does, then submits. If the save fails, the save failure Alert of section 5.1 appears and nothing is submitted.
 - It is disabled only while a request is in flight.
 - If errors remain, pressing it shows the error summary, with each link opening the step that owns the field.
 - On success, the Player returns to the Campaign page with the status message "Submitted. Your Keeper will review your Investigator."
@@ -247,7 +254,7 @@ When the Investigator is Changes Requested, a Keeper comment Alert appears at th
 
 ### 7.1 Keeper review screen (`investigator-review`)
 - `h1` is the Investigator name. Below it: "Player: Ada Lovelace" and the status badge.
-- A **Worth checking** Alert lists the warnings. Custom content is also listed there: "Custom occupation: Bootlegger" and "2 custom weapons".
+- A **Worth checking** Alert lists the warnings. Custom content is also listed there: "Custom occupation: Bootlegger" and "2 custom weapons" ("1 custom weapon"). The custom content lines appear only on the Keeper's review; with no warnings and no custom content the Alert is not shown.
 - The sheet sections follow (as in 6.7, read-only).
 - **Dice results** is a Collapsible, collapsed by default, containing a table with columns Rolled for, Dice, Result, Entered by ("Player").
 - The actions sit at the end of the page, not sticky: "Request changes" (secondary) and "Approve" (primary). They appear only when the status is Submitted.
@@ -277,7 +284,7 @@ Tokens: `--destructive` (defined) and `--warning` (added in PBI-CP-003), each wi
 | PBI-CP-008 | Section 2; section 3.1 Rules options |
 | PBI-CP-003 | Section 3 (both roles); sections 4 and 5, including the summary rail without the occupation and personal interest budget lines; step 6.1; step 6.2 for Point buy, including its Luck rows; step 6.3 Age effects; a `sheet` step with Summary and Submit; section 7, including Dice results |
 | PBI-CP-009 | Step 6.2 (Standard rolling, Quick fire, the creation method RadioGroup, and the switch confirmation); steps 6.4 to 6.6 and 6.5a, including UX-22 to UX-26; the summary rail's budget lines; step 6.7 Skills (read-only, also on the Keeper's review) |
-| PBI-CP-010 | Step 6.7 Backstory, Weapons, Gear, Wealth |
+| PBI-CP-010 | Step 6.7 Backstory, Weapons, Gear, Wealth, Idea and Know, Worth checking, and save before submit; section 7.1 custom content lines; UX-27 to UX-30 |
 
 In PBI-CP-009:
 - The stepper shows all seven steps, so the Draft card reads "Step N of 7".
@@ -322,6 +329,10 @@ In PBI-CP-003:
 - **UX-24** Changing a slot choice after assigning moves the old skill to "No longer occupation skills" with its value, its error, and "Remove value"; removing it returns the value to the pool.
 - **UX-25** When Credit Rating frees a Quick fire value, "Extra skill (freed {value})" is a row of the table; the chosen skill takes the freed value.
 - **UX-26** A personal interest choice the rules no longer allow (a Quick fire personal interest that became an occupation skill, the extra skill, or a valued skill, or one chosen twice; personal interest points on Credit Rating or Cthulhu Mythos) is listed under "No longer personal interests" with its error and "Remove"; removing it updates the count.
+- **UX-27** On Sheet and submit, the Player records My Story, Background entries, a Key Connection chosen from the filled-in entries, Custom Weapons, and Gear; "Submit to Keeper" saves them before submitting.
+- **UX-28** The read-only sheet (Player's View and Keeper's review) shows the Backstory with its Key Connection, the weapons table, Gear, and Wealth, with no inputs.
+- **UX-29** On Sheet and submit, every warning is listed in "Worth checking"; a sheet with warnings and no errors submits.
+- **UX-30** The Keeper's "Worth checking" lists the custom occupation and the number of custom weapons with the warnings.
 
 ## 11. Accessibility acceptance criteria (WCAG 2.2 AA)
 

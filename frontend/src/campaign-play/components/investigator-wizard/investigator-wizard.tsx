@@ -13,6 +13,7 @@ import { InvestigatorSummary } from '@/campaign-play/components/investigator-sum
 import { OccupationSkillsStep } from '@/campaign-play/components/occupation-skills-step/occupation-skills-step'
 import { OccupationStep } from '@/campaign-play/components/occupation-step/occupation-step'
 import { PersonalInterestsStep } from '@/campaign-play/components/personal-interests-step/personal-interests-step'
+import { SheetStep } from '@/campaign-play/components/sheet-step/sheet-step'
 import { StartOverDialog } from '@/campaign-play/components/start-over-dialog/start-over-dialog'
 import { WorthCheckingAlert } from '@/campaign-play/components/worth-checking-alert/worth-checking-alert'
 import { ValidationErrorSummary } from '@/campaign-play/components/validation-error-summary/validation-error-summary'
@@ -202,7 +203,8 @@ function WizardForm({ campaignId, step, sheet, allowedMethods, occupationCatalog
     setClientErrors(validateCharacterSheet(inputs, sheet.rules, bracket))
   }
 
-  const go = (move: WizardMove) => void moves.move(move, inputsForSave(inputs, step, bracket, sheet.rules))
+  const saveInputs = () => inputsForSave(inputs, step, bracket, sheet.rules)
+  const go = (move: WizardMove) => void moves.move(move, saveInputs())
 
   const selectError = (field: string) => {
     const owner = stepOfField(field)
@@ -233,7 +235,7 @@ function WizardForm({ campaignId, step, sheet, allowedMethods, occupationCatalog
           {summaryErrors && summaryErrors.length > 0 && (
             <ValidationErrorSummary ref={summary} errors={summaryErrors} onSelect={selectError} />
           )}
-          {moves.failedMove && <SaveFailed onRetry={() => go(moves.failedMove!)} />}
+          {moves.failedMove && <SaveFailed onRetry={() => void moves.retry(saveInputs())} />}
           {moves.actionFailed && (
             <Alert variant="destructive" role="alert">
               <CircleAlert aria-hidden="true" />
@@ -254,11 +256,9 @@ function WizardForm({ campaignId, step, sheet, allowedMethods, occupationCatalog
               <PersonalInterestsStep {...skillStepProps} />
             </>
           )}
-          {step === 'sheet' && (
-            <CharacterSheetView sheet={sheet.characterSheet} playerName={sheet.playerName} changeLinksFor={campaignId} />
-          )}
+          {step === 'sheet' && <SheetStep campaignId={campaignId} sheet={sheet} editing={stepProps} onChangeLink={(target) => go({ kind: 'stepper', target })} />}
 
-          <StepActions step={step} pending={moves.pending} onMove={go} onSubmit={() => void moves.submitToKeeper()} />
+          <StepActions step={step} pending={moves.pending} onMove={go} onSubmit={() => void moves.submitToKeeper(saveInputs())} />
           {sheet.status === 'Draft' && <StartOverDialog pending={moves.pending === 'delete'} onConfirm={() => void moves.startOver()} />}
         </div>
         <InvestigatorSummary

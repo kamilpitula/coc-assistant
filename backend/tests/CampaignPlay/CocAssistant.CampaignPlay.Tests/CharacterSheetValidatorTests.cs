@@ -189,4 +189,31 @@ public class CharacterSheetValidatorTests
 
         Assert.Empty(Validate(sheet));
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("  ")]
+    public void Given_a_custom_weapon_without_a_name_When_validating_Then_the_weapon_name_is_required(string? name)
+    {
+        var sheet = APointBuySheet()
+            .WithWeapons(
+                new CustomWeapon("Knife", null, null, null, null, null, null),
+                new CustomWeapon(name, "Fighting (Brawl)", "1D4", null, null, null, null))
+            .Build();
+
+        var error = Assert.Single(Validate(sheet));
+
+        Assert.Equal(new ValidationError(
+            "WeaponNameRequired", "weapons[1].name", "Enter a name for this weapon.", null, null, ValidationSeverity.Error), error);
+    }
+
+    [Fact]
+    public void Section_12_Given_a_backstory_without_a_key_connection_or_gear_When_validating_Then_there_are_no_problems()
+    {
+        var sheet = APointBuySheet()
+            .WithBackstory(null, new Dictionary<BackstoryEntry, string> { [BackstoryEntry.Traits] = "Stubborn" })
+            .Build();
+
+        Assert.Empty(Validate(sheet));
+    }
 }

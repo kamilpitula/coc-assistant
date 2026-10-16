@@ -1,3 +1,4 @@
+import { EMPTY_BACKSTORY } from '@/campaign-play/state/characterSheetForm'
 import type {
   AgeBracket,
   CharacterSheetInputs,
@@ -126,6 +127,10 @@ export const validInputs: CharacterSheetInputs = {
     { ...skill('Drive Auto'), occupationPoints: null, personalInterestPoints: 60 },
   ],
   quickFire: { values: [], personalInterests: [] },
+  backstory: EMPTY_BACKSTORY,
+  keyConnection: null,
+  weapons: [],
+  gear: null,
 }
 
 export const emptyInputs: CharacterSheetInputs = {
@@ -138,6 +143,10 @@ export const emptyInputs: CharacterSheetInputs = {
   occupation: null,
   skills: [],
   quickFire: { values: [], personalInterests: [] },
+  backstory: EMPTY_BACKSTORY,
+  keyConnection: null,
+  weapons: [],
+  gear: null,
 }
 
 function row(name: string, base: number, isOccupationSkill = false, specialization: string | null = null): SkillRow {
@@ -269,8 +278,14 @@ export function sheetView(overrides: Partial<CharacterSheetView> = {}): Characte
     occupation: { ...antiquarianInputs, name: 'Antiquarian', creditRatingMin: 30, creditRatingMax: 70, isCustom: false, formulaId: 'EDUx4', quickFireCreditRating: { value: 30, freedValue: 40 } },
     skills: skillRows,
     quickFire: { values: [], personalInterests: [], extraSkill: null },
+    backstory: EMPTY_BACKSTORY,
+    keyConnection: null,
+    weapons: [],
+    gear: null,
     derived: {
       luck: 55,
+      idea: 60,
+      know: 50,
       hitPoints: 12,
       magicPoints: 12,
       sanity: { current: 60, maximum: 99 },
@@ -304,6 +319,8 @@ export function emptySheetView(): CharacterSheetView {
     skills: [],
     derived: {
       luck: null,
+      idea: null,
+      know: null,
       hitPoints: null,
       magicPoints: null,
       sanity: { current: null, maximum: null },

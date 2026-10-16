@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { InvestigatorConflictError } from '@/campaign-play/services/investigatorApi'
-import { keeperInvestigator, problem } from '@/campaign-play/test-support/characterSheetFixtures'
+import { keeperInvestigator, problem, sheetView } from '@/campaign-play/test-support/characterSheetFixtures'
 import type { KeeperInvestigator } from '@/campaign-play/types/Investigator'
 
 import { InvestigatorReview } from './investigator-review'
@@ -63,6 +63,21 @@ describe('InvestigatorReview', () => {
 
     const heading = screen.getByRole('heading', { name: 'Worth checking' })
     expect(within(heading.parentElement!).getByText('INT is below the recommended 40. Check with your Keeper.')).toBeInTheDocument()
+  })
+
+  it('UX-28 and UX-30: shows the Backstory, weapons, Gear, and Wealth, and lists the custom weapons under "Worth checking"', () => {
+    const weapon = { name: 'Knife', skill: null, damage: '1D4', attacks: null, range: null, ammo: null, malfunction: null, isCustom: true }
+    withInvestigator(keeperInvestigator({ characterSheet: sheetView({ weapons: [weapon], gear: 'Lantern' }) }))
+
+    render(<InvestigatorReview campaignId="c1" investigatorId="i1" />)
+
+    const heading = screen.getByRole('heading', { name: 'Worth checking' })
+    expect(within(heading.parentElement!).getByText('1 custom weapon')).toBeInTheDocument()
+    for (const section of ['Backstory', 'Weapons', 'Gear and possessions', 'Wealth']) {
+      expect(screen.getByRole('heading', { level: 2, name: section })).toBeInTheDocument()
+    }
+    expect(screen.getByText('Lantern')).toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
   it('UX-14: approves on one click, removes the actions, and focuses the announcement', async () => {

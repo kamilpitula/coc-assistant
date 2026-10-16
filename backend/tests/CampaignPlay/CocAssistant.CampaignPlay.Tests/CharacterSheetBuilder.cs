@@ -59,6 +59,7 @@ public sealed class CharacterSheetBuilder
     private OccupationSelection? _occupation = ValidAntiquarian;
     private IReadOnlyList<SkillAllocation> _skills = ValidAllocations;
     private QuickFireSkills _quickFire = QuickFireSkills.Empty;
+    private BackstoryAndPossessions _backstoryAndPossessions = BackstoryAndPossessions.Empty;
 
     public CharacterSheetBuilder WithName(string? name)
     {
@@ -141,8 +142,33 @@ public sealed class CharacterSheetBuilder
         return this;
     }
 
+    /// <summary>My Story and the Background entries (section 12).</summary>
+    public CharacterSheetBuilder WithBackstory(string? myStory, IReadOnlyDictionary<BackstoryEntry, string> entries)
+    {
+        _backstoryAndPossessions = _backstoryAndPossessions with { Backstory = new Backstory(myStory, entries) };
+        return this;
+    }
+
+    public CharacterSheetBuilder WithKeyConnection(BackstoryEntry? keyConnection)
+    {
+        _backstoryAndPossessions = _backstoryAndPossessions with { KeyConnection = keyConnection };
+        return this;
+    }
+
+    public CharacterSheetBuilder WithWeapons(params CustomWeapon[] weapons)
+    {
+        _backstoryAndPossessions = _backstoryAndPossessions with { Weapons = weapons };
+        return this;
+    }
+
+    public CharacterSheetBuilder WithGear(string? gear)
+    {
+        _backstoryAndPossessions = _backstoryAndPossessions with { Gear = gear };
+        return this;
+    }
+
     public CharacterSheetInputs BuildInputs() =>
-        new(_identity, _creationMethod, _assigned, _deductions, _eduChecks, _luckRolls, _characteristicRolls, _occupation, _skills, _quickFire);
+        new(_identity, _creationMethod, _assigned, _deductions, _eduChecks, _luckRolls, _characteristicRolls, _occupation, _skills, _quickFire, _backstoryAndPossessions);
 
     public CharacterSheet Build() => BuildInputs().ToCharacterSheet(new PlayerEnteredRollSource());
 }

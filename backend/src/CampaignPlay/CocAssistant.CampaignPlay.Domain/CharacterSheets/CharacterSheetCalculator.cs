@@ -20,7 +20,9 @@ public sealed record DerivedValues(
     PointBudget? OccupationPoints = null,
     PointBudget? PersonalInterestPoints = null,
     int? CreditRating = null,
-    WealthValues? Wealth = null)
+    WealthValues? Wealth = null,
+    int? Idea = null,
+    int? Know = null)
 {
     public static readonly DerivedValues NotCalculated = new(null, null, null, null, null, null, null, null, null);
 }
@@ -194,6 +196,8 @@ public sealed class CharacterSheetCalculator
             dexterity is { } d ? DodgeBase.For(d) : null,
             movementRate,
             damageBonusAndBuild?.DamageBonus,
-            damageBonusAndBuild?.Build);
+            damageBonusAndBuild?.Build,
+            Idea: IdeaAndKnow.Idea(final[Characteristic.Intelligence]),
+            Know: IdeaAndKnow.Know(final[Characteristic.Education]));
     }
 }

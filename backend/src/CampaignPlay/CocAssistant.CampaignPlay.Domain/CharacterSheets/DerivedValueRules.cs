@@ -15,6 +15,14 @@ public static class StartingSanity
     public static (int Current, int Maximum) For(int power) => (power, MaximumWithoutCthulhuMythos);
 }
 
+/// <summary>Idea and Know: section 5.1, reference values read directly from INT and EDU after age effects.</summary>
+public static class IdeaAndKnow
+{
+    public static int? Idea(int? intelligence) => intelligence;
+
+    public static int? Know(int? education) => education;
+}
+
 /// <summary>Magic Points: section 5.3.</summary>
 public static class MagicPoints
 {

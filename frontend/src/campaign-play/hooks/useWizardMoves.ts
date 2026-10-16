@@ -17,6 +17,9 @@ export type WizardMove =
 
 export type PendingAction = WizardMove['kind'] | 'submit' | 'delete'
 
+/** An action that saves first and can be retried after its save failed: a move, or Submit to Keeper (ux.md 6.7). */
+export type SavingAction = WizardMove | { kind: 'submit' }
+
 const LATER_STEPS_MESSAGE = 'Some later steps need attention.'
 
 function neighbour(step: WizardStep, offset: number): WizardStep {
@@ -64,7 +67,7 @@ export function useWizardMoves({ campaignId, step, sheet, onStayWithErrors, onSa
   const submit = useSubmitInvestigator(campaignId)
   const remove = useDeleteInvestigator(campaignId)
   const [pending, setPending] = useState<PendingAction | null>(null)
-  const [failedMove, setFailedMove] = useState<WizardMove | null>(null)
+  const [failedMove, setFailedMove] = useState<SavingAction | null>(null)
   const [actionFailed, setActionFailed] = useState(false)
 
   const toCampaignPage = (statusMessage: string) =>
@@ -107,10 +110,27 @@ export function useWizardMoves({ campaignId, step, sheet, onStayWithErrors, onSa
     }
   }
 
-  const submitToKeeper = async () => {
+  // ux.md 6.7: Submit to Keeper saves the step's inputs first; a failed save submits nothing.
+  const saveBeforeSubmit = async (inputs: CharacterSheetInputs): Promise<boolean> => {
+    try {
+      await save.mutateAsync(inputs)
+      onSaved(inputs)
+      return true
+    } catch {
+      setFailedMove({ kind: 'submit' })
+      return false
+    }
+  }
+
+  const submitToKeeper = async (inputs: CharacterSheetInputs) => {
     setPending('submit')
     setActionFailed(false)
+    setFailedMove(null)
     try {
+      if (!(await saveBeforeSubmit(inputs))) {
+        return
+      }
+
       const result = await submit.mutateAsync()
       if (result.kind === 'invalid') {
         onSubmitRejected(result.validationErrors.filter((error) => error.severity === 'Error'))
@@ -137,5 +157,9 @@ export function useWizardMoves({ campaignId, step, sheet, onStayWithErrors, onSa
     }
   }
 
-  return { move, submitToKeeper, startOver, toStep, pending, failedMove, actionFailed }
+  /** Repeats the action whose save failed, with the current inputs. */
+  const retry = (inputs: CharacterSheetInputs) =>
+    failedMove?.kind === 'submit' ? submitToKeeper(inputs) : failedMove ? move(failedMove, inputs) : Promise.resolve()
+
+  return { move, submitToKeeper, retry, startOver, toStep, pending, failedMove, actionFailed }
 }

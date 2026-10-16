@@ -134,7 +134,7 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         Assert.Equal("Draft", body.GetProperty("status").GetString());
         Assert.Equal(0, body.GetProperty("validationErrors").GetArrayLength());
         var sheet = body.GetProperty("characterSheet");
-        Assert.Equal(3, sheet.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(4, sheet.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("Boston", sheet.GetProperty("identity").GetProperty("residence").GetString());
         var strength = sheet.GetProperty("characteristics").GetProperty("STR");
         Assert.Equal((60, 60, 30, 12), (strength.GetProperty("assigned").GetInt32(), strength.GetProperty("value").GetInt32(), strength.GetProperty("hard").GetInt32(), strength.GetProperty("extreme").GetInt32()));
@@ -301,6 +301,129 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         Assert.Equal(9, rules.GetProperty("quickFireSkillValues").GetArrayLength());
         Assert.Equal("EDUx4", rules.GetProperty("occupationPointFormulas")[0].GetProperty("id").GetString());
         Assert.Equal("Cthulhu Mythos", rules.GetProperty("cthulhuMythosSkill").GetString());
+    }
+
+    /// <summary>The valid sheet with the given properties replaced, in the PUT body shape.</summary>
+    private static System.Text.Json.Nodes.JsonObject SheetWith(params (string Name, object? Value)[] replacements)
+    {
+        var sheet = JsonSerializer.SerializeToNode(ValidSheet(), JsonSerializerOptions.Web)!.AsObject();
+        foreach (var (name, value) in replacements)
+        {
+            sheet[name] = JsonSerializer.SerializeToNode(value, JsonSerializerOptions.Web);
+        }
+
+        return sheet;
+    }
+
+    private static object Backstory(string? myStory = null, string? traits = null, string? significantPeople = null) =>
+        new { myStory, traits, significantPeople };
+
+    private static object Weapon(string? name) =>
+        new { name, skill = "Firearms (Handgun)", damage = "1D10", attacks = "1 (3)", range = "15 yards", ammo = "6", malfunction = "100" };
+
+    [Fact]
+    public async Task Given_a_draft_When_saving_a_backstory_key_connection_custom_weapon_and_gear_Then_they_are_returned_with_idea_and_know()
+    {
+        await CreateDraftAsync();
+        var body = SheetWith(
+            ("backstory", Backstory("Grew up above a bookshop.", significantPeople: "My sister Ada")),
+            ("keyConnection", "significantPeople"),
+            ("weapons", new[] { Weapon(".38 Revolver") }),
+            ("gear", "Camera, notebook"));
+
+        var response = await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var sheet = (await JsonAsync(response)).GetProperty("characterSheet");
+        Assert.Equal(4, sheet.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("Grew up above a bookshop.", sheet.GetProperty("backstory").GetProperty("myStory").GetString());
+        Assert.Equal("My sister Ada", sheet.GetProperty("backstory").GetProperty("significantPeople").GetString());
+        Assert.Equal(JsonValueKind.Null, sheet.GetProperty("backstory").GetProperty("traits").ValueKind);
+        Assert.Equal("significantPeople", sheet.GetProperty("keyConnection").GetString());
+        var weapon = Assert.Single(sheet.GetProperty("weapons").EnumerateArray());
+        Assert.Equal((".38 Revolver", "1D10", true), (weapon.GetProperty("name").GetString(), weapon.GetProperty("damage").GetString(), weapon.GetProperty("isCustom").GetBoolean()));
+        Assert.Equal("Camera, notebook", sheet.GetProperty("gear").GetString());
+        Assert.Equal((60, 50), (sheet.GetProperty("derived").GetProperty("idea").GetInt32(), sheet.GetProperty("derived").GetProperty("know").GetInt32()));
+    }
+
+    [Theory]
+    [InlineData("traits")]
+    [InlineData("myStory")]
+    [InlineData("favouriteFood")]
+    public async Task Given_a_key_connection_that_is_not_a_filled_in_background_entry_When_saving_the_sheet_Then_it_is_a_bad_request(string keyConnection)
+    {
+        await CreateDraftAsync();
+        var body = SheetWith(("backstory", Backstory("A story", significantPeople: "Ada")), ("keyConnection", keyConnection));
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_an_unknown_backstory_entry_When_saving_the_sheet_Then_it_is_a_bad_request()
+    {
+        await CreateDraftAsync();
+        var body = SheetWith(("backstory", new { favouriteFood = "Pie" }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_narrative_inputs_over_their_limits_When_saving_the_sheet_Then_each_is_a_bad_request()
+    {
+        await CreateDraftAsync();
+        var tooLong = new string('a', 2001);
+        var bodies = new[]
+        {
+            SheetWith(("backstory", Backstory(traits: tooLong))),
+            SheetWith(("gear", tooLong)),
+            SheetWith(("weapons", Enumerable.Range(0, 21).Select(index => Weapon($"Knife {index}")).ToArray())),
+            SheetWith(("weapons", new[] { Weapon(new string('a', 101)) })),
+        };
+
+        foreach (var body in bodies)
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body)).StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task Given_a_custom_weapon_without_a_name_When_saving_and_submitting_Then_it_is_saved_with_the_error_and_submission_is_rejected()
+    {
+        await CreateDraftAsync();
+
+        var saved = await JsonAsync(await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, SheetWith(("weapons", new[] { Weapon(null) }))));
+        var submitted = await SendAsync(HttpMethod.Post, $"{Investigators}/mine/submit", Player);
+
+        var error = Assert.Single(saved.GetProperty("validationErrors").EnumerateArray());
+        Assert.Equal(("WeaponNameRequired", "weapons[0].name"), (error.GetProperty("code").GetString(), error.GetProperty("field").GetString()));
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, submitted.StatusCode);
+    }
+
+    // Scenario: Unspent personal interest points only warn
+    [Fact]
+    public async Task Given_unspent_personal_interest_points_and_no_errors_When_submitting_Then_it_is_submitted_and_the_keeper_sees_the_warning_and_the_narrative()
+    {
+        var id = await CreateDraftAsync();
+        var skills = ValidSkillAllocations.Take(ValidSkillAllocations.Length - 1).ToArray();
+        var body = SheetWith(
+            ("skills", skills),
+            ("backstory", Backstory(traits: "Stubborn")),
+            ("keyConnection", "traits"),
+            ("weapons", new[] { Weapon("Knife") }),
+            ("gear", "Lantern"));
+        (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body)).EnsureSuccessStatusCode();
+
+        var submitted = await SendAsync(HttpMethod.Post, $"{Investigators}/mine/submit", Player);
+        var review = await JsonAsync(await SendAsync(HttpMethod.Get, $"{Investigators}/{id}", Keeper));
+
+        Assert.Equal(HttpStatusCode.OK, submitted.StatusCode);
+        Assert.Equal("Submitted", review.GetProperty("status").GetString());
+        var warning = Assert.Single(review.GetProperty("warnings").EnumerateArray());
+        Assert.Equal("PersonalInterestPointsUnspent", warning.GetProperty("code").GetString());
+        var sheet = review.GetProperty("characterSheet");
+        Assert.Equal("traits", sheet.GetProperty("keyConnection").GetString());
+        Assert.Equal("Knife", Assert.Single(sheet.GetProperty("weapons").EnumerateArray()).GetProperty("name").GetString());
+        Assert.Equal("Lantern", sheet.GetProperty("gear").GetString());
     }
 
     private static (int Budget, int Spent, int Left) Budget(JsonElement budget) =>
