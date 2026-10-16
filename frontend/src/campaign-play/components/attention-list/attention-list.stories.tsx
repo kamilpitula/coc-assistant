@@ -13,6 +13,8 @@ import {
 import type { CampaignView } from '@/campaign-play/types/Campaign'
 import type { CampaignMember } from '@/campaign-play/types/CampaignMember'
 import type { InvestigatorSummary, MyCharacterSheet } from '@/campaign-play/types/Investigator'
+import { scenarioQueryKeys } from '@/scenario-preparation/services/scenarioApi'
+import type { Scenario } from '@/scenario-preparation/types/Scenario'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 
@@ -21,16 +23,21 @@ import { AttentionList } from './attention-list'
 interface StoryArgs {
   campaign: CampaignView
   members?: CampaignMember[]
+  /** The Keeper's Scenarios; one by default, none to show the "Create Scenario" item. */
+  scenarios?: Scenario[]
   investigator?: InvestigatorSummary | null
   sheet?: MyCharacterSheet
 }
 
-function AttentionStory({ campaign, members, investigator, sheet }: StoryArgs) {
+const existingScenario: Scenario = { id: 'story-scenario', title: 'The Haunting', keeperNotes: '' }
+
+function AttentionStory({ campaign, members, scenarios, investigator, sheet }: StoryArgs) {
   return (
     <StoryMsal>
       <StoryProviders
         seed={(client) => {
           client.setQueryData(campaignQueryKeys.members(STORY_CAMPAIGN_ID), members ?? [])
+          client.setQueryData(scenarioQueryKeys.list(STORY_CAMPAIGN_ID), scenarios ?? [existingScenario])
           client.setQueryData(campaignQueryKeys.myInvestigator(STORY_CAMPAIGN_ID), investigator ?? null)
           client.setQueryData(campaignQueryKeys.myCharacterSheet(STORY_CAMPAIGN_ID), sheet ?? null)
         }}
@@ -56,6 +63,11 @@ function summary(overrides: Partial<InvestigatorSummary>): InvestigatorSummary {
 export const KeeperWithReviewsPending: Story = { args: { campaign: keeperCampaign, members: keeperRosterWithReviews } }
 
 export const KeeperWithNoPlayers: Story = { args: { campaign: keeperCampaign, members: keeperRosterWithoutPlayers } }
+
+/** The Campaign has no Scenario yet: the item comes after the others. */
+export const KeeperWithoutScenario: Story = {
+  args: { campaign: keeperCampaign, members: keeperRosterWithReviews, scenarios: [] },
+}
 
 /** Nothing needs the Keeper, so nothing is rendered. */
 export const KeeperAllApproved: Story = { args: { campaign: keeperCampaign, members: keeperRosterAllApproved } }

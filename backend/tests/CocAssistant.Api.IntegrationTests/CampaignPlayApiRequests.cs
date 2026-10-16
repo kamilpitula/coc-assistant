@@ -132,7 +132,7 @@ public static class CampaignPlayApiRequests
         var respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
         {
             DbAdapter = DbAdapter.SqlServer,
-            TablesToIgnore = ["__EFMigrationsHistory", "__CampaignPlayMigrationsHistory"],
+            TablesToIgnore = ["__EFMigrationsHistory", "__CampaignPlayMigrationsHistory", "__ScenarioPreparationMigrationsHistory"],
         });
         await respawner.ResetAsync(connection);
     }

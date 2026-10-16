@@ -147,6 +147,7 @@ test.describe('Campaign overview and navigation', () => {
         await page.goto(`/campaigns/${campaignId}`)
         await expect(attentionList(page).getByRole('listitem')).toHaveText([
           new RegExp(`Dr\\. Ames by ${player.account.name} is ready for review`),
+          /This Campaign has no Scenario yet\./,
         ])
         await expect(memberRow(page, player.account.name)).toContainText('Submitted')
       })
@@ -198,7 +199,7 @@ test.describe('Campaign overview and navigation', () => {
     try {
       await test.step('CO-UX-5: once a Player joins, the item disappears without a reload', async () => {
         await expect(memberRow(page, player.account.name)).toBeVisible()
-        await expect(attentionList(page)).toHaveCount(0)
+        await expect(attentionList(page).getByText('No Players have joined yet.')).toHaveCount(0)
       })
     } finally {
       await player.context.close()

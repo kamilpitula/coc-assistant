@@ -8,6 +8,7 @@ import type { InvestigatorSummary } from '@/campaign-play/types/Investigator'
 export type KeeperAttentionItem =
   | { kind: 'review'; investigatorId: string; investigatorName: string; playerName: string }
   | { kind: 'invitePlayers' }
+  | { kind: 'createScenario' }
 
 /** The Player's single attention item about their own Investigator (ux.md section 4.2). */
 export type PlayerAttentionItem =
@@ -17,10 +18,10 @@ export type PlayerAttentionItem =
   | { kind: 'changesRequested'; investigatorName: string | null; comment: string | null }
 
 /**
- * The Keeper's items, derived from the roster: one per Submitted Investigator in roster order (decision D2), then
- * "Invite Players" when nobody has joined.
+ * The Keeper's items: one per Submitted Investigator in roster order (decision D2), then "Invite Players" when nobody
+ * has joined, then "Create Scenario" when the Campaign has no Scenario (specs/scenario-preparation/ux.md section 3).
  */
-export function keeperAttentionItems(members: readonly CampaignMember[]): KeeperAttentionItem[] {
+export function keeperAttentionItems(members: readonly CampaignMember[], scenarioCount: number): KeeperAttentionItem[] {
   const reviews = members.flatMap((member): KeeperAttentionItem[] => {
     const investigator = member.investigator
     if (investigator?.visibility !== 'Visible' || investigator.status !== 'Submitted' || investigator.id === undefined) {
@@ -37,7 +38,9 @@ export function keeperAttentionItems(members: readonly CampaignMember[]): Keeper
     ]
   })
   const hasPlayers = members.some((member) => member.role === 'Player')
-  return hasPlayers ? reviews : [...reviews, { kind: 'invitePlayers' }]
+  const invite: KeeperAttentionItem[] = hasPlayers ? [] : [{ kind: 'invitePlayers' }]
+  const createScenario: KeeperAttentionItem[] = scenarioCount === 0 ? [{ kind: 'createScenario' }] : []
+  return [...reviews, ...invite, ...createScenario]
 }
 
 /** The Player's item, or null once their Investigator is Submitted or Approved. */

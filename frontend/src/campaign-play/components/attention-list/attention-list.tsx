@@ -4,10 +4,9 @@ import { useId, type ReactNode } from 'react'
 
 import { formatCreationMethods } from '@/campaign-play/components/creation-methods-fieldset/creationMethodLabels'
 import { InvitePlayersDialog } from '@/campaign-play/components/invite-dialog/invite-dialog'
-import { useCampaignMembers } from '@/campaign-play/hooks/useCampaignMembers'
+import { useKeeperAttention } from '@/campaign-play/hooks/useKeeperAttention'
 import { useCreateInvestigator, useMyCharacterSheet, useMyInvestigator } from '@/campaign-play/hooks/useMyInvestigator'
 import {
-  keeperAttentionItems,
   playerAttentionItem,
   type KeeperAttentionItem,
   type PlayerAttentionItem,
@@ -35,24 +34,23 @@ export function AttentionList({ campaign }: AttentionListProps) {
 }
 
 function KeeperAttention({ campaignId }: { campaignId: string }) {
-  const members = useCampaignMembers(campaignId)
+  const attention = useKeeperAttention(campaignId)
 
-  if (members.isPending) {
+  if (attention.isPending) {
     return <AttentionLoading />
   }
 
-  if (members.isError) {
-    return <AttentionError onRetry={() => void members.refetch()} />
+  if (attention.isError) {
+    return <AttentionError onRetry={attention.retry} />
   }
 
-  const items = members.data ? keeperAttentionItems(members.data) : []
-  if (items.length === 0) {
+  if (attention.items.length === 0) {
     return null
   }
 
   return (
     <AttentionSection>
-      {items.map((item) => (
+      {attention.items.map((item) => (
         <KeeperItem key={item.kind === 'review' ? item.investigatorId : item.kind} campaignId={campaignId} item={item} />
       ))}
     </AttentionSection>
@@ -64,6 +62,16 @@ function KeeperItem({ campaignId, item }: { campaignId: string; item: KeeperAtte
     return (
       <AttentionItem sentence="No Players have joined yet.">
         <InvitePlayersDialog campaignId={campaignId} />
+      </AttentionItem>
+    )
+  }
+
+  if (item.kind === 'createScenario') {
+    return (
+      <AttentionItem sentence="This Campaign has no Scenario yet.">
+        <Link to="/campaigns/$campaignId/scenarios/new" params={{ campaignId }} className={ACTION_CLASS}>
+          Create Scenario
+        </Link>
       </AttentionItem>
     )
   }

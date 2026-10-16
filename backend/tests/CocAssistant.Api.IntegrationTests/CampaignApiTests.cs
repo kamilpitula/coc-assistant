@@ -19,7 +19,7 @@ public class CampaignApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetim
         _respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
         {
             DbAdapter = DbAdapter.SqlServer,
-            TablesToIgnore = ["__EFMigrationsHistory", "__CampaignPlayMigrationsHistory"],
+            TablesToIgnore = ["__EFMigrationsHistory", "__CampaignPlayMigrationsHistory", "__ScenarioPreparationMigrationsHistory"],
         });
         await _respawner.ResetAsync(connection);
     }

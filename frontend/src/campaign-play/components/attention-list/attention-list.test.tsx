@@ -11,19 +11,20 @@ import { AttentionList } from './attention-list'
 
 // specs/campaign-overview/ux.md section 4; spec.md, Attention items; CO-UX-4, CO-UX-5, CO-UX-6.
 
-const { mockUseMembers, mockUseMyInvestigator, mockUseMyCharacterSheet, mockUseCreate, mockCreate, mockRefetch } = vi.hoisted(
-  () => ({
+const { mockUseMembers, mockUseScenarios, mockUseMyInvestigator, mockUseMyCharacterSheet, mockUseCreate, mockCreate, mockRefetch } =
+  vi.hoisted(() => ({
     mockUseMembers: vi.fn(),
+    mockUseScenarios: vi.fn(),
     mockUseMyInvestigator: vi.fn(),
     mockUseMyCharacterSheet: vi.fn(),
     mockUseCreate: vi.fn(),
     mockCreate: vi.fn(),
     mockRefetch: vi.fn(),
-  }),
-)
+  }))
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/campaign-play/hooks/useCampaignMembers', () => ({ useCampaignMembers: mockUseMembers }))
+vi.mock('@/scenario-preparation/hooks/useScenarios', () => ({ useScenarios: mockUseScenarios }))
 vi.mock('@/campaign-play/hooks/useMyInvestigator', () => ({
   useMyInvestigator: mockUseMyInvestigator,
   useMyCharacterSheet: mockUseMyCharacterSheet,
@@ -61,8 +62,60 @@ function section() {
   return screen.getByRole('region', { name: 'Needs your attention' })
 }
 
+const scenario = { id: 's1', title: 'The Haunting', keeperNotes: '' }
+
 describe('AttentionList for the Keeper', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseScenarios.mockReturnValue(query([scenario]))
+  })
+
+  // specs/scenario-preparation/ux.md section 3; SP-UX-2.
+  it('asks a Keeper whose Campaign has no Scenario to create one, after the invite item (SP-UX-2)', () => {
+    mockUseMembers.mockReturnValue(query([keeper]))
+    mockUseScenarios.mockReturnValue(query([]))
+
+    render(<AttentionList campaign={keeperCampaign} />)
+
+    const items = within(section()).getAllByRole('listitem')
+    expect(items.map((item) => item.textContent)).toEqual([
+      expect.stringContaining('No Players have joined yet.'),
+      expect.stringContaining('This Campaign has no Scenario yet.'),
+    ])
+    expect(within(items[1]).getByRole('link', { name: 'Create Scenario' })).toHaveAttribute(
+      'href',
+      '/campaigns/c1/scenarios/new',
+    )
+  })
+
+  it('drops the Scenario item once the Campaign has a Scenario', () => {
+    mockUseMembers.mockReturnValue(query([keeper]))
+
+    render(<AttentionList campaign={keeperCampaign} />)
+
+    expect(within(section()).queryByText('This Campaign has no Scenario yet.')).not.toBeInTheDocument()
+  })
+
+  it('shows a busy row while the Scenarios load', () => {
+    mockUseMembers.mockReturnValue(query([keeper]))
+    mockUseScenarios.mockReturnValue(query(undefined, { isPending: true }))
+
+    render(<AttentionList campaign={keeperCampaign} />)
+
+    expect(section().querySelector('[aria-busy="true"]')).not.toBeNull()
+  })
+
+  it('offers to try again for the Scenarios and the roster together', async () => {
+    const scenariosRefetch = vi.fn()
+    mockUseMembers.mockReturnValue(query([keeper]))
+    mockUseScenarios.mockReturnValue(query(undefined, { isError: true, refetch: scenariosRefetch }))
+
+    render(<AttentionList campaign={keeperCampaign} />)
+    await userEvent.click(within(section()).getByRole('button', { name: 'Try again' }))
+
+    expect(mockRefetch).toHaveBeenCalled()
+    expect(scenariosRefetch).toHaveBeenCalled()
+  })
 
   it('asks the Keeper to review each Submitted Investigator (CO-UX-4)', () => {
     mockUseMembers.mockReturnValue(

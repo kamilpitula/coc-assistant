@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CocAssistant.ScenarioPreparation.Domain\CocAssistant.ScenarioPreparation.Domain.csproj" />
+    <ProjectReference Include="..\CocAssistant.ScenarioPreparation.Application\CocAssistant.ScenarioPreparation.Application.csproj" />
+    <!-- Adapter for Scenario Preparation's ICampaignKeepers port (ADR 0013). -->
+    <ProjectReference Include="..\..\CampaignPlay\CocAssistant.CampaignPlay.Application\CocAssistant.CampaignPlay.Application.csproj" />
+  </ItemGroup>
+
+</Project>

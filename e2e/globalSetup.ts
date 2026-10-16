@@ -58,6 +58,7 @@ export default async function globalSetup(): Promise<void> {
   const migrationEnv = {
     ConnectionStrings__IdentityDb: E2E_CONNECTION_STRING,
     ConnectionStrings__CampaignPlayDb: E2E_CONNECTION_STRING,
+    ConnectionStrings__ScenarioPreparationDb: E2E_CONNECTION_STRING,
     ASPNETCORE_ENVIRONMENT: 'E2E',
   }
 
@@ -70,6 +71,11 @@ export default async function globalSetup(): Promise<void> {
   run(
     'dotnet ef database update --project backend/src/CampaignPlay/CocAssistant.CampaignPlay.Infrastructure ' +
       '--startup-project backend/src/CocAssistant.Api --context CampaignPlayDbContext',
+    migrationEnv,
+  )
+  run(
+    'dotnet ef database update --project backend/src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Infrastructure ' +
+      '--startup-project backend/src/CocAssistant.Api --context ScenarioPreparationDbContext',
     migrationEnv,
   )
 }
