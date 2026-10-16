@@ -7,7 +7,7 @@ blocked_by: [PBI-CP-001]
 # PBI-SP-001: Create and Edit a Campaign Scenario
 
 ## Directive
-Build the end-to-end ability for a Keeper to create and edit the single Scenario belonging to a Campaign. Enforce Campaign ownership and preserve the Scenario's Campaign scope across persistence, API responses, UI, and tests.
+Build the end-to-end ability for a Keeper to create, edit, and reorder the Scenarios belonging to a Campaign, kept in a set order. Enforce Campaign ownership and preserve each Scenario's Campaign scope across persistence, API responses, UI, and tests.
 
 **Scope:**
 - Scenario domain, persistence, API, Keeper-facing preparation UI, and focused unit, integration, and E2E coverage.
@@ -24,8 +24,8 @@ Read: `specs/scenario-preparation/spec.md`
 - Contract: Scenario creation and editing, Campaign scoping, and manual preparation.
 
 ## Verification
-- [ ] An authorized Keeper can create and edit the Scenario for an owned Campaign.
-- [ ] A Player or Keeper from another Campaign cannot create, read, or edit the Scenario.
+- [ ] An authorized Keeper can create, edit, and reorder Scenarios for an owned Campaign; new Scenarios are appended to its order.
+- [ ] A Player or Keeper from another Campaign cannot list, create, read, edit, or reorder them.
 - [ ] Unit, integration, and E2E tests cover persistence, authorization, and the manual workflow.
 
 ## Refinement Protocol

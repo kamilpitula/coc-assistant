@@ -13,7 +13,7 @@ _Avoid_: User, profile, login
 ## Campaign Structure
 
 **Campaign**:
-A persistent story container owned by one Keeper. It contains the scenario preparation, investigators, non-player entities, scenes, play sessions, and shared play record for an ongoing campaign.
+A persistent story container owned by one Keeper. It contains its Scenarios (and through them their Scenes), investigators, non-player entities, play sessions, and shared play record for an ongoing campaign.
 _Avoid_: Session, game
 
 **Era**:
@@ -61,7 +61,7 @@ _Avoid_: NPC
 ## Scenario Preparation
 
 **Scenario**:
-The prepared mystery or adventure that gives a Campaign its intended situation, locations, clues, scenes, and entities. A Campaign may begin with manually entered scenario material and may later be prepared from an uploaded source.
+A prepared mystery that gives part of a Campaign its intended situation, locations, clues, scenes, and entities. A Campaign has zero or more Scenarios, played in a set order as linked parts of its story. A Scenario may be entered manually and may later be prepared from an uploaded source.
 _Avoid_: Adventure, module
 
 **Scene**:

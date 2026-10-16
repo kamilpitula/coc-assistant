@@ -16,6 +16,8 @@ Behavior and rules: [spec.md](spec.md). This document covers presentation only. 
   /settings        Settings                  tab "Settings"  (Keeper only)
   /investigator, /investigator/$step         Player's sheet and wizard   -> Overview tab current
   /investigators/$investigatorId             Keeper's review / sheet     -> Overview tab current
+  /scenarios/new, /scenarios/$scenarioId     Keeper's Scenario pages     -> Overview tab current
+                                             (specs/scenario-preparation/ux.md)
 ```
 
 - The overview is the landing page for a Campaign. It answers "what needs me?" (attention list), "who is here and are they ready?" ("At the table"), and, once the Campaign Wall exists, "what happened recently?" (Wall preview).
@@ -39,7 +41,7 @@ Haunting of Corbitt House                                   (h1 on Overview only
 - **Era:** `text-sm text-muted-foreground`, under the name.
 - **Tabs:** a `nav` with `aria-label="Campaign"` containing links, not ARIA tabs, because each one is its own route.
   - The current link has `aria-current="page"`, a 2px bottom border in `--foreground`, and `font-medium`. Other links use `--muted-foreground`, and hover switches them to `--foreground`.
-  - Overview is current on the overview, sheet, wizard, and review pages.
+  - Overview is current on the overview, sheet, wizard, review, and Scenario pages.
   - Wall is rendered for both roles. Settings is rendered only for the Keeper.
   - The row never wraps. With at most three short labels it fits at 320px. Each link is at least 44px high.
 - **Header states:**
@@ -59,7 +61,7 @@ Phone (< 1024px), single column          Desktop (>= 1024px), two columns once t
 +--------------------------------+       +----------------------------+---------------+
 ```
 
-- **Order** (DOM and visual are the same): status message, "Needs your attention" (only when it has items), "At the table", then "Wall" (only once PBI-CP-004 ships).
+- **Order** (DOM and visual are the same): status message, "Needs your attention" (only when it has items), "At the table", "Scenarios" (Keeper only, [scenario-preparation ux](../scenario-preparation/ux.md) section 2), then "Wall" (only once PBI-CP-004 ships).
 - **Column widths:** from 1024px (`lg`) the Wall preview moves to a right column (`lg:grid-cols-[2fr_1fr]`). Before the Wall exists, the overview is one column with `max-w-3xl`.
 - **Status message:** the existing navigation `statusMessage` (for example after a submit) stays as a `role="status"` paragraph directly under the header, now for both roles.
 - **Spacing:** sections are separated by `gap-6`, and each section is a `section` labelled by its `h2`.
@@ -84,6 +86,7 @@ Needs your attention                                         (h2)
 |---|---|---|
 | An Investigator is Submitted (one item each) | "{Investigator name} by {Player name} is ready for review" | Link "Review" -> `/campaigns/$campaignId/investigators/$investigatorId` |
 | The Campaign has no Players | "No Players have joined yet." | Button "Invite Players" (opens the Invite dialog, section 6) |
+| The Campaign has no Scenario | "This Campaign has no Scenario yet." | Link "Create Scenario" -> `/campaigns/$campaignId/scenarios/new` ([scenario-preparation ux](../scenario-preparation/ux.md) section 3) |
 
 ### 4.2 Player items (at most one: the Player's own Investigator)
 
@@ -226,6 +229,7 @@ Open the Wall                                     (link -> /wall)
 | Attention heading | Needs your attention |
 | Keeper review item | {Investigator name} by {Player name} is ready for review |
 | Keeper no-Players item | No Players have joined yet. |
+| Keeper no-Scenario item / action | This Campaign has no Scenario yet. / Create Scenario |
 | Player Draft item | Continue {name or "your Investigator"}: step {n} of {number of wizard steps} |
 | Player Changes Requested item | Your Keeper asked for changes to {name}. |
 | Attention error | We couldn't check what needs your attention. |
@@ -257,6 +261,7 @@ Presence copy rules from [campaign-play ux](../campaign-play/ux.md) section 7 st
 | Invite dialog | New `invite-dialog` on existing `Dialog`, `Input`, `Button`, and the `useCampaignInvite` / `useIssueInvite` hooks |
 | Settings | New route `routes/campaigns.$campaignId.settings.tsx` and `campaign-settings` composing `InviteManagement` and `RulesOptions` |
 | Wall preview | New `wall-preview` (PBI-CP-004) |
+| Scenarios section | `scenario-list-section` from `frontend/src/scenario-preparation/` (PBI-SP-001), rendered by `campaign-page` for the Keeper |
 | Primitives | Existing `Card`, `Table`, `Badge`, `Alert`, `Button`, `Dialog`, `Input`, `Skeleton`; no new primitives |
 
 Stories cover:
@@ -269,14 +274,14 @@ Stories cover:
 - **CO-UX-1** Opening a Campaign shows the Campaign header (back link, name, Era, tabs) and the overview. The Campaign name is the page `h1`.
 - **CO-UX-2** The Keeper sees the tabs Overview, Wall, and Settings, and a Player sees Overview and Wall.
 - **CO-UX-3** On the overview the Keeper sees no Invite link field and no Rules options. Both are on Settings.
-- **CO-UX-4** A Keeper with a Submitted Investigator sees "{name} by {Player} is ready for review" with "Review", which opens the review screen.
-- **CO-UX-5** A Keeper with no Players sees "No Players have joined yet." with "Invite Players". Once a Player joins, the item disappears without a reload.
+- **CO-UX-4** A Keeper with a Submitted Investigator sees "{name} by {Player} is ready for review" with "Review", which opens the review screen. While the Campaign has no Scenario, the item "This Campaign has no Scenario yet." follows the review items (PBI-SP-001).
+- **CO-UX-5** A Keeper with no Players sees "No Players have joined yet." with "Invite Players". Once a Player joins, that item disappears without a reload; other items may remain.
 - **CO-UX-6** A Player sees exactly one attention item for each of: no Investigator, Draft (with step N of 4), Changes Requested (with the Keeper's comment), and creation methods unavailable. Once Submitted or Approved, the attention section is not shown.
 - **CO-UX-7** "At the table" lists every member once, in the fixed order. Each Player row shows the Investigator and status visible to the viewer as in section 5.1.
 - **CO-UX-8** A Player sees another Player's Investigator name only once it is Approved, and has no link to open it. Otherwise the row reads "Not ready yet".
 - **CO-UX-9** The Keeper never sees a Draft Investigator's name. The row reads "Not shown until submitted" and "In progress".
 - **CO-UX-10** "Invite Players" opens the dialog with the join link. "Copy link" copies it and shows "Copied.". With no active Invite, one is created when the dialog opens.
-- **CO-UX-11** On sheet, wizard, and review pages the header stays, with Overview as the current tab.
+- **CO-UX-11** On sheet, wizard, review, and Scenario pages the header stays, with Overview as the current tab.
 - **CO-UX-12** A Player opening `/campaigns/$campaignId/settings` sees the not-found message and no Invite or rules data.
 - **CO-UX-13** When the Keeper approves an Investigator, the Player's row and the other Players' rows show it as Approved without a reload (requires PBI-CP-006).
 - **CO-UX-14** (PBI-CP-004) The overview shows at most 5 latest Wall Entries with "Open the Wall". Keeper-only entries show "Keeper only" to the Keeper and never appear for Players.
