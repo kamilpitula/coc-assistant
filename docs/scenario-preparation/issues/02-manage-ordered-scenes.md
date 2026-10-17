@@ -44,3 +44,8 @@ If the ordering model or status rules need clarification, update the spec's Cont
 - Add the Active and Finished Scene journeys to E2E in PBI-SPL-001, once an endpoint starts and finishes a Scene: "A played Scene cannot be removed", "A Finished Scene is read-only", and "The Keeper edits an Active Scene's Keeper notes" (SP-UX-22 and the Active and Finished parts of SP-UX-21 and SP-UX-23). In this PBI domain, service, seeded integration, and component tests cover them.
 - Controls to indent nested lists in Keeper notes, and a visible "opens in a new tab" cue on links (ux.md section 20).
 - Research whether two heading levels are enough for long Keeper notes, and whether Keepers want collapsible notes on the Scene page during play (ux.md section 20).
+- E2E "Scene Keeper notes outside the allowed nodes are refused" (`e2e/tests/scenes.spec.ts`) failed once in 40 runs under `--repeat-each=10 --retries=0`: the Scene links stayed empty for 5s after opening the Scenario page, likely a slow list load past the 5s expect timeout (not diagnosed).
+- SP-A11Y-15 focus risk: after a 409 in `RemoveSceneControl` and after `SceneFinishedError` in `stopEditing` (`scene-page.tsx`), focus goes to a button that disappears after the refetch, so it can fall to the body; no test covers it.
+- The GET Scene response re-serializes `keeperNotes`, so non-ASCII characters or `<` may be re-escaped. Storage is byte-exact; the response is only semantically equal.
+- The decision record's TDD-unit wording "renders strong/em/u/s" differs from the implementation: underline and strikethrough render as theme classes (Lexical's text renderer).
+- CS8604 nullable warning at `SceneServiceTests.cs:105` in the ScenarioPreparation tests.
