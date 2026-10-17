@@ -24,7 +24,7 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - **Scene status:** A Scene is Prepared, Active, or Finished, and moves only Prepared -> Active -> Finished. The Scene aggregate owns the status and the editing rules that follow from it; Scene Play triggers the transitions. How Scene Play reaches the Scene aggregate, and where Reveals and their snapshots are stored, is decided in an architect decision record before PBI-SPL-001.
 - **Rich text:** Scene Keeper notes, rich-text Handouts, Item descriptions, and Player-facing descriptions of Non-Player Entities in a Scene are stored as Lexical serialized editor state (JSON). The frontend edits it with Lexical and renders it with a read-only Lexical renderer that registers the same nodes. Choosing Lexical is recorded in an ADR.
 - **Handout kinds:** Read-aloud and Text hold rich text (PBI-SP-005). Image, Document, and Map hold a file in Azure Blob Storage (PBI-SP-007). A Map is shown prominently in Scene Play; it is a static image.
-- **UX specification:** [ux.md](ux.md). The Keeper's Scenario page lists the Scenario's Scenes in prepared order with each Scene's status and, once played, its start and finish dates; the Scene layout is designed through the UX designer skill before PBI-SP-002 builds it.
+- **UX specification:** [ux.md](ux.md). The Keeper's Scenario page lists the Scenario's Scenes in prepared order with each Scene's status and, once played, its start and finish dates; the Scene layout is in [ux.md](ux.md) sections 11 to 20.
 - **Manual preparation:** v1 provides Keeper-managed Scene, Handout, Human NPC, Mythos Creature, and Item records.
 - **File storage:** Azure Blob Storage stores file Handouts in v1 and uploaded Scenario source documents in the later extraction flow.
 - **LLM extraction boundary:** The later extraction flow uses direct structured-output calls to a Microsoft Foundry model and maps results into the same Scenario, Scene, Human NPC, and Mythos Creature concepts used by manual preparation.
@@ -111,7 +111,7 @@ Scenario: Scenarios are the Keeper's alone
   When a Player of that Campaign or the Keeper of another Campaign lists, opens, creates, edits, or reorders its Scenarios
   Then the Scenario is reported as not found and nothing changes
 
-# Scene scenarios trace to the Scene UX specification once PBI-SP-002 records it.
+# Scene scenarios trace to ux.md section 18 (SP-UX-n).
 Scenario: Keeper prepares a Scene
   Given a Keeper owns a Campaign with the Scenario "The Haunting"
   When the Keeper creates a Scene titled "The Corbitt House" at the location "Arkham, Boston Road"
