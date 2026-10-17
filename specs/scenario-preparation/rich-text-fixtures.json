@@ -269,7 +269,7 @@
                           "value": 1,
                           "direction": "ltr",
                           "format": "",
-                          "indent": 0,
+                          "indent": 1,
                           "children": [
                             {
                               "type": "text",
@@ -320,20 +320,6 @@
               ]
             }
           ]
-        }
-      }
-    },
-    {
-      "name": "empty root",
-      "expected": "accepted",
-      "document": {
-        "root": {
-          "type": "root",
-          "version": 1,
-          "direction": "ltr",
-          "format": "",
-          "indent": 0,
-          "children": []
         }
       }
     },

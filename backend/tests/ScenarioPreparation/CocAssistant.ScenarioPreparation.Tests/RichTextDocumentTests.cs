@@ -112,6 +112,12 @@ public class RichTextDocumentTests
     }
 
     [Fact]
+    public void Given_a_root_without_children_When_validating_Then_it_is_accepted()
+    {
+        Assert.Equal(RichTextOutcome.Accepted, RichTextDocument.Validate("{\"root\":{\"type\":\"root\",\"children\":[]}}"));
+    }
+
+    [Fact]
     public void Given_unknown_extra_properties_on_allowed_nodes_When_validating_Then_it_is_accepted()
     {
         const string json = "{\"root\":{\"type\":\"root\",\"extra\":1,\"children\":[{\"type\":\"paragraph\",\"future\":{\"a\":1},\"children\":[]}]}}";
