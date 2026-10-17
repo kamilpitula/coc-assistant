@@ -39,8 +39,9 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - The prepared order is a suggestion: any Prepared Scene can be started, and the order Scenes were played in is kept by Scene Play as the Scene History.
 - The Keeper edits a Scene and its Handouts, links, and Items while the Scene is Prepared or Active. A Finished Scene is read-only for everyone and is never reopened.
 - A Scene can be removed only while it is Prepared.
+- The prepared order belongs to the Scenario: reordering may move Active and Finished Scenes, and a Scene's position is not part of its content.
 - A Non-Player Entity, Item, or Handout linked to an Active or Finished Scene cannot be deleted, and an Item that an Investigator holds cannot be deleted. Material linked only to Prepared Scenes can be deleted freely.
-- Rich text uses only these Lexical nodes: paragraph, heading, quote, bulleted and numbered list, list item, link, and text with bold, italic, underline, or strikethrough formatting. Links use `http` or `https` and open in a new tab with `rel="noopener noreferrer"`. The server refuses with 400 a document that contains any other node, a link with another scheme, or more than 200 KB of serialized JSON. Images are never embedded in rich text; an image is its own Handout.
+- Rich text uses only these Lexical nodes: paragraph, heading (two levels), quote, bulleted and numbered list, list item, line break, link, and text with bold, italic, underline, or strikethrough formatting. Links use `http` or `https` and open in a new tab with `rel="noopener noreferrer"`. The server refuses with 400 a document that contains any other node, a link with another scheme, or more than 200 KB of serialized JSON. Images are never embedded in rich text; an image is its own Handout.
 - Human NPCs and Mythos Creatures are distinct profiles. A Human NPC uses relevant human [characteristics](../../docs/game-rules/coc7_character_creation_and_development_rules.md#2-characteristics) and [skills](../../docs/game-rules/coc7_character_creation_and_development_rules.md#6-skills); a Mythos Creature may have attacks, armor, special abilities, and sanity loss.
 - Non-Player Entity profile rules are taken from [docs/game-rules](../../docs/game-rules/README.md). Mythos Creature profile rules are not yet documented there and are added to `docs/game-rules/` before Mythos Creature profiles are implemented.
 - Non-Player Entities and Items are scoped to one Campaign and are not reusable across Campaigns in v1.
@@ -72,7 +73,7 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - A Mythos Creature is never forced into the Human NPC profile shape; attacks, armor, special abilities, and sanity loss remain representable independently.
 - Keeper-facing Scenario material and Handouts are not exposed to Players by default.
 - A Non-Player Entity profile never reaches a Player; only its Player-facing name and description in a Scene do, and only through a Reveal.
-- A Finished Scene never changes.
+- A Finished Scene's content never changes; its position in the prepared order may.
 - Material that an Active or Finished Scene refers to is never deleted.
 - Manual preparation remains valid without an LLM or uploaded source document.
 - Structured extraction, when added, produces the same domain concepts as manual preparation rather than a parallel scenario model.
@@ -113,38 +114,52 @@ Scenario: Scenarios are the Keeper's alone
 
 # Scene scenarios trace to ux.md section 18 (SP-UX-n).
 Scenario: Keeper prepares a Scene
+  # SP-UX-15, SP-UX-16, SP-UX-21, SP-UX-25
   Given a Keeper owns a Campaign with the Scenario "The Haunting"
   When the Keeper creates a Scene titled "The Corbitt House" at the location "Arkham, Boston Road"
   Then the Scene is stored in that Scenario as Prepared
   And it is last in the Scenario's prepared order
 
 Scenario: Keeper reorders the Scenes
+  # SP-UX-24
   Given the Scenario "The Haunting" has the Scenes "Meeting Knott", then "The Corbitt House"
   When the Keeper moves "The Corbitt House" up
   Then the Scenario's Scenes are "The Corbitt House", then "Meeting Knott"
   And the order is kept when the Keeper returns
 
 Scenario: Keeper removes a Prepared Scene
+  # SP-UX-23
   Given the Scenario "The Haunting" has the Prepared Scene "Meeting Knott"
   When the Keeper removes it
   Then the Scenario no longer has the Scene "Meeting Knott"
 
 Scenario: A played Scene cannot be removed
+  # SP-UX-23
   Given the Scene "Meeting Knott" is Active or Finished
   When the Keeper removes it
   Then the removal is refused and the Scene is unchanged
 
+# The Handout parts of the next three scenarios are covered by PBI-SP-004 and PBI-SP-005.
 Scenario: A Finished Scene is read-only
+  # SP-UX-22
   Given the Scene "Meeting Knott" is Finished
   When the Keeper changes its title, a Handout, or a Non-Player Entity link
   Then the change is refused and the Scene is unchanged
 
 Scenario: The Keeper edits an Active Scene
+  # SP-UX-22
   Given the Scene "The Corbitt House" is Active
   When the Keeper adds a Text Handout to it
   Then the Handout is stored on the Scene
 
+Scenario: The Keeper edits an Active Scene's Keeper notes
+  # SP-UX-22
+  Given the Scene "The Corbitt House" is Active
+  When the Keeper changes its Keeper notes
+  Then the Scene shows the new Keeper notes
+
 Scenario: Scenes are the Keeper's alone
+  # SP-UX-26
   Given a Scenario with a Scene
   When a Player of that Campaign or the Keeper of another Campaign lists, opens, creates, edits, reorders, or removes its Scenes
   Then the Scene is reported as not found and nothing changes
@@ -168,6 +183,13 @@ Scenario: Keeper attaches a file Handout
   Then the file is durably stored and associated with the Scene
   And the Handout has an explicit Player-facing or Keeper-facing visibility
 
+Scenario: Scene Keeper notes outside the allowed nodes are refused
+  # SP-UX-18, SP-UX-19
+  Given a Keeper is editing a Scene
+  When the Keeper saves Keeper notes that contain an image node or a "javascript:" link
+  Then the save is refused with 400 and the Scene is unchanged
+
+# The Handout part is covered by PBI-SP-005.
 Scenario: Rich text outside the allowed nodes is refused
   Given a Keeper is editing a Text Handout
   When the Keeper saves rich text that contains an image node or a "javascript:" link

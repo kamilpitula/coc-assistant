@@ -48,9 +48,11 @@ jobs:
               - 'docs/game-rules/**'
               # Validator parity fixtures run in both backend and frontend tests.
               - 'specs/character-sheet/validation-fixtures.json'
+              - 'specs/scenario-preparation/rich-text-fixtures.json'
             frontend:
               - 'frontend/**'
               - 'specs/character-sheet/validation-fixtures.json'
+              - 'specs/scenario-preparation/rich-text-fixtures.json'
               # The frontend parity tests read the age rules catalog.
               - 'docs/game-rules/catalogs/age-rules.json'
             e2e:
@@ -91,7 +93,8 @@ jobs:
           for project in \
             backend/tests/CocAssistant.Api.Tests \
             backend/tests/Identity/CocAssistant.Identity.Tests \
-            backend/tests/CampaignPlay/CocAssistant.CampaignPlay.Tests; do
+            backend/tests/CampaignPlay/CocAssistant.CampaignPlay.Tests \
+            backend/tests/ScenarioPreparation/CocAssistant.ScenarioPreparation.Tests; do
             dotnet test "$project" --no-build --configuration Release \
               --logger trx --results-directory TestResults
           done

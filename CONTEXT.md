@@ -72,6 +72,12 @@ _Avoid_: Adventure, module
 The basic unit of play in a Scenario: a situation at a location with a title, Keeper notes, ordered Handouts, links to the Non-Player Entities present or relevant there, and links to Items. Scenes have a suggested prepared order within their Scenario, and each Scene is Prepared, Active, or Finished.
 _Avoid_: Chapter, encounter
 
+**Keeper notes**:
+The Keeper's own notes on a Scenario, a Scene, or an Item; never shown to Players. Plain text on a Scenario, rich text on a Scene or an Item.
+
+**Location**:
+Where a Scene takes place, as free text.
+
 **Prepared Scene**:
 A Scene that has not been played yet. Only a Prepared Scene can be started or removed, and Players never see it.
 _Avoid_: Draft scene, planned scene
