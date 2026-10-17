@@ -1,8 +1,9 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
+import '@/campaign-play/types/navigationState'
 import { NonPlayerEntityNotFound } from '@/scenario-preparation/components/non-player-entity-not-found/non-player-entity-not-found'
 import { useNonPlayerEntities } from '@/scenario-preparation/hooks/useNonPlayerEntities'
 import { filterNonPlayerEntities } from '@/scenario-preparation/services/nonPlayerEntityFilter'
@@ -39,6 +40,7 @@ export function NonPlayerEntityListPage({ campaignId }: NonPlayerEntityListPageP
   const campaign = useCampaign(campaignId)
   const isKeeper = campaign.data?.role === 'Keeper'
   const list = useNonPlayerEntities(campaignId, isKeeper)
+  const navigationMessage = useRouterState({ select: (state) => state.location.state.statusMessage })
 
   if (!isKeeper) {
     return <NonPlayerEntityNotFound campaignId={campaignId} />
@@ -50,6 +52,9 @@ export function NonPlayerEntityListPage({ campaignId }: NonPlayerEntityListPageP
         <ArrowLeft aria-hidden="true" />
         Back to the Overview
       </Link>
+      <p role="status" className="text-sm empty:hidden">
+        {navigationMessage}
+      </p>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Non-Player Entities</h1>
         <CreateLink campaignId={campaignId} />
@@ -141,7 +146,7 @@ function FilteredList({ campaignId, items }: { campaignId: string; items: NonPla
           ))}
         </RadioGroup>
       </fieldset>
-      <p role="status" className="text-sm">
+      <p aria-live="polite" className="text-sm">
         {announcement}
       </p>
       {shown.length === 0 ? (

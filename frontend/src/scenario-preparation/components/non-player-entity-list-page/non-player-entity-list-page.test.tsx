@@ -2,6 +2,7 @@ import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { routerState } from '@/shared/test-support/routerMock'
 import type { NonPlayerEntitySummary } from '@/scenario-preparation/types/NonPlayerEntity'
 
 import { NonPlayerEntityListPage } from './non-player-entity-list-page'
@@ -65,14 +66,15 @@ describe('NonPlayerEntityListPage', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     show([knott, ghoul, sergeant])
     render(<NonPlayerEntityListPage campaignId="c1" />)
-    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    const count = () => document.querySelector('[aria-live="polite"]')
+    expect(count()).toBeEmptyDOMElement()
 
     await userEvent.type(screen.getByLabelText('Search by name'), 'kno')
 
     expect(tableNames()).toEqual([['Mr. Knott', 'Human NPC']])
-    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    expect(count()).toBeEmptyDOMElement()
     await act(() => vi.advanceTimersByTimeAsync(500))
-    expect(screen.getByRole('status')).toHaveTextContent('1 shown.')
+    expect(count()).toHaveTextContent('1 shown.')
   })
 
   it('narrows by type in a Type fieldset', async () => {
@@ -121,6 +123,16 @@ describe('NonPlayerEntityListPage', () => {
 
     expect(screen.getByText("We couldn't load the Non-Player Entities.")).toBeInTheDocument()
     expect(refetch).toHaveBeenCalled()
+  })
+
+  it('announces the status message of the page that navigated here, such as a deletion (SP-UX-37)', () => {
+    routerState.location.state = { statusMessage: 'Mr. Knott deleted.' }
+    show([ghoul])
+
+    render(<NonPlayerEntityListPage campaignId="c1" />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('Mr. Knott deleted.')
+    routerState.location.state = {}
   })
 
   it('shows a Player the not-found page and never enables the list query (SP-UX-39)', () => {
