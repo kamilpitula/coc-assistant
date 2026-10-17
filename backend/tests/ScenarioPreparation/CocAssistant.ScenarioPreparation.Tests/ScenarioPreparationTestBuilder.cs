@@ -34,6 +34,51 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
     public ScenarioService CreateService(ScenarioPreparationDbContext context, IScenarioRepository? repository = null) =>
         new(Keepers, repository ?? new EfScenarioRepository(context), TimeProvider);
 
+    public SceneService CreateSceneService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
+        new(Keepers, new EfScenarioRepository(context), repository ?? new EfSceneRepository(context), TimeProvider);
+
+    /// <summary>Creates a Scene as the Keeper one minute after the previous call and returns its view.</summary>
+    public async Task<SceneDetailView> CreateSceneAsync(Guid campaignId, Guid scenarioId, string title, string? location = null, string? keeperNotes = null)
+    {
+        TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        using var context = Fixture.CreateContext();
+        var result = await CreateSceneService(context).CreateAsync(campaignId, KeeperAccountId, scenarioId, title, location, keeperNotes, CancellationToken.None);
+        Assert.Equal(SceneWriteOutcome.Saved, result.Outcome);
+        return result.Scene!;
+    }
+
+    public async Task<IReadOnlyList<SceneSummaryView>?> ListScenesAsync(Guid campaignId, Guid scenarioId, Guid callerAccountId)
+    {
+        using var context = Fixture.CreateContext();
+        return await CreateSceneService(context).ListAsync(campaignId, callerAccountId, scenarioId, CancellationToken.None);
+    }
+
+    /// <summary>Plays a stored Scene to the given status through the domain transitions, as Scene Play will.</summary>
+    public async Task PlayAsync(Guid sceneId, SceneStatus status)
+    {
+        using var context = Fixture.CreateContext();
+        var scene = await context.Scenes.SingleAsync(candidate => candidate.Id == sceneId);
+        if (status >= SceneStatus.Active)
+        {
+            scene.Start(TimeProvider.GetUtcNow());
+        }
+
+        if (status == SceneStatus.Finished)
+        {
+            scene.Finish(TimeProvider.GetUtcNow().AddMinutes(30));
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>The stored (Title, Position) pairs of a Scenario's Scenes, ordered by Title.</summary>
+    public async Task<IReadOnlyList<(string Title, int Position)>> StoredScenePositionsAsync(Guid scenarioId)
+    {
+        using var context = Fixture.CreateContext();
+        var scenes = await context.Scenes.Where(scene => scene.ScenarioId == scenarioId).ToListAsync();
+        return scenes.OrderBy(scene => scene.Title, StringComparer.Ordinal).Select(scene => (scene.Title, scene.Position)).ToList();
+    }
+
     /// <summary>Creates a Scenario as the Keeper one minute after the previous call and returns its view.</summary>
     public async Task<ScenarioView> CreateScenarioAsync(Guid campaignId, string title, string? keeperNotes = null)
     {

@@ -35,4 +35,35 @@ public class ScenarioPreparationMigrationTests : IAsyncLifetime
 
         Assert.Equal(1, await _dbContext.Scenarios.CountAsync());
     }
+
+    [Fact]
+    public async Task Given_a_new_database_When_migrating_to_latest_Then_scenes_are_stored_with_their_dates_notes_and_status()
+    {
+        await _dbContext.Database.MigrateAsync();
+        var scenario = Scenario.Create(Guid.NewGuid(), "The Haunting", null, 1, DateTimeOffset.UtcNow).Scenario!;
+        var now = new DateTimeOffset(2026, 10, 17, 12, 0, 0, TimeSpan.Zero);
+        var scene = Scene.Create(scenario, "The Corbitt House", "Arkham", "{\"root\":{\"type\":\"root\",\"children\":[]}}", 1, now).Scene!;
+        scene.Start(now.AddHours(1));
+        _dbContext.Scenarios.Add(scenario);
+        _dbContext.Scenes.Add(scene);
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+
+        var stored = await _dbContext.Scenes.SingleAsync();
+
+        Assert.Equal((scenario.CampaignId, scenario.Id, SceneStatus.Active, now.AddHours(1), (DateTimeOffset?)null), (stored.CampaignId, stored.ScenarioId, stored.Status, stored.StartedAt, stored.FinishedAt));
+        Assert.Equal("{\"root\":{\"type\":\"root\",\"children\":[]}}", stored.KeeperNotes);
+    }
+
+    [Fact]
+    public async Task Given_a_scenario_with_scenes_When_deleting_the_scenario_Then_the_database_refuses()
+    {
+        await _dbContext.Database.MigrateAsync();
+        var scenario = Scenario.Create(Guid.NewGuid(), "The Haunting", null, 1, DateTimeOffset.UtcNow).Scenario!;
+        _dbContext.Scenarios.Add(scenario);
+        _dbContext.Scenes.Add(Scene.Create(scenario, "A", null, null, 1, DateTimeOffset.UtcNow).Scene!);
+        await _dbContext.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<SqlException>(() => _dbContext.Scenarios.ExecuteDeleteAsync());
+    }
 }

@@ -10,8 +10,10 @@ public static class ScenarioPreparationInfrastructureServiceCollectionExtensions
                 sql => sql.MigrationsHistoryTable("__ScenarioPreparationMigrationsHistory")));
 
         services.AddScoped<IScenarioRepository, EfScenarioRepository>();
+        services.AddScoped<ISceneRepository, EfSceneRepository>();
         services.AddScoped<ICampaignKeepers, CampaignPlayCampaignKeepers>();
         services.AddScoped<ScenarioService>();
+        services.AddScoped<SceneService>();
         services.TryAddSingleton(TimeProvider.System);
 
         return services;
