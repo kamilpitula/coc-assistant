@@ -52,6 +52,63 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
 
                     b.ToTable("Scenarios");
                 });
+
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Scene", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CampaignId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("KeeperNotes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ScenarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScenarioId", "Position");
+
+                    b.ToTable("Scenes");
+                });
+
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Scene", b =>
+                {
+                    b.HasOne("CocAssistant.ScenarioPreparation.Domain.Scenario", null)
+                        .WithMany()
+                        .HasForeignKey("ScenarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
 #pragma warning restore 612, 618
         }
     }

@@ -1,10 +1,11 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowDown, ArrowUp } from 'lucide-react'
 import { useId, useRef } from 'react'
 
-import { useScenarioReordering } from '@/scenario-preparation/hooks/useScenarioReordering'
-import { useScenarios } from '@/scenario-preparation/hooks/useScenarios'
-import { moveScenarioButtonId, type MoveDirection } from '@/scenario-preparation/services/scenarioOrder'
+import { MoveControls } from '@/scenario-preparation/components/move-controls/move-controls'
+import { usePreparedOrderReordering } from '@/scenario-preparation/hooks/usePreparedOrderReordering'
+import { useReorderScenarios, useScenarios } from '@/scenario-preparation/hooks/useScenarios'
+import type { MoveDirection } from '@/scenario-preparation/services/preparedOrder'
+import { StaleScenarioOrderError } from '@/scenario-preparation/services/scenarioApi'
 import type { Scenario } from '@/scenario-preparation/types/Scenario'
 import { Alert } from '@/shared/components/ui/alert'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
@@ -23,7 +24,15 @@ export function ScenarioListSection({ campaignId }: ScenarioListSectionProps) {
   const headingId = useId()
   const headingRef = useRef<HTMLHeadingElement>(null)
   const list = useScenarios(campaignId, true)
-  const reordering = useScenarioReordering(campaignId, list.data, list.dataUpdatedAt, headingRef)
+  const reordering = usePreparedOrderReordering({
+    items: list.data,
+    dataUpdatedAt: list.dataUpdatedAt,
+    headingRef,
+    reorder: useReorderScenarios(campaignId),
+    isStale: (error) => error instanceof StaleScenarioOrderError,
+    staleMessage: 'The Scenarios changed in another window. Check the order and try again.',
+    buttonIdPrefix: 'scenario',
+  })
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3">
@@ -106,10 +115,12 @@ function ScenarioListBody({ campaignId, scenarios, isPending, isError, onRetry, 
               </Link>
               {scenarios.length > 1 && (
                 <MoveControls
-                  scenario={scenario}
+                  itemId={scenario.id}
+                  title={scenario.title}
                   isFirst={index === 0}
                   isLast={index === scenarios.length - 1}
                   saving={saving}
+                  buttonIdPrefix="scenario"
                   onMove={onMove}
                 />
               )}
@@ -118,59 +129,5 @@ function ScenarioListBody({ campaignId, scenarios, isPending, isError, onRetry, 
         ))}
       </ol>
     </Card>
-  )
-}
-
-interface MoveControlsProps {
-  scenario: Scenario
-  isFirst: boolean
-  isLast: boolean
-  saving: boolean
-  onMove: (scenarioId: string, direction: MoveDirection) => void
-}
-
-function MoveControls({ scenario, isFirst, isLast, saving, onMove }: MoveControlsProps) {
-  return (
-    <div className="flex shrink-0 items-center">
-      {isFirst ? (
-        <span aria-hidden="true" className="size-10" />
-      ) : (
-        <MoveButton scenario={scenario} direction="up" saving={saving} onMove={onMove} />
-      )}
-      {isLast ? (
-        <span aria-hidden="true" className="size-10" />
-      ) : (
-        <MoveButton scenario={scenario} direction="down" saving={saving} onMove={onMove} />
-      )}
-    </div>
-  )
-}
-
-interface MoveButtonProps {
-  scenario: Scenario
-  direction: MoveDirection
-  saving: boolean
-  onMove: (scenarioId: string, direction: MoveDirection) => void
-}
-
-/** aria-disabled, never disabled, while saving, so focus is kept (SP-A11Y-9). */
-function MoveButton({ scenario, direction, saving, onMove }: MoveButtonProps) {
-  const Icon = direction === 'up' ? ArrowUp : ArrowDown
-
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      id={moveScenarioButtonId(scenario.id, direction)}
-      className="size-10 aria-disabled:opacity-50"
-      aria-disabled={saving || undefined}
-      onClick={() => onMove(scenario.id, direction)}
-    >
-      <Icon aria-hidden="true" />
-      <span className="sr-only">
-        Move {scenario.title} {direction}
-      </span>
-    </Button>
   )
 }

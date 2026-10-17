@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
 import { ScenarioForm } from '@/scenario-preparation/components/scenario-form/scenario-form'
+import { SceneListSection } from '@/scenario-preparation/components/scene-list-section/scene-list-section'
 import { ScenarioNotFound } from '@/scenario-preparation/components/scenario-not-found/scenario-not-found'
 import { useEditScenario, useScenario } from '@/scenario-preparation/hooks/useScenarios'
 import { ScenarioValidationError } from '@/scenario-preparation/services/scenarioApi'
@@ -112,6 +113,7 @@ function ScenarioDetail({ campaignId, scenario }: ScenarioDetailProps) {
       ) : (
         <ScenarioNotes scenario={scenario} editButtonRef={editButtonRef} onEdit={startEditing} />
       )}
+      <SceneListSection campaignId={campaignId} scenarioId={scenario.id} />
     </div>
   )
 }

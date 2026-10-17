@@ -3,3 +3,5 @@ global using CocAssistant.ScenarioPreparation.Domain;
 global using CocAssistant.ScenarioPreparation.Infrastructure;
 global using Microsoft.Data.Sqlite;
 global using Microsoft.EntityFrameworkCore;
+global using System.Text;
+global using System.Text.Json;

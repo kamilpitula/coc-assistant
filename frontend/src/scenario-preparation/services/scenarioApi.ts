@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { SCENARIO_FIELD_MESSAGES, type ScenarioFieldErrors } from '@/scenario-preparation/services/scenarioForm'
+import { readErrorKeys } from '@/scenario-preparation/services/validationProblem'
 import type { Scenario, ScenarioInput } from '@/scenario-preparation/types/Scenario'
 
 // Strict, so a field the contract does not name (such as a position) is rejected instead of silently passed on.
@@ -50,9 +51,7 @@ const scenariosUrl = (campaignId: string): string => `/api/campaigns/${campaignI
 
 /** Maps the keys of a ValidationProblemDetails body (any casing) to the form's fields and messages. */
 async function readFieldErrors(response: Response): Promise<ScenarioFieldErrors> {
-  const body: unknown = await response.json().catch(() => null)
-  const parsed = z.object({ errors: z.record(z.string(), z.unknown()) }).safeParse(body)
-  const keys = parsed.success ? Object.keys(parsed.data.errors).map((key) => key.toLowerCase()) : []
+  const keys = await readErrorKeys(response)
   const errors: ScenarioFieldErrors = {}
   if (keys.includes('title')) {
     errors.title = SCENARIO_FIELD_MESSAGES.title

@@ -21,6 +21,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Shared rich-text parity fixture (ADR 0015 amendment). -->
+    <None Include="..\..\..\..\specs\scenario-preparation\rich-text-fixtures.json"
+          Link="Fixtures\rich-text-fixtures.json"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\src\ScenarioPreparation\CocAssistant.ScenarioPreparation.Domain\CocAssistant.ScenarioPreparation.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\ScenarioPreparation\CocAssistant.ScenarioPreparation.Application\CocAssistant.ScenarioPreparation.Application.csproj" />
     <ProjectReference Include="..\..\..\src\ScenarioPreparation\CocAssistant.ScenarioPreparation.Infrastructure\CocAssistant.ScenarioPreparation.Infrastructure.csproj" />
