@@ -1,6 +1,6 @@
 ---
 id: PBI-SP-003
-status: todo
+status: done
 blocked_by: [PBI-SP-001]
 ---
 
@@ -33,11 +33,11 @@ Read: `CONTEXT.md` (Human NPC, NPC Profile, Opposing Value).
 Read: `specs/scenario-preparation/ux.md` sections 21 to 30 (shared Non-Player Entity UX); add the NPC Profile field-level design to section 25.4 first.
 
 ## Verification
-- [ ] Moving the rule calculations to the shared kernel changes no Campaign Play behavior; the existing tests pass unchanged.
-- [ ] A Keeper can create, edit, and delete a Human NPC with only a name and an age, and add or remove the Characteristics, Skills, Combat, and Spells sections.
-- [ ] Derived values and MOV are computed per project_ruleset.md sections 5.3 and 5.4, and each skill shows its Investigator difficulty.
-- [ ] Out-of-range values, malformed dice notation, and Damage Bonus on a firearm weapon are refused.
-- [ ] Profiles cannot be read or modified across Campaign boundaries or by Players, with unit, integration, and E2E coverage.
+- [x] Moving the rule calculations to the shared kernel changes no Campaign Play behavior; the existing tests pass unchanged.
+- [x] A Keeper can create, edit, and delete a Human NPC with only a name and an age, and add or remove the Characteristics, Skills, Combat, and Spells sections.
+- [x] Derived values and MOV are computed per project_ruleset.md sections 5.3 and 5.4, and each skill shows its Investigator difficulty.
+- [x] Out-of-range values, malformed dice notation, and Damage Bonus on a firearm weapon are refused.
+- [x] Profiles cannot be read or modified across Campaign boundaries or by Players, with unit, integration, and E2E coverage.
 
 ## Refinement Protocol
 If the NPC Profile needs another Call of Cthulhu 7th Edition field, add the rule to `docs/game-rules/` first, then update the spec Constraints and the domain contract, keeping Human NPC and Mythos Creature separate.
@@ -46,3 +46,5 @@ If the NPC Profile needs another Call of Cthulhu 7th Edition field, add the rule
 - AI drafting of NPC and Monster Profiles from a Keeper's concept, reusing the Foundry structured-output setup planned for extraction.
 - Profile groups (several similar Human NPCs or Mythos Creatures with shared values and named exceptions).
 - Align Investigator Custom Weapons with the section 10.1 weapon shape and the dice notation used by NPC Profile weapons.
+- Move the campaign-play hooks and fields the NPC Profile editor reuses (`useSkillCatalog`, `useOccupationCatalog`, `WizardField`, `WizardSelect`, `WizardTextarea`, `fieldId`, `skillNames`) into `src/shared/` (D7 of the PBI-SP-003 decision record).
+- Enable the Mythos Creature option on the Create Non-Player Entity page and give Mythos Creature list rows a link when PBI-SP-009 adds their pages (the option is disabled and the rows are plain text until then).
