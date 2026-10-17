@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\GameRules\CocAssistant.GameRules.Domain\CocAssistant.GameRules.Domain.csproj" />
+  </ItemGroup>
+
 </Project>

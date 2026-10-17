@@ -6,3 +6,6 @@ global using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.DependencyInjection.Extensions;
+global using CocAssistant.GameRules.Domain;
+global using Microsoft.EntityFrameworkCore.ChangeTracking;
+global using System.Text.Json;

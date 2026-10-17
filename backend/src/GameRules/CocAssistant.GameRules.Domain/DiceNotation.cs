@@ -1,6 +1,3 @@
-using System.Globalization;
-using System.Text.RegularExpressions;
-
 namespace CocAssistant.GameRules.Domain;
 
 /// <summary>Whether Damage Bonus ("DB") may appear in a notation.</summary>
