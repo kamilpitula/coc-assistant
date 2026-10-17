@@ -20,6 +20,11 @@ const { mockUseCampaign, mockUseScenario, mockUseEdit, mutate, reset, refetch } 
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
+vi.mock('@/scenario-preparation/components/scene-list-section/scene-list-section', () => ({
+  SceneListSection: ({ campaignId, scenarioId }: { campaignId: string; scenarioId: string }) => (
+    <section aria-label="Scenes" data-campaign={campaignId} data-scenario={scenarioId} />
+  ),
+}))
 vi.mock('@/scenario-preparation/hooks/useScenarios', () => ({ useScenario: mockUseScenario, useEditScenario: mockUseEdit }))
 
 const scenario = { id: 's1', title: 'The Haunting', keeperNotes: 'Cellar key.\nCorbitt after midnight.' }
@@ -48,6 +53,20 @@ describe('ScenarioPage', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Keeper notes' })).toBeInTheDocument()
     expect(screen.getByText(/Cellar key\./)).toHaveClass('whitespace-pre-line')
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  })
+
+  it('mounts the Scenes section below the view and below the form (SP-UX-15)', async () => {
+    render(<ScenarioPage campaignId="c1" scenarioId="s1" />)
+
+    const scenes = screen.getByRole('region', { name: 'Scenes' })
+    expect(scenes).toHaveAttribute('data-scenario', 's1')
+    expect(screen.getByRole('button', { name: 'Edit' }).compareDocumentPosition(scenes)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+
+    expect(screen.getByRole('button', { name: 'Save' }).compareDocumentPosition(screen.getByRole('region', { name: 'Scenes' }))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
   })
 
   it('says there are no Keeper notes yet when they are empty', () => {

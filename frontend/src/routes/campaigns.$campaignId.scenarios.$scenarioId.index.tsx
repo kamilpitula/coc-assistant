@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { ScenarioPage } from '@/scenario-preparation/components/scenario-page/scenario-page'
 
-export const Route = createFileRoute('/campaigns/$campaignId/scenarios/$scenarioId')({
+export const Route = createFileRoute('/campaigns/$campaignId/scenarios/$scenarioId/')({
   component: ScenarioRoute,
 })
 
