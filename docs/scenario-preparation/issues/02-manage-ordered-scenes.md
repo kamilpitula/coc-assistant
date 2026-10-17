@@ -1,6 +1,7 @@
 ---
 id: PBI-SP-002
 status: done
+pr: 24
 blocked_by: [PBI-SP-001]
 ---
 
