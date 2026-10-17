@@ -30,7 +30,7 @@ export function RichTextView({ document }: RichTextViewProps) {
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <RichTextPlugin
-        contentEditable={<ContentEditable aria-readonly={true} className="max-w-full text-sm break-words outline-none" />}
+        contentEditable={<ContentEditable role="presentation" className="max-w-full text-sm break-words outline-none" />}
         ErrorBoundary={LexicalErrorBoundary}
       />
     </LexicalComposer>

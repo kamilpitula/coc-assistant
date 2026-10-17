@@ -66,6 +66,8 @@ function LinkForm({ initialUrl, editing, onSave, onRemove, onCancel }: LinkFormP
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    // The dialog is portaled, but React still bubbles its events to the form that holds the editor.
+    event.stopPropagation()
     const trimmed = url.trim()
     if (!isAllowedLinkUrl(trimmed)) {
       setError(INVALID_URL)

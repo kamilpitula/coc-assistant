@@ -77,4 +77,20 @@ describe('RichTextLinkDialog', () => {
 
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('does not submit the form that holds the editor when the link is saved', async () => {
+    const onParentSubmit = vi.fn((event: React.FormEvent) => event.preventDefault())
+    const handlers = { onSave: vi.fn(), onRemove: vi.fn(), onClose: vi.fn(), onCloseFocus: vi.fn() }
+    render(
+      <form onSubmit={onParentSubmit}>
+        <RichTextLinkDialog open editingUrl={null} {...handlers} />
+      </form>,
+    )
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Web address' }), 'https://example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Save link' }))
+
+    expect(handlers.onSave).toHaveBeenCalledWith('https://example.com')
+    expect(onParentSubmit).not.toHaveBeenCalled()
+  })
 })
