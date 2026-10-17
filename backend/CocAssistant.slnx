@@ -2,6 +2,9 @@
   <Folder Name="/src/">
     <Project Path="src/CocAssistant.Api/CocAssistant.Api.csproj" />
   </Folder>
+  <Folder Name="/src/GameRules/">
+    <Project Path="src/GameRules/CocAssistant.GameRules.Domain/CocAssistant.GameRules.Domain.csproj" />
+  </Folder>
   <Folder Name="/src/Identity/">
     <Project Path="src/Identity/CocAssistant.Identity.Domain/CocAssistant.Identity.Domain.csproj" />
     <Project Path="src/Identity/CocAssistant.Identity.Application/CocAssistant.Identity.Application.csproj" />

@@ -1,4 +1,4 @@
-namespace CocAssistant.CampaignPlay.Domain.CharacterSheets;
+namespace CocAssistant.GameRules.Domain;
 
 /// <summary>
 /// The eight core characteristics (docs/game-rules/coc7_character_creation_and_development_rules.md section 2),
