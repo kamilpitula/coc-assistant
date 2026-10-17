@@ -81,6 +81,8 @@ test.describe('Scenes', () => {
 
     await test.step('SP-UX-20: Edit then Save stores the changes, shows "Scene saved.", and survives a reload; Cancel discards', async () => {
       await sceneLinks(page).filter({ hasText: 'The Corbitt House' }).click()
+      // The Scenario page has its own Edit button until the Scene page replaces it, so wait for the Scene first.
+      await expect(page.getByRole('heading', { level: 1, name: 'The Corbitt House' })).toBeVisible()
       await page.getByRole('button', { name: 'Edit' }).click()
       await expect(sceneTitleField(page)).toBeFocused()
       await sceneTitleField(page).fill('Discarded title')
