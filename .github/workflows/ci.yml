@@ -92,6 +92,7 @@ jobs:
         run: |
           for project in \
             backend/tests/CocAssistant.Api.Tests \
+            backend/tests/GameRules/CocAssistant.GameRules.Tests \
             backend/tests/Identity/CocAssistant.Identity.Tests \
             backend/tests/CampaignPlay/CocAssistant.CampaignPlay.Tests \
             backend/tests/ScenarioPreparation/CocAssistant.ScenarioPreparation.Tests; do

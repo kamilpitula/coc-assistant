@@ -27,6 +27,9 @@
     <Project Path="tests/CocAssistant.Api.Tests/CocAssistant.Api.Tests.csproj" />
     <Project Path="tests/CocAssistant.Api.IntegrationTests/CocAssistant.Api.IntegrationTests.csproj" />
   </Folder>
+  <Folder Name="/tests/GameRules/">
+    <Project Path="tests/GameRules/CocAssistant.GameRules.Tests/CocAssistant.GameRules.Tests.csproj" />
+  </Folder>
   <Folder Name="/tests/Identity/">
     <Project Path="tests/Identity/CocAssistant.Identity.Tests/CocAssistant.Identity.Tests.csproj" />
   </Folder>
