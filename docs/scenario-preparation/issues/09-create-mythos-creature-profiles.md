@@ -28,6 +28,7 @@ Read: `specs/scenario-preparation/spec.md`
 Read: `docs/game-rules/coc_7e_npc_and_monster_creation_ruleset.md` section 5 (monster creation procedure and profile checklist).
 Read: `docs/game-rules/project_ruleset.md` section 5.
 Read: `CONTEXT.md` (Mythos Creature, Monster Profile, Creature Kind, Derived Value Override).
+Read: `specs/scenario-preparation/ux.md` sections 21 to 30 (shared Non-Player Entity UX); add the Monster Profile field-level design to section 25.5 first.
 
 ## Verification
 - [ ] A Keeper can create, edit, and delete a Mythos Creature with attacks, armor, immunities, vulnerabilities, spells, powers, and sanity loss where applicable.

@@ -30,6 +30,7 @@ Read: `docs/game-rules/coc_7e_npc_and_monster_creation_ruleset.md`
 Read: `docs/game-rules/project_ruleset.md` section 5 (ranges, MOV gap, derived values, dice notation, spells, NPC skills and weapons, validation).
 Read: `docs/adr/0017-shared-game-rules-kernel-for-derived-values-and-dice-notation.md`.
 Read: `CONTEXT.md` (Human NPC, NPC Profile, Opposing Value).
+Read: `specs/scenario-preparation/ux.md` sections 21 to 30 (shared Non-Player Entity UX); add the NPC Profile field-level design to section 25.4 first.
 
 ## Verification
 - [ ] Moving the rule calculations to the shared kernel changes no Campaign Play behavior; the existing tests pass unchanged.

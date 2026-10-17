@@ -11,7 +11,7 @@ Let a Keeper duplicate a Human NPC or Mythos Creature within its Campaign, so va
 
 **Scope:**
 - **Domain and API:** the duplicate operation for both profile types; the copy keeps the type and Campaign, is named "<name> (copy)" truncated to 200 characters, and copies every profile field including overrides and their reasons.
-- **UI:** a Duplicate action, designed through the UX designer skill first.
+- **UI:** the Duplicate action on the profile page, as designed in `specs/scenario-preparation/ux.md` section 25.3.
 - **Tests:** unit, integration, and E2E coverage.
 - **Out of scope:** copying Scene links, copying across Campaigns, published templates.
 
@@ -25,6 +25,7 @@ Read: `specs/scenario-preparation/spec.md`
 - Constraints: duplicating a profile.
 - Scenarios: Keeper duplicates a profile; Keeper-only profiles.
 Read: `docs/game-rules/project_ruleset.md` section 5.1.
+Read: `specs/scenario-preparation/ux.md` section 25.3 (Duplicate) and SP-UX-38.
 
 ## Verification
 - [ ] A Keeper can duplicate a Human NPC and a Mythos Creature; the copy has the same type, Campaign, and profile, and no Scene links.

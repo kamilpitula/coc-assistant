@@ -61,7 +61,7 @@ Phone (< 1024px), single column          Desktop (>= 1024px), two columns once t
 +--------------------------------+       +----------------------------+---------------+
 ```
 
-- **Order** (DOM and visual are the same): status message, "Needs your attention" (only when it has items), "At the table", "Scenarios" (Keeper only, [scenario-preparation ux](../scenario-preparation/ux.md) section 2), then "Wall" (only once PBI-CP-004 ships).
+- **Order** (DOM and visual are the same): status message, "Needs your attention" (only when it has items), "At the table", "Scenarios" (Keeper only, [scenario-preparation ux](../scenario-preparation/ux.md) section 2), "Non-Player Entities" (Keeper only, [scenario-preparation ux](../scenario-preparation/ux.md) section 22), then "Wall" (only once PBI-CP-004 ships).
 - **Column widths:** from 1024px (`lg`) the Wall preview moves to a right column (`lg:grid-cols-[2fr_1fr]`). Before the Wall exists, the overview is one column with `max-w-3xl`.
 - **Status message:** the existing navigation `statusMessage` (for example after a submit) stays as a `role="status"` paragraph directly under the header, now for both roles.
 - **Spacing:** sections are separated by `gap-6`, and each section is a `section` labelled by its `h2`.
