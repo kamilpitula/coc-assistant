@@ -37,6 +37,28 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
     public SceneService CreateSceneService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
         new(Keepers, new EfScenarioRepository(context), repository ?? new EfSceneRepository(context), TimeProvider);
 
+    public HumanNpcService CreateHumanNpcService(ScenarioPreparationDbContext context, IHumanNpcRepository? repository = null) =>
+        new(Keepers, repository ?? new EfHumanNpcRepository(context), new FakeNonPlayerEntityRuleData(), TimeProvider);
+
+    public NonPlayerEntityService CreateNonPlayerEntityService(ScenarioPreparationDbContext context, INonPlayerEntityDirectory? directory = null) =>
+        new(Keepers, directory ?? new EfNonPlayerEntityDirectory(context));
+
+    /// <summary>Creates a Human NPC as the Keeper and returns its view.</summary>
+    public async Task<HumanNpcView> CreateHumanNpcAsync(Guid campaignId, string name = "Mr. Knott", int age = 62)
+    {
+        TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        using var context = Fixture.CreateContext();
+        var result = await CreateHumanNpcService(context).CreateAsync(campaignId, KeeperAccountId, name, age, CancellationToken.None);
+        Assert.Equal(HumanNpcWriteOutcome.Saved, result.Outcome);
+        return result.HumanNpc!;
+    }
+
+    public async Task<int> StoredHumanNpcCountAsync()
+    {
+        using var context = Fixture.CreateContext();
+        return await context.HumanNpcs.CountAsync();
+    }
+
     /// <summary>Creates a Scene as the Keeper one minute after the previous call and returns its view.</summary>
     public async Task<SceneDetailView> CreateSceneAsync(Guid campaignId, Guid scenarioId, string title, string? location = null, string? keeperNotes = null)
     {

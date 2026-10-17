@@ -17,6 +17,8 @@ public static class ScenarioPreparationInfrastructureServiceCollectionExtensions
         services.AddSingleton<INonPlayerEntityRuleData, CampaignPlayNonPlayerEntityRuleData>();
         services.AddScoped<ScenarioService>();
         services.AddScoped<SceneService>();
+        services.AddScoped<HumanNpcService>();
+        services.AddScoped<NonPlayerEntityService>();
         services.TryAddSingleton(TimeProvider.System);
 
         return services;
