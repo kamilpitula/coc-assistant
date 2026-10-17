@@ -1,7 +1,7 @@
 ---
 id: PBI-SP-004
 status: todo
-blocked_by: [PBI-SP-002, PBI-SP-003]
+blocked_by: [PBI-SP-002, PBI-SP-003, PBI-SP-009]
 ---
 
 # PBI-SP-004: Link Non-Player Entities to Scenes
@@ -16,7 +16,7 @@ Build the end-to-end ability for a Keeper to link Human NPCs and Mythos Creature
 - **Out of scope:** revealing a Non-Player Entity to Investigators (PBI-SPL-002), Handouts, source-document extraction.
 
 ## Dependencies
-- Blocked by: PBI-SP-002 (Scenes); PBI-SP-003 (Non-Player Entity profiles).
+- Blocked by: PBI-SP-002 (Scenes); PBI-SP-003 (Human NPC profiles); PBI-SP-009 (Mythos Creature profiles).
 - Must merge before: PBI-SP-006; PBI-SPL-002 (Reveals of Non-Player Entities use the Player-facing description).
 
 ## Context

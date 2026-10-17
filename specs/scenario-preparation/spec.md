@@ -21,10 +21,17 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
   - `PUT /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` replaces its title, location, and Keeper notes; 409 when the Scene is Finished.
   - `DELETE /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` removes a Prepared Scene; 409 when it is Active or Finished.
   - `PUT /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/order` replaces the prepared order with the complete list of the Scenario's Scene ids, as for Scenarios.
+- **Non-Player Entity API:** Keeper only, with the same 404 rule as the Scenario API, including for a profile of another Campaign or a profile addressed with the wrong type. Responses include the computed derived values; requests never carry them.
+  - `GET /api/campaigns/{campaignId}/non-player-entities` lists the Campaign's Human NPCs and Mythos Creatures, each with `{id, type, name}`.
+  - `POST /api/campaigns/{campaignId}/human-npcs` creates a Human NPC; `GET`, `PUT`, and `DELETE /api/campaigns/{campaignId}/human-npcs/{humanNpcId}` read, replace, and delete its NPC Profile.
+  - `POST /api/campaigns/{campaignId}/mythos-creatures` creates a Mythos Creature; `GET`, `PUT`, and `DELETE /api/campaigns/{campaignId}/mythos-creatures/{mythosCreatureId}` read, replace, and delete its Monster Profile.
+  - `POST .../human-npcs/{humanNpcId}/duplicate` and `POST .../mythos-creatures/{mythosCreatureId}/duplicate` create a copy (PBI-SP-010).
+  - `DELETE` answers 409 when the profile is linked to an Active or Finished Scene (from PBI-SP-004).
+- **Non-Player Entity profiles:** Human NPC and Mythos Creature are separate aggregates, each stored as a row with its Campaign id, type, and name beside a validated JSON document holding the rest of its profile, following the Character Sheet storage pattern. A profile's type is fixed at creation. Rule calculations shared with Campaign Play (derived values, difficulty levels, dice notation) live in a shared game-rules kernel ([ADR 0017](../../docs/adr/0017-shared-game-rules-kernel-for-derived-values-and-dice-notation.md)). Profile edits are not pushed over SignalR: profiles are Keeper-only and only the Keeper edits them, so there is no other viewer to update; the Player-facing parts reach Players through Scene links and Reveals, which carry their own real-time rules.
 - **Scene status:** A Scene is Prepared, Active, or Finished, and moves only Prepared -> Active -> Finished. The Scene aggregate owns the status and the editing rules that follow from it; Scene Play triggers the transitions. How Scene Play reaches the Scene aggregate, and where Reveals and their snapshots are stored, is decided in an architect decision record before PBI-SPL-001.
 - **Rich text:** Scene Keeper notes, rich-text Handouts, Item descriptions, and Player-facing descriptions of Non-Player Entities in a Scene are stored as Lexical serialized editor state (JSON). The frontend edits it with Lexical and renders it with a read-only Lexical renderer that registers the same nodes. Choosing Lexical is recorded in an ADR.
 - **Handout kinds:** Read-aloud and Text hold rich text (PBI-SP-005). Image, Document, and Map hold a file in Azure Blob Storage (PBI-SP-007). A Map is shown prominently in Scene Play; it is a static image.
-- **UX specification:** [ux.md](ux.md). The Keeper's Scenario page lists the Scenario's Scenes in prepared order with each Scene's status and, once played, its start and finish dates; the Scene layout is in [ux.md](ux.md) sections 11 to 20.
+- **UX specification:** [ux.md](ux.md). The Keeper's Scenario page lists the Scenario's Scenes in prepared order with each Scene's status and, once played, its start and finish dates; the Scene layout is in [ux.md](ux.md) sections 11 to 20, and the Non-Player Entity list, create page, and profile pages in sections 21 to 30.
 - **Manual preparation:** v1 provides Keeper-managed Scene, Handout, Human NPC, Mythos Creature, and Item records.
 - **File storage:** Azure Blob Storage stores file Handouts in v1 and uploaded Scenario source documents in the later extraction flow.
 - **LLM extraction boundary:** The later extraction flow uses direct structured-output calls to a Microsoft Foundry model and maps results into the same Scenario, Scene, Human NPC, and Mythos Creature concepts used by manual preparation.
@@ -43,7 +50,13 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - A Non-Player Entity, Item, or Handout linked to an Active or Finished Scene cannot be deleted, and an Item that an Investigator holds cannot be deleted. Material linked only to Prepared Scenes can be deleted freely.
 - Rich text uses only these Lexical nodes: paragraph, heading (two levels), quote, bulleted and numbered list, list item, line break, link, and text with bold, italic, underline, or strikethrough formatting. Links use `http` or `https` and open in a new tab with `rel="noopener noreferrer"`. The server refuses with 400 a document that contains any other node, a link with another scheme, or more than 200 KB of serialized JSON. Images are never embedded in rich text; an image is its own Handout.
 - Human NPCs and Mythos Creatures are distinct profiles. A Human NPC uses relevant human [characteristics](../../docs/game-rules/coc7_character_creation_and_development_rules.md#2-characteristics) and [skills](../../docs/game-rules/coc7_character_creation_and_development_rules.md#6-skills); a Mythos Creature may have attacks, armor, special abilities, and sanity loss.
-- Non-Player Entity profile rules are taken from [docs/game-rules](../../docs/game-rules/README.md). Mythos Creature profile rules are not yet documented there and are added to `docs/game-rules/` before Mythos Creature profiles are implemented.
+- **[DEPRECATED 2026-10-17]**
+  ~~Non-Player Entity profile rules are taken from [docs/game-rules](../../docs/game-rules/README.md). Mythos Creature profile rules are not yet documented there and are added to `docs/game-rules/` before Mythos Creature profiles are implemented.~~
+  Replaced by: Non-Player Entity profile rules are taken from [coc_7e_npc_and_monster_creation_ruleset.md](../../docs/game-rules/coc_7e_npc_and_monster_creation_ruleset.md) as applied by [project_ruleset.md section 5](../../docs/game-rules/project_ruleset.md#5-non-player-entity-profiles), which sets the supported profiles, value ranges, derived values and overrides, dice notation, spells, NPC skills and weapons, and what validation blocks a save.
+- An NPC Profile has a required name (1-200 characters) and a required age, optional plain-text profession or role (with the Era's Occupations offered as suggestions), short description, goal, relationship to the Investigators, what the NPC knows, what the NPC hides, and behavior cue, optional rich-text Keeper notes, and optional Characteristics, Skills, Combat, and Spells sections. Combat holds Dodge, armor points, a tactics and morale note, and weapons.
+- A Monster Profile has a required name (1-200 characters), an optional Creature Kind, optional plain-text description and sensory cues, origin, goal and typical behavior, signs and traces, defeat outcome, and specimen-range notes, optional rich-text Keeper notes, characteristics, movement modes, attacks per round, Dodge, attacks, armor points and an armor note, immunities, vulnerabilities, skills, spells, powers, sanity loss, and Derived Value Overrides.
+- Profile text limits: each plain-text field up to 4,000 characters, each list entry's text up to 1,000 characters, an override reason 1-500 characters, and at most 100 entries in each list. Rich-text Keeper notes follow the rich-text constraint below.
+- Duplicating a profile creates a profile of the same type in the same Campaign named "<name> (copy)", truncated to 200 characters, with every profile field including overrides and their reasons. Scene links are never copied.
 - Non-Player Entities and Items are scoped to one Campaign and are not reusable across Campaigns in v1.
 - A Non-Player Entity's link to a Scene carries a Player-facing name and a Player-facing rich-text description. These are the only parts of a Non-Player Entity a Player ever receives; the profile is Keeper-only.
 - An Item has a required name (1-200 characters), a Player-facing rich-text description, optional rich-text Keeper notes, and optional Handouts. It is held by at most one Investigator or by no one; Scene Play changes the holder.
@@ -59,7 +72,7 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - [ ] The Keeper can create, edit, reorder, and remove Scenes in a Scenario; new Scenes are added at the end of the prepared order, and only Prepared Scenes can be removed.
 - [ ] A Scene stores its title, location, Keeper notes, status, ordered Handouts, linked Non-Player Entities with their Player-facing name and description, and linked Items.
 - [ ] A Finished Scene and everything on it refuses every change with 409.
-- [ ] The Keeper can create both Human NPC and Mythos Creature profiles with their distinct required information.
+- [ ] The Keeper can create, edit, delete, and duplicate both Human NPC and Mythos Creature profiles with their distinct required information, and sees their computed derived values.
 - [ ] The Keeper can create rich-text Handouts of kind Read-aloud and Text, and file Handouts of kind Image, Document, and Map, each with an explicit visibility.
 - [ ] File Handouts are stored durably in Azure Blob Storage and associated with a Scene or an Item.
 - [ ] The Keeper can create and edit Campaign Items and link them to Scenes.
@@ -71,6 +84,9 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - Scenario order is stable and unambiguous within a Campaign.
 - Scenarios and Scenes are never returned to Players or to another Campaign's Keeper through the Scenario Preparation API.
 - A Mythos Creature is never forced into the Human NPC profile shape; attacks, armor, special abilities, and sanity loss remain representable independently.
+- A Human NPC never becomes a Mythos Creature or the reverse.
+- An NPC Profile's derived values always follow the shared formulas; only a Monster Profile has Derived Value Overrides, and each has a reason.
+- Non-Player Entity profiles are never returned to Players or to another Campaign's Keeper through the Scenario Preparation API.
 - Keeper-facing Scenario material and Handouts are not exposed to Players by default.
 - A Non-Player Entity profile never reaches a Player; only its Player-facing name and description in a Scene do, and only through a Reveal.
 - A Finished Scene's content never changes; its position in the prepared order may.
@@ -163,6 +179,106 @@ Scenario: Scenes are the Keeper's alone
   Given a Scenario with a Scene
   When a Player of that Campaign or the Keeper of another Campaign lists, opens, creates, edits, reorders, or removes its Scenes
   Then the Scene is reported as not found and nothing changes
+
+# Non-Player Entity profile scenarios (PBI-SP-003, PBI-SP-009, PBI-SP-010).
+# They trace to ux.md section 28 (SP-UX-n).
+Scenario: Keeper creates a narrative Human NPC
+  # SP-UX-31, SP-UX-32
+  Given a Keeper owns a Campaign
+  When the Keeper creates the Human NPC "Mr. Knott" aged 62 with only the profession "Landlord" and the goal "Rent the Corbitt House"
+  Then the Human NPC belongs to the Campaign
+  And its NPC Profile has no Characteristics, Skills, Combat, or Spells section
+
+Scenario: A Human NPC needs a name and an age
+  # SP-UX-31
+  Given a Keeper owns a Campaign
+  When the Keeper creates a Human NPC without a name or without an age
+  Then the creation is refused and no Human NPC is stored
+
+Scenario: A Human NPC's derived values follow the rules
+  # SP-UX-36
+  Given the Human NPC "Thug" has STR 70, CON 60, SIZ 65, and DEX 55 and is aged 30
+  When the Keeper opens its NPC Profile
+  Then it shows the Hit Points, Damage Bonus, Build, and MOV computed from those values
+  And those values cannot be overridden
+
+Scenario: MOV is not computed outside the covered ages
+  # SP-UX-36
+  Given the Human NPC "Old Whateley" has STR, DEX, and SIZ and is aged 95
+  When the Keeper opens its NPC Profile
+  Then MOV is shown as not covered by the rules
+
+Scenario: An Opposing Value shows the Investigator's difficulty
+  # SP-UX-36
+  Given the Human NPC "Desk sergeant" has the skill Spot Hidden at 55
+  When the Keeper opens its NPC Profile
+  Then Spot Hidden shows that an Investigator needs a Hard success
+
+Scenario: A firearm weapon cannot add Damage Bonus
+  # SP-UX-35
+  Given the Human NPC "Gangster" has the skill Firearms (Handgun)
+  When the Keeper saves a weapon using that skill with the damage "1D10+DB"
+  Then the save is refused and the NPC Profile is unchanged
+
+Scenario: Keeper creates a Mythos Creature
+  # SP-UX-32, SP-UX-36
+  Given a Keeper owns a Campaign
+  When the Keeper creates the Mythos Creature "Ghoul" with the Creature Kind Mythos, 3 attacks per round, a claw attack "Fighting 40%, 1D6+DB", armor 0, and sanity loss "0/1D6"
+  Then the Mythos Creature belongs to the Campaign with those attacks, armor, and sanity loss
+  And its Monster Profile shows the Hit Points, Magic Points, Damage Bonus, and Build computed from its characteristics
+
+Scenario: Malformed dice notation is refused
+  # SP-UX-35
+  Given a Keeper is editing a Monster Profile
+  When the Keeper saves the sanity loss "1D6" or the attack damage "D"
+  Then the save is refused and the Monster Profile is unchanged
+
+Scenario: A Derived Value Override needs a reason
+  # SP-UX-35, SP-UX-36
+  Given a Keeper is editing a Monster Profile
+  When the Keeper overrides its Hit Points without a reason
+  Then the save is refused
+  When the Keeper overrides its Hit Points with the reason "Swollen with stolen life"
+  Then the Monster Profile shows the override beside the computed Hit Points
+
+Scenario: Hit Points not applicable needs a defeat outcome
+  # SP-UX-35
+  Given a Keeper is editing a Monster Profile without a defeat outcome
+  When the Keeper marks its Hit Points not applicable
+  Then the save is refused until a defeat outcome is recorded
+
+Scenario: Keeper finds a profile in the list
+  # SP-UX-29, SP-UX-30
+  Given the Campaign has the Human NPC "Mr. Knott" and the Mythos Creature "Ghoul"
+  When the Keeper searches the Non-Player Entity list for "kno" with the type Human NPCs
+  Then only "Mr. Knott" is listed
+
+Scenario: Keeper adds and removes optional sections
+  # SP-UX-33
+  Given a Keeper is editing the NPC Profile of "Mr. Knott" with no Combat section
+  When the Keeper adds the Combat section, enters a weapon, and saves
+  Then the NPC Profile shows the Combat section
+  When the Keeper removes the Combat section and saves
+  Then the NPC Profile has no Combat section
+
+Scenario: Keeper deletes an unlinked profile
+  # SP-UX-37
+  Given the Human NPC "Mr. Knott" is linked to no Scene
+  When the Keeper deletes the Human NPC
+  Then the Campaign no longer has the Human NPC "Mr. Knott"
+
+Scenario: Keeper duplicates a profile
+  # SP-UX-38
+  Given the Mythos Creature "Ghoul" has an overridden Hit Points value and is linked to a Scene
+  When the Keeper duplicates it
+  Then the Campaign has the Mythos Creature "Ghoul (copy)" with the same profile and override
+  And "Ghoul (copy)" is linked to no Scene
+
+Scenario: Non-Player Entity profiles are the Keeper's alone
+  # SP-UX-28, SP-UX-39
+  Given a Campaign with a Human NPC and a Mythos Creature
+  When a Player of that Campaign or the Keeper of another Campaign lists, opens, creates, edits, deletes, or duplicates them
+  Then the profile is reported as not found and nothing changes
 
 Scenario: Keeper links a Mythos Creature to a Scene
   Given a Mythos Creature belongs to the Campaign

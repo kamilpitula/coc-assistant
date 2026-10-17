@@ -14,6 +14,13 @@ Scenes (PBI-SP-002): **Option A (a Scene page with a view and an Edit toggle)**,
 
 Scene design record: [docs/scenario-preparation/issues/02-manage-ordered-scenes.design.md](../../docs/scenario-preparation/issues/02-manage-ordered-scenes.design.md). Scenes are specified in sections 11 to 20.
 
+Non-Player Entities (PBI-SP-003, PBI-SP-009, PBI-SP-010): **a dedicated list page with search and a type filter, a create page with a type choice, and profile pages with a stat-block view and one whole-profile Edit mode with optional sections**, chosen 2026-10-17. It combines Option B's list and view with Option A's editing. Alternatives considered:
+- **Option A (an Overview section as the list, with Add buttons in one form):** list part rejected because the Overview cannot hold 30-80 profiles plus Items without search; its single Edit mode was kept.
+- **Option B (per-section editing on section cards):** editing part rejected because it adds a second editing pattern next to the Scene page and multiplies the states to build and test; its list page and stat-block view were kept.
+- **Option C (a "What will this NPC do?" question at creation that pre-adds sections):** rejected because adding a section is already one activation, and most Mythos Creatures need nearly every section.
+
+Overview entry: **counts with "View all"**, not recent profiles. The list's search and type filter **reset on every visit**. Non-Player Entities are specified in sections 21 to 30. This shared pass fixes the list, creation, page layout, and section pattern; each profile's field-level editor details are added at the start of PBI-SP-003 (NPC Profile) and PBI-SP-009 (Monster Profile) in sections 25.4 and 25.5. The Duplicate action (section 25.3) appears only once PBI-SP-010 ships.
+
 ## 1. Information architecture
 
 ```
@@ -351,3 +358,242 @@ Stories cover:
 - **Deferred:** Active and Finished Scene journeys end to end; they become reachable with PBI-SPL-001.
 - **Research gap:** whether two heading levels are enough for long Keeper notes.
 - **Research gap:** whether Keepers want collapsible notes on the Scene page during play.
+
+## 21. Non-Player Entities: information architecture
+
+```
+/campaigns/$campaignId                                    Overview: Keeper-only "Non-Player Entities" section (section 22)
+/campaigns/$campaignId/non-player-entities                Non-Player Entity list (section 23)   -> Overview tab current
+/campaigns/$campaignId/non-player-entities/new            Create Non-Player Entity (section 24) -> Overview tab current
+/campaigns/$campaignId/human-npcs/$humanNpcId             NPC Profile page (section 25)         -> Overview tab current
+/campaigns/$campaignId/mythos-creatures/$mythosCreatureId Monster Profile page (section 26)     -> Overview tab current
+```
+
+- No Campaign tab is added; three tab labels is the limit at 320px ([campaign-overview ux](../campaign-overview/ux.md) section 2).
+- The Overview section is the entry point; the list page is the only full list.
+- The profile type is chosen once on the create page and never changes; each type has its own route.
+- Players get no entry point. Every Non-Player Entity URL shows them `non-player-entity-not-found`, without an API call. A profile id of another Campaign, or opened under the other type's route, also shows it.
+- In UI copy, the type labels are "Human NPC" and "Mythos Creature" and the umbrella is "Non-Player Entities". Never write "NPC" alone, "monster", or "enemy" (root CONTEXT.md).
+
+## 22. Overview section (`non-player-entity-summary-section`, Keeper only)
+
+```
+Non-Player Entities                              (h2)   [Create]
+12 Human NPCs and 5 Mythos Creatures.
+View all Non-Player Entities                     (link)
+```
+
+- **Placement:** a `section` labelled by its `h2`, after "Scenarios" and before the Wall preview ([campaign-overview ux](../campaign-overview/ux.md) section 3 order gains it).
+- **Counts:** one sentence from the list response, with singular and plural forms ("1 Human NPC and 1 Mythos Creature."). A zero count is left out ("3 Human NPCs.").
+- **Actions:** "Create", a link styled as a small button to `/non-player-entities/new`, right of the heading (wraps under it below 640px), with the accessible name "Create Non-Player Entity" (`sr-only` suffix). The link "View all Non-Player Entities" goes to the list page.
+- **Empty:** "No Non-Player Entities yet." and the "Create" link; no "View all" link.
+- **Loading:** one Skeleton line with `aria-busy="true"`. **Error:** "We couldn't load the Non-Player Entities." with "Try again".
+- **Players:** the section is not rendered and its query is never sent.
+
+## 23. Non-Player Entity list page (`non-player-entity-list-page`)
+
+```
+< Back to the Overview
+Non-Player Entities                               (h1)  [Create]
+Search by name [______________]
+Type  (o) All  ( ) Human NPCs  ( ) Mythos Creatures
+17 shown.                                         (polite live region)
++--------------------------------------------------------------+
+| Name                         | Type                           |
+| Ghoul                (link)  | Mythos Creature                |
+| Mr. Knott            (link)  | Human NPC                      |
++--------------------------------------------------------------+
+```
+
+- **Heading and actions:** `h1` "Non-Player Entities"; "Create" as in section 22. A "Back to the Overview" link with an `aria-hidden` ArrowLeft icon.
+- **Search:** an `Input` labelled "Search by name". It filters the loaded list on the client as the Keeper types, case- and accent-insensitive (`localeCompare` base sensitivity, substring match). No request is sent.
+- **Type filter:** a `RadioGroup` in a `fieldset` with the legend "Type": All (default), Human NPCs, Mythos Creatures.
+- **Reset:** search and filter are local component state; leaving the page and coming back shows All with an empty search. Nothing is stored in the URL or the browser.
+- **List:** a `Table` with the columns Name and Type, sorted by name (`Intl.Collator`, viewer's locale). Name is a link to the profile page (`break-words`). Below 640px the table becomes a `ul` where each item shows the name link and, under it, the type in muted text.
+- **Result count:** a polite live region announces "{n} shown." after the search or filter changes (debounced 500 ms); nothing is announced on first load.
+- **No match:** "No Non-Player Entities match these filters." with a "Clear filters" button that resets both and moves focus to the search field.
+- **Empty Campaign:** "No Non-Player Entities yet." and the "Create" link; search and filter are not rendered.
+- **Loading:** three Skeleton rows with `aria-busy="true"`. **Error:** "We couldn't load the Non-Player Entities." with "Try again".
+
+## 24. Create page (`create-non-player-entity-page`)
+
+```
+Create Non-Player Entity                          (h1)
+Type                                              (fieldset legend)
+  ( ) Human NPC        A person.
+  ( ) Mythos Creature  A beast, folklore creature, Mythos monster, or unique entity.
+  You can't change the type later.
+Name [________________]
+Age  [___]   Any age from 0 to 150.               (only for Human NPC)
+[Create]  Cancel
+```
+
+- **Type:** a `RadioGroup` in a `fieldset` with the legend "Type" and no default selection. Each option has a one-line description connected with `aria-describedby`; the hint "You can't change the type later." is connected to the fieldset.
+- **Name:** `Input` labelled "Name". **Age:** `Input` labelled "Age", `inputMode="numeric"`, with the hint "Any age from 0 to 150."; rendered only while Human NPC is selected. Switching to Mythos Creature hides Age and keeps its value until submit, where it is not sent.
+- No field has a `maxLength` attribute.
+- **Validation on submit,** in field order Type, Name, Age: "Choose Human NPC or Mythos Creature." / "Enter a name." / "Name must be 200 characters or fewer." / "Enter an age." / "Enter an age from 0 to 150, in whole years.". Errors are inline (`aria-invalid`, `aria-describedby`); focus moves to the first invalid field. A 400 maps to the same field errors.
+- **Actions:** primary "Create" ("Creating..." while busy, disabled); secondary "Cancel", a link back to the list page.
+- **Success:** navigate to the new profile page with the navigation status message "Human NPC created." or "Mythos Creature created."; the list and the Overview counts are invalidated. The page opens in view, like a new Scene.
+- **Failure:** an `Alert` (`role=alert`) "We couldn't create the Non-Player Entity. Try again."; the input is kept.
+- **Unsaved edits:** `useUnsavedChangesPrompt(isDirty)`.
+
+## 25. Profile page layout (`human-npc-page`, `mythos-creature-page`)
+
+Both profile pages share this layout. The field-level content of each section (inputs, rows, and stat-block formatting) is specified with its PBI: NPC Profile sections in PBI-SP-003, Monster Profile sections in PBI-SP-009, both in this section's subsections 25.4 and 25.5.
+
+### 25.1 View
+
+```
+< Back to Non-Player Entities
+Human NPC created.                                (role=status)
+Mr. Knott                                         (h1)
+Human NPC . Age 62                                (muted line)
+Details                                           (h2)  dl: Profession, Goal, ...
+Characteristics                                   (h2)  only when added
+Skills                                            (h2)  only when added
+Keeper notes                                      (h2)
+[Edit] [Duplicate] [Delete]
+```
+
+- **Header:** "Back to Non-Player Entities" link; `role=status` paragraph; `h1` the name (`break-words`); a muted line with the type, then the age (Human NPC) or the Creature Kind (Mythos Creature, when set), separated by `aria-hidden` dots.
+- **Sections:** each added section is an `h2` with its content, in the fixed order of the profile type (25.4, 25.5), whatever order they were added in. Sections that were not added are not shown. "Details" (the narrative fields) and "Keeper notes" are always shown; Details lists only filled fields in a `dl`, or "No details yet." in muted text; Keeper notes use `rich-text-view` or "No Keeper notes yet.".
+- **Computed values** (Hit Points, Magic Points, Damage Bonus, Build, MOV, difficulty) come from the server response and are text, never disabled inputs. A value that cannot be computed yet is not shown; MOV outside the covered ages shows "Not covered by the rules for this age". A Derived Value Override shows the override, then "(computed {value})" and its reason.
+- **Stat tables:** from 640px, characteristic and skill groups are a `Table`; below 640px they reflow to a `dl` so nothing scrolls sideways at 320px.
+- **Actions:** outline "Edit", outline "Duplicate" (PBI-SP-010), and "Delete" (outline, destructive text).
+
+### 25.2 Edit mode
+
+```
+Mr. Knott                                         (h1, saved name)
+[There are 2 problems: link, link]                (error summary, only after a failed save)
+Details                         (fieldset)  Name, Age, Profession, Goal, ...
+Characteristics                 (fieldset)                 [Remove section]
+Skills                          (fieldset)                 [Remove section]
+Add a section                   (group)     [Add Combat] [Add Spells]
+Keeper notes                    (fieldset)
++--------------------------------------------------------------+
+| [Save] [Cancel]                          (sticky action bar) |
++--------------------------------------------------------------+
+```
+
+- "Edit" swaps the whole view for one form, prefilled; the `h1` keeps the saved name; focus moves to the Name field.
+- **Sections:** each section is a `fieldset` whose `legend` is styled like the view's `h2`. Details and Keeper notes are always present. Every added optional section has an outline "Remove section" button (accessible name "Remove {section} section") in its legend row.
+- **Adding:** a group labelled "Add a section" sits after the last optional section position and holds one outline button per section not yet added ("Add Combat"). Activating one inserts the section in its fixed position, empty, removes its button from the group, moves focus to the section's first field, and the form's polite live region announces "{section} section added.". When every section is added, the group is not rendered.
+- **Removing:** an empty section is removed at once. A section with any entered value opens an `AlertDialog` "Remove the {section} section?" with "Its values are deleted when you save." and the buttons "Keep section" (default focus) and "Remove section". After removing, focus moves to that section's button in "Add a section", and "{section} section removed." is announced. Removal takes effect only on Save; Cancel restores the saved profile.
+- **Repeating rows** (skills, weapons, attacks, spells, powers, immunities, vulnerabilities, movement modes): each list ends with an outline "Add {item}" button; each row has a ghost "Remove" button named "Remove {item} {row label}" (for example "Remove skill Spot Hidden", or "Remove skill 3" when the row has no name yet), at least 40x40 CSS px. Removing a row needs no confirmation, because Cancel restores it. After adding, focus moves to the new row's first field; after removing, to the next row's first field, else the previous row's, else "Add {item}". At 100 rows the Add button is replaced by the muted text "You've reached the limit of 100 {items}.".
+- **Computed values are not recalculated while editing;** the server computes them (ADR 0017). Each section with computed values shows the muted hint "Hit Points and other worked-out values update when you save." once.
+- **Action bar:** "Save" ("Saving..." while busy, disabled) and "Cancel", in a bar `sticky bottom-0` with the page background and a top border. The form has `scroll-padding-bottom` equal to the bar's height, so a focused field is never hidden behind it.
+- **Validation:** the client checks only that Name is filled and Age (Human NPC) is a whole number from 0 to 150; every other rule is the server's, and a 400 maps each problem to its field by path. When a save fails validation, an error summary `Alert` (`role=alert`, focused, `tabIndex=-1`) above the form says "There is 1 problem" or "There are {n} problems" and lists each message as a link to its field; each field also shows its message inline (`aria-invalid`, `aria-describedby`).
+- **Save success:** back to the view, the status says "Human NPC saved." or "Mythos Creature saved.", focus moves to "Edit"; the list and counts are invalidated.
+- **Cancel:** discards the edits without confirmation; focus moves to "Edit".
+- **Save failure (not validation):** the form stays, with "We couldn't save the {type}. Try again." (`role=alert`).
+- **Unsaved edits:** `useUnsavedChangesPrompt(isDirty)`; adding or removing a section or row counts as a change.
+
+### 25.3 Delete and Duplicate
+
+- **Delete (`delete-non-player-entity-dialog`, `AlertDialog`):** title "Delete {name}?", description "This can't be undone.", buttons "Cancel" and "Delete" ("Deleting..." while busy, both disabled). Failure: "We couldn't delete {name}. Try again." (`role=alert`) in the dialog. From PBI-SP-004, a refusal (409) shows "{name} is part of a Scene that has been played, so it can't be deleted.". Success navigates to the list page with the status "{name} deleted." and invalidates the list and counts. Cancel returns focus to "Delete".
+- **Duplicate (PBI-SP-010):** activates at once, with no dialog. The button reads "Duplicating..." and is disabled while busy. Success navigates to the copy's profile page with the status "Copy created. It isn't part of any Scene."; failure shows "We couldn't duplicate {name}. Try again." (`role=alert`) under the actions.
+
+### 25.4 NPC Profile sections
+
+Fixed order: Details (Name, Age, then the narrative fields), Characteristics, Skills, Combat, Spells, Keeper notes. Field-level content: added at the start of PBI-SP-003.
+
+### 25.5 Monster Profile sections
+
+Fixed order: Details (Name, Creature Kind, then the narrative fields), Characteristics and derived values, Movement, Combat (attacks per round, Dodge, attacks), Defenses (armor, immunities, vulnerabilities), Skills, Spells, Powers, Sanity loss, Keeper notes. Field-level content: added at the start of PBI-SP-009.
+
+### 25.6 States
+
+- **Loading:** a Skeleton for the `h1`, the type line, and two sections, with `aria-busy`.
+- **Error:** "We couldn't load this {type}." with "Try again".
+- **Not found (`non-player-entity-not-found`):** `h1` "We couldn't find that Non-Player Entity" and the link "Back to your Campaign", mirroring `scenario-not-found`.
+
+## 26. Non-Player Entity content
+
+| Key | Copy |
+|---|---|
+| Section and list heading | Non-Player Entities |
+| Create action / page h1 / submit | Create (named "Create Non-Player Entity") / Create Non-Player Entity / Create |
+| Counts | {n} Human NPC(s) and {m} Mythos Creature(s). |
+| View all | View all Non-Player Entities |
+| Empty | No Non-Player Entities yet. |
+| Load errors | We couldn't load the Non-Player Entities. / We couldn't load this {type}. |
+| Search / filter | Search by name / Type: All, Human NPCs, Mythos Creatures / {n} shown. |
+| No match | No Non-Player Entities match these filters. / Clear filters |
+| Type options | Human NPC: A person. / Mythos Creature: A beast, folklore creature, Mythos monster, or unique entity. / You can't change the type later. |
+| Fields | Name / Age, hint "Any age from 0 to 150." |
+| Create errors | Choose Human NPC or Mythos Creature. / Enter a name. / Name must be 200 characters or fewer. / Enter an age. / Enter an age from 0 to 150, in whole years. |
+| Busy | Creating... / Saving... / Deleting... / Duplicating... |
+| Status | {type} created. / {type} saved. / {name} deleted. / Copy created. It isn't part of any Scene. |
+| Sections | Add a section / Add {section} / Remove section / {section} section added. / {section} section removed. |
+| Remove section dialog | Remove the {section} section? / Its values are deleted when you save. / Keep section / Remove section |
+| Rows | Add {item} / Remove {item} {row label} / You've reached the limit of 100 {items}. |
+| Computed hint | Hit Points and other worked-out values update when you save. |
+| MOV gap | Not covered by the rules for this age |
+| Error summary | There is 1 problem / There are {n} problems |
+| Failures | We couldn't create the Non-Player Entity. Try again. / We couldn't save the {type}. Try again. / We couldn't delete {name}. Try again. / We couldn't duplicate {name}. Try again. |
+| Delete dialog | Delete {name}? / This can't be undone. / Delete |
+| Delete refused (PBI-SP-004) | {name} is part of a Scene that has been played, so it can't be deleted. |
+| Empty view | No details yet. / No Keeper notes yet. |
+| Not found | We couldn't find that Non-Player Entity / Back to your Campaign |
+
+The "{n} shown." count uses "1 shown." for one result.
+
+## 27. Non-Player Entity component mapping
+
+| Element | Component |
+|---|---|
+| Overview section | New `non-player-entity-summary-section` in `frontend/src/scenario-preparation/components/`, mounted by `campaign-page` for the Keeper after `scenario-list-section` |
+| List page | New `non-player-entity-list-page`, route `routes/campaigns.$campaignId.non-player-entities.index.tsx`; filtering in a pure `services/nonPlayerEntityFilter.ts` |
+| Create page | New `create-non-player-entity-page`, route `routes/campaigns.$campaignId.non-player-entities.new.tsx` |
+| Profile pages | New `human-npc-page` (route `routes/campaigns.$campaignId.human-npcs.$humanNpcId.tsx`, PBI-SP-003) and `mythos-creature-page` (route `routes/campaigns.$campaignId.mythos-creatures.$mythosCreatureId.tsx`, PBI-SP-009) |
+| Section pattern | New `profile-section` (view `h2` or edit `fieldset` with Remove), `add-section-group`, `remove-section-dialog` (`AlertDialog`), and `repeating-rows`, shared by both editors |
+| Error summary | New `form-error-summary` (`Alert` with links to fields) in the slice |
+| Action bar | New `sticky-form-actions` |
+| Delete dialog | New `delete-non-player-entity-dialog` (`AlertDialog`, like `remove-scene-dialog`) |
+| Not found | New `non-player-entity-not-found` |
+| Primitives | Existing `RadioGroup`, `Input`, `Label`, `Textarea`, `Table`, `Button`, `Alert`, `AlertDialog`, `Skeleton`, `rich-text-editor`, `rich-text-view`; no new primitives |
+
+Stories cover:
+- **`non-player-entity-summary-section`:** empty, only Human NPCs, both types with singular and plural counts, loading, and error.
+- **`non-player-entity-list-page`:** empty Campaign, many profiles, search with matches, no match, each filter, 320px, loading, and error.
+- **`create-non-player-entity-page`:** no type chosen, Human NPC with Age, Mythos Creature, every field error, creating, and failure.
+- **Section pattern:** a section with and without values, the add group with some and with no buttons left, the remove dialog, repeating rows with zero, one, and 100 rows, and the error summary.
+- **`delete-non-player-entity-dialog`:** idle, deleting, failure, and refused.
+
+## 28. Non-Player Entity UX acceptance criteria
+
+- **SP-UX-28** The Keeper's Overview shows a "Non-Player Entities" section with the counts sentence, "View all Non-Player Entities", and "Create", or "No Non-Player Entities yet." with "Create"; a Player sees no section.
+- **SP-UX-29** The list page lists every Non-Player Entity of the Campaign by name with its type, sorted by name; each name opens its profile page.
+- **SP-UX-30** Typing in "Search by name" and choosing a type narrow the list at once and announce "{n} shown."; with no match, "Clear filters" restores the full list. Returning to the page shows All and an empty search.
+- **SP-UX-31** The create page requires a type, a name, and, for a Human NPC, an age from 0 to 150, showing each message from section 26; Age is shown only for a Human NPC.
+- **SP-UX-32** Creating opens the new profile page with "{type} created."; the profile is in the list and the counts.
+- **SP-UX-33** In Edit mode, "Add {section}" inserts the section in its fixed position and focuses its first field; "Remove section" on a section with values asks first; removed sections are gone after Save and restored by Cancel.
+- **SP-UX-34** "Add {item}" and "Remove {item} ..." add and remove rows; at 100 rows the Add button is replaced by the limit message.
+- **SP-UX-35** A save the server refuses shows the error summary with one link per problem, each moving focus to its field, and the message next to each field; nothing is saved.
+- **SP-UX-36** After Save, the view shows the saved sections in their fixed order and the server's computed values; MOV outside ages 15-89 shows "Not covered by the rules for this age"; an override shows its computed value and reason.
+- **SP-UX-37** "Delete" asks first; confirming returns to the list with "{name} deleted." and without the profile; "Cancel" keeps it.
+- **SP-UX-38** "Duplicate" opens the copy's page named "{name} (copy)" with "Copy created. It isn't part of any Scene." (PBI-SP-010).
+- **SP-UX-39** A Player opening any Non-Player Entity URL, and anyone opening a profile of another Campaign or under the other type's route, sees "We couldn't find that Non-Player Entity".
+- **SP-UX-40** While a create, save, delete, or duplicate is in flight its button is disabled; a second activation does nothing.
+- **SP-UX-41** Non-Player Entity pages keep the Campaign header with Overview as the current tab (extends SP-UX-8).
+
+## 29. Non-Player Entity accessibility acceptance criteria (WCAG 2.2 AA)
+
+- **SP-A11Y-18** Each page has exactly one `h1`. The Overview section is a `section` labelled by its `h2`; profile sections are `h2` in view and `fieldset` with `legend` in edit; the type choice and type filter are `fieldset`s with legends (1.3.1, 2.4.6).
+- **SP-A11Y-19** Every field has a visible label; hints and errors are connected with `aria-describedby`; invalid fields have `aria-invalid="true"` (1.3.1, 3.3.1, 3.3.2).
+- **SP-A11Y-20** The error summary receives focus after a refused save, and each of its links moves focus to its field (2.4.3, 3.3.1, 3.3.3).
+- **SP-A11Y-21** "Add {section}", "Remove section", "Add {item}", and "Remove {item} {row label}" are `button`s with unique accessible names, at least 24 by 24 CSS pixels (40 by 40 used for row Remove) (2.4.6, 2.5.8, 4.1.2).
+- **SP-A11Y-22** Focus moves to a new section's or row's first field, after a removal to the place section 25.2 names, into and back out of every dialog, and is never lost to `body` (2.4.3).
+- **SP-A11Y-23** Section changes, result counts, and status messages are announced through polite live regions or `role=status`, never on first load; failures use `role=alert` (4.1.3).
+- **SP-A11Y-24** A field that receives focus is never hidden behind the sticky action bar (2.4.11).
+- **SP-A11Y-25** Type, difficulty, overrides, and "not covered" are conveyed in text, never only by color (1.4.1).
+- **SP-A11Y-26** At 320px and at 200% zoom the list, create page, and profile pages fit without horizontal scrolling; stat tables reflow to definition lists and long names wrap (1.4.10).
+
+## 30. Non-Player Entity open decisions and research gaps
+
+- **Open (PBI-SP-003, PBI-SP-009):** field-level editor content for each section (sections 25.4 and 25.5), designed through the UX designer skill at the start of each PBI.
+- **Deferred:** a profession or Creature Kind column in the list; the list response carries only `{id, type, name}`.
+- **Deferred:** linking a profile to a Scene from its profile page (PBI-SP-004 designs linking on the Scene page).
+- **Research gap:** whether one long Edit form is workable for a full Monster Profile at the table, or per-section editing (Option B) is needed after all.
+- **Research gap:** whether Keepers want the list grouped by Scenario once Scene links exist.

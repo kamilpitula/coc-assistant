@@ -4,35 +4,45 @@ status: todo
 blocked_by: [PBI-SP-001]
 ---
 
-# PBI-SP-003: Create Non-Player Entity Profiles
+# PBI-SP-003: Create Human NPC Profiles
 
 ## Directive
-Build the end-to-end ability for a Keeper to create and edit campaign-scoped Human NPC and Mythos Creature profiles. Keep the two profile shapes distinct so Mythos Creature information remains independently representable.
+Build the end-to-end ability for a Keeper to create, edit, and delete Campaign-scoped Human NPCs with an NPC Profile that holds only the detail the Scenario needs, and lay the shared Non-Player Entity groundwork that Mythos Creature profiles (PBI-SP-009) build on.
 
 **Scope:**
-- Human NPC and Mythos Creature domain behavior, persistence, API, preparation UI, and focused unit, integration, and E2E coverage.
-- Campaign scoping and profile-specific validation.
-- Do not implement Scene links, Handouts, or source-document extraction.
+- **Shared game-rules kernel:** first, a refactor commit with no behavior change that moves the Campaign Play rule calculations into `CocAssistant.GameRules.Domain` per ADR 0017; then the dice notation and difficulty levels there.
+- **Domain and persistence:** the Human NPC aggregate and its NPC Profile (narrative core, required name and age, optional Characteristics, Skills, Combat, and Spells sections), Campaign scoping, structural validation, and computed derived values with no overrides.
+- **API and UI:** the Non-Player Entity list, creating, editing, and deleting a Human NPC, designed through the shared Non-Player Entity UX pass and this PBI's editor UX.
+- **Tests:** unit, integration, and E2E coverage.
+- **Out of scope:** Mythos Creatures (PBI-SP-009), duplicating (PBI-SP-010), Scene links and the delete refusal they bring (PBI-SP-004), profile groups, AI drafting, dice rolling, source-document extraction.
 
 ## Dependencies
-- Blocked by: PBI-SP-001: Create and Edit a Campaign Scenario
-- Must merge before: PBI-SP-004, PBI-SP-006
+- Blocked by: PBI-SP-001 (Campaign-scoped Scenario Preparation and Keeper authorization).
+- Must merge before: PBI-SP-004 (links need profiles); PBI-SP-009 (reuses the list, kernel, and dice notation); PBI-SP-006.
 
 ## Context
 Read: `specs/scenario-preparation/spec.md`
-- Blueprint: Human NPC and Mythos Creature distinctions.
-- Constraints: profile-specific information and Campaign-scoped Non-Player Entities.
-- Contract: creation of both profile types.
-- Regression Guardrails: Mythos Creatures are not forced into the Human NPC profile shape.
-
-Read: `docs/game-rules/coc7_character_creation_and_development_rules.md`
-- Sections 2 and 6: characteristics and skills used by Human NPC profiles.
-- Mythos Creature profile rules are not yet in `docs/game-rules/`; add them there before implementing Mythos Creature profiles.
+- Blueprint: Non-Player Entity API and profiles, SignalR exception.
+- Constraints: NPC Profile fields, profile text limits.
+- Scenarios: the Human NPC scenarios, deleting an unlinked profile, Keeper-only profiles.
+Read: `docs/game-rules/coc_7e_npc_and_monster_creation_ruleset.md`
+- Sections 3 and 4: shared mechanics, difficulty from an Opposing Value, Human NPC creation.
+Read: `docs/game-rules/project_ruleset.md` section 5 (ranges, MOV gap, derived values, dice notation, spells, NPC skills and weapons, validation).
+Read: `docs/adr/0017-shared-game-rules-kernel-for-derived-values-and-dice-notation.md`.
+Read: `CONTEXT.md` (Human NPC, NPC Profile, Opposing Value).
+Read: `specs/scenario-preparation/ux.md` sections 21 to 30 (shared Non-Player Entity UX); add the NPC Profile field-level design to section 25.4 first.
 
 ## Verification
-- [ ] A Keeper can create and edit a Human NPC with relevant human characteristics, skills, and details.
-- [ ] A Keeper can create and edit a Mythos Creature with attacks, armor, special abilities, and sanity loss where applicable.
-- [ ] Profiles cannot be read or modified across Campaign boundaries, with unit, integration, and E2E coverage.
+- [ ] Moving the rule calculations to the shared kernel changes no Campaign Play behavior; the existing tests pass unchanged.
+- [ ] A Keeper can create, edit, and delete a Human NPC with only a name and an age, and add or remove the Characteristics, Skills, Combat, and Spells sections.
+- [ ] Derived values and MOV are computed per project_ruleset.md sections 5.3 and 5.4, and each skill shows its Investigator difficulty.
+- [ ] Out-of-range values, malformed dice notation, and Damage Bonus on a firearm weapon are refused.
+- [ ] Profiles cannot be read or modified across Campaign boundaries or by Players, with unit, integration, and E2E coverage.
 
 ## Refinement Protocol
-If either profile requires additional Call of Cthulhu 7th Edition fields, add the rule to `docs/game-rules/` first, then update the domain contract and retain separate Human NPC and Mythos Creature concepts.
+If the NPC Profile needs another Call of Cthulhu 7th Edition field, add the rule to `docs/game-rules/` first, then update the spec Constraints and the domain contract, keeping Human NPC and Mythos Creature separate.
+
+## Follow-ups
+- AI drafting of NPC and Monster Profiles from a Keeper's concept, reusing the Foundry structured-output setup planned for extraction.
+- Profile groups (several similar Human NPCs or Mythos Creatures with shared values and named exceptions).
+- Align Investigator Custom Weapons with the section 10.1 weapon shape and the dice notation used by NPC Profile weapons.
