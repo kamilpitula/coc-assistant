@@ -47,16 +47,32 @@ A player-controlled human character in a Campaign, represented by a Call of Cthu
 _Avoid_: Player character, character, PC
 
 **Human NPC**:
-A human entity controlled by the Keeper rather than a Player. It uses human [characteristics](docs/game-rules/coc7_character_creation_and_development_rules.md#2-characteristics) and only the [skills](docs/game-rules/coc7_character_creation_and_development_rules.md#6-skills) and details relevant to that entity's role in the Campaign.
+A human entity controlled by the Keeper rather than a Player. It uses human [characteristics](docs/game-rules/coc7_character_creation_and_development_rules.md#2-characteristics) and only the [skills](docs/game-rules/coc7_character_creation_and_development_rules.md#6-skills) and details relevant to that entity's role in the Campaign. Its record is an NPC Profile.
 _Avoid_: NPC character, enemy
 
+**NPC Profile**:
+The Keeper-only record for a Human NPC: a narrative core plus only the characteristics, skills, combat details, and spells the Scenario needs, per the [NPC creation rules](docs/game-rules/coc_7e_npc_and_monster_creation_ruleset.md#4-human-npc-creation-procedure) and [project_ruleset.md section 5](docs/game-rules/project_ruleset.md#5-non-player-entity-profiles). It is not a Character Sheet.
+_Avoid_: NPC sheet, stat block, character sheet
+
 **Mythos Creature**:
-A non-human or supernatural entity controlled by the Keeper. It has a creature-specific profile that may include attacks, armor, special abilities, and sanity loss caused by witnessing it.
-_Avoid_: Monster, creature NPC, enemy
+A non-human or supernatural entity controlled by the Keeper, including mundane beasts and folklore creatures as well as Mythos monsters and unique entities. It has a creature-specific profile that may include attacks, armor, special abilities, and sanity loss caused by witnessing it. The game-rules documents keep the published word "monster".
+_Avoid_: Monster, creature NPC, beast NPC, enemy
 
 **Monster Profile**:
-The Call of Cthulhu 7th Edition record for a Mythos Creature, including its characteristics where applicable, attacks, armor, special abilities, and sanity loss.
+The Keeper-only Call of Cthulhu 7th Edition record for a Mythos Creature, including its characteristics where applicable, movement, attacks, armor, immunities, vulnerabilities, spells, powers, sanity loss, and defeat outcome, per the [monster creation rules](docs/game-rules/coc_7e_npc_and_monster_creation_ruleset.md#5-monster-creation-procedure) and [project_ruleset.md section 5](docs/game-rules/project_ruleset.md#5-non-player-entity-profiles).
 _Avoid_: Monster sheet, character sheet
+
+**Creature Kind**:
+An optional label on a Monster Profile (Beast, Folklore, Mythos, or Unique) that only organizes profiles and has no game effect.
+_Avoid_: Creature class, Mythos classification, creature type
+
+**Opposing Value**:
+A Non-Player Entity's skill or characteristic value that sets the difficulty an Investigator faces when acting against it, per the [difficulty rules](docs/game-rules/coc_7e_npc_and_monster_creation_ruleset.md#34-skill-difficulty-for-an-investigator-opposing-an-npc-or-monster).
+_Avoid_: Target number, DC
+
+**Derived Value Override**:
+A Keeper-entered replacement, with its reason, for a computed Hit Points, Magic Points, Damage Bonus, or Build value on a Monster Profile, per [project_ruleset.md section 5.4](docs/game-rules/project_ruleset.md#54-derived-values-and-overrides). NPC Profiles have none.
+_Avoid_: Manual stat, custom value
 
 **Non-Player Entity**:
 The umbrella term for a Human NPC or Mythos Creature. Non-Player Entities belong to one Campaign and are not shared between Campaigns.
