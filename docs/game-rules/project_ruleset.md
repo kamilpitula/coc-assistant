@@ -242,3 +242,9 @@ outside section 5.2, notation outside section 5.5, a weapon without its skill or
 damage, an attack without its skill value or without damage (unless the attack
 is a manoeuvre), and an override without a reason. The checklists of NPC
 ruleset section 7 are Keeper guidance and are not checked.
+
+For an NPC Profile, these structural problems also block saving (section 5.7):
+a Fighting or Firearms specialization that is not in
+[catalogs/skill-specializations.json](catalogs/skill-specializations.json), a
+skill, weapon, or spell without a name, a skill without a value, and a weapon
+without attacks per round.

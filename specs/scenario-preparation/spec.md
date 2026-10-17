@@ -197,9 +197,9 @@ Scenario: A Human NPC needs a name and an age
 
 Scenario: A Human NPC's derived values follow the rules
   # SP-UX-36
-  Given the Human NPC "Thug" has STR 70, CON 60, SIZ 65, and DEX 55 and is aged 30
+  Given the Human NPC "Thug" has STR 70, CON 60, SIZ 65, DEX 55, and POW 50 and is aged 30
   When the Keeper opens its NPC Profile
-  Then it shows the Hit Points, Damage Bonus, Build, and MOV computed from those values
+  Then it shows the Hit Points, Magic Points, Damage Bonus, Build, and MOV computed from those values
   And those values cannot be overridden
 
 Scenario: MOV is not computed outside the covered ages

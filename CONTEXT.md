@@ -70,6 +70,10 @@ _Avoid_: Creature class, Mythos classification, creature type
 A Non-Player Entity's skill or characteristic value that sets the difficulty an Investigator faces when acting against it, per the [difficulty rules](docs/game-rules/coc_7e_npc_and_monster_creation_ruleset.md#34-skill-difficulty-for-an-investigator-opposing-an-npc-or-monster).
 _Avoid_: Target number, DC
 
+**Investigator Difficulty**:
+The Regular, Hard, or Extreme success an Investigator needs when acting against an Opposing Value, set by that value per the [difficulty rules](docs/game-rules/coc_7e_npc_and_monster_creation_ruleset.md#34-skill-difficulty-for-an-investigator-opposing-an-npc-or-monster) and shown on NPC Profiles per [project_ruleset.md section 5.7](docs/game-rules/project_ruleset.md#57-npc-profile-skills-and-weapons). It is not a roll; the app rolls no dice for profiles.
+_Avoid_: Difficulty class, DC, target level
+
 **Derived Value Override**:
 A Keeper-entered replacement, with its reason, for a computed Hit Points, Magic Points, Damage Bonus, or Build value on a Monster Profile, per [project_ruleset.md section 5.4](docs/game-rules/project_ruleset.md#54-derived-values-and-overrides). NPC Profiles have none.
 _Avoid_: Manual stat, custom value
