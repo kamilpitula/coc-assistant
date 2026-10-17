@@ -13,7 +13,7 @@ _Avoid_: User, profile, login
 ## Campaign Structure
 
 **Campaign**:
-A persistent story container owned by one Keeper. It contains its Scenarios (and through them their Scenes), investigators, non-player entities, play sessions, and shared play record for an ongoing campaign.
+A persistent story container owned by one Keeper. It contains its Scenarios (and through them their Scenes), investigators, non-player entities, Items, play sessions, and shared play record for an ongoing campaign.
 _Avoid_: Session, game
 
 **Era**:
@@ -54,6 +54,10 @@ _Avoid_: NPC character, enemy
 A non-human or supernatural entity controlled by the Keeper. It has a creature-specific profile that may include attacks, armor, special abilities, and sanity loss caused by witnessing it.
 _Avoid_: Monster, creature NPC, enemy
 
+**Monster Profile**:
+The Call of Cthulhu 7th Edition record for a Mythos Creature, including its characteristics where applicable, attacks, armor, special abilities, and sanity loss.
+_Avoid_: Monster sheet, character sheet
+
 **Non-Player Entity**:
 The umbrella term for a Human NPC or Mythos Creature. Non-Player Entities belong to one Campaign and are not shared between Campaigns.
 _Avoid_: NPC
@@ -65,12 +69,62 @@ A prepared mystery that gives part of a Campaign its intended situation, locatio
 _Avoid_: Adventure, module
 
 **Scene**:
-An ordered unit of a Scenario with a title, Keeper-facing description or read-aloud text, optional Handouts, and links to the Non-Player Entities present or relevant there.
+The basic unit of play in a Scenario: a situation at a location with a title, Keeper notes, ordered Handouts, links to the Non-Player Entities present or relevant there, and links to Items. Scenes have a suggested prepared order within their Scenario, and each Scene is Prepared, Active, or Finished.
 _Avoid_: Chapter, encounter
 
+**Prepared Scene**:
+A Scene that has not been played yet. Only a Prepared Scene can be started or removed, and Players never see it.
+_Avoid_: Draft scene, planned scene
+
+**Active Scene**:
+The Scene being played. A Campaign has at most one Active Scene.
+_Avoid_: Current scene, live scene, open scene
+
+**Finished Scene**:
+A Scene that has been played. It is read-only for everyone and is never reopened; returning to a place is a new Scene.
+_Avoid_: Closed scene, past scene, archived scene
+
 **Handout**:
-A piece of player-facing or Keeper-facing material attached to a Scene, such as an image, document, clue, or illustration.
-_Avoid_: Attachment, asset, file
+A piece of Player-facing or Keeper-facing material on a Scene or an Item, either rich text or a file. Its kind is Read-aloud, Text, Image, Document, or Map. A Player-facing Handout reaches Players only through a Reveal; a Keeper-facing Handout never does.
+_Avoid_: Attachment, asset, file, article
+
+**Read-aloud Handout**:
+A rich-text Handout the Keeper reads to the Players, revealed separately from the Scene's other parts.
+_Avoid_: Boxed text, narration
+
+**Map**:
+A Handout holding a static image of a place, shown prominently when revealed.
+_Avoid_: Battle map, floor plan
+
+**Item**:
+A story object in a Campaign, such as a key, a diary, or an idol, that the Keeper creates and that may be needed to move the story forward. It is held by at most one Investigator or by no one, and only the Keeper changes its holder. Ordinary belongings are Gear, not Items.
+_Avoid_: Gear, loot, inventory, artifact
+
+## Scene Play
+
+**Investigators present**:
+The Approved Investigators taking part in the Active Scene, chosen by the Keeper. A split party is played by switching between Scenes.
+_Avoid_: Party, participants, scene members
+
+**Reveal**:
+The Keeper's act of giving chosen Investigators present a Player-facing Handout, a Non-Player Entity's Player-facing description, or an Item. It keeps the content exactly as it was when revealed and is never withdrawn.
+_Avoid_: Share, publish, unlock
+
+**Clue**:
+Something an Investigator received through a Reveal. Clues belong to the Investigator, not to its Player.
+_Avoid_: Knowledge, journal, notes
+
+**Scene History**:
+The Active and Finished Scenes of a Campaign in the order they were started, across its Scenarios. Each Campaign Member sees it within the limits of their Investigator's Clues.
+_Avoid_: Timeline, log, play order
+
+**Roll Request**:
+The Keeper's request that an Investigator make a roll, whose result is a Roll Record. Not yet specified: the rules for [skill rolls during play](docs/game-rules/README.md) are not yet documented.
+_Avoid_: Skill test, check request
+
+**Combat**:
+A fight between Investigators and Non-Player Entities. Not yet specified: combat resolution is not yet documented in [docs/game-rules](docs/game-rules/README.md).
+_Avoid_: Fight, battle
 
 ## Play Record
 
@@ -142,7 +196,7 @@ _Avoid_: Homebrew weapon, house weapon
 
 **Gear**:
 The significant possessions an Investigator carries, recorded as free text per the [finances rules](docs/game-rules/coc7_character_creation_and_development_rules.md#11-finances-gear-and-possessions).
-_Avoid_: Inventory, equipment list, items
+_Avoid_: Inventory, equipment list. An Item is a different concept.
 
 **Roll Record**:
 A recorded dice result used to create or develop an Investigator, naming what it was rolled for, the dice, the result, and who produced it.
@@ -171,7 +225,3 @@ _Avoid_: Active, verified, ready
 **Change Request**:
 The Keeper's comment explaining why a Submitted Character Sheet is returned to its Player.
 _Avoid_: Rejection, review note
-
-**Monster Profile**:
-The Call of Cthulhu 7th Edition record for a Mythos Creature, including its characteristics where applicable, attacks, armor, special abilities, and sanity loss.
-_Avoid_: Monster sheet, character sheet
