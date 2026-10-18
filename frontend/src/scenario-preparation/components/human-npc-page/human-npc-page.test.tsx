@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { HumanNpcValidationError } from '@/scenario-preparation/services/humanNpcApi'
+import { NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import { gangsterHumanNpc, knottHumanNpc } from '@/scenario-preparation/test-support/humanNpcFixtures'
 import { navigateSpy, routerState } from '@/shared/test-support/routerMock'
 
@@ -97,7 +97,7 @@ describe('HumanNpcPage', () => {
     mockUseEdit.mockReturnValue(
       mutation(editMutate, {
         isError: true,
-        error: new HumanNpcValidationError([{ path: 'combat.weapons[0].damage', messages: ['Enter the damage.'] }]),
+        error: new NonPlayerEntityValidationError([{ path: 'combat.weapons[0].damage', messages: ['Enter the damage.'] }]),
       }),
     )
     render(<HumanNpcPage campaignId="c1" humanNpcId="h1" />)

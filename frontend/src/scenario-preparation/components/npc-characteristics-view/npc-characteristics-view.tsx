@@ -1,10 +1,10 @@
 import { StatTable } from '@/scenario-preparation/components/stat-table/stat-table'
 import {
   CHARACTERISTIC_CODES,
-  CHARACTERISTIC_NAMES,
   type DerivedValues,
   type HumanNpcCharacteristics,
 } from '@/scenario-preparation/types/HumanNpc'
+import { CHARACTERISTIC_NAMES } from '@/scenario-preparation/types/NonPlayerEntity'
 
 const MOVEMENT_NOT_COVERED = 'Not covered by the rules for this age'
 

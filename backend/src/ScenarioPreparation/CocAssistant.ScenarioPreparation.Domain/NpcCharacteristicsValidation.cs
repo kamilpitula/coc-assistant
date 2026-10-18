@@ -13,7 +13,7 @@ internal static class NpcCharacteristicsValidation
             return [new NpcProfileProblem(path, NpcProfileProblemKind.UnknownCharacteristic)];
         }
 
-        return value is null || NpcProfileChecks.InRange(value, 0, NpcProfileLimits.SkillValueMaximum)
+        return value is null || ProfileRanges.InRange(value, 0, NpcProfileLimits.SkillValueMaximum)
             ? []
             : [new NpcProfileProblem(path, NpcProfileProblemKind.CharacteristicOutOfRange)];
     }

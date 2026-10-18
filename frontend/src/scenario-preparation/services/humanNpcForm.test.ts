@@ -7,18 +7,16 @@ import {
   addSectionButtonId,
   controlIdFor,
   fieldPaths,
-  hasProblemOn,
   humanNpcFormReducer,
   identityErrors,
   inputFromState,
-  MAX_ROWS,
-  messageFor,
   sectionHasValues,
   stateFromHumanNpc,
   summaryProblems,
   type HumanNpcFormAction,
   type HumanNpcFormState,
 } from './humanNpcForm'
+import { hasProblemOn, MAX_ROWS, messageFor } from './profileForm'
 
 // specs/scenario-preparation/ux.md section 25; SP-UX-33, SP-UX-34, SP-UX-35, SP-UX-43, SP-A11Y-22.
 

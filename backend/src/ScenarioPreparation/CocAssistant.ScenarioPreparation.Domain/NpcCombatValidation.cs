@@ -16,12 +16,12 @@ internal static class NpcCombatValidation
     }
 
     private static IEnumerable<NpcProfileProblem> Dodge(int? dodge) =>
-        dodge is null || NpcProfileChecks.InRange(dodge, 0, NpcProfileLimits.SkillValueMaximum)
+        dodge is null || ProfileRanges.InRange(dodge, 0, NpcProfileLimits.SkillValueMaximum)
             ? []
             : [new NpcProfileProblem("combat.dodge", NpcProfileProblemKind.DodgeOutOfRange)];
 
     private static IEnumerable<NpcProfileProblem> ArmorPoints(int? armorPoints) =>
-        armorPoints is null || NpcProfileChecks.InRange(armorPoints, 0, NpcProfileLimits.ArmorPointsMaximum)
+        armorPoints is null || ProfileRanges.InRange(armorPoints, 0, NpcProfileLimits.ArmorPointsMaximum)
             ? []
             : [new NpcProfileProblem("combat.armorPoints", NpcProfileProblemKind.ArmorPointsOutOfRange)];
 
@@ -32,7 +32,7 @@ internal static class NpcCombatValidation
 
     private static IEnumerable<NpcProfileProblem> Weapon(NpcWeapon weapon, int index, IReadOnlyList<NpcSkill> skills)
     {
-        string Path(string field) => NpcProfileChecks.Row("combat.weapons", index, field);
+        string Path(string field) => ProfilePaths.Row("combat.weapons", index, field);
         var name = weapon.Name is null
             ? [new NpcProfileProblem(Path("name"), NpcProfileProblemKind.WeaponNameRequired)]
             : NpcProfileChecks.RowText(Path("name"), weapon.Name);
@@ -77,7 +77,7 @@ internal static class NpcCombatValidation
     }
 
     private static IEnumerable<NpcProfileProblem> AttacksPerRound(int? attacks, string path) =>
-        NpcProfileChecks.InRange(attacks, NpcProfileLimits.AttacksPerRoundMinimum, NpcProfileLimits.AttacksPerRoundMaximum)
+        ProfileRanges.InRange(attacks, NpcProfileLimits.AttacksPerRoundMinimum, NpcProfileLimits.AttacksPerRoundMaximum)
             ? []
             : [new NpcProfileProblem(path, NpcProfileProblemKind.AttacksPerRoundOutOfRange)];
 }

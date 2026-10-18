@@ -21,12 +21,12 @@ internal static class NpcSkillsValidation
 
     private static IEnumerable<NpcProfileProblem> Name(NpcSkill skill, int index) =>
         skill.Name is null
-            ? [new NpcProfileProblem(NpcProfileChecks.Row("skills", index, "name"), NpcProfileProblemKind.SkillNameRequired)]
-            : NpcProfileChecks.RowText(NpcProfileChecks.Row("skills", index, "name"), skill.Name);
+            ? [new NpcProfileProblem(ProfilePaths.Row("skills", index, "name"), NpcProfileProblemKind.SkillNameRequired)]
+            : NpcProfileChecks.RowText(ProfilePaths.Row("skills", index, "name"), skill.Name);
 
     private static IEnumerable<NpcProfileProblem> Specialization(NpcSkill skill, int index, CombatSkillSpecializations specializations)
     {
-        var path = NpcProfileChecks.Row("skills", index, "specialization");
+        var path = ProfilePaths.Row("skills", index, "specialization");
         var family = specializations.FamilyOf(skill.Name);
         if (family is null)
         {
@@ -39,7 +39,7 @@ internal static class NpcSkillsValidation
     }
 
     private static IEnumerable<NpcProfileProblem> Value(NpcSkill skill, int index) =>
-        NpcProfileChecks.InRange(skill.Value, 0, NpcProfileLimits.SkillValueMaximum)
+        ProfileRanges.InRange(skill.Value, 0, NpcProfileLimits.SkillValueMaximum)
             ? []
-            : [new NpcProfileProblem(NpcProfileChecks.Row("skills", index, "value"), NpcProfileProblemKind.SkillValueOutOfRange)];
+            : [new NpcProfileProblem(ProfilePaths.Row("skills", index, "value"), NpcProfileProblemKind.SkillValueOutOfRange)];
 }

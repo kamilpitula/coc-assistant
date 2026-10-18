@@ -20,3 +20,19 @@ export const NON_PLAYER_ENTITY_TYPE_LABELS: Record<NonPlayerEntityType, string> 
 /** The longest Non-Player Entity name and the age range (specs/scenario-preparation/spec.md; project_ruleset.md section 5.2). */
 export const NON_PLAYER_ENTITY_NAME_MAX_LENGTH = 200
 export const HUMAN_NPC_AGE_MAXIMUM = 150
+
+/** The Investigator Difficulty the server works out for an Opposing Value (CONTEXT.md). */
+export type InvestigatorDifficulty = 'Regular' | 'Hard' | 'Extreme'
+
+export type CharacteristicCode = 'STR' | 'CON' | 'DEX' | 'APP' | 'POW' | 'SIZ' | 'INT' | 'EDU'
+
+export const CHARACTERISTIC_NAMES: Record<CharacteristicCode, string> = {
+  STR: 'Strength',
+  CON: 'Constitution',
+  DEX: 'Dexterity',
+  APP: 'Appearance',
+  POW: 'Power',
+  SIZ: 'Size',
+  INT: 'Intelligence',
+  EDU: 'Education',
+}

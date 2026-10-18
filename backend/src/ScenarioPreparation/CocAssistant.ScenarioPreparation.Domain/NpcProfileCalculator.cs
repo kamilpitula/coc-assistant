@@ -23,31 +23,19 @@ public static class NpcProfileCalculator
 
     public static NpcDerivedValues Derive(NpcProfile profile, CharacteristicsRules rules)
     {
-        var values = profile.Characteristics?.Values;
-        int? Value(Characteristic characteristic) => values?.GetValueOrDefault(characteristic.ToCode());
+        var values = profile.Characteristics?.Values ?? new Dictionary<string, int?>();
+        int? Value(Characteristic characteristic) => values.GetValueOrDefault(characteristic.ToCode());
 
-        var damageAndBuild = DamageAndBuild(Value(Characteristic.Strength), Value(Characteristic.Size), rules);
+        var shared = CharacteristicDerivedValues.From(values, rules);
         var (movementRate, notCovered) = Movement(
             Value(Characteristic.Strength),
             Value(Characteristic.Dexterity),
             Value(Characteristic.Size),
             profile.Age);
-        return new NpcDerivedValues(
-            HitPointsOf(Value(Characteristic.Constitution), Value(Characteristic.Size)),
-            Value(Characteristic.Power) is { } power ? MagicPoints.For(power) : null,
-            damageAndBuild?.DamageBonus,
-            damageAndBuild?.Build,
-            movementRate,
-            notCovered);
+        return new NpcDerivedValues(shared.HitPoints, shared.MagicPoints, shared.DamageBonus, shared.Build, movementRate, notCovered);
     }
 
     public static InvestigatorDifficulty DifficultyOf(int opposingValue) => InvestigatorDifficulties.ForOpposingValue(opposingValue);
-
-    private static int? HitPointsOf(int? constitution, int? size) =>
-        constitution is { } con && size is { } siz ? HitPoints.For(con, siz) : null;
-
-    private static (string DamageBonus, int Build)? DamageAndBuild(int? strength, int? size, CharacteristicsRules rules) =>
-        strength is { } str && size is { } siz ? DamageBonusAndBuild.For(str + siz, rules) : null;
 
     private static (int? Rate, bool NotCovered) Movement(int? strength, int? dexterity, int? size, int? age)
     {

@@ -15,16 +15,14 @@ internal static class NpcProfileNormalizer
         Spells = profile.Spells?.Select(Normalize).ToList(),
     };
 
-    public static string? Trimmed(string? text) => text?.Trim() is { Length: > 0 } trimmed ? trimmed : null;
-
     private static NpcDetails Normalize(NpcDetails details) => new(
-        Trimmed(details.ProfessionOrRole),
-        Trimmed(details.ShortDescription),
-        Trimmed(details.Goal),
-        Trimmed(details.RelationshipToInvestigators),
-        Trimmed(details.Knowledge),
-        Trimmed(details.Secrets),
-        Trimmed(details.BehaviorCue));
+        ProfileText.Trimmed(details.ProfessionOrRole),
+        ProfileText.Trimmed(details.ShortDescription),
+        ProfileText.Trimmed(details.Goal),
+        ProfileText.Trimmed(details.RelationshipToInvestigators),
+        ProfileText.Trimmed(details.Knowledge),
+        ProfileText.Trimmed(details.Secrets),
+        ProfileText.Trimmed(details.BehaviorCue));
 
     private static NpcCharacteristics Normalize(NpcCharacteristics characteristics)
     {
@@ -38,24 +36,24 @@ internal static class NpcProfileNormalizer
         return new NpcCharacteristics(ordered);
     }
 
-    private static NpcSkill Normalize(NpcSkill skill) => skill with { Name = Trimmed(skill.Name), Specialization = Trimmed(skill.Specialization) };
+    private static NpcSkill Normalize(NpcSkill skill) => skill with { Name = ProfileText.Trimmed(skill.Name), Specialization = ProfileText.Trimmed(skill.Specialization) };
 
     private static NpcCombat Normalize(NpcCombat combat) => combat with
     {
-        TacticsAndMorale = Trimmed(combat.TacticsAndMorale),
+        TacticsAndMorale = ProfileText.Trimmed(combat.TacticsAndMorale),
         Weapons = (combat.Weapons ?? []).Select(Normalize).ToList(),
     };
 
     private static NpcWeapon Normalize(NpcWeapon weapon) => weapon with
     {
-        Name = Trimmed(weapon.Name),
-        Skill = weapon.Skill is null ? null : new NpcSkillReference(Trimmed(weapon.Skill.Name), Trimmed(weapon.Skill.Specialization)),
-        Damage = Trimmed(weapon.Damage),
-        Range = Trimmed(weapon.Range),
-        Ammunition = Trimmed(weapon.Ammunition),
-        Malfunction = Trimmed(weapon.Malfunction),
+        Name = ProfileText.Trimmed(weapon.Name),
+        Skill = weapon.Skill is null ? null : new NpcSkillReference(ProfileText.Trimmed(weapon.Skill.Name), ProfileText.Trimmed(weapon.Skill.Specialization)),
+        Damage = ProfileText.Trimmed(weapon.Damage),
+        Range = ProfileText.Trimmed(weapon.Range),
+        Ammunition = ProfileText.Trimmed(weapon.Ammunition),
+        Malfunction = ProfileText.Trimmed(weapon.Malfunction),
     };
 
     private static NpcSpell Normalize(NpcSpell spell) =>
-        new(Trimmed(spell.Name), Trimmed(spell.MagicPointCost), Trimmed(spell.Effect));
+        new(ProfileText.Trimmed(spell.Name), ProfileText.Trimmed(spell.MagicPointCost), ProfileText.Trimmed(spell.Effect));
 }

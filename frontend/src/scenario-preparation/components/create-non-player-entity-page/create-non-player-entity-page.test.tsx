@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { HumanNpcValidationError } from '@/scenario-preparation/services/humanNpcApi'
+import { NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import { navigateSpy } from '@/shared/test-support/routerMock'
 
 import { CreateNonPlayerEntityPage } from './create-non-player-entity-page'
@@ -107,7 +107,7 @@ describe('CreateNonPlayerEntityPage', () => {
   })
 
   it('maps a 400 on name and age to field errors instead of the alert', () => {
-    const error = new HumanNpcValidationError([
+    const error = new NonPlayerEntityValidationError([
       { path: 'name', messages: ['Enter a name.'] },
       { path: 'age', messages: ['Enter an age from 0 to 150, in whole years.'] },
     ])

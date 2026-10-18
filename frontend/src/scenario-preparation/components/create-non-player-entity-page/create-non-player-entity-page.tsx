@@ -5,7 +5,7 @@ import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
 import { NonPlayerEntityNotFound } from '@/scenario-preparation/components/non-player-entity-not-found/non-player-entity-not-found'
 import { useCreateHumanNpc } from '@/scenario-preparation/hooks/useNonPlayerEntities'
-import { HumanNpcValidationError } from '@/scenario-preparation/services/humanNpcApi'
+import { NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import {
   CREATE_FIELD_ORDER,
   CREATE_MESSAGES,
@@ -27,7 +27,7 @@ interface CreateNonPlayerEntityPageProps {
 
 /** The messages for the fields a 400 can refuse on create. */
 function serverErrorsOf(error: unknown): CreateNonPlayerEntityErrors {
-  if (!(error instanceof HumanNpcValidationError)) {
+  if (!(error instanceof NonPlayerEntityValidationError)) {
     return {}
   }
   const paths = error.problems.map((problem) => problem.path)
@@ -130,7 +130,7 @@ export function CreateNonPlayerEntityPage({ campaignId }: CreateNonPlayerEntityP
 }
 
 function FailureAlert({ error }: { error: Error | null }) {
-  return error && !(error instanceof HumanNpcValidationError) ? (
+  return error && !(error instanceof NonPlayerEntityValidationError) ? (
     <Alert variant="destructive" role="alert">
       We couldn&apos;t create the Non-Player Entity. Try again.
     </Alert>

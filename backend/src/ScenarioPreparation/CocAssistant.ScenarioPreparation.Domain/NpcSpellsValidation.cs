@@ -16,12 +16,12 @@ internal static class NpcSpellsValidation
 
     private static IEnumerable<NpcProfileProblem> Row(NpcSpell spell, int index)
     {
-        var namePath = NpcProfileChecks.Row("spells", index, "name");
+        var namePath = ProfilePaths.Row("spells", index, "name");
         var name = spell.Name is null
             ? [new NpcProfileProblem(namePath, NpcProfileProblemKind.SpellNameRequired)]
             : NpcProfileChecks.RowText(namePath, spell.Name);
         return name
-            .Concat(NpcProfileChecks.RowText(NpcProfileChecks.Row("spells", index, "magicPointCost"), spell.MagicPointCost))
-            .Concat(NpcProfileChecks.RowText(NpcProfileChecks.Row("spells", index, "effect"), spell.Effect));
+            .Concat(NpcProfileChecks.RowText(ProfilePaths.Row("spells", index, "magicPointCost"), spell.MagicPointCost))
+            .Concat(NpcProfileChecks.RowText(ProfilePaths.Row("spells", index, "effect"), spell.Effect));
     }
 }

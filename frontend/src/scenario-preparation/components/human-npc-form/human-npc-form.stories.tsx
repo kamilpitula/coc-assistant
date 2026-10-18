@@ -4,7 +4,7 @@ import { userEvent, within } from 'storybook/test'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 import { gangsterHumanNpc, knottHumanNpc } from '@/scenario-preparation/test-support/humanNpcFixtures'
-import type { ValidationProblem } from '@/scenario-preparation/types/HumanNpc'
+import type { ValidationProblem } from '@/scenario-preparation/types/ValidationProblem'
 
 import { HumanNpcForm } from './human-npc-form'
 

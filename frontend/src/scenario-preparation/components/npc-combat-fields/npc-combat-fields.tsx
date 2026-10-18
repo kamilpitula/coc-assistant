@@ -8,11 +8,11 @@ import { RemoveRowButton } from '@/scenario-preparation/components/remove-row-bu
 import { RepeatingRows } from '@/scenario-preparation/components/repeating-rows/repeating-rows'
 import {
   addRowButtonId,
-  rowPath,
   type SectionFieldsProps,
   type SkillRowState,
   type WeaponRowState,
 } from '@/scenario-preparation/services/humanNpcForm'
+import { rowPath } from '@/scenario-preparation/services/profileForm'
 import { skillRowName } from '@/scenario-preparation/services/skillRowLabels'
 import { Button } from '@/shared/components/ui/button'
 import { Checkbox } from '@/shared/components/ui/checkbox'

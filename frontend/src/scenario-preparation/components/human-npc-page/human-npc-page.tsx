@@ -9,7 +9,7 @@ import { HumanNpcForm } from '@/scenario-preparation/components/human-npc-form/h
 import { HumanNpcView } from '@/scenario-preparation/components/human-npc-view/human-npc-view'
 import { NonPlayerEntityNotFound } from '@/scenario-preparation/components/non-player-entity-not-found/non-player-entity-not-found'
 import { useDeleteHumanNpc, useEditHumanNpc, useHumanNpc } from '@/scenario-preparation/hooks/useNonPlayerEntities'
-import { HumanNpcValidationError } from '@/scenario-preparation/services/humanNpcApi'
+import { NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import type { HumanNpc } from '@/scenario-preparation/types/HumanNpc'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
@@ -94,7 +94,7 @@ function HumanNpcDetail({ campaignId, humanNpc }: HumanNpcDetailProps) {
     setIsEditing(false)
   }
 
-  const validationError = edit.error instanceof HumanNpcValidationError ? edit.error : null
+  const validationError = edit.error instanceof NonPlayerEntityValidationError ? edit.error : null
   const failureMessage = edit.isError && !validationError ? "We couldn't save the Human NPC. Try again." : null
 
   return (

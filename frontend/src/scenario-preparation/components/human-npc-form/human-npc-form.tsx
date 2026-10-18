@@ -16,7 +16,6 @@ import {
   controlIdFor,
   identityErrors,
   inputFromState,
-  messageFor,
   SECTION_LABELS,
   SECTION_ORDER,
   sectionHasValues,
@@ -29,7 +28,9 @@ import {
   type SectionFieldsProps,
   type SectionName,
 } from '@/scenario-preparation/services/humanNpcForm'
-import type { HumanNpc, HumanNpcInput, ValidationProblem } from '@/scenario-preparation/types/HumanNpc'
+import { messageFor } from '@/scenario-preparation/services/profileForm'
+import type { HumanNpc, HumanNpcInput } from '@/scenario-preparation/types/HumanNpc'
+import type { ValidationProblem } from '@/scenario-preparation/types/ValidationProblem'
 import { RichTextEditor } from '@/shared/components/rich-text-editor/rich-text-editor'
 import { Alert } from '@/shared/components/ui/alert'
 import { Button } from '@/shared/components/ui/button'

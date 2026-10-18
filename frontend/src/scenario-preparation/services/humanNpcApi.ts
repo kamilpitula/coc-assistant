@@ -1,9 +1,8 @@
 import { z } from 'zod'
 
 import { authHeaders } from '@/campaign-play/services/authHeaders'
-import { NonPlayerEntityNotFoundError } from '@/scenario-preparation/services/nonPlayerEntityApi'
-import { readValidationProblems } from '@/scenario-preparation/services/validationProblem'
-import type { HumanNpc, HumanNpcInput, ValidationProblem } from '@/scenario-preparation/types/HumanNpc'
+import { failNonPlayerEntityWrite, NonPlayerEntityNotFoundError } from '@/scenario-preparation/services/nonPlayerEntityApi'
+import type { HumanNpc, HumanNpcInput } from '@/scenario-preparation/types/HumanNpc'
 
 const difficultySchema = z.enum(['Regular', 'Hard', 'Extreme'])
 
@@ -81,28 +80,7 @@ const humanNpcSchema = z.strictObject({
   spells: z.array(spellSchema).nullable(),
 })
 
-/** The API answered 400 with the refused values, keyed by lower-cased request path (ADR 0018). */
-export class HumanNpcValidationError extends Error {
-  readonly problems: ValidationProblem[]
-
-  constructor(problems: ValidationProblem[]) {
-    super('The Human NPC was refused')
-    this.name = 'HumanNpcValidationError'
-    this.problems = problems
-  }
-}
-
 const humanNpcsUrl = (campaignId: string): string => `/api/campaigns/${campaignId}/human-npcs`
-
-async function failWrite(response: Response, description: string): Promise<never> {
-  if (response.status === 404) {
-    throw new NonPlayerEntityNotFoundError()
-  }
-  if (response.status === 400) {
-    throw new HumanNpcValidationError(await readValidationProblems(response))
-  }
-  throw new Error(`Failed to ${description} (${response.status})`)
-}
 
 /** Calls GET .../human-npcs/{humanNpcId}; null when the API answers 404. */
 export async function getHumanNpc(accessToken: string, campaignId: string, humanNpcId: string): Promise<HumanNpc | null> {
@@ -127,7 +105,7 @@ export async function createHumanNpc(accessToken: string, campaignId: string, na
   })
 
   if (!response.ok) {
-    return failWrite(response, 'create the Human NPC')
+    return failNonPlayerEntityWrite(response, 'create the Human NPC')
   }
 
   return humanNpcSchema.parse(await response.json())
@@ -142,7 +120,7 @@ export async function editHumanNpc(accessToken: string, campaignId: string, huma
   })
 
   if (!response.ok) {
-    return failWrite(response, 'save the Human NPC')
+    return failNonPlayerEntityWrite(response, 'save the Human NPC')
   }
 
   return humanNpcSchema.parse(await response.json())
