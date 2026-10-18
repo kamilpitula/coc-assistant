@@ -21,6 +21,8 @@ Non-Player Entities (PBI-SP-003, PBI-SP-009, PBI-SP-010): **a dedicated list pag
 
 Overview entry: **counts with "View all"**, not recent profiles. The list's search and type filter **reset on every visit**. Non-Player Entities are specified in sections 21 to 30. This shared pass fixes the list, creation, page layout, and section pattern; each profile's field-level editor details are added at the start of PBI-SP-003 (NPC Profile) and PBI-SP-009 (Monster Profile) in sections 25.4 and 25.5. The Duplicate action (section 25.3) appears only once PBI-SP-010 ships.
 
+Monster Profile field-level design (PBI-SP-009): **Option B, a long form plus an "On this page" section index**, chosen 2026-10-18 (section 25.5). Option A (the plain long form) was rejected because Sanity loss and attacks are hard to find in a full profile at the table; Option C (per-section editing) was rejected because it reopens section 25.2 and adds a second editing pattern. Design record: [docs/scenario-preparation/issues/09-create-mythos-creature-profiles.design.md](../../docs/scenario-preparation/issues/09-create-mythos-creature-profiles.design.md).
+
 ## 1. Information architecture
 
 ```
@@ -457,7 +459,8 @@ Keeper notes                                      (h2)
 
 - **Header:** "Back to Non-Player Entities" link; `role=status` paragraph; `h1` the name (`break-words`); a muted line with the type, then the age (Human NPC) or the Creature Kind (Mythos Creature, when set), separated by `aria-hidden` dots.
 - **Sections:** each added section is an `h2` with its content, in the fixed order of the profile type (25.4, 25.5), whatever order they were added in. Sections that were not added are not shown. "Details" (the narrative fields) and "Keeper notes" are always shown; Details lists only filled fields in a `dl`, or "No details yet." in muted text; Keeper notes use `rich-text-view` or "No Keeper notes yet.".
-- **Computed values** (Hit Points, Magic Points, Damage Bonus, Build, MOV, difficulty) come from the server response and are text, never disabled inputs. A value that cannot be computed yet is not shown; MOV outside the covered ages shows "Not covered by the rules for this age". On a Monster Profile only, a Derived Value Override shows the override, then "(computed {value})" and its reason; NPC Profiles have none.
+- **Computed values** (Hit Points, Magic Points, Damage Bonus, Build, MOV, difficulty) come from the server response and are text, never disabled inputs. A value that cannot be computed yet is not shown; MOV outside the covered ages shows "Not covered by the rules for this age". On a Monster Profile only, a Derived Value Override shows the override, then "(computed {value})" and its reason; NPC Profiles have none. Investigator Difficulty is shown on both profile types (25.4, 25.5).
+- **Section index:** the Monster Profile page only has an "On this page" section index under the header (25.5).
 - **Stat tables:** from 640px, characteristic and skill groups are a `Table`; below 640px they reflow to a `dl` so nothing scrolls sideways at 320px.
 - **Actions:** outline "Edit", outline "Duplicate" (PBI-SP-010), and "Delete" (outline, destructive text).
 
@@ -545,7 +548,88 @@ Fixed order: Details, Characteristics, Skills, Combat, Spells, Keeper notes. Val
 
 ### 25.5 Monster Profile sections
 
-Fixed order: Details (Name, Creature Kind, then the narrative fields), Characteristics and derived values, Movement, Combat (attacks per round, Dodge, attacks), Defenses (armor, immunities, vulnerabilities), Skills, Spells, Powers, Sanity loss, Keeper notes. Field-level content: added at the start of PBI-SP-009.
+Selected 2026-10-18 (PBI-SP-009): **the long form of section 25.2 plus an "On this page" section index**, with compact rows as in 25.4. Alternatives considered:
+- **Option A (the plain long form):** rejected because Sanity loss and attacks are hard to find in a full Monster Profile at the table.
+- **Option C (per-section editing):** rejected because it reopens section 25.2 and adds a second editing pattern next to the Human NPC and Scene pages.
+
+Fixed order: Details, Characteristics, Movement, Combat, Defenses, Skills, Spells, Powers, Sanity loss, Keeper notes. The "Add a section" buttons read "Add Characteristics", "Add Movement", "Add Combat", "Add Defenses", "Add Skills", "Add Spells", "Add Powers", and "Add Sanity loss". Values are whole numbers; number inputs use `inputMode="numeric"`. No half or fifth values and no MOV are shown ([NPC ruleset section 5.3](../../docs/game-rules/coc_7e_npc_and_monster_creation_ruleset.md#53-step-3--assign-characteristics-and-movement)). Characteristics, skills, attack skill values, and Dodge show their Investigator Difficulty as text ([project_ruleset.md section 5.9](../../docs/game-rules/project_ruleset.md#59-monster-profile-skills-and-attacks)).
+
+**Section index (`profile-section-index`)**
+- Under the header's muted line, in view and in edit: a muted label "On this page" (`p`) and a `nav` with `aria-labelledby` that label, holding an inline list of links, one per present section in the fixed order, separated by `aria-hidden` dots. Details and Keeper notes are always listed.
+- A link scrolls to its section and moves focus to it: the view's `section` or the edit `fieldset`, each with an `id` and `tabIndex=-1`. In edit the list follows added and removed sections.
+- It is not sticky, so it never competes with the sticky action bar (SP-A11Y-24). It wraps at 320px; each link is at least 24px tall.
+- Human NPC pages have no section index.
+
+**Details** (always present)
+- **Edit:** "Name" (full width); "Creature Kind" (`Select`, 12rem wide: "Not set", Beast, Folklore, Mythos, Unique; hint "It only organizes your profiles and has no game effect."); then the `Textarea`s "Description and sensory cues", "Origin", "Goal and typical behavior", "Signs and traces", "Defeat outcome" (hint "What happens at zero Hit Points or when it loses a conflict."), and "Specimen range notes" (3 rows, full width).
+- **View:** Creature Kind is in the header line (25.1); a `dl` of the filled narrative fields in that order; "No details yet." when none.
+
+**Characteristics**
+- **Edit:** a grid of number inputs STR, CON, SIZ, DEX, INT, POW (3 columns from 640px, 2 below). The visible label is the code; the accessible name adds the full name ("STR Strength"). Under the grid, the outline buttons "Add APP" and "Add EDU"; each is replaced by its input when activated, and focus moves to that input. An input with a saved value is always shown. Hint once: "Enter only the characteristics this Mythos Creature needs, from 0 to 2,000.", then the computed hint of section 25.2.
+- **Worked-out values (edit):** a nested `fieldset` with a legend styled like an `h3`, "Worked-out values":
+  - **Hit Points:** a `RadioGroup` in its own `fieldset` (legend "Hit Points"): "Work out from the characteristics" (default), "Override", "Not applicable". "Override" reveals "Hit Points" (number, 6rem, hint "From 1 to 9,999.") and "Reason". "Not applicable" reveals the hint "Describe the Defeat outcome under Details."
+  - **Magic Points, Damage Bonus, Build:** each a `Checkbox` "Override {value}" that reveals "{value}" and "Reason". Hints: Magic Points "From 0 to 9,999."; Damage Bonus (text, 8rem) "Write it like +1D4, -1, or 0."; Build "From -2 to 99."
+  - **Reason:** an `Input`, full width; the accessible name is "Reason for the {value} override"; hint "Why it differs from the rules, up to 500 characters."
+  - Clearing a checkbox or choosing another Hit Points option hides the fields and drops their values on Save; Cancel restores them. Either counts as a change.
+- **View:** a `Table` "Characteristic | Value | Investigator difficulty" with only the entered characteristics (a `dl` below 640px). Then an `h3` "Worked-out values" and a `dl` of Hit Points, Magic Points, Damage Bonus, and Build. Each reads:
+  - the computed value; or
+  - "{override} (computed {value})" with a muted line "Reason: {reason}"; or
+  - "{override} (no computed value: needs CON and SIZ)" for Hit Points, "needs POW" for Magic Points, "needs STR and SIZ" for Damage Bonus and Build, with the reason line; or
+  - for Hit Points marked not applicable: "Not applicable" with a muted line "Defeat outcome: {defeat outcome}".
+
+  A value with nothing to show is left out; when none can be shown: "Worked-out values appear when the characteristics they need are entered."
+
+**Movement** (repeating rows; item "movement mode"; row label the mode, or "Other ({name})", else "movement mode {n}")
+- **Edit:** each row is a `role="group"` labelled "Movement mode {n}": "Mode" (`Select`: Walk, Swim, Fly, Burrow, Other; a new row starts at Walk) | "Name of the mode" (`Input`, only for Other) | "Rate" (number) | Remove. Hint once: "Enter each way it moves, from 0 to 999. With no modes it has no ordinary movement."
+- **View:** a `dl` ("Walk 8", "Other (phasing) 10"); an added empty section reads "No ordinary movement."
+
+**Combat**
+- **Edit:** "Attacks per round" and "Dodge" (numbers) on one line; then a `fieldset` "Attacks" with repeating rows (item "attack"; row label the name, else "attack {n}"), each a group labelled "Attack {n}": "Name" | "Skill" (`Input`, a new row is prefilled "Fighting") | "Value" (number) | "Damage" | Remove. Hint once under the legend: "Damage uses dice like 1D6+DB or 2D6-1. Write DB only where Damage Bonus applies; firearms never add it." Under each row, a `Collapsible` trigger "More details for {row label}" (`aria-expanded`) holds "Effect" (`Textarea`, for example grapples, drains, or escape conditions) and the `Checkbox` "Manoeuvre (no damage needed)". It starts open when either has a value or a server problem, else closed; its state is not saved.
+- **View:** a `dl` with Attacks per round and Dodge with its Investigator difficulty; a `Table` "Attack | Skill | Investigator difficulty | Damage | Effect", where Skill reads "{skill} {value}%" and Damage reads "Manoeuvre" for a manoeuvre without damage; a `dl` per attack below 640px. "None recorded." for an empty added section.
+
+**Defenses**
+- **Edit:** "Armor points" (number) and "Armor note" (`Textarea`, 2 rows); then the `fieldset`s "Immunities" and "Vulnerabilities", each with repeating rows (items "immunity" and "vulnerability"; row labels "immunity {n}" and "vulnerability {n}") of one "Description" `Textarea` (2 rows) and Remove. Hint once: "Say what it covers and when, for example: Ordinary bullets inflict no damage." ([NPC ruleset section 5.6](../../docs/game-rules/coc_7e_npc_and_monster_creation_ruleset.md#56-step-6--set-armour-immunities-and-vulnerabilities)).
+- **View:** a `dl` of Armor points and Armor note; `h3` "Immunities" and "Vulnerabilities", each with a `ul`, only when it has entries. "None recorded." when the whole section is empty.
+
+**Skills** (repeating rows; item "skill"; row label the name, else "skill {n}")
+- **Edit:** "Skill" (`Input` with the Era's skill names as datalist suggestions; any name is accepted) | "Value" (number) | Remove. Hint once: "Choose a skill from the list or type your own, with a value from 0 to 2,000." Skill list failure: as in 25.4, without a Specialization field.
+- **View:** a `Table` "Skill | Value | Investigator difficulty" in the entered order (a `dl` below 640px); "None recorded." for an empty added section.
+
+**Spells:** as in 25.4.
+
+**Powers** (repeating rows; item "power"; row label the name, else "power {n}")
+- **Edit:** as Spells, plus "Limits" (`Input`, full width, hint "Use limits, recovery, or other restrictions.").
+- **View:** as Spells, plus "Limits: {limits}" in muted text.
+
+**Sanity loss**
+- **Edit:** one `Input` "Sanity loss", 10rem wide, hint "Success/failure, for example 0/1D6 or 1/1D10."
+- **View:** "Sanity loss 0/1D6"; an added empty section reads "No Sanity roll."
+
+**Keeper notes:** as Scene Keeper notes (section 15).
+
+**Server problems.** As in 25.4 (ADR 0018). Messages:
+
+| Problem | Message |
+|---|---|
+| Name | Enter a name. / Name must be 200 characters or fewer. |
+| Creature Kind | Choose a Creature Kind from the list. |
+| Text too long | {Field} must be 4,000 characters or fewer. / {Field} must be 1,000 characters or fewer. |
+| Characteristic | Enter {code} from 0 to 2,000. |
+| Override value | Enter the override. / Enter Hit Points from 1 to 9,999. / Enter Magic Points from 0 to 9,999. / Enter Build from -2 to 99. / Write the Damage Bonus like +1D4, -1, or 0. |
+| Override reason | Give a reason for the override. / Reason must be 500 characters or fewer. |
+| Hit Points | Choose either an override or not applicable for Hit Points. |
+| Defeat outcome | Describe the defeat outcome, because Hit Points don't apply. |
+| Movement | Choose a mode from the list. / Name the mode. / Enter a rate from 0 to 999. |
+| Attacks per round / Dodge / Armor points | Enter attacks per round from 1 to 99. / Enter Dodge from 0 to 2,000. / Enter armor points from 0 to 2,000. |
+| Attack | Enter the attack's name. / Enter the attack's skill. / Enter a skill value from 0 to 2,000. / Enter the damage, or mark the attack as a manoeuvre. / Write the damage as dice and numbers, for example 1D6+DB or 2D6-1. / Damage Bonus doesn't apply to firearms. Remove DB from the damage. |
+| Immunity / Vulnerability | Describe the immunity. / Describe the vulnerability. |
+| Skill | Enter the skill's name. / Enter a value from 0 to 2,000. |
+| Spell / Power | Enter the spell's name. / Enter the power's name. |
+| Sanity loss | Write the Sanity loss as success/failure, for example 0/1D6. |
+| Too many rows | Add at most 100 {items}. |
+| Keeper notes | As for Scene Keeper notes. |
+
+**Components** (in `frontend/src/scenario-preparation/components/`, beside section 27): `mythos-creature-page`, `mythos-creature-view`, and `mythos-creature-form`; `profile-section-index`; `monster-characteristics-fields`, `monster-movement-rows`, `monster-combat-fields`, `monster-defenses-fields`, `monster-skill-rows`, and `monster-sanity-loss-fields` for editing and their `-view` counterparts; and the shared `spell-row-fields` and `spells-view` (Spells of both profiles and Powers). They reuse `WizardField`, `WizardSelect`, `WizardTextarea`, and the skill catalog hook from `campaign-play`, and the existing `Collapsible`, `Checkbox`, `RadioGroup`, and `Select` primitives.
 
 ### 25.6 States
 
@@ -581,6 +665,9 @@ Fixed order: Details (Name, Creature Kind, then the narrative fields), Character
 | Delete refused (PBI-SP-004) | {name} is part of a Scene that has been played, so it can't be deleted. |
 | Empty view | No details yet. / No Keeper notes yet. |
 | Not found | We couldn't find that Non-Player Entity / Back to your Campaign |
+| Section index (Monster Profile) | On this page |
+| Overrides | Override {value} / Reason / Reason for the {value} override / {override} (computed {value}) / (no computed value: needs ...) / Reason: {reason} / Not applicable / Defeat outcome: {text} |
+| Monster empty states | No ordinary movement. / No Sanity roll. |
 
 The "{n} shown." count uses "1 shown." for one result.
 
@@ -592,7 +679,8 @@ The "{n} shown." count uses "1 shown." for one result.
 | List page | New `non-player-entity-list-page`, route `routes/campaigns.$campaignId.non-player-entities.index.tsx`; filtering in a pure `services/nonPlayerEntityFilter.ts` |
 | Create page | New `create-non-player-entity-page`, route `routes/campaigns.$campaignId.non-player-entities.new.tsx` |
 | Profile pages | New `human-npc-page` (route `routes/campaigns.$campaignId.human-npcs.$humanNpcId.tsx`, PBI-SP-003) and `mythos-creature-page` (route `routes/campaigns.$campaignId.mythos-creatures.$mythosCreatureId.tsx`, PBI-SP-009) |
-| Section pattern | New `profile-section` (view `h2` or edit `fieldset` with Remove), `add-section-group`, `remove-section-dialog` (`AlertDialog`), and `repeating-rows`, shared by both editors |
+| Section pattern | New `profile-section` (view `h2` or edit `fieldset` with Remove; optional `id` as a focus target), `add-section-group`, `remove-section-dialog` (`AlertDialog`), `repeating-rows`, `remove-row-button`, and `stat-table`, shared by both editors |
+| Monster Profile | `mythos-creature-view`, `mythos-creature-form`, `profile-section-index`, the `monster-*` section components, and the shared `spell-row-fields` and `spells-view` (section 25.5) |
 | Error summary | New `form-error-summary` (`Alert` with links to fields) in the slice |
 | Action bar | New `sticky-form-actions` |
 | Delete dialog | New `delete-non-player-entity-dialog` (`AlertDialog`, like `remove-scene-dialog`) |
@@ -605,6 +693,9 @@ Stories cover:
 - **`create-non-player-entity-page`:** no type chosen, Human NPC with Age, Mythos Creature, every field error, creating, and failure.
 - **Section pattern:** a section with and without values, the add group with some and with no buttons left, the remove dialog, repeating rows with zero, one, and 100 rows, and the error summary.
 - **`delete-non-player-entity-dialog`:** idle, deleting, failure, and refused.
+- **`profile-section-index`:** few sections, all sections, and 320px.
+- **`mythos-creature-view`:** narrative only, a full profile, every override state, and Hit Points not applicable.
+- **`mythos-creature-form`:** empty, full, and with server problems.
 
 ## 28. Non-Player Entity UX acceptance criteria
 
@@ -625,6 +716,11 @@ Stories cover:
 - **SP-UX-42** On an NPC Profile, characteristics, skills, and Dodge show their Investigator difficulty as text; no half or fifth values appear.
 - **SP-UX-43** A weapon's "More details" opens by itself when it holds a value or a server problem, so every error summary link reaches a visible field.
 - **SP-UX-44** A weapon's Skill offers only this profile's skills, including rows not yet saved.
+- **SP-UX-45** The Monster Profile page shows "On this page" with a link to each present section in the fixed order, in view and edit; a link moves focus to its section; in edit the list follows added and removed sections.
+- **SP-UX-46** Choosing "Override" or "Override {value}" shows the value and Reason fields, and Hit Points offers one of three choices; after Save the view shows the override with "(computed {value})" or "(no computed value: needs ...)" and its reason, or "Not applicable" with the defeat outcome.
+- **SP-UX-47** An attack's "More details" opens by itself when it holds a value or a server problem (extends SP-UX-43).
+- **SP-UX-48** On a Monster Profile, characteristics, skills, attack values, and Dodge show their Investigator difficulty as text; no half or fifth values and no MOV appear; movement shows each mode as entered.
+- **SP-UX-49** APP and EDU appear only after "Add APP" or "Add EDU", or when they have a value.
 
 ## 29. Non-Player Entity accessibility acceptance criteria (WCAG 2.2 AA)
 
@@ -638,12 +734,14 @@ Stories cover:
 - **SP-A11Y-25** Type, difficulty, overrides, and "not covered" are conveyed in text, never only by color (1.4.1).
 - **SP-A11Y-26** At 320px and at 200% zoom the list, create page, and profile pages fit without horizontal scrolling; stat tables reflow to definition lists and long names wrap (1.4.10).
 - **SP-A11Y-27** Each skill, weapon, and spell row is a group with a unique accessible name; the "More details" trigger exposes `aria-expanded` and names its weapon (2.4.6, 4.1.2).
+- **SP-A11Y-28** The section index is a `nav` labelled by the visible "On this page"; its links are at least 24 by 24 CSS pixels, show visible focus, and move focus to the target, never to `body` (2.4.1, 2.4.3, 2.5.8).
+- **SP-A11Y-29** Each derived value's override controls are grouped with a legend; revealed fields have visible labels and hints connected with `aria-describedby`; each attack, movement mode, immunity, vulnerability, and power row is a group with a unique accessible name (1.3.1, 3.3.2, 4.1.2; extends SP-A11Y-27).
 
 ## 30. Non-Player Entity open decisions and research gaps
 
 - **Resolved (PBI-SP-003):** NPC Profile field-level content, section 25.4 (compact rows, selected 2026-10-17).
-- **Open (PBI-SP-009):** Monster Profile field-level content (section 25.5), designed through the UX designer skill at the start of that PBI.
+- **Resolved (PBI-SP-009):** Monster Profile field-level content, section 25.5 (long form plus a section index, selected 2026-10-18).
 - **Deferred:** a profession or Creature Kind column in the list; the list response carries only `{id, type, name}`.
 - **Deferred:** linking a profile to a Scene from its profile page (PBI-SP-004 designs linking on the Scene page).
-- **Research gap:** whether one long Edit form is workable for a full Monster Profile at the table, or per-section editing (Option B) is needed after all.
+- **Research gap:** whether the section index (section 25.5) is enough for a full Monster Profile at the table, or per-section editing (Option C of PBI-SP-009) is needed after all.
 - **Research gap:** whether Keepers want the list grouped by Scenario once Scene links exist.

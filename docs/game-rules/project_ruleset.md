@@ -153,6 +153,9 @@ Entity values. In this project:
 | Armour points | Whole number, 0-2000 |
 | Movement rate (per mode) | Whole number, 0-999 |
 | Attacks per round | Whole number, 1-99 |
+| Hit Points override (Mythos Creature) | Whole number, 1-9999 |
+| Magic Points override (Mythos Creature) | Whole number, 0-9999 |
+| Build override (Mythos Creature) | Whole number, -2 to 99 |
 
 Each characteristic is optional on its own. A Monster Profile offers STR, CON,
 SIZ, DEX, INT, and POW, and APP and EDU only when the Keeper adds them (NPC
@@ -185,6 +188,16 @@ house rule is needed before MOV can be computed for those ages.
 - A Mythos Creature's movement is entered per mode (Walk, Swim, Fly, Burrow, or
   Other with a label), never computed (NPC ruleset section 5.3). No modes means
   no ordinary movement.
+- A Damage Bonus override is written like the computed Damage Bonus of
+  [section 5.8](coc7_character_creation_and_development_rules.md#58-damage-bonus-and-build):
+  `0`, or an optional `+` or `-` followed by section 5.5 notation without `DB`
+  (`damageBonusOverride` in section 5.5; for example `+1D4`, `-1`, `+2D6+1`).
+  Hit Points, Magic Points, and Build overrides are whole numbers in the ranges
+  of section 5.2.
+- A value may be overridden even when its computed value cannot be worked out
+  because a characteristic it needs is missing; it is then shown without a
+  computed value.
+- Hit Points cannot be both overridden and marked not applicable.
 
 ## 5.5 Dice notation
 
@@ -196,12 +209,16 @@ dice       = [count] "D" sides          // case-insensitive; no count means 1
 expression = term { ("+" | "-") term }  // for example 1D6+1D4+DB, 2D6-1
 sanityLoss = side "/" side              // success "/" failure, for example 0/1D6
 side       = expression without "DB"    // a constant, including 0, or dice
+damageBonusOverride = ["+" | "-"] side  // section 5.4, for example +1D4, -1, 0
 ```
 
 - `DB` (the attacker's Damage Bonus) is allowed only in damage. It is not allowed
-  in the damage of an NPC Profile weapon that uses a Firearms skill, because
+  in the damage of an NPC Profile weapon that uses a Firearms skill, nor in the
+  damage of a Monster Profile attack whose skill is Firearms (its text before
+  any parenthesis, trimmed, is `Firearms`, ignoring case; section 5.9), because
   Damage Bonus does not apply to firearms
-  ([section 10.3](coc7_character_creation_and_development_rules.md#103-damage-bonus-interaction)).
+  ([section 10.3](coc7_character_creation_and_development_rules.md#103-damage-bonus-interaction);
+  NPC ruleset [section 3.2](coc_7e_npc_and_monster_creation_ruleset.md#32-derived-values)).
 - Sanity loss is optional; no Sanity loss means the Mythos Creature calls for no
   Sanity roll (NPC ruleset section 5.8).
 - **Rules gap.** Half Damage Bonus for thrown weapons is not documented in
@@ -248,3 +265,30 @@ a Fighting or Firearms specialization that is not in
 [catalogs/skill-specializations.json](catalogs/skill-specializations.json), a
 skill, weapon, or spell without a name, a skill without a value, and a weapon
 without attacks per round.
+
+For a Monster Profile, these structural problems also block saving (sections
+5.4 and 5.9): a skill, attack, spell, or power without a name; a skill without a
+value; an attack without a skill; an immunity or vulnerability without a
+description; a movement mode without a rate; an Other movement mode without a
+label; a movement mode or Creature Kind that is not in the lists of sections 5.1
+and 5.4; an override without a value; and Hit Points both overridden and marked
+not applicable.
+
+## 5.9 Monster Profile skills and attacks
+
+**Project choice.**
+
+- Monster Profile skills are chosen from the Campaign Era's
+  [skill catalog](catalogs/skills.1920s.json) or entered as a custom name. The
+  specialization rule of section 5.7 applies to NPC Profiles only; a Monster
+  Profile skill has no separate specialization.
+- A Monster Profile attack records its own skill name and skill value, with
+  damage in the notation of section 5.5, an optional effect, and whether it is a
+  manoeuvre. Fighting is the usual skill for natural attacks (NPC ruleset
+  [section 5.5](coc_7e_npc_and_monster_creation_ruleset.md#55-step-5--design-attacks-and-combat-behavior)).
+  An attack's skill is Firearms when its text before any parenthesis, trimmed,
+  is `Firearms`, ignoring case (section 5.5).
+- Each Monster Profile characteristic, skill, attack skill value, and Dodge shows
+  the Investigator difficulty it sets (NPC ruleset
+  [section 3.4](coc_7e_npc_and_monster_creation_ruleset.md#34-skill-difficulty-for-an-investigator-opposing-an-npc-or-monster),
+  which covers an NPC or monster).

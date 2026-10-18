@@ -71,7 +71,7 @@ A Non-Player Entity's skill or characteristic value that sets the difficulty an 
 _Avoid_: Target number, DC
 
 **Investigator Difficulty**:
-The Regular, Hard, or Extreme success an Investigator needs when acting against an Opposing Value, set by that value per the [difficulty rules](docs/game-rules/coc_7e_npc_and_monster_creation_ruleset.md#34-skill-difficulty-for-an-investigator-opposing-an-npc-or-monster) and shown on NPC Profiles per [project_ruleset.md section 5.7](docs/game-rules/project_ruleset.md#57-npc-profile-skills-and-weapons). It is not a roll; the app rolls no dice for profiles.
+The Regular, Hard, or Extreme success an Investigator needs when acting against an Opposing Value, set by that value per the [difficulty rules](docs/game-rules/coc_7e_npc_and_monster_creation_ruleset.md#34-skill-difficulty-for-an-investigator-opposing-an-npc-or-monster) and shown on NPC Profiles and Monster Profiles per [project_ruleset.md sections 5.7](docs/game-rules/project_ruleset.md#57-npc-profile-skills-and-weapons) and [5.9](docs/game-rules/project_ruleset.md#59-monster-profile-skills-and-attacks). It is not a roll; the app rolls no dice for profiles.
 _Avoid_: Difficulty class, DC, target level
 
 **Derived Value Override**:
