@@ -18,6 +18,12 @@ describe('WizardTextarea', () => {
     expect(textarea).toHaveAccessibleDescription('Too long.')
   })
 
+  it('attaches help text and the error message together', () => {
+    render(<WizardTextarea field="details.defeatOutcome" label="Defeat outcome" help="What happens at zero Hit Points." value={null} error="Describe it." onChange={vi.fn()} />)
+
+    expect(screen.getByRole('textbox', { name: 'Defeat outcome' })).toHaveAccessibleDescription('What happens at zero Hit Points. Describe it.')
+  })
+
   it('keeps line breaks, reports null when cleared, and reports the field on blur', async () => {
     const onChange = vi.fn()
     const onBlur = vi.fn()

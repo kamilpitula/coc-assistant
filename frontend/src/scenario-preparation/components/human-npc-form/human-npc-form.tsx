@@ -1,8 +1,9 @@
-import { useEffect, useId, useReducer, useRef, useState, type Dispatch, type FormEvent } from 'react'
+import { useCallback, useEffect, useId, useReducer, useRef, useState, type FormEvent } from 'react'
 
 import { WizardField } from '@/campaign-play/components/wizard-field/wizard-field'
 import { WizardTextarea } from '@/campaign-play/components/wizard-textarea/wizard-textarea'
 import { useOccupationCatalog, useSkillCatalog } from '@/campaign-play/hooks/useRuleData'
+import { useFocusOnce, useFocusTarget } from '@/scenario-preparation/hooks/useProfileFormFocus'
 import { AddSectionGroup } from '@/scenario-preparation/components/add-section-group/add-section-group'
 import { FormErrorSummary } from '@/scenario-preparation/components/form-error-summary/form-error-summary'
 import { NpcCharacteristicsFields } from '@/scenario-preparation/components/npc-characteristics-fields/npc-characteristics-fields'
@@ -13,7 +14,6 @@ import { ProfileSection } from '@/scenario-preparation/components/profile-sectio
 import { RemoveSectionDialog } from '@/scenario-preparation/components/remove-section-dialog/remove-section-dialog'
 import { StickyFormActions } from '@/scenario-preparation/components/sticky-form-actions/sticky-form-actions'
 import {
-  controlIdFor,
   identityErrors,
   inputFromState,
   SECTION_LABELS,
@@ -23,12 +23,10 @@ import {
   summaryProblems,
   humanNpcFormReducer,
   type DetailKey,
-  type HumanNpcFormAction,
-  type HumanNpcFormState,
   type SectionFieldsProps,
   type SectionName,
 } from '@/scenario-preparation/services/humanNpcForm'
-import { messageFor } from '@/scenario-preparation/services/profileForm'
+import { controlIdFor, messageFor } from '@/scenario-preparation/services/profileForm'
 import type { HumanNpc, HumanNpcInput } from '@/scenario-preparation/types/HumanNpc'
 import type { ValidationProblem } from '@/scenario-preparation/types/ValidationProblem'
 import { RichTextEditor } from '@/shared/components/rich-text-editor/rich-text-editor'
@@ -78,7 +76,7 @@ export function HumanNpcForm({ campaignId, humanNpc, pending, problems, failureM
 
   const isDirty = notesChanged || JSON.stringify(inputFromState(state, null)) !== initialJson
   useUnsavedChangesPrompt(isDirty)
-  useFocusTarget(state, dispatch)
+  useFocusTarget(state.focusTarget, useCallback(() => dispatch({ type: 'clearFocus' }), []))
   useFocusOnce(summaryRef, problems)
   useEffect(() => {
     // The form opens on Name, unless it already carries a refused save, whose summary takes focus instead.
@@ -156,25 +154,6 @@ export function HumanNpcForm({ campaignId, humanNpc, pending, problems, failureM
   )
 }
 
-/** Moves focus to the control a change names (a new section's first field, the next row, an Add button), then clears it. */
-function useFocusTarget(state: HumanNpcFormState, dispatch: Dispatch<HumanNpcFormAction>): void {
-  useEffect(() => {
-    if (state.focusTarget) {
-      document.getElementById(state.focusTarget)?.focus()
-      dispatch({ type: 'clearFocus' })
-    }
-  }, [state.focusTarget, dispatch])
-}
-
-/** Focuses the error summary each time a refused save brings new problems (SP-A11Y-20). */
-function useFocusOnce(summaryRef: React.RefObject<HTMLDivElement | null>, problems: ValidationProblem[]): void {
-  useEffect(() => {
-    if (problems.length > 0) {
-      summaryRef.current?.focus()
-    }
-  }, [problems, summaryRef])
-}
-
 function DetailsFields({ state, dispatch, errorOf, campaignId }: SectionFieldsProps & { campaignId: string }) {
   const occupations = useOccupationCatalog(campaignId)
 
@@ -250,7 +229,10 @@ function OptionalSections(props: OptionalSectionsProps) {
           <SectionContent section={section} {...props} />
         </ProfileSection>
       ))}
-      <AddSectionGroup available={SECTION_ORDER.filter((section) => !added.includes(section))} onAdd={(section) => dispatch({ type: 'addSection', section })} />
+      <AddSectionGroup
+        available={SECTION_ORDER.filter((section) => !added.includes(section))}
+        labels={SECTION_LABELS}
+        onAdd={(section) => dispatch({ type: 'addSection', section })} />
       <RemoveSectionDialog
         open={removing !== null}
         section={removing ? SECTION_LABELS[removing] : ''}

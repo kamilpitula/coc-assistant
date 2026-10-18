@@ -1,12 +1,16 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
 import { DeleteNonPlayerEntityDialog } from '@/scenario-preparation/components/delete-non-player-entity-dialog/delete-non-player-entity-dialog'
+import { MythosCreatureForm } from '@/scenario-preparation/components/mythos-creature-form/mythos-creature-form'
+import { MythosCreatureHeading } from '@/scenario-preparation/components/mythos-creature-heading/mythos-creature-heading'
+import { MythosCreatureView } from '@/scenario-preparation/components/mythos-creature-view/mythos-creature-view'
 import { NonPlayerEntityNotFound } from '@/scenario-preparation/components/non-player-entity-not-found/non-player-entity-not-found'
-import { useDeleteMythosCreature, useMythosCreature } from '@/scenario-preparation/hooks/useNonPlayerEntities'
+import { useDeleteMythosCreature, useEditMythosCreature, useMythosCreature } from '@/scenario-preparation/hooks/useNonPlayerEntities'
+import { NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import type { MythosCreature } from '@/scenario-preparation/types/MythosCreature'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
@@ -17,8 +21,9 @@ interface MythosCreaturePageProps {
 }
 
 /**
- * One Mythos Creature for its Keeper (specs/scenario-preparation/ux.md section 25). A Player, an unknown id, another
- * Campaign's id, and the other type's id all get the not-found page; a Player's client makes no request.
+ * One Mythos Creature for its Keeper: a view with "Edit" and "Delete", or the whole-profile form (specs/scenario-
+ * preparation/ux.md section 25). A Player, an unknown id, another Campaign's id, and the other type's id all get the
+ * not-found page; a Player's client makes no request.
  */
 export function MythosCreaturePage({ campaignId, mythosCreatureId }: MythosCreaturePageProps) {
   const campaign = useCampaign(campaignId)
@@ -60,6 +65,38 @@ interface MythosCreatureDetailProps {
 
 function MythosCreatureDetail({ campaignId, mythosCreature }: MythosCreatureDetailProps) {
   const navigationMessage = useRouterState({ select: (state) => state.location.state.statusMessage })
+  const edit = useEditMythosCreature(campaignId, mythosCreature.id)
+  const [isEditing, setIsEditing] = useState(false)
+  const [justSaved, setJustSaved] = useState(false)
+  const [returnedFromEdit, setReturnedFromEdit] = useState(false)
+  const editButtonRef = useRef<HTMLButtonElement>(null)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+
+  // The Edit button is mounted again when the form closes, so focus goes back to it.
+  useEffect(() => {
+    if (!isEditing && returnedFromEdit) {
+      ;(editButtonRef.current ?? headingRef.current)?.focus()
+    }
+  }, [isEditing, returnedFromEdit])
+
+  const startEditing = () => {
+    edit.reset()
+    setJustSaved(false)
+    setReturnedFromEdit(false)
+    setIsEditing(true)
+  }
+
+  const stopEditing = (saved: boolean) => {
+    if (!saved) {
+      edit.reset()
+    }
+    setJustSaved(saved)
+    setReturnedFromEdit(true)
+    setIsEditing(false)
+  }
+
+  const validationError = edit.error instanceof NonPlayerEntityValidationError ? edit.error : null
+  const failureMessage = edit.isError && !validationError ? "We couldn't save the Mythos Creature. Try again." : null
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -72,15 +109,40 @@ function MythosCreatureDetail({ campaignId, mythosCreature }: MythosCreatureDeta
         Back to Non-Player Entities
       </Link>
       <p role="status" className="text-sm empty:hidden">
-        {navigationMessage}
+        {justSaved ? 'Mythos Creature saved.' : navigationMessage}
       </p>
-      <h1 className="text-2xl font-semibold break-words">{mythosCreature.name}</h1>
-      <ProfileActions campaignId={campaignId} mythosCreature={mythosCreature} />
+      {isEditing ? (
+        <>
+          <MythosCreatureHeading name={mythosCreature.name} creatureKind={mythosCreature.details.creatureKind} />
+          <MythosCreatureForm
+            campaignId={campaignId}
+            mythosCreature={mythosCreature}
+            pending={edit.isPending}
+            problems={validationError?.problems ?? []}
+            failureMessage={failureMessage}
+            onSubmit={(input) => edit.mutate(input, { onSuccess: () => stopEditing(true) })}
+            onCancel={() => stopEditing(false)}
+          />
+        </>
+      ) : (
+        <>
+          <MythosCreatureView ref={headingRef} mythosCreature={mythosCreature} />
+          <ProfileActions campaignId={campaignId} mythosCreature={mythosCreature} editButtonRef={editButtonRef} headingRef={headingRef} onEdit={startEditing} />
+        </>
+      )}
     </div>
   )
 }
 
-function ProfileActions({ campaignId, mythosCreature }: MythosCreatureDetailProps) {
+interface ProfileActionsProps {
+  campaignId: string
+  mythosCreature: MythosCreature
+  editButtonRef: RefObject<HTMLButtonElement | null>
+  headingRef: RefObject<HTMLHeadingElement | null>
+  onEdit: () => void
+}
+
+function ProfileActions({ campaignId, mythosCreature, editButtonRef, headingRef, onEdit }: ProfileActionsProps) {
   const [open, setOpen] = useState(false)
   const deletion = useDeleteMythosCreature(campaignId, mythosCreature.id)
   const navigate = useNavigate()
@@ -88,6 +150,9 @@ function ProfileActions({ campaignId, mythosCreature }: MythosCreatureDetailProp
 
   return (
     <div className="flex flex-wrap items-center gap-3">
+      <Button ref={editButtonRef} type="button" variant="outline" onClick={onEdit}>
+        Edit
+      </Button>
       <Button
         ref={deleteButtonRef}
         type="button"
@@ -121,7 +186,7 @@ function ProfileActions({ campaignId, mythosCreature }: MythosCreatureDetailProp
         }}
         onCloseAutoFocus={(event) => {
           event.preventDefault()
-          deleteButtonRef.current?.focus()
+          ;(deleteButtonRef.current ?? headingRef.current)?.focus()
         }}
       />
     </div>

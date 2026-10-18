@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 
-import { controlIdFor, type SummaryProblem } from '@/scenario-preparation/services/humanNpcForm'
+import { controlIdFor, type SummaryProblem } from '@/scenario-preparation/services/profileForm'
 
 interface FormErrorSummaryProps {
   problems: SummaryProblem[]

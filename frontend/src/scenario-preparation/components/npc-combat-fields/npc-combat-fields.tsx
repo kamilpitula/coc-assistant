@@ -7,12 +7,11 @@ import { WizardTextarea } from '@/campaign-play/components/wizard-textarea/wizar
 import { RemoveRowButton } from '@/scenario-preparation/components/remove-row-button/remove-row-button'
 import { RepeatingRows } from '@/scenario-preparation/components/repeating-rows/repeating-rows'
 import {
-  addRowButtonId,
   type SectionFieldsProps,
   type SkillRowState,
   type WeaponRowState,
 } from '@/scenario-preparation/services/humanNpcForm'
-import { rowPath } from '@/scenario-preparation/services/profileForm'
+import { addRowButtonId, rowPath } from '@/scenario-preparation/services/profileForm'
 import { skillRowName } from '@/scenario-preparation/services/skillRowLabels'
 import { Button } from '@/shared/components/ui/button'
 import { Checkbox } from '@/shared/components/ui/checkbox'

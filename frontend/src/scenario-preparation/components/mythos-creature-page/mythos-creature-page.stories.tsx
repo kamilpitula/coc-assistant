@@ -48,6 +48,13 @@ export const LoadError: Story = {}
 export const NotFound: Story = { args: { mythosCreature: null } }
 export const PlayerSeesNotFound: Story = { args: { role: 'Player', mythosCreature: ghoulMythosCreature } }
 
+export const Editing: Story = {
+  args: { mythosCreature: ghoulMythosCreature },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Edit' }))
+  },
+}
+
 export const DeleteDialog: Story = {
   args: { mythosCreature: ghoulMythosCreature },
   play: async ({ canvasElement }) => {

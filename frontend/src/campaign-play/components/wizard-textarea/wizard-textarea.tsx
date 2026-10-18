@@ -9,6 +9,8 @@ interface WizardTextareaProps {
   field: string
   label: string
   value: string | null
+  /** Hint shown under the textarea and attached through aria-describedby. */
+  help?: string
   error?: string
   maxLength?: number
   /** Keeps the label for assistive technology only, where a heading already names the textarea visibly. */
@@ -22,8 +24,10 @@ interface WizardTextareaProps {
  * A labelled wizard textarea for free text, with an inline error attached through aria-describedby and aria-invalid
  * (specs/character-sheet/ux.md sections 5.2 and 6.7). Line breaks are kept; an empty textarea reports null.
  */
-export function WizardTextarea({ field, label, value, error, maxLength, hideLabel, onChange, onBlur }: WizardTextareaProps) {
+export function WizardTextarea({ field, label, value, help, error, maxLength, hideLabel, onChange, onBlur }: WizardTextareaProps) {
   const textareaId = fieldId(field)
+  const helpId = `${textareaId}-help`
+  const describedBy = [help ? helpId : null, error ? errorId(field) : null].filter(Boolean).join(' ') || undefined
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={textareaId} className={cn(hideLabel ? 'sr-only' : 'text-sm font-medium')}>
@@ -36,8 +40,13 @@ export function WizardTextarea({ field, label, value, error, maxLength, hideLabe
         onChange={(event) => onChange(event.target.value === '' ? null : event.target.value)}
         onBlur={(event) => onBlur?.(field, event.relatedTarget)}
         aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId(field) : undefined}
+        aria-describedby={describedBy}
       />
+      {help && (
+        <p id={helpId} className="text-sm text-muted-foreground">
+          {help}
+        </p>
+      )}
       {error && (
         <p id={errorId(field)} className="flex items-center gap-1 text-sm text-destructive">
           <CircleAlert aria-hidden="true" className="size-4 shrink-0" />

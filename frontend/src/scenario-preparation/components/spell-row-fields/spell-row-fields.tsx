@@ -62,10 +62,11 @@ export function SpellRowFields({ list, item, index, row, errorOf, onTextChange, 
         onChange={(value) => onTextChange('effect', value ?? '')}
       />
       {row.limits !== undefined && (
-        <WizardTextarea
+        <WizardField
           field={path('limits')}
           label="Limits"
-          value={row.limits === '' ? null : row.limits}
+          help="Use limits, recovery, or other restrictions."
+          value={row.limits}
           error={errorOf(path('limits'))}
           onChange={(value) => onTextChange('limits', value ?? '')}
         />

@@ -1,6 +1,7 @@
 import { RepeatingRows } from '@/scenario-preparation/components/repeating-rows/repeating-rows'
 import { SpellRowFields } from '@/scenario-preparation/components/spell-row-fields/spell-row-fields'
-import { addRowButtonId, type SectionFieldsProps } from '@/scenario-preparation/services/humanNpcForm'
+import { type SectionFieldsProps } from '@/scenario-preparation/services/humanNpcForm'
+import { addRowButtonId } from '@/scenario-preparation/services/profileForm'
 
 /** The repeating spell rows of the Spells section (specs/scenario-preparation/ux.md section 25.4). */
 export function NpcSpellRows({ state, dispatch, errorOf }: SectionFieldsProps) {

@@ -3,9 +3,6 @@ import { describe, expect, it } from 'vitest'
 import type { HumanNpc } from '@/scenario-preparation/types/HumanNpc'
 
 import {
-  addRowButtonId,
-  addSectionButtonId,
-  controlIdFor,
   fieldPaths,
   humanNpcFormReducer,
   identityErrors,
@@ -16,7 +13,7 @@ import {
   type HumanNpcFormAction,
   type HumanNpcFormState,
 } from './humanNpcForm'
-import { hasProblemOn, MAX_ROWS, messageFor } from './profileForm'
+import { addRowButtonId, addSectionButtonId, controlIdFor, hasProblemOn, MAX_ROWS, messageFor } from './profileForm'
 
 // specs/scenario-preparation/ux.md section 25; SP-UX-33, SP-UX-34, SP-UX-35, SP-UX-43, SP-A11Y-22.
 

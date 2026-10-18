@@ -1,6 +1,5 @@
 import type { Dispatch } from 'react'
 
-import { fieldId } from '@/campaign-play/services/fieldIds'
 import {
   CHARACTERISTIC_CODES,
   type HumanNpc,
@@ -13,7 +12,17 @@ import {
   NON_PLAYER_ENTITY_NAME_MAX_LENGTH,
 } from '@/scenario-preparation/types/NonPlayerEntity'
 import type { ValidationProblem } from '@/scenario-preparation/types/ValidationProblem'
-import { focusAfterRemoval, MAX_ROWS, replaceAt, rowPath } from '@/scenario-preparation/services/profileForm'
+import {
+  addRowButtonId,
+  addSectionButtonId,
+  controlIdFor,
+  focusAfterRemoval,
+  MAX_ROWS,
+  replaceAt,
+  rowPath,
+  summaryProblemsFor,
+  type SummaryProblem,
+} from '@/scenario-preparation/services/profileForm'
 import type { RichTextDocument } from '@/shared/types/RichText'
 
 export type SectionName = 'characteristics' | 'skills' | 'combat' | 'spells'
@@ -90,12 +99,6 @@ export interface HumanNpcFormState {
 }
 
 const EMPTY_CHARACTERISTICS = Object.fromEntries(CHARACTERISTIC_CODES.map((code) => [code, null])) as Record<CharacteristicCode, number | null>
-
-/** The id of the "Add {item}" button of a list. */
-export const addRowButtonId = (list: 'skills' | 'combat.weapons' | 'spells'): string => `add-${list.replace('.', '-')}`
-
-/** The id of the "Add {section}" button in the "Add a section" group. */
-export const addSectionButtonId = (section: SectionName): string => `add-section-${section}`
 
 const text = (value: string | null): string => value ?? ''
 
@@ -235,9 +238,6 @@ export function fieldPaths(state: HumanNpcFormState): string[] {
   return paths
 }
 
-/** The DOM id of the control for a request path. */
-export const controlIdFor = (path: string): string => (path === 'keeperNotes' ? 'human-npc-keeper-notes' : fieldId(path))
-
 export type IdentityErrors = Partial<Record<'name' | 'age', string>>
 
 /** The only rules the client checks: Name is filled and Age is a whole number from 0 to 150 (ux.md section 25.2). */
@@ -257,19 +257,9 @@ export function identityErrors(state: HumanNpcFormState): IdentityErrors {
   return errors
 }
 
-/** One problem to list in the error summary: its message and the canonical path of its field, when it has one. */
-export interface SummaryProblem {
-  message: string
-  /** The path of the field the link focuses; null when no field matches (listed without a link). */
-  path: string | null
-}
-
 /** Pairs each server message with its field by case-insensitive path (ADR 0018). */
 export function summaryProblems(state: HumanNpcFormState, problems: ValidationProblem[]): SummaryProblem[] {
-  const known = new Map(fieldPaths(state).map((path) => [path.toLowerCase(), path]))
-  return problems.flatMap((problem) =>
-    problem.messages.map((message) => ({ message, path: known.get(problem.path.toLowerCase()) ?? null })),
-  )
+  return summaryProblemsFor(fieldPaths(state), problems)
 }
 
 type SkillField = 'name' | 'specialization'
