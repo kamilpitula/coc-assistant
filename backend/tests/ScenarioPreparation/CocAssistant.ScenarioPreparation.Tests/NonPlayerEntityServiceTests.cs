@@ -28,6 +28,21 @@ public class NonPlayerEntityServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Given_both_types_in_two_Campaigns_When_the_Keeper_lists_Then_this_Campaigns_Human_NPCs_and_Mythos_Creatures_come_back_by_name()
+    {
+        await _builder.CreateHumanNpcAsync(_builder.CampaignId, "Mr. Knott");
+        await _builder.CreateMythosCreatureAsync(_builder.CampaignId, "Ghoul");
+        await _builder.CreateMythosCreatureAsync(_builder.CampaignId, "Deep One");
+        await _builder.CreateMythosCreatureAsync(_builder.OtherCampaignOfSameKeeperId, "Elsewhere");
+
+        var items = await ListAsync(_builder.CampaignId, ScenarioPreparationTestBuilder.KeeperAccountId);
+
+        Assert.Equal(
+            [("Deep One", NonPlayerEntityType.MythosCreature), ("Ghoul", NonPlayerEntityType.MythosCreature), ("Mr. Knott", NonPlayerEntityType.HumanNpc)],
+            items!.Select(item => (item.Name, item.Type)));
+    }
+
+    [Fact]
     public async Task Given_a_Campaign_without_Non_Player_Entities_When_the_Keeper_lists_Then_the_list_is_empty()
     {
         Assert.Empty((await ListAsync(_builder.CampaignId, ScenarioPreparationTestBuilder.KeeperAccountId))!);

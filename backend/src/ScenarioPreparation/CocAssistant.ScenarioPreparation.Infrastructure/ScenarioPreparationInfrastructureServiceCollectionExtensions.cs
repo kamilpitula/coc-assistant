@@ -19,6 +19,7 @@ public static class ScenarioPreparationInfrastructureServiceCollectionExtensions
         services.AddScoped<ScenarioService>();
         services.AddScoped<SceneService>();
         services.AddScoped<HumanNpcService>();
+        services.AddScoped<MythosCreatureService>();
         services.AddScoped<NonPlayerEntityService>();
         services.TryAddSingleton(TimeProvider.System);
 

@@ -34,6 +34,40 @@ public sealed class RecordingHumanNpcRepository : IHumanNpcRepository
     }
 }
 
+/// <summary>Delegates to a real repository and records each call, so tests can prove a refused caller reached no data.</summary>
+public sealed class RecordingMythosCreatureRepository : IMythosCreatureRepository
+{
+    private readonly IMythosCreatureRepository _inner;
+
+    public RecordingMythosCreatureRepository(IMythosCreatureRepository inner) => _inner = inner;
+
+    public List<string> Calls { get; } = [];
+
+    public void Add(MythosCreature mythosCreature)
+    {
+        Calls.Add(nameof(Add));
+        _inner.Add(mythosCreature);
+    }
+
+    public void Remove(MythosCreature mythosCreature)
+    {
+        Calls.Add(nameof(Remove));
+        _inner.Remove(mythosCreature);
+    }
+
+    public Task<MythosCreature?> FindByIdAsync(Guid campaignId, Guid mythosCreatureId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(FindByIdAsync));
+        return _inner.FindByIdAsync(campaignId, mythosCreatureId, cancellationToken);
+    }
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(SaveChangesAsync));
+        return _inner.SaveChangesAsync(cancellationToken);
+    }
+}
+
 /// <summary>Records list calls, so tests can prove a refused caller read no entity.</summary>
 public sealed class RecordingNonPlayerEntityDirectory : INonPlayerEntityDirectory
 {
