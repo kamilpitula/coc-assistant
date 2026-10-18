@@ -4,16 +4,15 @@ import { useId, useState, type FormEvent } from 'react'
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
 import { NonPlayerEntityNotFound } from '@/scenario-preparation/components/non-player-entity-not-found/non-player-entity-not-found'
-import { useCreateHumanNpc } from '@/scenario-preparation/hooks/useNonPlayerEntities'
+import { useCreateHumanNpc, useCreateMythosCreature } from '@/scenario-preparation/hooks/useNonPlayerEntities'
 import { NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import {
   CREATE_FIELD_ORDER,
-  CREATE_MESSAGES,
   validateCreateNonPlayerEntityForm,
   type CreateNonPlayerEntityErrors,
   type CreateNonPlayerEntityField,
 } from '@/scenario-preparation/services/nonPlayerEntityForm'
-import type { NonPlayerEntityType } from '@/scenario-preparation/types/NonPlayerEntity'
+import { NON_PLAYER_ENTITY_TYPE_LABELS, type NonPlayerEntityType } from '@/scenario-preparation/types/NonPlayerEntity'
 import { Alert } from '@/shared/components/ui/alert'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
@@ -25,16 +24,15 @@ interface CreateNonPlayerEntityPageProps {
   campaignId: string
 }
 
-/** The messages for the fields a 400 can refuse on create. */
+/** The server's message for each field a 400 can refuse on create (ADR 0018). */
 function serverErrorsOf(error: unknown): CreateNonPlayerEntityErrors {
   if (!(error instanceof NonPlayerEntityValidationError)) {
     return {}
   }
-  const paths = error.problems.map((problem) => problem.path)
-  return {
-    ...(paths.includes('name') ? { name: CREATE_MESSAGES.nameRequired } : {}),
-    ...(paths.includes('age') ? { age: CREATE_MESSAGES.ageInvalid } : {}),
-  }
+  const messageOf = (path: string) => error.problems.find((problem) => problem.path === path)?.messages[0]
+  const name = messageOf('name')
+  const age = messageOf('age')
+  return { ...(name ? { name } : {}), ...(age ? { age } : {}) }
 }
 
 function describedBy(...ids: (string | false | undefined)[]): string | undefined {
@@ -55,7 +53,8 @@ function FieldMessage({ id, message }: { id: string; message?: string }) {
  */
 export function CreateNonPlayerEntityPage({ campaignId }: CreateNonPlayerEntityPageProps) {
   const campaign = useCampaign(campaignId)
-  const creation = useCreateHumanNpc(campaignId)
+  const humanCreation = useCreateHumanNpc(campaignId)
+  const creatureCreation = useCreateMythosCreature(campaignId)
   const navigate = useNavigate()
   const ids = { type: useId(), name: useId(), age: useId() }
   const [type, setType] = useState<NonPlayerEntityType | null>(null)
@@ -68,7 +67,36 @@ export function CreateNonPlayerEntityPage({ campaignId }: CreateNonPlayerEntityP
     return <NonPlayerEntityNotFound campaignId={campaignId} />
   }
 
+  const creation = type === 'MythosCreature' ? creatureCreation : humanCreation
   const errors: CreateNonPlayerEntityErrors = { ...serverErrorsOf(creation.error), ...clientErrors }
+
+  // One entry per type: what it sends and where its page is.
+  const creators: Record<NonPlayerEntityType, (data: { name: string; age: number | null }) => void> = {
+    HumanNpc: (data) =>
+      humanCreation.mutate(
+        { name: data.name, age: data.age ?? 0 },
+        {
+          onSuccess: (humanNpc) =>
+            void navigate({
+              to: '/campaigns/$campaignId/human-npcs/$humanNpcId',
+              params: { campaignId, humanNpcId: humanNpc.id },
+              state: { statusMessage: `${NON_PLAYER_ENTITY_TYPE_LABELS.HumanNpc} created.` },
+            }),
+        },
+      ),
+    MythosCreature: (data) =>
+      creatureCreation.mutate(
+        { name: data.name },
+        {
+          onSuccess: (mythosCreature) =>
+            void navigate({
+              to: '/campaigns/$campaignId/mythos-creatures/$mythosCreatureId',
+              params: { campaignId, mythosCreatureId: mythosCreature.id },
+              state: { statusMessage: `${NON_PLAYER_ENTITY_TYPE_LABELS.MythosCreature} created.` },
+            }),
+        },
+      ),
+  }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -81,17 +109,7 @@ export function CreateNonPlayerEntityPage({ campaignId }: CreateNonPlayerEntityP
     }
 
     setClientErrors({})
-    creation.mutate(
-      { name: result.data.name, age: result.data.age ?? 0 },
-      {
-        onSuccess: (humanNpc) =>
-          void navigate({
-            to: '/campaigns/$campaignId/human-npcs/$humanNpcId',
-            params: { campaignId, humanNpcId: humanNpc.id },
-            state: { statusMessage: 'Human NPC created.' },
-          }),
-      },
-    )
+    creators[result.data.type](result.data)
   }
 
   return (
@@ -144,7 +162,6 @@ interface TypeFieldsetProps {
   onChange: (value: NonPlayerEntityType) => void
 }
 
-/** Mythos Creatures are offered but not yet available (PBI-SP-009 adds their pages), so that option is disabled. */
 function TypeFieldset({ id, value, error, onChange }: TypeFieldsetProps) {
   return (
     <fieldset className="flex flex-col gap-2" aria-describedby={describedBy(`${id}-hint`, error && `${id}-error`)}>
@@ -160,11 +177,11 @@ function TypeFieldset({ id, value, error, onChange }: TypeFieldsetProps) {
           </div>
         </div>
         <div className="flex items-start gap-2">
-          <RadioGroupItem id={`${id}-creature`} value="MythosCreature" disabled aria-describedby={`${id}-creature-description`} className="mt-1" />
+          <RadioGroupItem id={`${id}-creature`} value="MythosCreature" aria-describedby={`${id}-creature-description`} className="mt-1" />
           <div className="flex flex-col">
             <Label htmlFor={`${id}-creature`}>Mythos Creature</Label>
             <span id={`${id}-creature-description`} className="text-sm text-muted-foreground">
-              A beast, folklore creature, Mythos monster, or unique entity. Not available yet.
+              A beast, folklore creature, Mythos monster, or unique entity.
             </span>
           </div>
         </div>

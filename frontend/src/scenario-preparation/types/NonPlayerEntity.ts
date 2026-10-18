@@ -1,4 +1,4 @@
-/** The wire types of a Non-Player Entity; the list accepts Mythos Creatures although PBI-SP-009 adds their pages later. */
+/** The wire types of a Non-Player Entity. */
 export type NonPlayerEntityType = 'HumanNpc' | 'MythosCreature'
 
 /** One row of the Campaign's Non-Player Entity list. */

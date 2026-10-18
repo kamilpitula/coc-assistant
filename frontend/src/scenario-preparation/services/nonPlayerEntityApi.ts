@@ -18,6 +18,7 @@ export const nonPlayerEntityQueryKeys = {
   all: (campaignId: string) => ['campaigns', campaignId, 'non-player-entities'] as const,
   list: (campaignId: string) => ['campaigns', campaignId, 'non-player-entities', 'list'] as const,
   humanNpc: (campaignId: string, humanNpcId: string) => ['campaigns', campaignId, 'human-npcs', humanNpcId] as const,
+  mythosCreature: (campaignId: string, mythosCreatureId: string) => ['campaigns', campaignId, 'mythos-creatures', mythosCreatureId] as const,
 }
 
 /** The API answered 404: the Campaign or Non-Player Entity is outside the caller's visibility, or missing. */

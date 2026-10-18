@@ -180,17 +180,17 @@ function useAnnouncement(count: number, filterKey: string): string {
   return announcement
 }
 
+const ENTITY_LINK_CLASS = 'inline-flex min-h-6 items-center font-medium break-words underline-offset-4 hover:underline'
+
 function EntityLink({ campaignId, item }: { campaignId: string; item: NonPlayerEntitySummary }) {
   return item.type === 'HumanNpc' ? (
-    <Link
-      to="/campaigns/$campaignId/human-npcs/$humanNpcId"
-      params={{ campaignId, humanNpcId: item.id }}
-      className="inline-flex min-h-6 items-center font-medium break-words underline-offset-4 hover:underline"
-    >
+    <Link to="/campaigns/$campaignId/human-npcs/$humanNpcId" params={{ campaignId, humanNpcId: item.id }} className={ENTITY_LINK_CLASS}>
       {item.name}
     </Link>
   ) : (
-    <span className="font-medium break-words">{item.name}</span>
+    <Link to="/campaigns/$campaignId/mythos-creatures/$mythosCreatureId" params={{ campaignId, mythosCreatureId: item.id }} className={ENTITY_LINK_CLASS}>
+      {item.name}
+    </Link>
   )
 }
 

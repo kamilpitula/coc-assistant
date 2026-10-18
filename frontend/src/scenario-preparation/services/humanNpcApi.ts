@@ -2,9 +2,8 @@ import { z } from 'zod'
 
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { failNonPlayerEntityWrite, NonPlayerEntityNotFoundError } from '@/scenario-preparation/services/nonPlayerEntityApi'
+import { difficultySchema, richTextSchema } from '@/scenario-preparation/services/profileSchemas'
 import type { HumanNpc, HumanNpcInput } from '@/scenario-preparation/types/HumanNpc'
-
-const difficultySchema = z.enum(['Regular', 'Hard', 'Extreme'])
 
 const detailsSchema = z.strictObject({
   professionOrRole: z.string().nullable(),
@@ -14,11 +13,6 @@ const detailsSchema = z.strictObject({
   knowledge: z.string().nullable(),
   secrets: z.string().nullable(),
   behaviorCue: z.string().nullable(),
-})
-
-// Only the inside of keeperNotes is loose: the editor and the server validate the nodes (ADR 0015).
-const richTextSchema = z.looseObject({
-  root: z.looseObject({ type: z.literal('root'), children: z.array(z.unknown()) }),
 })
 
 const derivedSchema = z.strictObject({

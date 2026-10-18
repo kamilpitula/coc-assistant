@@ -62,6 +62,14 @@ describe('NonPlayerEntityListPage', () => {
     expect(within(screen.getByRole('table')).getByRole('link', { name: 'Mr. Knott' })).toHaveAttribute('href', '/campaigns/c1/human-npcs/h1')
   })
 
+  it('links a Mythos Creature to its profile page (SP-UX-29)', () => {
+    show([ghoul])
+
+    render(<NonPlayerEntityListPage campaignId="c1" />)
+
+    expect(within(screen.getByRole('table')).getByRole('link', { name: 'Ghoul' })).toHaveAttribute('href', '/campaigns/c1/mythos-creatures/m1')
+  })
+
   it('narrows by search text and announces the count after a pause, not on first load (SP-UX-30, SP-A11Y-23)', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     show([knott, ghoul, sergeant])
