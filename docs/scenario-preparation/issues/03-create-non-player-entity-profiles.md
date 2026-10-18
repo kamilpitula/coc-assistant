@@ -1,6 +1,7 @@
 ---
 id: PBI-SP-003
 status: done
+pr: 26
 blocked_by: [PBI-SP-001]
 ---
 
@@ -48,3 +49,6 @@ If the NPC Profile needs another Call of Cthulhu 7th Edition field, add the rule
 - Align Investigator Custom Weapons with the section 10.1 weapon shape and the dice notation used by NPC Profile weapons.
 - Move the campaign-play hooks and fields the NPC Profile editor reuses (`useSkillCatalog`, `useOccupationCatalog`, `WizardField`, `WizardSelect`, `WizardTextarea`, `fieldId`, `skillNames`) into `src/shared/` (D7 of the PBI-SP-003 decision record).
 - Enable the Mythos Creature option on the Create Non-Player Entity page and give Mythos Creature list rows a link when PBI-SP-009 adds their pages (the option is disabled and the rows are plain text until then).
+- Touch up `specs/scenario-preparation/ux.md`: the "LUCK isn't a characteristic." message in 25.4, the disabled Mythos Creature option and plain-text Mythos rows in sections 23 and 24, the "STR Strength" visible label, and `remove-row-button` and `stat-table` in section 27.
+- The Create Non-Player Entity page maps any server `name` problem to "Enter a name."; it should show the server's message (ADR 0018).
+- Add a dedicated `NonPlayerEntityRuleDataAdapterTests` file (the adapter is covered in `NonPlayerEntityListApiTests` today).
