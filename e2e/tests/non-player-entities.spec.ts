@@ -24,9 +24,9 @@ import { campaignNav } from '../fixtures/overview'
  * "Non-Player Entity profiles are the Keeper's alone" (Human NPC part), and to specs/scenario-preparation/ux.md
  * SP-UX-28 to SP-UX-37, SP-UX-39 to SP-UX-43.
  *
- * Exceptions: the Mythos Creature parts of the list and Keeper-only scenarios, and SP-UX-38 (Duplicate), belong to
- * PBI-SP-009 and PBI-SP-010. SP-UX-34 (the 100-row limit) and SP-UX-40 (double activation) are covered by component
- * tests, where an end-to-end run would only repeat them slowly.
+ * Exceptions: the Mythos Creature parts of the list, delete, and Keeper-only scenarios are in mythos-creatures.spec.ts, and
+ * SP-UX-38 (Duplicate) belongs to PBI-SP-010. SP-UX-34 (the 100-row limit) and SP-UX-40 (double activation) are covered by
+ * component tests, where an end-to-end run would only repeat them slowly.
  */
 test.describe('Non-Player Entities', () => {
   test('Keeper creates a Human NPC and finds it in the list', async ({ page }) => {

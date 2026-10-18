@@ -54,8 +54,8 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
   ~~Non-Player Entity profile rules are taken from [docs/game-rules](../../docs/game-rules/README.md). Mythos Creature profile rules are not yet documented there and are added to `docs/game-rules/` before Mythos Creature profiles are implemented.~~
   Replaced by: Non-Player Entity profile rules are taken from [coc_7e_npc_and_monster_creation_ruleset.md](../../docs/game-rules/coc_7e_npc_and_monster_creation_ruleset.md) as applied by [project_ruleset.md section 5](../../docs/game-rules/project_ruleset.md#5-non-player-entity-profiles), which sets the supported profiles, value ranges, derived values and overrides, dice notation, spells, NPC skills and weapons, and what validation blocks a save.
 - An NPC Profile has a required name (1-200 characters) and a required age, optional plain-text profession or role (with the Era's Occupations offered as suggestions), short description, goal, relationship to the Investigators, what the NPC knows, what the NPC hides, and behavior cue, optional rich-text Keeper notes, and optional Characteristics, Skills, Combat, and Spells sections. Combat holds Dodge, armor points, a tactics and morale note, and weapons.
-- A Monster Profile has a required name (1-200 characters), an optional Creature Kind, optional plain-text description and sensory cues, origin, goal and typical behavior, signs and traces, defeat outcome, and specimen-range notes, optional rich-text Keeper notes, characteristics, movement modes, attacks per round, Dodge, attacks, armor points and an armor note, immunities, vulnerabilities, skills, spells, powers, sanity loss, and Derived Value Overrides.
-- Profile text limits: each plain-text field up to 4,000 characters, each list entry's text up to 1,000 characters, an override reason 1-500 characters, and at most 100 entries in each list. Rich-text Keeper notes follow the rich-text constraint below.
+- A Monster Profile has a required name (1-200 characters), an optional Creature Kind, optional plain-text description and sensory cues, origin, goal and typical behavior, signs and traces, defeat outcome, and specimen-range notes, optional rich-text Keeper notes, characteristics, movement modes, attacks per round, Dodge, attacks, armor points and an armor note, immunities, vulnerabilities, skills, spells, powers, sanity loss, Hit Points not applicable, and Derived Value Overrides ([project_ruleset.md sections 5.2, 5.4, and 5.9](../../docs/game-rules/project_ruleset.md#54-derived-values-and-overrides)).
+- Profile text limits: each plain-text field up to 4,000 characters, each list entry's text and each override value up to 1,000 characters, an override reason 1-500 characters, and at most 100 entries in each list. Rich-text Keeper notes follow the rich-text constraint below.
 - Duplicating a profile creates a profile of the same type in the same Campaign named "<name> (copy)", truncated to 200 characters, with every profile field including overrides and their reasons. Scene links are never copied.
 - Non-Player Entities and Items are scoped to one Campaign and are not reusable across Campaigns in v1.
 - A Non-Player Entity's link to a Scene carries a Player-facing name and a Player-facing rich-text description. These are the only parts of a Non-Player Entity a Player ever receives; the profile is Keeper-only.
@@ -240,6 +240,12 @@ Scenario: A Derived Value Override needs a reason
   Then the save is refused
   When the Keeper overrides its Hit Points with the reason "Swollen with stolen life"
   Then the Monster Profile shows the override beside the computed Hit Points
+
+Scenario: A Mythos Creature's firearm attack cannot add Damage Bonus
+  # SP-UX-35
+  Given a Keeper is editing a Monster Profile with an attack using the skill "Firearms (Rifle)"
+  When the Keeper saves the damage "2D6+DB" for that attack
+  Then the save is refused and the Monster Profile is unchanged
 
 Scenario: Hit Points not applicable needs a defeat outcome
   # SP-UX-35

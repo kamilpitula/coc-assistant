@@ -3,7 +3,7 @@ import { forwardRef } from 'react'
 import { NpcCharacteristicsView } from '@/scenario-preparation/components/npc-characteristics-view/npc-characteristics-view'
 import { NpcCombatView } from '@/scenario-preparation/components/npc-combat-view/npc-combat-view'
 import { NpcSkillsView } from '@/scenario-preparation/components/npc-skills-view/npc-skills-view'
-import { NpcSpellsView } from '@/scenario-preparation/components/npc-spells-view/npc-spells-view'
+import { SpellsView } from '@/scenario-preparation/components/spells-view/spells-view'
 import { ProfileSection } from '@/scenario-preparation/components/profile-section/profile-section'
 import type { HumanNpc } from '@/scenario-preparation/types/HumanNpc'
 import { RichTextView } from '@/shared/components/rich-text-view/rich-text-view'
@@ -75,7 +75,7 @@ export const HumanNpcView = forwardRef<HTMLHeadingElement, HumanNpcViewProps>(fu
       )}
       {humanNpc.spells && (
         <ProfileSection title="Spells" mode="view">
-          <NpcSpellsView spells={humanNpc.spells} />
+          <SpellsView spells={humanNpc.spells} />
         </ProfileSection>
       )}
       <ProfileSection title="Keeper notes" mode="view">

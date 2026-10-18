@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { NonPlayerEntityNotFoundError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import type { HumanNpcInput } from '@/scenario-preparation/types/HumanNpc'
 
-import { createHumanNpc, deleteHumanNpc, editHumanNpc, getHumanNpc, HumanNpcValidationError } from './humanNpcApi'
+import { createHumanNpc, deleteHumanNpc, editHumanNpc, getHumanNpc } from './humanNpcApi'
+import { NonPlayerEntityValidationError } from './nonPlayerEntityApi'
 
 const details = {
   professionOrRole: 'Landlord',
@@ -74,8 +75,8 @@ describe('humanNpcApi', () => {
   it('maps a 400 to the refused values by lower-cased path and a 404 to not found', async () => {
     respond(400, { errors: { 'Combat.Weapons[0].Damage': ['Enter the damage.'] } })
     const error = await editHumanNpc('t', 'c1', 'h1', input).catch((caught: unknown) => caught)
-    expect(error).toBeInstanceOf(HumanNpcValidationError)
-    expect((error as HumanNpcValidationError).problems).toEqual([{ path: 'combat.weapons[0].damage', messages: ['Enter the damage.'] }])
+    expect(error).toBeInstanceOf(NonPlayerEntityValidationError)
+    expect((error as NonPlayerEntityValidationError).problems).toEqual([{ path: 'combat.weapons[0].damage', messages: ['Enter the damage.'] }])
 
     respond(404)
     await expect(editHumanNpc('t', 'c1', 'h1', input)).rejects.toBeInstanceOf(NonPlayerEntityNotFoundError)

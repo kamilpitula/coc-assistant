@@ -23,7 +23,7 @@ public static class NpcProfileValidation
 
     /// <summary>The problems with a Human NPC's name and age alone, as when it is created.</summary>
     public static IReadOnlyList<NpcProfileProblem> Identity(string? name, int? age) =>
-        Name(NpcProfileNormalizer.Trimmed(name)).Concat(Age(age)).ToList();
+        Name(ProfileText.Trimmed(name)).Concat(Age(age)).ToList();
 
     private static IEnumerable<NpcProfileProblem> Name(string? trimmedName) => trimmedName switch
     {

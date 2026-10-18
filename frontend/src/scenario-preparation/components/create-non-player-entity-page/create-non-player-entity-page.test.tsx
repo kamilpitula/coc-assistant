@@ -2,21 +2,27 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { HumanNpcValidationError } from '@/scenario-preparation/services/humanNpcApi'
+import { NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import { navigateSpy } from '@/shared/test-support/routerMock'
 
 import { CreateNonPlayerEntityPage } from './create-non-player-entity-page'
 
 // specs/scenario-preparation/ux.md section 24; SP-UX-31, SP-UX-32, SP-UX-39, SP-UX-40, SP-A11Y-18, SP-A11Y-19.
 
-const { mockUseCampaign, mockUseCreate, mutate } = vi.hoisted(() => ({ mockUseCampaign: vi.fn(), mockUseCreate: vi.fn(), mutate: vi.fn() }))
+const { mockUseCampaign, mockUseCreate, mockUseCreateCreature, mutate, mutateCreature } = vi.hoisted(() => ({
+  mockUseCampaign: vi.fn(),
+  mockUseCreate: vi.fn(),
+  mockUseCreateCreature: vi.fn(),
+  mutate: vi.fn(),
+  mutateCreature: vi.fn(),
+}))
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
-vi.mock('@/scenario-preparation/hooks/useNonPlayerEntities', () => ({ useCreateHumanNpc: mockUseCreate }))
+vi.mock('@/scenario-preparation/hooks/useNonPlayerEntities', () => ({ useCreateHumanNpc: mockUseCreate, useCreateMythosCreature: mockUseCreateCreature }))
 
-function creation(overrides: Record<string, unknown> = {}) {
-  return { mutate, isPending: false, isError: false, error: null, ...overrides }
+function creation(overrides: Record<string, unknown> = {}, mutateFn = mutate) {
+  return { mutate: mutateFn, isPending: false, isError: false, error: null, ...overrides }
 }
 
 describe('CreateNonPlayerEntityPage', () => {
@@ -24,6 +30,7 @@ describe('CreateNonPlayerEntityPage', () => {
     vi.clearAllMocks()
     mockUseCampaign.mockReturnValue({ data: { id: 'c1', role: 'Keeper' } })
     mockUseCreate.mockReturnValue(creation())
+    mockUseCreateCreature.mockReturnValue(creation({}, mutateCreature))
   })
 
   it('shows the heading, a Type fieldset with no selection, the type-change hint, and a Cancel link', () => {
@@ -32,7 +39,8 @@ describe('CreateNonPlayerEntityPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Create Non-Player Entity' })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Type' })).toHaveAccessibleDescription("You can't change the type later.")
     expect(screen.getByRole('radio', { name: 'Human NPC' })).not.toBeChecked()
-    expect(screen.getByRole('radio', { name: 'Mythos Creature' })).toBeDisabled()
+    expect(screen.getByRole('radio', { name: 'Mythos Creature' })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'Mythos Creature' })).toHaveAccessibleDescription('A beast, folklore creature, Mythos monster, or unique entity.')
     expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/campaigns/c1/non-player-entities')
   })
 
@@ -61,6 +69,36 @@ describe('CreateNonPlayerEntityPage', () => {
       params: { campaignId: 'c1', humanNpcId: 'h1' },
       state: { statusMessage: 'Human NPC created.' },
     })
+  })
+
+  it('creates a Mythos Creature from its name alone and opens its page with "Mythos Creature created." (SP-UX-31, SP-UX-32)', async () => {
+    mutateCreature.mockImplementation((_values, options) => options.onSuccess({ id: 'm1' }))
+    render(<CreateNonPlayerEntityPage campaignId="c1" />)
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Mythos Creature' }))
+    await userEvent.type(screen.getByLabelText('Name'), 'Ghoul')
+    await userEvent.click(screen.getByRole('button', { name: 'Create' }))
+
+    expect(screen.queryByLabelText('Age')).not.toBeInTheDocument()
+    expect(mutateCreature).toHaveBeenCalledWith({ name: 'Ghoul' }, expect.any(Object))
+    expect(mutate).not.toHaveBeenCalled()
+    expect(navigateSpy).toHaveBeenCalledWith({
+      to: '/campaigns/$campaignId/mythos-creatures/$mythosCreatureId',
+      params: { campaignId: 'c1', mythosCreatureId: 'm1' },
+      state: { statusMessage: 'Mythos Creature created.' },
+    })
+  })
+
+  it('does not send an age that was typed before switching to Mythos Creature', async () => {
+    render(<CreateNonPlayerEntityPage campaignId="c1" />)
+    await userEvent.click(screen.getByRole('radio', { name: 'Human NPC' }))
+    await userEvent.type(screen.getByLabelText('Age'), '62')
+    await userEvent.click(screen.getByRole('radio', { name: 'Mythos Creature' }))
+    await userEvent.type(screen.getByLabelText('Name'), 'Ghoul')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Create' }))
+
+    expect(mutateCreature).toHaveBeenCalledWith({ name: 'Ghoul' }, expect.any(Object))
   })
 
   it('refuses an empty form without a request, names each problem, and focuses the first invalid field (SP-UX-31)', async () => {
@@ -98,6 +136,15 @@ describe('CreateNonPlayerEntityPage', () => {
     expect(screen.getByRole('button', { name: 'Creating...' })).toBeDisabled()
   })
 
+  it('disables the button while a Mythos Creature is being created (SP-UX-40)', async () => {
+    mockUseCreateCreature.mockReturnValue(creation({ isPending: true }, mutateCreature))
+    render(<CreateNonPlayerEntityPage campaignId="c1" />)
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Mythos Creature' }))
+
+    expect(screen.getByRole('button', { name: 'Creating...' })).toBeDisabled()
+  })
+
   it('keeps the input and shows an alert when the create fails', () => {
     mockUseCreate.mockReturnValue(creation({ isError: true, error: new Error('boom') }))
 
@@ -106,9 +153,9 @@ describe('CreateNonPlayerEntityPage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent("We couldn't create the Non-Player Entity. Try again.")
   })
 
-  it('maps a 400 on name and age to field errors instead of the alert', () => {
-    const error = new HumanNpcValidationError([
-      { path: 'name', messages: ['Enter a name.'] },
+  it('shows the server message of a 400 on name and age next to the fields instead of the alert (ADR 0018)', () => {
+    const error = new NonPlayerEntityValidationError([
+      { path: 'name', messages: ['Name must be 200 characters or fewer.'] },
       { path: 'age', messages: ['Enter an age from 0 to 150, in whole years.'] },
     ])
     mockUseCreate.mockReturnValue(creation({ isError: true, error }))
@@ -116,7 +163,18 @@ describe('CreateNonPlayerEntityPage', () => {
     render(<CreateNonPlayerEntityPage campaignId="c1" />)
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByText('Enter a name.')).toBeInTheDocument()
+    expect(screen.getByText('Name must be 200 characters or fewer.')).toBeInTheDocument()
+  })
+
+  it('shows the server message of a 400 on name when creating a Mythos Creature', async () => {
+    const error = new NonPlayerEntityValidationError([{ path: 'name', messages: ['Name must be 200 characters or fewer.'] }])
+    mockUseCreateCreature.mockReturnValue(creation({ isError: true, error }, mutateCreature))
+    render(<CreateNonPlayerEntityPage campaignId="c1" />)
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Mythos Creature' }))
+
+    expect(screen.getByText('Name must be 200 characters or fewer.')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('shows a Player the not-found page (SP-UX-39)', () => {

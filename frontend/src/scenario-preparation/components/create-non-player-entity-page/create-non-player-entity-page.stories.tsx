@@ -34,6 +34,12 @@ export const HumanNpcWithAge: Story = {
   },
 }
 
+export const MythosCreatureWithoutAge: Story = {
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('radio', { name: 'Mythos Creature' }))
+  },
+}
+
 export const EveryFieldError: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import type { ValidationProblem } from '@/scenario-preparation/types/HumanNpc'
+import type { ValidationProblem } from '@/scenario-preparation/types/ValidationProblem'
 
 const validationProblemSchema = z.object({ errors: z.record(z.string(), z.unknown()) })
 

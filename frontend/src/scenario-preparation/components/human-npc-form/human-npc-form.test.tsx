@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { gangsterHumanNpc, knottHumanNpc, thugHumanNpc } from '@/scenario-preparation/test-support/humanNpcFixtures'
-import type { HumanNpcInput, ValidationProblem } from '@/scenario-preparation/types/HumanNpc'
+import type { HumanNpcInput } from '@/scenario-preparation/types/HumanNpc'
+import type { ValidationProblem } from '@/scenario-preparation/types/ValidationProblem'
 
 import { HumanNpcForm } from './human-npc-form'
 

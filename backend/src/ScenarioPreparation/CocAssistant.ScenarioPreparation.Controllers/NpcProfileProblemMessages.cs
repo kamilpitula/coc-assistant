@@ -16,8 +16,8 @@ public static class NpcProfileProblemMessages
             [NpcProfileProblemKind.TextTooLong] = problem => $"{FieldLabel(problem.Path)} must be 4,000 characters or fewer.",
             [NpcProfileProblemKind.RowTextTooLong] = problem => $"{FieldLabel(problem.Path)} must be 1,000 characters or fewer.",
             [NpcProfileProblemKind.TooManyRows] = problem => $"Add at most {NpcProfileLimits.MaxRows} {ItemsLabel(problem.Path)}.",
-            [NpcProfileProblemKind.UnknownCharacteristic] = problem => $"{LastSegment(problem.Path)} isn't a characteristic.",
-            [NpcProfileProblemKind.CharacteristicOutOfRange] = problem => $"Enter {LastSegment(problem.Path)} from 0 to 100.",
+            [NpcProfileProblemKind.UnknownCharacteristic] = problem => $"{ProfileProblemPaths.LastSegment(problem.Path)} isn't a characteristic.",
+            [NpcProfileProblemKind.CharacteristicOutOfRange] = problem => $"Enter {ProfileProblemPaths.LastSegment(problem.Path)} from 0 to 100.",
             [NpcProfileProblemKind.SkillNameRequired] = _ => "Enter the skill's name.",
             [NpcProfileProblemKind.SkillValueOutOfRange] = _ => "Enter a value from 0 to 100.",
             [NpcProfileProblemKind.SpecializationNotListed] = problem => $"Choose a {problem.Subject} specialization from the list.",
@@ -66,11 +66,7 @@ public static class NpcProfileProblemMessages
 
     public static string For(NpcProfileProblem problem) => Messages[problem.Kind](problem);
 
-    private static string FieldLabel(string path) => FieldLabels.GetValueOrDefault(WithoutIndexes(path), path);
+    private static string FieldLabel(string path) => ProfileProblemPaths.FieldLabel(FieldLabels, path);
 
     private static string ItemsLabel(string path) => ItemLabels.GetValueOrDefault(path, "rows");
-
-    private static string LastSegment(string path) => path[(path.LastIndexOf('.') + 1)..];
-
-    private static string WithoutIndexes(string path) => System.Text.RegularExpressions.Regex.Replace(path, @"\[\d+\]", string.Empty);
 }

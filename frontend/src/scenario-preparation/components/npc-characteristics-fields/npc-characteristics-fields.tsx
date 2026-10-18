@@ -1,6 +1,7 @@
 import { WizardField } from '@/campaign-play/components/wizard-field/wizard-field'
 import { type SectionFieldsProps } from '@/scenario-preparation/services/humanNpcForm'
-import { CHARACTERISTIC_CODES, CHARACTERISTIC_NAMES } from '@/scenario-preparation/types/HumanNpc'
+import { CHARACTERISTIC_CODES } from '@/scenario-preparation/types/HumanNpc'
+import { CHARACTERISTIC_NAMES } from '@/scenario-preparation/types/NonPlayerEntity'
 
 /** The eight characteristic inputs of the Characteristics section (specs/scenario-preparation/ux.md section 25.4). */
 export function NpcCharacteristicsFields({ state, dispatch, errorOf }: SectionFieldsProps) {

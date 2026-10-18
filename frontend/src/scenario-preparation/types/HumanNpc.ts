@@ -1,22 +1,8 @@
+import type { CharacteristicCode, InvestigatorDifficulty } from '@/scenario-preparation/types/NonPlayerEntity'
 import type { RichTextDocument } from '@/shared/types/RichText'
 
-/** The Investigator Difficulty the server works out for an Opposing Value (CONTEXT.md). */
-export type InvestigatorDifficulty = 'Regular' | 'Hard' | 'Extreme'
-
 /** The characteristic codes in rule order. */
-export const CHARACTERISTIC_CODES = ['STR', 'CON', 'DEX', 'APP', 'POW', 'SIZ', 'INT', 'EDU'] as const
-export type CharacteristicCode = (typeof CHARACTERISTIC_CODES)[number]
-
-export const CHARACTERISTIC_NAMES: Record<CharacteristicCode, string> = {
-  STR: 'Strength',
-  CON: 'Constitution',
-  DEX: 'Dexterity',
-  APP: 'Appearance',
-  POW: 'Power',
-  SIZ: 'Size',
-  INT: 'Intelligence',
-  EDU: 'Education',
-}
+export const CHARACTERISTIC_CODES = ['STR', 'CON', 'DEX', 'APP', 'POW', 'SIZ', 'INT', 'EDU'] as const satisfies readonly CharacteristicCode[]
 
 export interface HumanNpcDetails {
   professionOrRole: string | null
@@ -104,10 +90,4 @@ export interface HumanNpcInput {
     weapons: HumanNpcWeapon[]
   } | null
   spells: HumanNpcSpell[] | null
-}
-
-/** One refused value from a 400: the lower-cased request path and the server's messages. */
-export interface ValidationProblem {
-  path: string
-  messages: string[]
 }

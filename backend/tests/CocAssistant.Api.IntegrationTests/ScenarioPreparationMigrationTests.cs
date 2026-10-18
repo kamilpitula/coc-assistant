@@ -56,6 +56,33 @@ public class ScenarioPreparationMigrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Given_a_new_database_When_migrating_to_latest_Then_a_mythos_creature_is_stored_with_its_monster_profile_and_listed_beside_human_npcs()
+    {
+        await _dbContext.Database.MigrateAsync();
+        var campaignId = Guid.NewGuid();
+        var creature = MythosCreature.Create(campaignId, "Ghoul", DateTimeOffset.UtcNow).MythosCreature!;
+        Assert.Empty(creature.Edit("Ghoul", MonsterProfile.Empty with
+        {
+            Characteristics = new MonsterCharacteristics(
+                new Dictionary<string, int?> { ["STR"] = 80 },
+                false,
+                MonsterOverrides.None with { HitPoints = new NumberOverride(25, "Swollen") }),
+            SanityLoss = new MonsterSanityLoss("0/1D6"),
+        }));
+        _dbContext.MythosCreatures.Add(creature);
+        _dbContext.HumanNpcs.Add(HumanNpc.Create(campaignId, "Mr. Knott", 62, DateTimeOffset.UtcNow).HumanNpc!);
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+
+        var stored = await _dbContext.MythosCreatures.SingleAsync();
+        var listed = await new EfNonPlayerEntityDirectory(_dbContext).ListForCampaignAsync(campaignId, CancellationToken.None);
+
+        Assert.Equal(("Ghoul", campaignId, "0/1D6"), (stored.Name, stored.CampaignId, stored.Profile.SanityLoss!.Value));
+        Assert.Equal(new NumberOverride(25, "Swollen"), stored.Profile.Characteristics!.Overrides.HitPoints);
+        Assert.Equal([("Ghoul", NonPlayerEntityType.MythosCreature), ("Mr. Knott", NonPlayerEntityType.HumanNpc)], listed.Select(item => (item.Name, item.Type)));
+    }
+
+    [Fact]
     public async Task Given_a_scenario_with_scenes_When_deleting_the_scenario_Then_the_database_refuses()
     {
         await _dbContext.Database.MigrateAsync();

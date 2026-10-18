@@ -43,6 +43,28 @@ public class NonPlayerEntityListApiTests : IClassFixture<IdentityApiFactory>, IA
     }
 
     [Fact]
+    public async Task Given_human_npcs_and_mythos_creatures_When_the_keeper_lists_Then_both_types_come_back_ordered_by_name_then_id()
+    {
+        var client = _factory.CreateClient();
+        var campaignId = (await CreateCampaignAsync(client, "list-keeper-4")).Id;
+        var otherCampaignId = (await CreateCampaignAsync(client, "list-keeper-4")).Id;
+        await CreateHumanNpcAsync(client, campaignId, "list-keeper-4", "Mr. Knott");
+        await CreateHumanNpcAsync(client, campaignId, "list-keeper-4", "Ghoul");
+        foreach (var (campaign, name) in new[] { (campaignId, "Ghoul"), (campaignId, "Deep One"), (otherCampaignId, "Elsewhere") })
+        {
+            var created = await client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{campaign}/mythos-creatures", "list-keeper-4", new { name }));
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        }
+
+        var response = await client.SendAsync(BuildRequest(HttpMethod.Get, ListUri(campaignId), "list-keeper-4"));
+
+        var items = (await response.Content.ReadFromJsonAsync<NonPlayerEntityListResponse>())!.Items;
+        Assert.Equal(["Deep One", "Ghoul", "Ghoul", "Mr. Knott"], items.Select(item => item.Name));
+        Assert.Equal(["HumanNpc", "MythosCreature"], items.Where(item => item.Name == "Ghoul").Select(item => item.Type).Order());
+        Assert.Equal(4, items.Select(item => item.Id).Distinct().Count());
+    }
+
+    [Fact]
     public async Task Given_a_campaign_without_entities_When_the_keeper_lists_Then_the_items_are_empty()
     {
         var client = _factory.CreateClient();

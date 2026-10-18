@@ -1,19 +1,29 @@
 import type { Dispatch } from 'react'
 
-import { fieldId } from '@/campaign-play/services/fieldIds'
 import {
   CHARACTERISTIC_CODES,
-  type CharacteristicCode,
   type HumanNpc,
   type HumanNpcDetails,
   type HumanNpcInput,
-  type ValidationProblem,
 } from '@/scenario-preparation/types/HumanNpc'
-import { HUMAN_NPC_AGE_MAXIMUM, NON_PLAYER_ENTITY_NAME_MAX_LENGTH } from '@/scenario-preparation/types/NonPlayerEntity'
+import {
+  type CharacteristicCode,
+  HUMAN_NPC_AGE_MAXIMUM,
+  NON_PLAYER_ENTITY_NAME_MAX_LENGTH,
+} from '@/scenario-preparation/types/NonPlayerEntity'
+import type { ValidationProblem } from '@/scenario-preparation/types/ValidationProblem'
+import {
+  addRowButtonId,
+  addSectionButtonId,
+  controlIdFor,
+  focusAfterRemoval,
+  MAX_ROWS,
+  replaceAt,
+  rowPath,
+  summaryProblemsFor,
+  type SummaryProblem,
+} from '@/scenario-preparation/services/profileForm'
 import type { RichTextDocument } from '@/shared/types/RichText'
-
-/** The most rows a list holds (specs/scenario-preparation/spec.md, Constraints). */
-export const MAX_ROWS = 100
 
 export type SectionName = 'characteristics' | 'skills' | 'combat' | 'spells'
 
@@ -89,15 +99,6 @@ export interface HumanNpcFormState {
 }
 
 const EMPTY_CHARACTERISTICS = Object.fromEntries(CHARACTERISTIC_CODES.map((code) => [code, null])) as Record<CharacteristicCode, number | null>
-
-/** The path of a row's field in the request, for example skills[2].value. */
-export const rowPath = (list: string, index: number, field: string): string => `${list}[${index}].${field}`
-
-/** The id of the "Add {item}" button of a list. */
-export const addRowButtonId = (list: 'skills' | 'combat.weapons' | 'spells'): string => `add-${list.replace('.', '-')}`
-
-/** The id of the "Add {section}" button in the "Add a section" group. */
-export const addSectionButtonId = (section: SectionName): string => `add-section-${section}`
 
 const text = (value: string | null): string => value ?? ''
 
@@ -237,9 +238,6 @@ export function fieldPaths(state: HumanNpcFormState): string[] {
   return paths
 }
 
-/** The DOM id of the control for a request path. */
-export const controlIdFor = (path: string): string => (path === 'keeperNotes' ? 'human-npc-keeper-notes' : fieldId(path))
-
 export type IdentityErrors = Partial<Record<'name' | 'age', string>>
 
 /** The only rules the client checks: Name is filled and Age is a whole number from 0 to 150 (ux.md section 25.2). */
@@ -259,30 +257,9 @@ export function identityErrors(state: HumanNpcFormState): IdentityErrors {
   return errors
 }
 
-/** One problem to list in the error summary: its message and the canonical path of its field, when it has one. */
-export interface SummaryProblem {
-  message: string
-  /** The path of the field the link focuses; null when no field matches (listed without a link). */
-  path: string | null
-}
-
 /** Pairs each server message with its field by case-insensitive path (ADR 0018). */
 export function summaryProblems(state: HumanNpcFormState, problems: ValidationProblem[]): SummaryProblem[] {
-  const known = new Map(fieldPaths(state).map((path) => [path.toLowerCase(), path]))
-  return problems.flatMap((problem) =>
-    problem.messages.map((message) => ({ message, path: known.get(problem.path.toLowerCase()) ?? null })),
-  )
-}
-
-/** The message of a field from the server's problems, matched in any letter case. */
-export function messageFor(problems: ValidationProblem[], path: string): string | undefined {
-  return problems.find((problem) => problem.path === path.toLowerCase())?.messages[0]
-}
-
-/** True when a server problem sits on one of these paths. */
-export function hasProblemOn(problems: ValidationProblem[], paths: string[]): boolean {
-  const wanted = new Set(paths.map((path) => path.toLowerCase()))
-  return problems.some((problem) => wanted.has(problem.path))
+  return summaryProblemsFor(fieldPaths(state), problems)
 }
 
 type SkillField = 'name' | 'specialization'
@@ -315,18 +292,6 @@ export type HumanNpcFormAction =
   | { type: 'clearFocus' }
 
 type Handler<K extends HumanNpcFormAction['type']> = (state: HumanNpcFormState, action: Extract<HumanNpcFormAction, { type: K }>) => HumanNpcFormState
-
-function replaceAt<T>(rows: T[], index: number, change: Partial<T>): T[] {
-  return rows.map((row, position) => (position === index ? { ...row, ...change } : row))
-}
-
-/** After removing a row: the next row's first field, else the previous row's, else the list's Add button. */
-function focusAfterRemoval(list: string, remaining: number, index: number, firstField: string, addButtonId: string): string {
-  if (remaining === 0) {
-    return addButtonId
-  }
-  return controlIdFor(rowPath(list, Math.min(index, remaining - 1), firstField))
-}
 
 const SECTION_INITIAL: { [S in SectionName]: (state: HumanNpcFormState) => Partial<HumanNpcFormState> } = {
   characteristics: () => ({ characteristics: { ...EMPTY_CHARACTERISTICS } }),

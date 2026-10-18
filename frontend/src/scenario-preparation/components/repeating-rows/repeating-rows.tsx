@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { MAX_ROWS } from '@/scenario-preparation/services/humanNpcForm'
+import { MAX_ROWS } from '@/scenario-preparation/services/profileForm'
 import { Button } from '@/shared/components/ui/button'
 
 interface RepeatingRowsProps {

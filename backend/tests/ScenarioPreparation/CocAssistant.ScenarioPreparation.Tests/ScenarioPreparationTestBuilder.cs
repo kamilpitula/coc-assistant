@@ -40,6 +40,9 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
     public HumanNpcService CreateHumanNpcService(ScenarioPreparationDbContext context, IHumanNpcRepository? repository = null) =>
         new(Keepers, repository ?? new EfHumanNpcRepository(context), new FakeNonPlayerEntityRuleData(), TimeProvider);
 
+    public MythosCreatureService CreateMythosCreatureService(ScenarioPreparationDbContext context, IMythosCreatureRepository? repository = null) =>
+        new(Keepers, repository ?? new EfMythosCreatureRepository(context), new FakeNonPlayerEntityRuleData(), TimeProvider);
+
     public NonPlayerEntityService CreateNonPlayerEntityService(ScenarioPreparationDbContext context, INonPlayerEntityDirectory? directory = null) =>
         new(Keepers, directory ?? new EfNonPlayerEntityDirectory(context));
 
@@ -51,6 +54,22 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
         var result = await CreateHumanNpcService(context).CreateAsync(campaignId, KeeperAccountId, name, age, CancellationToken.None);
         Assert.Equal(HumanNpcWriteOutcome.Saved, result.Outcome);
         return result.HumanNpc!;
+    }
+
+    /// <summary>Creates a Mythos Creature as the Keeper and returns its view.</summary>
+    public async Task<MythosCreatureView> CreateMythosCreatureAsync(Guid campaignId, string name = "Ghoul")
+    {
+        TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        using var context = Fixture.CreateContext();
+        var result = await CreateMythosCreatureService(context).CreateAsync(campaignId, KeeperAccountId, name, CancellationToken.None);
+        Assert.Equal(MythosCreatureWriteOutcome.Saved, result.Outcome);
+        return result.MythosCreature!;
+    }
+
+    public async Task<int> StoredMythosCreatureCountAsync()
+    {
+        using var context = Fixture.CreateContext();
+        return await context.MythosCreatures.CountAsync();
     }
 
     public async Task<int> StoredHumanNpcCountAsync()

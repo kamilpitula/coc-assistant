@@ -13,9 +13,5 @@ internal static class NpcProfileChecks
             ? [new NpcProfileProblem(path, NpcProfileProblemKind.RowTextTooLong)]
             : [];
 
-    public static bool InRange(int? value, int minimum, int maximum) => value is { } number && number >= minimum && number <= maximum;
-
-    public static string Row(string list, int index, string field) => $"{list}[{index}].{field}";
-
     public static IEnumerable<NpcProfileProblem> TooManyRows(string path) => [new NpcProfileProblem(path, NpcProfileProblemKind.TooManyRows)];
 }
