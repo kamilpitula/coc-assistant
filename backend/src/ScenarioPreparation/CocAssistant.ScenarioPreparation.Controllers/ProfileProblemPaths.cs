@@ -1,5 +1,3 @@
-using System.Text.RegularExpressions;
-
 namespace CocAssistant.ScenarioPreparation.Controllers;
 
 /// <summary>Reads request paths (ADR 0018) for the problem messages of NPC Profiles and Monster Profiles.</summary>

@@ -13,6 +13,8 @@ public class ScenarioPreparationDbContext : DbContext
 
     public DbSet<HumanNpc> HumanNpcs => Set<HumanNpc>();
 
+    public DbSet<MythosCreature> MythosCreatures => Set<MythosCreature>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // No Campaign entity and no foreign key: a Scenario references its Campaign by id only (ADR 0013).
@@ -82,6 +84,31 @@ public class ScenarioPreparationDbContext : DbContext
 
             // Serves the Campaign list read.
             builder.HasIndex(humanNpc => humanNpc.CampaignId);
+        });
+
+        // A Mythos Creature is its own aggregate and table (D1 of PBI-SP-009); the type is the table. The Monster Profile is
+        // a versioned JSON column (ADR 0005, ADR 0007) and the Campaign is referenced by id only (ADR 0013).
+        modelBuilder.Entity<MythosCreature>(builder =>
+        {
+            builder.HasKey(mythosCreature => mythosCreature.Id);
+            builder.Property(mythosCreature => mythosCreature.Id).ValueGeneratedNever();
+            builder.Property(mythosCreature => mythosCreature.CampaignId).IsRequired();
+            builder.Property(mythosCreature => mythosCreature.Name).IsRequired().HasMaxLength(ProfileLimits.NameMaxLength);
+            builder.Property(mythosCreature => mythosCreature.CreatedAt).IsRequired().HasConversion(
+                createdAt => createdAt.UtcDateTime,
+                stored => new DateTimeOffset(DateTime.SpecifyKind(stored, DateTimeKind.Utc)));
+            builder.Property(mythosCreature => mythosCreature.Profile)
+                .IsRequired()
+                .HasConversion(
+                    profile => MonsterProfileJsonStorage.ToStorage(profile),
+                    stored => MonsterProfileJsonStorage.FromStorage(stored),
+                    new ValueComparer<MonsterProfile>(
+                        (left, right) => MonsterProfileJsonStorage.ToStorage(left!) == MonsterProfileJsonStorage.ToStorage(right!),
+                        profile => MonsterProfileJsonStorage.ToStorage(profile).GetHashCode(),
+                        profile => MonsterProfileJsonStorage.FromStorage(MonsterProfileJsonStorage.ToStorage(profile))));
+
+            // Serves the Campaign list read.
+            builder.HasIndex(mythosCreature => mythosCreature.CampaignId);
         });
     }
 

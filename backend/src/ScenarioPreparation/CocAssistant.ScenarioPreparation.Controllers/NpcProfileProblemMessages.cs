@@ -13,8 +13,8 @@ public static class NpcProfileProblemMessages
             [NpcProfileProblemKind.NameTooLong] = _ => $"Name must be {NpcProfileLimits.NameMaxLength} characters or fewer.",
             [NpcProfileProblemKind.AgeRequired] = _ => "Enter an age.",
             [NpcProfileProblemKind.AgeOutOfRange] = _ => $"Enter an age from 0 to {NpcProfileLimits.AgeMaximum}, in whole years.",
-            [NpcProfileProblemKind.TextTooLong] = problem => $"{ProfileProblemPaths.FieldLabel(FieldLabels, problem.Path)} must be 4,000 characters or fewer.",
-            [NpcProfileProblemKind.RowTextTooLong] = problem => $"{ProfileProblemPaths.FieldLabel(FieldLabels, problem.Path)} must be 1,000 characters or fewer.",
+            [NpcProfileProblemKind.TextTooLong] = problem => $"{FieldLabel(problem.Path)} must be 4,000 characters or fewer.",
+            [NpcProfileProblemKind.RowTextTooLong] = problem => $"{FieldLabel(problem.Path)} must be 1,000 characters or fewer.",
             [NpcProfileProblemKind.TooManyRows] = problem => $"Add at most {NpcProfileLimits.MaxRows} {ItemsLabel(problem.Path)}.",
             [NpcProfileProblemKind.UnknownCharacteristic] = problem => $"{ProfileProblemPaths.LastSegment(problem.Path)} isn't a characteristic.",
             [NpcProfileProblemKind.CharacteristicOutOfRange] = problem => $"Enter {ProfileProblemPaths.LastSegment(problem.Path)} from 0 to 100.",
@@ -65,6 +65,8 @@ public static class NpcProfileProblemMessages
     };
 
     public static string For(NpcProfileProblem problem) => Messages[problem.Kind](problem);
+
+    private static string FieldLabel(string path) => ProfileProblemPaths.FieldLabel(FieldLabels, path);
 
     private static string ItemsLabel(string path) => ItemLabels.GetValueOrDefault(path, "rows");
 }
