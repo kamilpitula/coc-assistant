@@ -5,6 +5,7 @@ import { CampaignTable } from '@/campaign-play/components/campaign-table/campaig
 import { WallPreview } from '@/campaign-play/components/wall-preview/wall-preview'
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
+import { NonPlayerEntitySummarySection } from '@/scenario-preparation/components/non-player-entity-summary-section/non-player-entity-summary-section'
 import { ScenarioListSection } from '@/scenario-preparation/components/scenario-list-section/scenario-list-section'
 
 interface CampaignPageProps {
@@ -13,7 +14,7 @@ interface CampaignPageProps {
 
 /**
  * The Campaign overview, one layout for both roles (specs/campaign-overview/ux.md section 3): the status message,
- * "Needs your attention", "At the table", the Keeper's "Scenarios" (specs/scenario-preparation/ux.md section 2), then the Wall
+ * "Needs your attention", "At the table", the Keeper's "Scenarios" (specs/scenario-preparation/ux.md section 2) and "Non-Player Entities" (section 22), then the Wall
  * preview, which sits in a right column from 1024px. The layout route renders the Campaign header and handles loading,
  * errors, and not-found, so the Campaign is already in the query cache here.
  */
@@ -34,6 +35,7 @@ export function CampaignPage({ campaignId }: CampaignPageProps) {
         <AttentionList campaign={campaign.data} />
         <CampaignTable campaignId={campaignId} />
         {campaign.data.role === 'Keeper' && <ScenarioListSection campaignId={campaignId} />}
+        {campaign.data.role === 'Keeper' && <NonPlayerEntitySummarySection campaignId={campaignId} />}
       </div>
       <WallPreview campaignId={campaignId} />
     </div>

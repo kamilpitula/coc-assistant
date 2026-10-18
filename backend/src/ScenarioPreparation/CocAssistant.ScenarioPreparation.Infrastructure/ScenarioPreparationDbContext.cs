@@ -11,6 +11,8 @@ public class ScenarioPreparationDbContext : DbContext
 
     public DbSet<Scene> Scenes => Set<Scene>();
 
+    public DbSet<HumanNpc> HumanNpcs => Set<HumanNpc>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // No Campaign entity and no foreign key: a Scenario references its Campaign by id only (ADR 0013).
@@ -55,6 +57,31 @@ public class ScenarioPreparationDbContext : DbContext
 
             // Serves the prepared-order read; deliberately not unique (ADR 0014).
             builder.HasIndex(scene => new { scene.ScenarioId, scene.Position });
+        });
+
+        // A Human NPC is its own aggregate and table (D6 of PBI-SP-003); the type is the table. The NPC Profile is a
+        // versioned JSON column (ADR 0005, ADR 0007) and the Campaign is referenced by id only (ADR 0013).
+        modelBuilder.Entity<HumanNpc>(builder =>
+        {
+            builder.HasKey(humanNpc => humanNpc.Id);
+            builder.Property(humanNpc => humanNpc.Id).ValueGeneratedNever();
+            builder.Property(humanNpc => humanNpc.CampaignId).IsRequired();
+            builder.Property(humanNpc => humanNpc.Name).IsRequired().HasMaxLength(NpcProfileLimits.NameMaxLength);
+            builder.Property(humanNpc => humanNpc.CreatedAt).IsRequired().HasConversion(
+                createdAt => createdAt.UtcDateTime,
+                stored => new DateTimeOffset(DateTime.SpecifyKind(stored, DateTimeKind.Utc)));
+            builder.Property(humanNpc => humanNpc.Profile)
+                .IsRequired()
+                .HasConversion(
+                    profile => HumanNpcProfileJsonStorage.ToStorage(profile),
+                    stored => HumanNpcProfileJsonStorage.FromStorage(stored),
+                    new ValueComparer<NpcProfile>(
+                        (left, right) => HumanNpcProfileJsonStorage.ToStorage(left!) == HumanNpcProfileJsonStorage.ToStorage(right!),
+                        profile => HumanNpcProfileJsonStorage.ToStorage(profile).GetHashCode(),
+                        profile => HumanNpcProfileJsonStorage.FromStorage(HumanNpcProfileJsonStorage.ToStorage(profile))));
+
+            // Serves the Campaign list read.
+            builder.HasIndex(humanNpc => humanNpc.CampaignId);
         });
     }
 

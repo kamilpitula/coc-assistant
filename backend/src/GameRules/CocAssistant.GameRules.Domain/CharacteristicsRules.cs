@@ -1,4 +1,4 @@
-namespace CocAssistant.CampaignPlay.Domain.RuleData;
+namespace CocAssistant.GameRules.Domain;
 
 /// <summary>
 /// One band of the Damage Bonus and Build table, mirroring docs/game-rules/catalogs/characteristics-rules.json

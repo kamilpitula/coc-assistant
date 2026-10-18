@@ -366,7 +366,7 @@ Stories cover:
 /campaigns/$campaignId/non-player-entities                Non-Player Entity list (section 23)   -> Overview tab current
 /campaigns/$campaignId/non-player-entities/new            Create Non-Player Entity (section 24) -> Overview tab current
 /campaigns/$campaignId/human-npcs/$humanNpcId             NPC Profile page (section 25)         -> Overview tab current
-/campaigns/$campaignId/mythos-creatures/$mythosCreatureId Monster Profile page (section 26)     -> Overview tab current
+/campaigns/$campaignId/mythos-creatures/$mythosCreatureId Monster Profile page (section 25)     -> Overview tab current
 ```
 
 - No Campaign tab is added; three tab labels is the limit at 320px ([campaign-overview ux](../campaign-overview/ux.md) section 2).
@@ -457,7 +457,7 @@ Keeper notes                                      (h2)
 
 - **Header:** "Back to Non-Player Entities" link; `role=status` paragraph; `h1` the name (`break-words`); a muted line with the type, then the age (Human NPC) or the Creature Kind (Mythos Creature, when set), separated by `aria-hidden` dots.
 - **Sections:** each added section is an `h2` with its content, in the fixed order of the profile type (25.4, 25.5), whatever order they were added in. Sections that were not added are not shown. "Details" (the narrative fields) and "Keeper notes" are always shown; Details lists only filled fields in a `dl`, or "No details yet." in muted text; Keeper notes use `rich-text-view` or "No Keeper notes yet.".
-- **Computed values** (Hit Points, Magic Points, Damage Bonus, Build, MOV, difficulty) come from the server response and are text, never disabled inputs. A value that cannot be computed yet is not shown; MOV outside the covered ages shows "Not covered by the rules for this age". A Derived Value Override shows the override, then "(computed {value})" and its reason.
+- **Computed values** (Hit Points, Magic Points, Damage Bonus, Build, MOV, difficulty) come from the server response and are text, never disabled inputs. A value that cannot be computed yet is not shown; MOV outside the covered ages shows "Not covered by the rules for this age". On a Monster Profile only, a Derived Value Override shows the override, then "(computed {value})" and its reason; NPC Profiles have none.
 - **Stat tables:** from 640px, characteristic and skill groups are a `Table`; below 640px they reflow to a `dl` so nothing scrolls sideways at 320px.
 - **Actions:** outline "Edit", outline "Duplicate" (PBI-SP-010), and "Delete" (outline, destructive text).
 
@@ -496,7 +496,52 @@ Keeper notes                    (fieldset)
 
 ### 25.4 NPC Profile sections
 
-Fixed order: Details (Name, Age, then the narrative fields), Characteristics, Skills, Combat, Spells, Keeper notes. Field-level content: added at the start of PBI-SP-003.
+Selected 2026-10-17 (PBI-SP-003): **compact rows with progressive disclosure.** Alternatives considered:
+- **One card per row** (the Investigator Custom Weapons pattern): rejected because a 15-skill NPC becomes several screens of cards, which slows copying values from a book.
+- **Stat-line text entry** (paste "STR 70 CON 60 ..." and parse it into rows): rejected because it needs a client parser, gives two editing surfaces for the same data, and cannot map server problems to fields (SP-UX-35).
+
+Fixed order: Details, Characteristics, Skills, Combat, Spells, Keeper notes. Values are whole numbers; number inputs use `inputMode="numeric"`. No half or fifth values are shown. Skills, characteristics, and Dodge show their Investigator Difficulty (root CONTEXT.md; [NPC ruleset section 3.4](../../docs/game-rules/coc_7e_npc_and_monster_creation_ruleset.md#34-skill-difficulty-for-an-investigator-opposing-an-npc-or-monster)) as text.
+
+**Details** (always present)
+- **Edit:** Name and Age on one row from 640px (Age 6rem wide, hint "Any age from 0 to 150."); "Profession or role" (`Input` with the Era's Occupation names as datalist suggestions, hint "Choose a suggestion or type your own."); then the `Textarea`s "Short description", "Goal", "Relationship to the Investigators", "What the Human NPC knows", "What the Human NPC hides", and "Behavior cue" (3 rows, full width).
+- **View:** a `dl` of the filled narrative fields in that order; "No details yet." when none.
+
+**Characteristics**
+- **Edit:** a grid of 8 number inputs in rule order STR, CON, DEX, APP, POW, SIZ, INT, EDU (4 columns from 640px, 2 below). The visible label is the code; the accessible name adds the full name ("STR Strength"). Hint once: "Enter only the characteristics this Scenario needs, from 0 to 100.", then the computed hint of section 25.2.
+- **View:** a `Table` "Characteristic | Value | Investigator difficulty" with only the entered characteristics (a `dl` below 640px); difficulty reads Regular, Hard, or Extreme. Then an `h3` "Worked-out values" and a `dl` of Hit Points, Magic Points, Damage Bonus, Build, and MOV, each only when the characteristics (and for MOV the age) it needs are present. MOV for an age outside 15-89 reads "Not covered by the rules for this age" ([project_ruleset.md section 5.3](../../docs/game-rules/project_ruleset.md#53-human-movement-outside-the-covered-ages)). When none can be worked out: "Worked-out values appear when the characteristics they need are entered." An added section with no values shows "None recorded."
+
+**Skills** (repeating rows; item "skill"; row label the skill name with "(Specialization)", else "skill {n}")
+- **Edit:** each row is a `role="group"` labelled "Skill {n}", on one line from 640px: "Skill" (`Input` with the Era's skill names as datalist suggestions; any name is accepted) | "Specialization" (`Select` from the specialization list, shown only when Skill is Fighting or Firearms, case-insensitive) | "Value" (number) | Remove (ghost, 40x40). Below 640px, Skill and Specialization are full width and Value and Remove share a line. Hint once: "Choose a skill from the list or type your own. Fighting and Firearms need a specialization from the list.", then the computed hint.
+- **Skill list failure:** an inline `Alert` "We couldn't load the skill list. You can still type skill names." with "Try again"; Specialization is a text `Input` until the list loads.
+- **View:** a `Table` "Skill | Value | Investigator difficulty" in the entered order (a `dl` below 640px); "None recorded." for an empty added section.
+
+**Combat**
+- **Edit:** "Dodge" and "Armor points" (numbers) on one line; "Tactics and morale" (`Textarea`); then a `fieldset` "Weapons" with repeating rows (item "weapon"; row label the weapon name, else "weapon {n}"): "Name" | "Skill" (`Select` of this profile's skill rows, including rows not yet saved, shown as "Firearms (Handgun)"; with no skill rows, the hint "Add the skill under Skills first.") | "Damage" | "Attacks per round" | Remove. Hint once under the legend: "Damage uses dice like 1D6+DB or 2D6-1. Firearms don't add DB." Under each row, a `Collapsible` trigger "More details for {row label}" (`aria-expanded`) holds "Range", "Ammunition", "Malfunction" (`Input`s) and the `Checkbox` "Impaling weapon". It starts open when any of these has a value or a server problem, else closed; its state is not saved. Then the computed hint.
+- **View:** a `dl` with Dodge and its Investigator difficulty, Armor points, and Tactics and morale; a `Table` "Weapon | Skill | Damage | Attacks | Details", where Skill reads "{skill} {value}%" and Details joins the filled optional fields ("Range 15 yards; Ammunition 6; Malfunction 100; Impaling"); a `dl` per weapon below 640px. "None recorded." for an empty added section.
+
+**Spells** (repeating rows; item "spell"; row label the name, else "spell {n}")
+- **Edit:** "Name" | "Magic Point cost" (free text, [project_ruleset.md section 5.6](../../docs/game-rules/project_ruleset.md#56-spells-and-powers-without-a-catalog)) | Remove on one line; "Effect" (`Textarea`) full width under them.
+- **View:** a list; each item shows the name, "Magic Point cost {cost}" in muted text, and the effect.
+
+**Keeper notes:** as Scene Keeper notes (section 15).
+
+**Server problems.** A refused save returns each problem under its request path ([ADR 0018](../../docs/adr/0018-scenario-preparation-validation-problems-keyed-by-request-path.md)); the form shows the server's message inline and in the error summary. A problem whose path matches no field is listed in the summary without a link. Messages:
+
+| Problem | Message |
+|---|---|
+| Name | Enter a name. / Name must be 200 characters or fewer. |
+| Age | Enter an age. / Enter an age from 0 to 150, in whole years. |
+| Plain-text field too long | {Field} must be 4,000 characters or fewer. |
+| Row text too long | {Field} must be 1,000 characters or fewer. |
+| Characteristic | Enter {code} from 0 to 100. |
+| Skill | Enter the skill's name. / Enter a value from 0 to 100. / Choose a {family} specialization from the list. |
+| Dodge / Armor points | Enter Dodge from 0 to 100. / Enter armor points from 0 to 2,000. |
+| Weapon | Enter the weapon's name. / Choose a skill this Human NPC has. / Enter the damage. / Write the damage as dice and numbers, for example 1D6+DB or 2D6-1. / Damage Bonus doesn't apply to firearms. Remove DB from the damage. / Enter attacks per round from 1 to 99. |
+| Spell | Enter the spell's name. |
+| Too many rows | Add at most 100 {items}. |
+| Keeper notes | As for Scene Keeper notes. |
+
+**Components** (in `frontend/src/scenario-preparation/components/`, beside section 27): `human-npc-view` and `human-npc-form`, with `npc-characteristics-fields`, `npc-skill-rows`, `npc-combat-fields`, and `npc-spell-rows` for editing and their view counterparts. They reuse `WizardField`, `WizardSelect`, and the skill and Occupation catalog hooks from `campaign-play`, and the existing `Collapsible` and `Checkbox` primitives.
 
 ### 25.5 Monster Profile sections
 
@@ -577,6 +622,9 @@ Stories cover:
 - **SP-UX-39** A Player opening any Non-Player Entity URL, and anyone opening a profile of another Campaign or under the other type's route, sees "We couldn't find that Non-Player Entity".
 - **SP-UX-40** While a create, save, delete, or duplicate is in flight its button is disabled; a second activation does nothing.
 - **SP-UX-41** Non-Player Entity pages keep the Campaign header with Overview as the current tab (extends SP-UX-8).
+- **SP-UX-42** On an NPC Profile, characteristics, skills, and Dodge show their Investigator difficulty as text; no half or fifth values appear.
+- **SP-UX-43** A weapon's "More details" opens by itself when it holds a value or a server problem, so every error summary link reaches a visible field.
+- **SP-UX-44** A weapon's Skill offers only this profile's skills, including rows not yet saved.
 
 ## 29. Non-Player Entity accessibility acceptance criteria (WCAG 2.2 AA)
 
@@ -589,10 +637,12 @@ Stories cover:
 - **SP-A11Y-24** A field that receives focus is never hidden behind the sticky action bar (2.4.11).
 - **SP-A11Y-25** Type, difficulty, overrides, and "not covered" are conveyed in text, never only by color (1.4.1).
 - **SP-A11Y-26** At 320px and at 200% zoom the list, create page, and profile pages fit without horizontal scrolling; stat tables reflow to definition lists and long names wrap (1.4.10).
+- **SP-A11Y-27** Each skill, weapon, and spell row is a group with a unique accessible name; the "More details" trigger exposes `aria-expanded` and names its weapon (2.4.6, 4.1.2).
 
 ## 30. Non-Player Entity open decisions and research gaps
 
-- **Open (PBI-SP-003, PBI-SP-009):** field-level editor content for each section (sections 25.4 and 25.5), designed through the UX designer skill at the start of each PBI.
+- **Resolved (PBI-SP-003):** NPC Profile field-level content, section 25.4 (compact rows, selected 2026-10-17).
+- **Open (PBI-SP-009):** Monster Profile field-level content (section 25.5), designed through the UX designer skill at the start of that PBI.
 - **Deferred:** a profession or Creature Kind column in the list; the list response carries only `{id, type, name}`.
 - **Deferred:** linking a profile to a Scene from its profile page (PBI-SP-004 designs linking on the Scene page).
 - **Research gap:** whether one long Edit form is workable for a full Monster Profile at the table, or per-section editing (Option B) is needed after all.

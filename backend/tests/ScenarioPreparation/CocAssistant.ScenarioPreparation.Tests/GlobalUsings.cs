@@ -5,3 +5,5 @@ global using Microsoft.Data.Sqlite;
 global using Microsoft.EntityFrameworkCore;
 global using System.Text;
 global using System.Text.Json;
+global using CocAssistant.GameRules.Domain;
+global using CocAssistant.ScenarioPreparation.Controllers;

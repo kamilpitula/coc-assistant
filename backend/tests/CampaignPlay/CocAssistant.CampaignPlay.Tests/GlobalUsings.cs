@@ -14,3 +14,4 @@ global using Microsoft.Extensions.Logging;
 global using CocAssistant.CampaignPlay.Domain.Presence;
 global using System.Text.RegularExpressions;
 global using CocAssistant.CampaignPlay.Domain.Wall;
+global using CocAssistant.GameRules.Domain;

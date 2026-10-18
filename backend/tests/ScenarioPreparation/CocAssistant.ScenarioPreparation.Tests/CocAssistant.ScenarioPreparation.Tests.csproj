@@ -31,6 +31,7 @@
     <ProjectReference Include="..\..\..\src\ScenarioPreparation\CocAssistant.ScenarioPreparation.Domain\CocAssistant.ScenarioPreparation.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\ScenarioPreparation\CocAssistant.ScenarioPreparation.Application\CocAssistant.ScenarioPreparation.Application.csproj" />
     <ProjectReference Include="..\..\..\src\ScenarioPreparation\CocAssistant.ScenarioPreparation.Infrastructure\CocAssistant.ScenarioPreparation.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\ScenarioPreparation\CocAssistant.ScenarioPreparation.Controllers\CocAssistant.ScenarioPreparation.Controllers.csproj" />
   </ItemGroup>
 
 </Project>
