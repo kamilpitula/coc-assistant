@@ -7,6 +7,7 @@ import {
   createHumanNpcViaUi,
   humanNpcIdFromUrl,
   humanNpcsApiUrl,
+  mythosCreaturesApiUrl,
   nonPlayerEntitiesApiUrl,
   nonPlayerEntitiesSection,
   nonPlayerEntityLinks,
@@ -20,13 +21,14 @@ import { campaignNav } from '../fixtures/overview'
  * Traces to specs/scenario-preparation/spec.md Scenarios "Keeper creates a narrative Human NPC", "A Human NPC needs a name
  * and an age", "Keeper finds a profile in the list" (Human NPC part), "A Human NPC's derived values follow the rules",
  * "MOV is not computed outside the covered ages", "An Opposing Value shows the Investigator's difficulty", "Keeper adds
- * and removes optional sections", "A firearm weapon cannot add Damage Bonus", "Keeper deletes an unlinked profile", and
- * "Non-Player Entity profiles are the Keeper's alone" (Human NPC part), and to specs/scenario-preparation/ux.md
- * SP-UX-28 to SP-UX-37, SP-UX-39 to SP-UX-43.
+ * and removes optional sections", "A firearm weapon cannot add Damage Bonus", "Keeper deletes an unlinked profile", "Keeper
+ * duplicates a profile" (Human NPC part), and "Non-Player Entity profiles are the Keeper's alone" (Human NPC part), and
+ * to specs/scenario-preparation/ux.md SP-UX-28 to SP-UX-43 and SP-A11Y-22.
  *
- * Exceptions: the Mythos Creature parts of the list, delete, and Keeper-only scenarios are in mythos-creatures.spec.ts, and
- * SP-UX-38 (Duplicate) belongs to PBI-SP-010. SP-UX-34 (the 100-row limit) and SP-UX-40 (double activation) are covered by
- * component tests, where an end-to-end run would only repeat them slowly.
+ * Exceptions: the Mythos Creature parts of the list, delete, duplicate, and Keeper-only scenarios are in
+ * mythos-creatures.spec.ts. SP-UX-34 (the 100-row limit) and SP-UX-40 (double activation) are covered by component
+ * tests, where an end-to-end run would only repeat them slowly. The scenario line "linked to no Scene" waits for Scene
+ * links (PBI-SP-004).
  */
 test.describe('Non-Player Entities', () => {
   test('Keeper creates a Human NPC and finds it in the list', async ({ page }) => {
@@ -210,6 +212,36 @@ test.describe('Non-Player Entities', () => {
     })
   })
 
+  test('Keeper duplicates a Human NPC', async ({ page }) => {
+    const keeper = newAccount('Keeper')
+    await signIn(page, keeper)
+    const campaignId = await createCampaignViaUi(page, `Copy ${keeper.oid.slice(0, 6)}`)
+    const sourceId = await createHumanNpcViaUi(page, campaignId, 'Mr. Knott', '62')
+    await openEditor(page)
+    await page.getByRole('button', { name: 'Add Characteristics' }).click()
+    for (const [label, value] of [['STR Strength', '70'], ['CON Constitution', '60'], ['SIZ Size', '65'], ['DEX Dexterity', '55'], ['POW Power', '50']]) {
+      await page.getByLabel(label).fill(value)
+    }
+    await saveEditor(page)
+
+    await test.step('SP-UX-38: Duplicate opens the copy with its status, its heading focused, and the same age and section', async () => {
+      await page.getByRole('button', { name: 'Duplicate', exact: true }).click()
+      await expect(page.getByRole('heading', { level: 1, name: 'Mr. Knott (copy)' })).toBeVisible()
+      expect(humanNpcIdFromUrl(page)).not.toBe(sourceId)
+      await expect(page.getByRole('status').filter({ hasText: "Copy created. It isn't part of any Scene." })).toBeVisible()
+      await expect(page.getByRole('status').filter({ hasText: 'Human NPC saved.' })).toHaveCount(0)
+      await expect(page.getByRole('heading', { level: 1, name: 'Mr. Knott (copy)' })).toBeFocused()
+      await expect(page.getByText('Age 62')).toBeVisible()
+      await expect(page.getByRole('table', { name: 'Characteristics' }).getByRole('row', { name: /STR Strength/ })).toContainText('Hard')
+      await expect(campaignNav(page).getByRole('link', { name: 'Overview', exact: true })).toHaveAttribute('aria-current', 'page')
+    })
+
+    await test.step('SP-UX-29: the list shows the source and the copy', async () => {
+      await page.goto(`/campaigns/${campaignId}/non-player-entities`)
+      await expect(nonPlayerEntityLinks(page)).toHaveText(['Mr. Knott', 'Mr. Knott (copy)'])
+    })
+  })
+
   test("Players and other Keepers can't see Human NPCs", async ({ page, browser }) => {
     const keeper = newAccount('Keeper')
     await signIn(page, keeper)
@@ -246,6 +278,11 @@ test.describe('Non-Player Entities', () => {
         await otherKeeper.page.goto(profilePath)
         await expect(otherKeeper.page.getByRole('heading', { name: "We couldn't find that Campaign" })).toBeVisible()
       })
+
+      await test.step("the refused duplicates added nothing: the Keeper's list still has one profile", async () => {
+        await page.goto(`/campaigns/${campaignId}/non-player-entities`)
+        await expect(nonPlayerEntityLinks(page)).toHaveText(['Secret informant'])
+      })
     } finally {
       await player.context.close()
       await otherKeeper.context.close()
@@ -262,6 +299,8 @@ async function expectAllNotFound(page: import('@playwright/test').Page, bearer: 
     await page.request.get(humanNpcsApiUrl(API_ORIGIN, campaignId, `/${humanNpcId}`), { headers }),
     await page.request.put(humanNpcsApiUrl(API_ORIGIN, campaignId, `/${humanNpcId}`), { headers, data: body }),
     await page.request.delete(humanNpcsApiUrl(API_ORIGIN, campaignId, `/${humanNpcId}`), { headers }),
+    await page.request.post(humanNpcsApiUrl(API_ORIGIN, campaignId, `/${humanNpcId}/duplicate`), { headers }),
+    await page.request.post(mythosCreaturesApiUrl(API_ORIGIN, campaignId, `/${humanNpcId}/duplicate`), { headers }),
   ]
-  expect(responses.map((response) => response.status())).toEqual([404, 404, 404, 404, 404])
+  expect(responses.map((response) => response.status())).toEqual([404, 404, 404, 404, 404, 404, 404])
 }
