@@ -8,11 +8,13 @@ import { DeleteNonPlayerEntityDialog } from '@/scenario-preparation/components/d
 import { HumanNpcForm } from '@/scenario-preparation/components/human-npc-form/human-npc-form'
 import { HumanNpcView } from '@/scenario-preparation/components/human-npc-view/human-npc-view'
 import { NonPlayerEntityNotFound } from '@/scenario-preparation/components/non-player-entity-not-found/non-player-entity-not-found'
-import { useDeleteHumanNpc, useEditHumanNpc, useHumanNpc } from '@/scenario-preparation/hooks/useNonPlayerEntities'
+import { useDeleteHumanNpc, useDuplicateHumanNpc, useEditHumanNpc, useHumanNpc } from '@/scenario-preparation/hooks/useNonPlayerEntities'
 import { NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import type { HumanNpc } from '@/scenario-preparation/types/HumanNpc'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
+
+const COPY_CREATED_MESSAGE = "Copy created. It isn't part of any Scene."
 
 interface HumanNpcPageProps {
   campaignId: string
@@ -20,7 +22,7 @@ interface HumanNpcPageProps {
 }
 
 /**
- * One Human NPC for its Keeper: a view with "Edit" and "Delete", or the whole-profile form (specs/scenario-preparation/ux.md
+ * One Human NPC for its Keeper: a view with "Edit", "Duplicate", and "Delete", or the whole-profile form (specs/scenario-preparation/ux.md
  * section 25). A Player, an unknown id, another Campaign's id, and the other type's id all get the not-found page; a
  * Player's client makes no request.
  */
@@ -54,7 +56,7 @@ export function HumanNpcPage({ campaignId, humanNpcId }: HumanNpcPageProps) {
     )
   }
 
-  return <HumanNpcDetail campaignId={campaignId} humanNpc={humanNpc.data} />
+  return <HumanNpcDetail key={humanNpc.data.id} campaignId={campaignId} humanNpc={humanNpc.data} />
 }
 
 interface HumanNpcDetailProps {
@@ -64,12 +66,20 @@ interface HumanNpcDetailProps {
 
 function HumanNpcDetail({ campaignId, humanNpc }: HumanNpcDetailProps) {
   const navigationMessage = useRouterState({ select: (state) => state.location.state.statusMessage })
+  const focusHeading = useRouterState({ select: (state) => state.location.state.focusHeading })
   const edit = useEditHumanNpc(campaignId, humanNpc.id)
   const [isEditing, setIsEditing] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
   const [returnedFromEdit, setReturnedFromEdit] = useState(false)
   const editButtonRef = useRef<HTMLButtonElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
+
+  // A copy opened by Duplicate puts focus on its heading (SP-A11Y-22).
+  useEffect(() => {
+    if (focusHeading) {
+      headingRef.current?.focus()
+    }
+  }, [focusHeading])
 
   // The Edit button is mounted again when the form closes, so focus goes back to it.
   useEffect(() => {
@@ -144,50 +154,79 @@ interface ProfileActionsProps {
 function ProfileActions({ campaignId, humanNpc, editButtonRef, headingRef, onEdit }: ProfileActionsProps) {
   const [open, setOpen] = useState(false)
   const deletion = useDeleteHumanNpc(campaignId, humanNpc.id)
+  const duplication = useDuplicateHumanNpc(campaignId, humanNpc.id)
   const navigate = useNavigate()
   const deleteButtonRef = useRef<HTMLButtonElement>(null)
+  const duplicateButtonRef = useRef<HTMLButtonElement>(null)
+
+  // A disabled button loses focus, so a failed Duplicate gives it back (SP-A11Y-22).
+  useEffect(() => {
+    if (duplication.isError) {
+      duplicateButtonRef.current?.focus()
+    }
+  }, [duplication.isError])
+
+  const duplicate = () =>
+    duplication.mutate(undefined, {
+      onSuccess: (copy) =>
+        void navigate({
+          to: '/campaigns/$campaignId/human-npcs/$humanNpcId',
+          params: { campaignId, humanNpcId: copy.id },
+          state: { statusMessage: COPY_CREATED_MESSAGE, focusHeading: true },
+        }),
+    })
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <Button ref={editButtonRef} type="button" variant="outline" onClick={onEdit}>
-        Edit
-      </Button>
-      <Button
-        ref={deleteButtonRef}
-        type="button"
-        variant="outline"
-        className="text-destructive"
-        onClick={() => {
-          deletion.reset()
-          setOpen(true)
-        }}
-      >
-        Delete
-      </Button>
-      <DeleteNonPlayerEntityDialog
-        open={open}
-        name={humanNpc.name}
-        pending={deletion.isPending}
-        failed={deletion.isError}
-        onConfirm={() =>
-          deletion.mutate(undefined, {
-            onSuccess: () =>
-              void navigate({
-                to: '/campaigns/$campaignId/non-player-entities',
-                params: { campaignId },
-                state: { statusMessage: `${humanNpc.name} deleted.` },
-              }),
-          })
-        }
-        onCancel={() => {
-          setOpen(false)
-          deletion.reset()
-        }}
-        onCloseAutoFocus={(event) => {
-          event.preventDefault()
-          ;(deleteButtonRef.current ?? headingRef.current)?.focus()
-        }}
-      />
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <Button ref={editButtonRef} type="button" variant="outline" onClick={onEdit}>
+          Edit
+        </Button>
+        <Button ref={duplicateButtonRef} type="button" variant="outline" disabled={duplication.isPending} onClick={duplicate}>
+          {duplication.isPending ? 'Duplicating...' : 'Duplicate'}
+        </Button>
+        <Button
+          ref={deleteButtonRef}
+          type="button"
+          variant="outline"
+          className="text-destructive"
+          onClick={() => {
+            deletion.reset()
+            setOpen(true)
+          }}
+        >
+          Delete
+        </Button>
+        <DeleteNonPlayerEntityDialog
+          open={open}
+          name={humanNpc.name}
+          pending={deletion.isPending}
+          failed={deletion.isError}
+          onConfirm={() =>
+            deletion.mutate(undefined, {
+              onSuccess: () =>
+                void navigate({
+                  to: '/campaigns/$campaignId/non-player-entities',
+                  params: { campaignId },
+                  state: { statusMessage: `${humanNpc.name} deleted.` },
+                }),
+            })
+          }
+          onCancel={() => {
+            setOpen(false)
+            deletion.reset()
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            ;(deleteButtonRef.current ?? headingRef.current)?.focus()
+          }}
+        />
+      </div>
+      {duplication.isError ? (
+        <p role="alert" className="text-sm text-destructive">
+          We couldn&apos;t duplicate {humanNpc.name}. Try again.
+        </p>
+      ) : null}
     </div>
   )
 }

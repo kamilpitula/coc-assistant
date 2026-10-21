@@ -154,6 +154,20 @@ export async function editMythosCreature(
   return mythosCreatureSchema.parse(await response.json())
 }
 
+/** Calls POST .../mythos-creatures/{mythosCreatureId}/duplicate, which creates a copy in the same Campaign; the server names it. */
+export async function duplicateMythosCreature(accessToken: string, campaignId: string, mythosCreatureId: string): Promise<MythosCreature> {
+  const response = await fetch(`${mythosCreaturesUrl(campaignId)}/${mythosCreatureId}/duplicate`, {
+    method: 'POST',
+    headers: authHeaders(accessToken),
+  })
+
+  if (!response.ok) {
+    return failNonPlayerEntityWrite(response, 'duplicate the Mythos Creature')
+  }
+
+  return mythosCreatureSchema.parse(await response.json())
+}
+
 /** Calls DELETE .../mythos-creatures/{mythosCreatureId}. */
 export async function deleteMythosCreature(accessToken: string, campaignId: string, mythosCreatureId: string): Promise<void> {
   const response = await fetch(`${mythosCreaturesUrl(campaignId)}/${mythosCreatureId}`, {

@@ -2,21 +2,23 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
+import { NonPlayerEntityNotFoundError, NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import { gangsterHumanNpc, knottHumanNpc } from '@/scenario-preparation/test-support/humanNpcFixtures'
 import { navigateSpy, routerState } from '@/shared/test-support/routerMock'
 
 import { HumanNpcPage } from './human-npc-page'
 
-// specs/scenario-preparation/ux.md sections 25.1 to 25.3 and 25.6; SP-UX-32, SP-UX-33, SP-UX-35 to SP-UX-37, SP-UX-39, SP-UX-40.
+// specs/scenario-preparation/ux.md sections 25.1 to 25.3 and 25.6; SP-UX-32, SP-UX-33, SP-UX-35 to SP-UX-41, SP-A11Y-22.
 
-const { mockUseCampaign, mockUseHumanNpc, mockUseEdit, mockUseDelete, editMutate, deleteMutate, refetch } = vi.hoisted(() => ({
+const { mockUseCampaign, mockUseHumanNpc, mockUseEdit, mockUseDelete, mockUseDuplicate, editMutate, deleteMutate, duplicateMutate, refetch } = vi.hoisted(() => ({
   mockUseCampaign: vi.fn(),
   mockUseHumanNpc: vi.fn(),
   mockUseEdit: vi.fn(),
   mockUseDelete: vi.fn(),
+  mockUseDuplicate: vi.fn(),
   editMutate: vi.fn(),
   deleteMutate: vi.fn(),
+  duplicateMutate: vi.fn(),
   refetch: vi.fn(),
 }))
 
@@ -30,6 +32,7 @@ vi.mock('@/scenario-preparation/hooks/useNonPlayerEntities', () => ({
   useHumanNpc: mockUseHumanNpc,
   useEditHumanNpc: mockUseEdit,
   useDeleteHumanNpc: mockUseDelete,
+  useDuplicateHumanNpc: mockUseDuplicate,
 }))
 
 function mutation(mutate: ReturnType<typeof vi.fn>, overrides: Record<string, unknown> = {}) {
@@ -44,9 +47,10 @@ describe('HumanNpcPage', () => {
     mockUseHumanNpc.mockReturnValue({ data: gangsterHumanNpc, isError: false, refetch })
     mockUseEdit.mockReturnValue(mutation(editMutate))
     mockUseDelete.mockReturnValue(mutation(deleteMutate))
+    mockUseDuplicate.mockReturnValue(mutation(duplicateMutate))
   })
 
-  it('shows the profile with a Back link, the status passed by the page that created it, Edit, and Delete (SP-UX-32)', () => {
+  it('shows the profile with a Back link, the status passed by the page that created it, Edit, Duplicate, and Delete (SP-UX-32)', () => {
     routerState.location.state = { statusMessage: 'Human NPC created.' }
 
     render(<HumanNpcPage campaignId="c1" humanNpcId="h1" />)
@@ -56,7 +60,7 @@ describe('HumanNpcPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Gangster' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Duplicate' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Duplicate' })).toBeInTheDocument()
   })
 
   it('swaps the whole view for the form on Edit, keeping the saved name as the h1 (ux 25.2)', async () => {
@@ -179,5 +183,81 @@ describe('HumanNpcPage', () => {
     render(<HumanNpcPage campaignId="c1" humanNpcId="h1" />)
 
     expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toEqual(['Details', 'Keeper notes'])
+  })
+
+  it('shows Duplicate between Edit and Delete in the view and not in edit mode (SP-UX-38)', async () => {
+    render(<HumanNpcPage campaignId="c1" humanNpcId="h1" />)
+
+    expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual(expect.arrayContaining(['Edit', 'Duplicate', 'Delete']))
+    const labels = screen.getAllByRole('button').map((button) => button.textContent)
+    expect(labels.indexOf('Edit')).toBeLessThan(labels.indexOf('Duplicate'))
+    expect(labels.indexOf('Duplicate')).toBeLessThan(labels.indexOf('Delete'))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+
+    expect(screen.queryByRole('button', { name: 'Duplicate' })).not.toBeInTheDocument()
+  })
+
+  it('duplicates at once without a dialog and opens the copy with its status, asking for focus on its heading (SP-UX-38, H1)', async () => {
+    duplicateMutate.mockImplementation((_value, options) => options.onSuccess({ ...gangsterHumanNpc, id: 'h2', name: 'Gangster (copy)' }))
+    render(<HumanNpcPage campaignId="c1" humanNpcId="h1" />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Duplicate' }))
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(navigateSpy).toHaveBeenCalledWith({
+      to: '/campaigns/$campaignId/human-npcs/$humanNpcId',
+      params: { campaignId: 'c1', humanNpcId: 'h2' },
+      state: { statusMessage: "Copy created. It isn't part of any Scene.", focusHeading: true },
+    })
+  })
+
+  it('reads "Duplicating..." and is disabled while the copy is being made, so a second activation sends nothing (SP-UX-40)', async () => {
+    mockUseDuplicate.mockReturnValue(mutation(duplicateMutate, { isPending: true }))
+    render(<HumanNpcPage campaignId="c1" humanNpcId="h1" />)
+
+    const button = screen.getByRole('button', { name: 'Duplicating...' })
+    await userEvent.click(button)
+
+    expect(button).toBeDisabled()
+    expect(duplicateMutate).not.toHaveBeenCalled()
+  })
+
+  it('shows the copy with its own status and never "Human NPC saved." after the source was just saved (SP-UX-38)', async () => {
+    editMutate.mockImplementation((_input, options) => options.onSuccess())
+    const { rerender } = render(<HumanNpcPage campaignId="c1" humanNpcId="h1" />)
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Human NPC saved.')
+
+    routerState.location.state = { statusMessage: "Copy created. It isn't part of any Scene.", focusHeading: true }
+    mockUseHumanNpc.mockReturnValue({ data: { ...gangsterHumanNpc, id: 'h2', name: 'Gangster (copy)' }, isError: false, refetch })
+    rerender(<HumanNpcPage campaignId="c1" humanNpcId="h2" />)
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Gangster (copy)' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent("Copy created. It isn't part of any Scene.")
+    expect(screen.queryByText('Human NPC saved.')).not.toBeInTheDocument()
+  })
+
+  it('puts focus on the copy heading when it was opened by Duplicate (SP-A11Y-22)', () => {
+    routerState.location.state = { statusMessage: "Copy created. It isn't part of any Scene.", focusHeading: true }
+
+    render(<HumanNpcPage campaignId="c1" humanNpcId="h2" />)
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Gangster' })).toHaveFocus()
+  })
+
+  it.each([
+    ['500', new Error('boom')],
+    ['404', new NonPlayerEntityNotFoundError()],
+  ])('shows an alert under the actions, enables Duplicate again, and keeps focus on it when a %s answer fails it (SP-UX-41, SP-A11Y-22)', (_label, error) => {
+    mockUseDuplicate.mockReturnValue(mutation(duplicateMutate, { isError: true, error }))
+
+    render(<HumanNpcPage campaignId="c1" humanNpcId="h1" />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent("We couldn't duplicate Gangster. Try again.")
+    expect(screen.getByRole('button', { name: 'Duplicate' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Duplicate' })).toHaveFocus()
+    expect(navigateSpy).not.toHaveBeenCalled()
   })
 })

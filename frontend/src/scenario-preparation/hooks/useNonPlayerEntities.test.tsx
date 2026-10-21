@@ -12,6 +12,8 @@ import {
   useCreateMythosCreature,
   useDeleteHumanNpc,
   useDeleteMythosCreature,
+  useDuplicateHumanNpc,
+  useDuplicateMythosCreature,
   useEditHumanNpc,
   useEditMythosCreature,
   useHumanNpc,
@@ -19,8 +21,8 @@ import {
   useNonPlayerEntities,
 } from './useNonPlayerEntities'
 
-const humanApi = vi.hoisted(() => ({ getHumanNpc: vi.fn(), createHumanNpc: vi.fn(), editHumanNpc: vi.fn(), deleteHumanNpc: vi.fn() }))
-const mythosApi = vi.hoisted(() => ({ getMythosCreature: vi.fn(), createMythosCreature: vi.fn(), editMythosCreature: vi.fn(), deleteMythosCreature: vi.fn() }))
+const humanApi = vi.hoisted(() => ({ getHumanNpc: vi.fn(), createHumanNpc: vi.fn(), editHumanNpc: vi.fn(), deleteHumanNpc: vi.fn(), duplicateHumanNpc: vi.fn() }))
+const mythosApi = vi.hoisted(() => ({ getMythosCreature: vi.fn(), createMythosCreature: vi.fn(), editMythosCreature: vi.fn(), deleteMythosCreature: vi.fn(), duplicateMythosCreature: vi.fn() }))
 const listApi = vi.hoisted(() => ({ getNonPlayerEntities: vi.fn() }))
 
 vi.mock('@/shared/hooks/useAccessToken', () => ({ useAccessToken: () => async () => 'token' }))
@@ -144,6 +146,38 @@ describe('Non-Player Entity hooks', () => {
     await act(() => result.current.mutateAsync())
 
     expect(client.getQueryData(nonPlayerEntityQueryKeys.mythosCreature('c1', 'm1'))).toBeUndefined()
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: nonPlayerEntityQueryKeys.list('c1') })
+  })
+
+  it('caches a duplicated Human NPC under its own id, reloads the list, and leaves the source cache alone', async () => {
+    const copy = { id: 'h2', name: 'Mr. Knott (copy)', age: 62 } as HumanNpc
+    humanApi.duplicateHumanNpc.mockResolvedValue(copy)
+    const { client, wrapper } = setup()
+    client.setQueryData(nonPlayerEntityQueryKeys.humanNpc('c1', 'h1'), human)
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
+    const { result } = renderHook(() => useDuplicateHumanNpc('c1', 'h1'), { wrapper })
+
+    await act(() => result.current.mutateAsync())
+
+    expect(humanApi.duplicateHumanNpc).toHaveBeenCalledWith('token', 'c1', 'h1')
+    expect(client.getQueryData(nonPlayerEntityQueryKeys.humanNpc('c1', 'h2'))).toEqual(copy)
+    expect(client.getQueryData(nonPlayerEntityQueryKeys.humanNpc('c1', 'h1'))).toEqual(human)
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: nonPlayerEntityQueryKeys.list('c1') })
+  })
+
+  it('caches a duplicated Mythos Creature under its own id, reloads the list, and leaves the source cache alone', async () => {
+    const copy = { id: 'm2', name: 'Ghoul (copy)' } as MythosCreature
+    mythosApi.duplicateMythosCreature.mockResolvedValue(copy)
+    const { client, wrapper } = setup()
+    client.setQueryData(nonPlayerEntityQueryKeys.mythosCreature('c1', 'm1'), creature)
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
+    const { result } = renderHook(() => useDuplicateMythosCreature('c1', 'm1'), { wrapper })
+
+    await act(() => result.current.mutateAsync())
+
+    expect(mythosApi.duplicateMythosCreature).toHaveBeenCalledWith('token', 'c1', 'm1')
+    expect(client.getQueryData(nonPlayerEntityQueryKeys.mythosCreature('c1', 'm2'))).toEqual(copy)
+    expect(client.getQueryData(nonPlayerEntityQueryKeys.mythosCreature('c1', 'm1'))).toEqual(creature)
     expect(invalidate).toHaveBeenCalledWith({ queryKey: nonPlayerEntityQueryKeys.list('c1') })
   })
 })

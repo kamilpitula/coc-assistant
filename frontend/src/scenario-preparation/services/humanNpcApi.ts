@@ -120,6 +120,20 @@ export async function editHumanNpc(accessToken: string, campaignId: string, huma
   return humanNpcSchema.parse(await response.json())
 }
 
+/** Calls POST .../human-npcs/{humanNpcId}/duplicate, which creates a copy in the same Campaign; the server names it. */
+export async function duplicateHumanNpc(accessToken: string, campaignId: string, humanNpcId: string): Promise<HumanNpc> {
+  const response = await fetch(`${humanNpcsUrl(campaignId)}/${humanNpcId}/duplicate`, {
+    method: 'POST',
+    headers: authHeaders(accessToken),
+  })
+
+  if (!response.ok) {
+    return failNonPlayerEntityWrite(response, 'duplicate the Human NPC')
+  }
+
+  return humanNpcSchema.parse(await response.json())
+}
+
 /** Calls DELETE .../human-npcs/{humanNpcId}. */
 export async function deleteHumanNpc(accessToken: string, campaignId: string, humanNpcId: string): Promise<void> {
   const response = await fetch(`${humanNpcsUrl(campaignId)}/${humanNpcId}`, {

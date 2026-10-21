@@ -63,3 +63,11 @@ export const DeleteDialog: Story = {
     await userEvent.click(within(canvasElement).getByRole('button', { name: 'Delete' }))
   },
 }
+
+/** The access token fails, so Duplicate fails and the alert shows under the actions. */
+export const DuplicateFailed: Story = {
+  args: { humanNpc: gangsterHumanNpc },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Duplicate' }))
+  },
+}
