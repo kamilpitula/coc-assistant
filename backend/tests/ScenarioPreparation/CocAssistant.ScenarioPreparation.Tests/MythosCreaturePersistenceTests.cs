@@ -117,6 +117,30 @@ public class MythosCreaturePersistenceTests : IDisposable
     }
 
     [Fact]
+    public async Task Given_a_duplicated_Mythos_Creature_When_saved_and_loaded_Then_it_is_a_new_row_with_the_same_profile_overrides_included()
+    {
+        var campaignId = Guid.NewGuid();
+        var source = FullCreature(campaignId);
+        var copy = source.Duplicate(MonsterProfileSamples.Now.AddHours(1));
+        using (var context = _fixture.CreateContext())
+        {
+            var repository = new EfMythosCreatureRepository(context);
+            repository.Add(source);
+            repository.Add(copy);
+            await repository.SaveChangesAsync(CancellationToken.None);
+        }
+
+        using var reading = _fixture.CreateContext();
+        var loaded = await new EfMythosCreatureRepository(reading).FindByIdAsync(campaignId, copy.Id, CancellationToken.None);
+
+        Assert.NotNull(loaded);
+        Assert.Equal(("Ghoul (copy)", campaignId), (loaded.Name, loaded.CampaignId));
+        Assert.Equal(MonsterProfileJsonStorage.ToStorage(source.Profile), MonsterProfileJsonStorage.ToStorage(loaded.Profile));
+        Assert.Equal(new NumberOverride(20, "Hungry"), loaded.Profile.Characteristics!.Overrides.MagicPoints);
+        Assert.Equal(2, await reading.MythosCreatures.CountAsync());
+    }
+
+    [Fact]
     public async Task Given_a_changed_profile_When_saved_Then_the_change_is_persisted()
     {
         var campaignId = Guid.NewGuid();

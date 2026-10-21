@@ -65,6 +65,20 @@ public class HumanNpcsController : ScenarioPreparationControllerBase
         return result.Outcome == HumanNpcWriteOutcome.Saved ? Ok(HumanNpcMapping.ToResponse(result.HumanNpc!)) : Failure(result);
     }
 
+    /// <summary>Duplicates a HumanNpc within its Campaign: 201 with the copy, or 404 for every refused caller.</summary>
+    [HttpPost("{humanNpcId:guid}/duplicate")]
+    public async Task<ActionResult<HumanNpcResponse>> Duplicate(Guid campaignId, Guid humanNpcId, CancellationToken cancellationToken)
+    {
+        var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
+        if (accountId is null)
+        {
+            return Unauthorized();
+        }
+
+        var view = await _humanNpcService.DuplicateAsync(campaignId, accountId.Value, humanNpcId, cancellationToken);
+        return view is null ? NotFound() : StatusCode(StatusCodes.Status201Created, HumanNpcMapping.ToResponse(view));
+    }
+
     /// <summary>Deletes a Human NPC.</summary>
     [HttpDelete("{humanNpcId:guid}")]
     public async Task<IActionResult> Delete(Guid campaignId, Guid humanNpcId, CancellationToken cancellationToken)

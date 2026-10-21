@@ -22,12 +22,12 @@ public class MythosCreature
         Profile = MonsterProfile.Empty;
     }
 
-    private MythosCreature(Guid campaignId, string name, DateTimeOffset createdAt)
+    private MythosCreature(Guid campaignId, string name, MonsterProfile profile, DateTimeOffset createdAt)
     {
         Id = Guid.NewGuid();
         CampaignId = campaignId;
         Name = name;
-        Profile = MonsterProfile.Empty;
+        Profile = profile;
         CreatedAt = createdAt;
     }
 
@@ -37,8 +37,14 @@ public class MythosCreature
         var problems = MonsterProfileValidation.Name(name);
         return problems.Count > 0
             ? new MythosCreatureCreation(problems, null)
-            : new MythosCreatureCreation(problems, new MythosCreature(campaignId, name!.Trim(), now));
+            : new MythosCreatureCreation(problems, new MythosCreature(campaignId, name!.Trim(), MonsterProfile.Empty, now));
     }
+
+    /// <summary>
+    /// A new Mythos Creature of the same Campaign with the stored profile as it is and the name from <see cref="ProfileCopyName"/>.
+    /// It never re-validates and copies nothing else (spec.md, Constraints, Duplicate).
+    /// </summary>
+    public MythosCreature Duplicate(DateTimeOffset now) => new(CampaignId, ProfileCopyName.For(Name), Profile, now);
 
     /// <summary>
     /// Replaces the name and the whole profile, or returns the problems and changes nothing. A null section removes it.

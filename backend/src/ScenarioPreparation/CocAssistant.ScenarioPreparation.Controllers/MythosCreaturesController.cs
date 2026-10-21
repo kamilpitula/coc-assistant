@@ -66,6 +66,20 @@ public class MythosCreaturesController : ScenarioPreparationControllerBase
         return result.Outcome == MythosCreatureWriteOutcome.Saved ? Ok(MythosCreatureMapping.ToResponse(result.MythosCreature!)) : Failure(result);
     }
 
+    /// <summary>Duplicates a MythosCreature within its Campaign: 201 with the copy, or 404 for every refused caller.</summary>
+    [HttpPost("{mythosCreatureId:guid}/duplicate")]
+    public async Task<ActionResult<MythosCreatureResponse>> Duplicate(Guid campaignId, Guid mythosCreatureId, CancellationToken cancellationToken)
+    {
+        var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
+        if (accountId is null)
+        {
+            return Unauthorized();
+        }
+
+        var view = await _mythosCreatureService.DuplicateAsync(campaignId, accountId.Value, mythosCreatureId, cancellationToken);
+        return view is null ? NotFound() : StatusCode(StatusCodes.Status201Created, MythosCreatureMapping.ToResponse(view));
+    }
+
     /// <summary>Deletes a Mythos Creature.</summary>
     [HttpDelete("{mythosCreatureId:guid}")]
     public async Task<IActionResult> Delete(Guid campaignId, Guid mythosCreatureId, CancellationToken cancellationToken)

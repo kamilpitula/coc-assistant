@@ -76,6 +76,24 @@ public class HumanNpcService
         return new HumanNpcWriteResult(HumanNpcWriteOutcome.Saved, [], ToView(humanNpc));
     }
 
+    /// <summary>
+    /// Duplicates a HumanNpc within its Campaign for its Keeper; null when the caller is not the Keeper or it is not in this
+    /// Campaign. A duplicate cannot be invalid, so the stored profile is copied as it is (spec.md, Constraints, Duplicate).
+    /// </summary>
+    public async Task<HumanNpcView?> DuplicateAsync(Guid campaignId, Guid callerAccountId, Guid humanNpcId, CancellationToken cancellationToken)
+    {
+        var source = await FindAsync(campaignId, callerAccountId, humanNpcId, cancellationToken);
+        if (source is null)
+        {
+            return null;
+        }
+
+        var copy = source.Duplicate(_timeProvider.GetUtcNow());
+        _humanNpcs.Add(copy);
+        await _humanNpcs.SaveChangesAsync(cancellationToken);
+        return ToView(copy);
+    }
+
     /// <summary>Deletes a Human NPC. Refusing when it is linked to a played Scene arrives with Scene links (PBI-SP-004).</summary>
     public async Task<HumanNpcDeleteOutcome> DeleteAsync(Guid campaignId, Guid callerAccountId, Guid humanNpcId, CancellationToken cancellationToken)
     {
