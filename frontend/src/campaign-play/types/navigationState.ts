@@ -2,6 +2,8 @@
 declare module '@tanstack/react-router' {
   interface HistoryState {
     statusMessage?: string
+    /** Set to put focus on the next page's h1, for example after Duplicate. */
+    focusHeading?: boolean
   }
 }
 

@@ -426,6 +426,7 @@ public class MythosCreatureApiTests : IClassFixture<IdentityApiFactory>, IAsyncL
                     BuildRequest(HttpMethod.Get, CreaturesUri(campaignId, $"/{creatureId}"), oid),
                     BuildRequest(HttpMethod.Put, CreaturesUri(campaignId, $"/{creatureId}"), oid, new { name = "Hacked" }),
                     BuildRequest(HttpMethod.Delete, CreaturesUri(campaignId, $"/{creatureId}"), oid),
+                    BuildRequest(HttpMethod.Post, CreaturesUri(campaignId, $"/{creatureId}/duplicate"), oid),
                 ];
                 foreach (var call in calls)
                 {
@@ -458,8 +459,11 @@ public class MythosCreatureApiTests : IClassFixture<IdentityApiFactory>, IAsyncL
         var get = await client.SendAsync(BuildRequest(HttpMethod.Get, CreaturesUri(campaignId, $"/{otherId}"), "myth-keeper-14"));
         var put = await client.SendAsync(BuildRequest(HttpMethod.Put, CreaturesUri(campaignId, $"/{otherId}"), "myth-keeper-14", new { name = "Hijacked" }));
         var delete = await client.SendAsync(BuildRequest(HttpMethod.Delete, CreaturesUri(campaignId, $"/{otherId}"), "myth-keeper-14"));
+        var duplicate = await client.SendAsync(BuildRequest(HttpMethod.Post, CreaturesUri(campaignId, $"/{otherId}/duplicate"), "myth-keeper-14"));
 
-        Assert.Equal([HttpStatusCode.NotFound, HttpStatusCode.NotFound, HttpStatusCode.NotFound], [get.StatusCode, put.StatusCode, delete.StatusCode]);
+        Assert.Equal(
+            [HttpStatusCode.NotFound, HttpStatusCode.NotFound, HttpStatusCode.NotFound, HttpStatusCode.NotFound],
+            [get.StatusCode, put.StatusCode, delete.StatusCode, duplicate.StatusCode]);
         var untouched = await BodyAsync(await client.SendAsync(BuildRequest(HttpMethod.Get, CreaturesUri(otherCampaignId, $"/{otherId}"), "myth-keeper-14")));
         Assert.Equal("Elsewhere", untouched.GetProperty("name").GetString());
     }
@@ -476,10 +480,75 @@ public class MythosCreatureApiTests : IClassFixture<IdentityApiFactory>, IAsyncL
         var humanAsCreature = await client.SendAsync(BuildRequest(HttpMethod.Get, CreaturesUri(campaignId, $"/{humanId}"), "myth-keeper-15"));
         var creatureAsHuman = await client.SendAsync(BuildRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/human-npcs/{creatureId}", "myth-keeper-15"));
         var deleteHumanAsCreature = await client.SendAsync(BuildRequest(HttpMethod.Delete, CreaturesUri(campaignId, $"/{humanId}"), "myth-keeper-15"));
+        var duplicateHumanAsCreature = await client.SendAsync(BuildRequest(HttpMethod.Post, CreaturesUri(campaignId, $"/{humanId}/duplicate"), "myth-keeper-15"));
 
-        Assert.Equal([HttpStatusCode.NotFound, HttpStatusCode.NotFound, HttpStatusCode.NotFound], [humanAsCreature.StatusCode, creatureAsHuman.StatusCode, deleteHumanAsCreature.StatusCode]);
+        Assert.Equal(
+            [HttpStatusCode.NotFound, HttpStatusCode.NotFound, HttpStatusCode.NotFound, HttpStatusCode.NotFound],
+            [humanAsCreature.StatusCode, creatureAsHuman.StatusCode, deleteHumanAsCreature.StatusCode, duplicateHumanAsCreature.StatusCode]);
         var list = await BodyAsync(await client.SendAsync(BuildRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/non-player-entities", "myth-keeper-15")));
         Assert.Equal(2, list.GetProperty("items").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Given_a_mythos_creature_with_an_override_When_the_keeper_duplicates_it_Then_it_is_201_with_a_new_id_a_copy_name_and_the_same_profile()
+    {
+        var client = _factory.CreateClient();
+        var campaignId = (await CreateCampaignAsync(client, "myth-keeper-20")).Id;
+        var id = await CreateCreatureAsync(client, campaignId, "myth-keeper-20");
+        var characteristics = new
+        {
+            values = new Dictionary<string, int?> { ["STR"] = 80, ["CON"] = 60, ["SIZ"] = 60, ["DEX"] = 60, ["INT"] = 60, ["POW"] = 95 },
+            hitPointsNotApplicable = false,
+            overrides = new { hitPoints = new { value = 40, reason = "Swollen with stolen life" } },
+        };
+        var put = await client.SendAsync(BuildRequest(HttpMethod.Put, CreaturesUri(campaignId, $"/{id}"), "myth-keeper-20", GhoulRequest(characteristics: characteristics, keeperNotes: Json(ValidNotes))));
+        var source = await BodyAsync(put);
+
+        var response = await client.SendAsync(BuildRequest(HttpMethod.Post, CreaturesUri(campaignId, $"/{id}/duplicate"), "myth-keeper-20"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var copy = await BodyAsync(response);
+        Assert.NotEqual(id, copy.GetProperty("id").GetGuid());
+        Assert.Equal("Ghoul (copy)", copy.GetProperty("name").GetString());
+        foreach (var section in new[] { "details", "characteristics", "keeperNotes" })
+        {
+            Assert.Equal(source.GetProperty(section).GetRawText(), copy.GetProperty(section).GetRawText());
+        }
+
+        var hitPoints = copy.GetProperty("characteristics").GetProperty("overrides").GetProperty("hitPoints");
+        Assert.Equal((40, "Swollen with stolen life"), (hitPoints.GetProperty("value").GetInt32(), hitPoints.GetProperty("reason").GetString()));
+        var sourceAfter = await BodyAsync(await client.SendAsync(BuildRequest(HttpMethod.Get, CreaturesUri(campaignId, $"/{id}"), "myth-keeper-20")));
+        Assert.Equal(source.GetRawText(), sourceAfter.GetRawText());
+        var items = (await BodyAsync(await client.SendAsync(BuildRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/non-player-entities", "myth-keeper-20")))).GetProperty("items");
+        Assert.Equal(["Ghoul", "Ghoul (copy)"], items.EnumerateArray().Select(item => item.GetProperty("name").GetString()).Order());
+    }
+
+    [Fact]
+    public async Task Given_a_mythos_creature_named_with_200_characters_When_duplicating_Then_the_copy_name_is_200_characters_ending_in_copy()
+    {
+        var client = _factory.CreateClient();
+        var campaignId = (await CreateCampaignAsync(client, "myth-keeper-21")).Id;
+        var id = await CreateCreatureAsync(client, campaignId, "myth-keeper-21", new string('g', 200));
+
+        var response = await client.SendAsync(BuildRequest(HttpMethod.Post, CreaturesUri(campaignId, $"/{id}/duplicate"), "myth-keeper-21"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var name = (await BodyAsync(response)).GetProperty("name").GetString()!;
+        Assert.Equal(200, name.Length);
+        Assert.EndsWith(" (copy)", name);
+    }
+
+    [Fact]
+    public async Task Given_a_missing_id_When_the_keeper_duplicates_Then_it_is_404_and_nothing_is_added()
+    {
+        var client = _factory.CreateClient();
+        var campaignId = (await CreateCampaignAsync(client, "myth-keeper-22")).Id;
+
+        var response = await client.SendAsync(BuildRequest(HttpMethod.Post, CreaturesUri(campaignId, $"/{Guid.NewGuid()}/duplicate"), "myth-keeper-22"));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var list = await BodyAsync(await client.SendAsync(BuildRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/non-player-entities", "myth-keeper-22")));
+        Assert.Empty(list.GetProperty("items").EnumerateArray());
     }
 
     [Fact]

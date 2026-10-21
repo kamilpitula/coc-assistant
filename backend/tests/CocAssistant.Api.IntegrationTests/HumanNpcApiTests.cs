@@ -340,6 +340,7 @@ public class HumanNpcApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetim
                     BuildRequest(HttpMethod.Get, HumanNpcsUri(campaignId, $"/{humanNpcId}"), oid),
                     BuildRequest(HttpMethod.Put, HumanNpcsUri(campaignId, $"/{humanNpcId}"), oid, new { name = "Hacked", age = 1 }),
                     BuildRequest(HttpMethod.Delete, HumanNpcsUri(campaignId, $"/{humanNpcId}"), oid),
+                    BuildRequest(HttpMethod.Post, HumanNpcsUri(campaignId, $"/{humanNpcId}/duplicate"), oid),
                 ];
                 foreach (var call in calls)
                 {
@@ -376,10 +377,80 @@ public class HumanNpcApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetim
         var get = await client.SendAsync(BuildRequest(HttpMethod.Get, HumanNpcsUri(campaignId, $"/{otherId}"), "npc-keeper-12"));
         var put = await client.SendAsync(BuildRequest(HttpMethod.Put, HumanNpcsUri(campaignId, $"/{otherId}"), "npc-keeper-12", new { name = "Hijacked", age = 1 }));
         var delete = await client.SendAsync(BuildRequest(HttpMethod.Delete, HumanNpcsUri(campaignId, $"/{otherId}"), "npc-keeper-12"));
+        var duplicate = await client.SendAsync(BuildRequest(HttpMethod.Post, HumanNpcsUri(campaignId, $"/{otherId}/duplicate"), "npc-keeper-12"));
 
-        Assert.Equal([HttpStatusCode.NotFound, HttpStatusCode.NotFound, HttpStatusCode.NotFound], [get.StatusCode, put.StatusCode, delete.StatusCode]);
+        Assert.Equal(
+            [HttpStatusCode.NotFound, HttpStatusCode.NotFound, HttpStatusCode.NotFound, HttpStatusCode.NotFound],
+            [get.StatusCode, put.StatusCode, delete.StatusCode, duplicate.StatusCode]);
         var untouched = await BodyAsync(await client.SendAsync(BuildRequest(HttpMethod.Get, HumanNpcsUri(otherCampaignId, $"/{otherId}"), "npc-keeper-12")));
         Assert.Equal("Elsewhere", untouched.GetProperty("name").GetString());
+    }
+
+    [Fact]
+    public async Task Given_a_human_npc_with_a_full_profile_When_the_keeper_duplicates_it_Then_it_is_201_with_a_new_id_a_copy_name_and_the_same_profile()
+    {
+        var client = _factory.CreateClient();
+        var campaignId = (await CreateCampaignAsync(client, "npc-keeper-20")).Id;
+        var id = await CreateHumanNpcAsync(client, campaignId, "npc-keeper-20", "Mr. Knott", 62);
+        var put = await client.SendAsync(BuildRequest(HttpMethod.Put, HumanNpcsUri(campaignId, $"/{id}"), "npc-keeper-20", ThugRequest(keeperNotes: Json(ValidNotes))));
+        var source = await BodyAsync(put);
+
+        var response = await client.SendAsync(BuildRequest(HttpMethod.Post, HumanNpcsUri(campaignId, $"/{id}/duplicate"), "npc-keeper-20"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var copy = await BodyAsync(response);
+        Assert.NotEqual(id, copy.GetProperty("id").GetGuid());
+        Assert.Equal("Thug (copy)", copy.GetProperty("name").GetString());
+        foreach (var section in new[] { "age", "details", "characteristics", "keeperNotes" })
+        {
+            Assert.Equal(source.GetProperty(section).GetRawText(), copy.GetProperty(section).GetRawText());
+        }
+
+        var sourceAfter = await BodyAsync(await client.SendAsync(BuildRequest(HttpMethod.Get, HumanNpcsUri(campaignId, $"/{id}"), "npc-keeper-20")));
+        Assert.Equal(source.GetRawText(), sourceAfter.GetRawText());
+        var items = (await BodyAsync(await client.SendAsync(BuildRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/non-player-entities", "npc-keeper-20")))).GetProperty("items");
+        Assert.Equal(["Thug", "Thug (copy)"], items.EnumerateArray().Select(item => item.GetProperty("name").GetString()).Order());
+    }
+
+    [Fact]
+    public async Task Given_a_human_npc_named_with_200_characters_When_duplicating_Then_the_copy_name_is_200_characters_ending_in_copy()
+    {
+        var client = _factory.CreateClient();
+        var campaignId = (await CreateCampaignAsync(client, "npc-keeper-21")).Id;
+        var id = await CreateHumanNpcAsync(client, campaignId, "npc-keeper-21", new string('n', 200), 40);
+
+        var response = await client.SendAsync(BuildRequest(HttpMethod.Post, HumanNpcsUri(campaignId, $"/{id}/duplicate"), "npc-keeper-21"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var name = (await BodyAsync(response)).GetProperty("name").GetString()!;
+        Assert.Equal(200, name.Length);
+        Assert.EndsWith(" (copy)", name);
+    }
+
+    [Fact]
+    public async Task Given_a_mythos_creature_id_on_the_human_npc_duplicate_route_When_the_keeper_uses_it_Then_it_is_404_and_nothing_is_added()
+    {
+        var client = _factory.CreateClient();
+        var campaignId = (await CreateCampaignAsync(client, "npc-keeper-22")).Id;
+        var creature = await client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/mythos-creatures", "npc-keeper-22", new { name = "Ghoul" }));
+        var creatureId = (await BodyAsync(creature)).GetProperty("id").GetGuid();
+
+        var duplicate = await client.SendAsync(BuildRequest(HttpMethod.Post, HumanNpcsUri(campaignId, $"/{creatureId}/duplicate"), "npc-keeper-22"));
+
+        Assert.Equal(HttpStatusCode.NotFound, duplicate.StatusCode);
+        var list = await BodyAsync(await client.SendAsync(BuildRequest(HttpMethod.Get, $"/api/campaigns/{campaignId}/non-player-entities", "npc-keeper-22")));
+        Assert.Single(list.GetProperty("items").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Given_a_missing_id_When_the_keeper_duplicates_a_human_npc_Then_it_is_404()
+    {
+        var client = _factory.CreateClient();
+        var campaignId = (await CreateCampaignAsync(client, "npc-keeper-23")).Id;
+
+        var response = await client.SendAsync(BuildRequest(HttpMethod.Post, HumanNpcsUri(campaignId, $"/{Guid.NewGuid()}/duplicate"), "npc-keeper-23"));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]

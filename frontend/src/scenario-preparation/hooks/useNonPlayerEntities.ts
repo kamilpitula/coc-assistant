@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { createHumanNpc, deleteHumanNpc, editHumanNpc, getHumanNpc } from '@/scenario-preparation/services/humanNpcApi'
-import { createMythosCreature, deleteMythosCreature, editMythosCreature, getMythosCreature } from '@/scenario-preparation/services/mythosCreatureApi'
+import { createHumanNpc, deleteHumanNpc, duplicateHumanNpc, editHumanNpc, getHumanNpc } from '@/scenario-preparation/services/humanNpcApi'
+import { createMythosCreature, deleteMythosCreature, duplicateMythosCreature, editMythosCreature, getMythosCreature } from '@/scenario-preparation/services/mythosCreatureApi'
 import { getNonPlayerEntities, nonPlayerEntityQueryKeys } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import type { HumanNpcInput } from '@/scenario-preparation/types/HumanNpc'
 import type { MythosCreatureInput } from '@/scenario-preparation/types/MythosCreature'
@@ -57,6 +57,20 @@ export function useEditHumanNpc(campaignId: string, humanNpcId: string) {
   })
 }
 
+/** Duplicates a Human NPC; the copy is cached under its own id, the source cache stays, and the list reloads. */
+export function useDuplicateHumanNpc(campaignId: string, humanNpcId: string) {
+  const getAccessToken = useAccessToken()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => duplicateHumanNpc(await getAccessToken(), campaignId, humanNpcId),
+    onSuccess: (copy) => {
+      queryClient.setQueryData(nonPlayerEntityQueryKeys.humanNpc(campaignId, copy.id), copy)
+      return queryClient.invalidateQueries({ queryKey: nonPlayerEntityQueryKeys.list(campaignId) })
+    },
+  })
+}
+
 /** Deletes a Human NPC; its cache entry goes and the list reloads. */
 export function useDeleteHumanNpc(campaignId: string, humanNpcId: string) {
   const getAccessToken = useAccessToken()
@@ -105,6 +119,20 @@ export function useEditMythosCreature(campaignId: string, mythosCreatureId: stri
     mutationFn: async (input: MythosCreatureInput) => editMythosCreature(await getAccessToken(), campaignId, mythosCreatureId, input),
     onSuccess: (mythosCreature) => {
       queryClient.setQueryData(nonPlayerEntityQueryKeys.mythosCreature(campaignId, mythosCreatureId), mythosCreature)
+      return queryClient.invalidateQueries({ queryKey: nonPlayerEntityQueryKeys.list(campaignId) })
+    },
+  })
+}
+
+/** Duplicates a Mythos Creature; the copy is cached under its own id, the source cache stays, and the list reloads. */
+export function useDuplicateMythosCreature(campaignId: string, mythosCreatureId: string) {
+  const getAccessToken = useAccessToken()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => duplicateMythosCreature(await getAccessToken(), campaignId, mythosCreatureId),
+    onSuccess: (copy) => {
+      queryClient.setQueryData(nonPlayerEntityQueryKeys.mythosCreature(campaignId, copy.id), copy)
       return queryClient.invalidateQueries({ queryKey: nonPlayerEntityQueryKeys.list(campaignId) })
     },
   })

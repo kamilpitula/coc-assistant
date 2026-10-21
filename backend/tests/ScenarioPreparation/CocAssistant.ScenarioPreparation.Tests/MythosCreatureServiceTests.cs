@@ -163,4 +163,73 @@ public class MythosCreatureServiceTests : IDisposable
         Assert.Equal(MythosCreatureDeleteOutcome.NotFound, delete);
         Assert.Equal(1, await _builder.StoredHumanNpcCountAsync());
     }
+
+    private async Task<MythosCreatureView?> DuplicateAsync(Guid campaignId, Guid callerAccountId, Guid id, IMythosCreatureRepository? repository = null)
+    {
+        using var context = _builder.Fixture.CreateContext();
+        return await _builder.CreateMythosCreatureService(context, repository).DuplicateAsync(campaignId, callerAccountId, id, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Given_the_Keeper_When_duplicating_a_MythosCreature_Then_the_copy_is_stored_with_a_copy_name_and_the_source_is_unchanged()
+    {
+        var source = await _builder.CreateMythosCreatureAsync(_builder.CampaignId, "Ghoul");
+
+        var copy = await DuplicateAsync(_builder.CampaignId, ScenarioPreparationTestBuilder.KeeperAccountId, source.Id);
+
+        Assert.NotNull(copy);
+        Assert.NotEqual(source.Id, copy.Id);
+        Assert.Equal("Ghoul (copy)", copy.Name);
+        Assert.Equal(2, await _builder.StoredMythosCreatureCountAsync());
+        var stored = await GetAsync(_builder.CampaignId, ScenarioPreparationTestBuilder.KeeperAccountId, copy.Id);
+        Assert.Equal("Ghoul (copy)", stored!.Name);
+        var original = await GetAsync(_builder.CampaignId, ScenarioPreparationTestBuilder.KeeperAccountId, source.Id);
+        Assert.Equal("Ghoul", original!.Name);
+    }
+
+    [Fact]
+    public async Task Given_the_Keeper_When_duplicating_Then_the_copy_is_added_and_saved_once()
+    {
+        var source = await _builder.CreateMythosCreatureAsync(_builder.CampaignId, "Ghoul");
+        using var context = _builder.Fixture.CreateContext();
+        var recording = new RecordingMythosCreatureRepository(new EfMythosCreatureRepository(context));
+
+        var copy = await _builder.CreateMythosCreatureService(context, recording).DuplicateAsync(_builder.CampaignId, ScenarioPreparationTestBuilder.KeeperAccountId, source.Id, CancellationToken.None);
+
+        Assert.NotNull(copy);
+        Assert.Equal([nameof(IMythosCreatureRepository.FindByIdAsync), nameof(IMythosCreatureRepository.Add), nameof(IMythosCreatureRepository.SaveChangesAsync)], recording.Calls);
+    }
+
+    [Theory]
+    [MemberData(nameof(RefusedCallers))]
+    public async Task Given_a_caller_who_is_not_the_Keeper_When_duplicating_Then_the_result_is_null_and_nothing_is_added_or_saved(string caller)
+    {
+        var source = await _builder.CreateMythosCreatureAsync(_builder.CampaignId, "Ghoul");
+        var (campaignId, accountId) = Caller(caller);
+        using var context = _builder.Fixture.CreateContext();
+        var recording = new RecordingMythosCreatureRepository(new EfMythosCreatureRepository(context));
+
+        var copy = await _builder.CreateMythosCreatureService(context, recording).DuplicateAsync(campaignId, accountId, source.Id, CancellationToken.None);
+
+        Assert.Null(copy);
+        Assert.Empty(recording.Calls);
+        Assert.Equal(1, await _builder.StoredMythosCreatureCountAsync());
+    }
+
+    [Fact]
+    public async Task Given_a_MythosCreature_of_another_Campaign_a_missing_id_or_the_other_type_When_the_Keeper_duplicates_Then_each_is_null_and_nothing_is_added()
+    {
+        var elsewhere = await _builder.CreateMythosCreatureAsync(_builder.OtherCampaignOfSameKeeperId, "Elsewhere");
+        var otherType = await _builder.CreateHumanNpcAsync(_builder.CampaignId, "Mr. Knott", 62);
+
+        var otherCampaign = await DuplicateAsync(_builder.CampaignId, ScenarioPreparationTestBuilder.KeeperAccountId, elsewhere.Id);
+        var missing = await DuplicateAsync(_builder.CampaignId, ScenarioPreparationTestBuilder.KeeperAccountId, Guid.NewGuid());
+        var wrongType = await DuplicateAsync(_builder.CampaignId, ScenarioPreparationTestBuilder.KeeperAccountId, otherType.Id);
+
+        Assert.Null(otherCampaign);
+        Assert.Null(missing);
+        Assert.Null(wrongType);
+        Assert.Equal(1, await _builder.StoredMythosCreatureCountAsync());
+        Assert.Equal(1, await _builder.StoredHumanNpcCountAsync());
+    }
 }

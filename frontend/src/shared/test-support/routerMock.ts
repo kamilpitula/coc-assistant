@@ -7,7 +7,7 @@ import { vi } from 'vitest'
  */
 export const navigateSpy = vi.fn()
 
-export const routerState = { location: { state: {} as { statusMessage?: string } } }
+export const routerState = { location: { state: {} as { statusMessage?: string; focusHeading?: boolean } } }
 
 function resolvePath(to: string, params: Record<string, string> = {}): string {
   return Object.entries(params).reduce((path, [name, value]) => path.replace(`$${name}`, value), to)

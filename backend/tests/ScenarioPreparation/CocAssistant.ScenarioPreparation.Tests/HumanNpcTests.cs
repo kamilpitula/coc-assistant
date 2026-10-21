@@ -153,4 +153,32 @@ public class HumanNpcTests
         Assert.Equal(["STR", "CON", "DEX", "APP", "POW", "SIZ", "INT", "EDU"], human.Profile.Characteristics!.Values.Keys);
         Assert.Equal((60, 80, (int?)null), (human.Profile.Characteristics.Values["STR"], human.Profile.Characteristics.Values["EDU"], human.Profile.Characteristics.Values["CON"]));
     }
+
+    [Fact]
+    public void Given_a_Human_NPC_with_a_full_profile_When_duplicating_Then_the_copy_is_a_new_one_with_the_same_Campaign_profile_and_a_copy_name()
+    {
+        var source = NpcProfileSamples.HumanNpc("Mr. Knott");
+        Assert.Empty(source.Edit("Mr. Knott", NpcProfileSamples.Thug(), NpcProfileSamples.Specializations));
+        var storedBefore = HumanNpcProfileJsonStorage.ToStorage(source.Profile);
+        var later = NpcProfileSamples.Now.AddHours(2);
+
+        var copy = source.Duplicate(later);
+
+        Assert.NotEqual(source.Id, copy.Id);
+        Assert.NotEqual(Guid.Empty, copy.Id);
+        Assert.Equal(("Mr. Knott (copy)", NpcProfileSamples.CampaignId, later), (copy.Name, copy.CampaignId, copy.CreatedAt));
+        Assert.Equal(storedBefore, HumanNpcProfileJsonStorage.ToStorage(copy.Profile));
+        Assert.Equal(("Mr. Knott", NpcProfileSamples.Now, storedBefore), (source.Name, source.CreatedAt, HumanNpcProfileJsonStorage.ToStorage(source.Profile)));
+    }
+
+    [Fact]
+    public void Given_a_name_of_200_characters_When_duplicating_Then_the_copy_name_fits_200_and_ends_with_the_suffix()
+    {
+        var source = NpcProfileSamples.HumanNpc(NpcProfileSamples.LongText(200));
+
+        var copy = source.Duplicate(NpcProfileSamples.Now);
+
+        Assert.Equal(200, copy.Name.Length);
+        Assert.EndsWith(" (copy)", copy.Name);
+    }
 }

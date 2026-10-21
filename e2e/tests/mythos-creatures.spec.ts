@@ -23,13 +23,13 @@ import { campaignNav } from '../fixtures/overview'
  * Traces to specs/scenario-preparation/spec.md Scenarios "Keeper creates a Mythos Creature", "Keeper finds a profile in
  * the list" (Mythos Creature part), "Malformed dice notation is refused", "A Derived Value Override needs a reason",
  * "A Mythos Creature's firearm attack cannot add Damage Bonus", "Hit Points not applicable needs a defeat outcome", "Keeper
- * deletes an unlinked profile" (Mythos Creature part), and "Non-Player Entity profiles are the Keeper's alone" (Mythos
- * Creature part), and to specs/scenario-preparation/ux.md SP-UX-29, SP-UX-31 to SP-UX-33, SP-UX-35 to SP-UX-37,
- * SP-UX-39, SP-UX-41, SP-UX-45 to SP-UX-48, SP-A11Y-20, and SP-A11Y-28.
+ * deletes an unlinked profile" (Mythos Creature part), "Keeper duplicates a profile" (Mythos Creature part), and
+ * "Non-Player Entity profiles are the Keeper's alone" (Mythos Creature part), and to specs/scenario-preparation/ux.md SP-UX-29, SP-UX-31 to SP-UX-33, SP-UX-35 to SP-UX-37,
+ * SP-UX-38, SP-UX-39, SP-UX-41, SP-UX-45 to SP-UX-48, SP-A11Y-20, SP-A11Y-22, and SP-A11Y-28.
  *
- * Exceptions: SP-UX-38 (Duplicate) belongs to PBI-SP-010. SP-UX-34 (the 100-row limit), SP-UX-40 (double activation),
- * SP-UX-49 (APP and EDU), and the override range edges are covered by component and unit tests, where an end-to-end run
- * would only repeat them slowly.
+ * Exceptions: SP-UX-34 (the 100-row limit), SP-UX-40 (double activation), SP-UX-49 (APP and EDU), and the override
+ * range edges are covered by component and unit tests, where an end-to-end run would only repeat them slowly. The
+ * scenario line "linked to no Scene" waits for Scene links (PBI-SP-004).
  */
 test.describe('Mythos Creatures', () => {
   test('Keeper creates a Mythos Creature and finds it in the list', async ({ page }) => {
@@ -288,6 +288,37 @@ test.describe('Mythos Creatures', () => {
     })
   })
 
+  test('Keeper duplicates a Mythos Creature with its override', async ({ page }) => {
+    const keeper = newAccount('Keeper')
+    await signIn(page, keeper)
+    const campaignId = await createCampaignViaUi(page, `Copy ${keeper.oid.slice(0, 6)}`)
+    const sourceId = await createMythosCreatureViaUi(page, campaignId, 'Ghoul')
+    await openEditor(page)
+    await page.getByRole('button', { name: 'Add Characteristics' }).click()
+    await page.getByLabel('CON Constitution').fill('60')
+    await page.getByLabel('SIZ Size').fill('60')
+    await page.getByRole('radio', { name: 'Override', exact: true }).click()
+    await page.getByLabel('Hit Points', { exact: true }).fill('25')
+    await page.getByLabel('Reason for the Hit Points override').fill('Swollen with stolen life')
+    await saveMythosCreatureEditor(page)
+
+    await test.step('SP-UX-38: Duplicate opens the copy with its status, its heading focused, and the same override', async () => {
+      await page.getByRole('button', { name: 'Duplicate', exact: true }).click()
+      await expect(page.getByRole('heading', { level: 1, name: 'Ghoul (copy)' })).toBeVisible()
+      expect(mythosCreatureIdFromUrl(page)).not.toBe(sourceId)
+      await expect(page.getByRole('status').filter({ hasText: "Copy created. It isn't part of any Scene." })).toBeVisible()
+      await expect(page.getByRole('heading', { level: 1, name: 'Ghoul (copy)' })).toBeFocused()
+      await expect(page.getByText('25 (computed 12)')).toBeVisible()
+      await expect(page.getByText('Reason: Swollen with stolen life')).toBeVisible()
+      await expect(campaignNav(page).getByRole('link', { name: 'Overview', exact: true })).toHaveAttribute('aria-current', 'page')
+    })
+
+    await test.step('SP-UX-29: the list shows the source and the copy', async () => {
+      await page.goto(`/campaigns/${campaignId}/non-player-entities`)
+      await expect(nonPlayerEntityLinks(page)).toHaveText(['Ghoul', 'Ghoul (copy)'])
+    })
+  })
+
   test("Players and other Keepers can't see Mythos Creatures", async ({ page, browser }) => {
     const keeper = newAccount('Keeper')
     await signIn(page, keeper)
@@ -306,7 +337,7 @@ test.describe('Mythos Creatures', () => {
         await expect(player.page.getByText('Hidden horror')).toHaveCount(0)
       })
 
-      await test.step("the Player's bearer gets 404 on GET, PUT, DELETE, and POST", async () => {
+      await test.step("the Player's bearer gets 404 on GET, PUT, DELETE, POST, and duplicate", async () => {
         const bearer = await openAndCaptureBearer(player.page, `/campaigns/${campaignId}`)
         await expectAllNotFound(player.page, bearer, campaignId, mythosCreatureId)
       })
@@ -324,6 +355,11 @@ test.describe('Mythos Creatures', () => {
         await page.goto(`/campaigns/${campaignId}/mythos-creatures/${humanNpcId}`)
         await expect(page.getByRole('heading', { level: 1, name: "We couldn't find that Non-Player Entity" })).toBeVisible()
       })
+
+      await test.step("the refused duplicates added nothing: the Keeper's list still has two profiles", async () => {
+        await page.goto(`/campaigns/${campaignId}/non-player-entities`)
+        await expect(nonPlayerEntityLinks(page)).toHaveText(['Hidden horror', 'Secret informant'])
+      })
     } finally {
       await player.context.close()
       await otherKeeper.context.close()
@@ -340,6 +376,8 @@ async function expectAllNotFound(page: Page, bearer: string, campaignId: string,
     await page.request.put(mythosCreaturesApiUrl(API_ORIGIN, campaignId, `/${mythosCreatureId}`), { headers, data: { name: 'Intruder' } }),
     await page.request.delete(mythosCreaturesApiUrl(API_ORIGIN, campaignId, `/${mythosCreatureId}`), { headers }),
     await page.request.get(humanNpcsApiUrl(API_ORIGIN, campaignId, `/${mythosCreatureId}`), { headers }),
+    await page.request.post(mythosCreaturesApiUrl(API_ORIGIN, campaignId, `/${mythosCreatureId}/duplicate`), { headers }),
+    await page.request.post(humanNpcsApiUrl(API_ORIGIN, campaignId, `/${mythosCreatureId}/duplicate`), { headers }),
   ]
-  expect(responses.map((response) => response.status())).toEqual([404, 404, 404, 404, 404, 404])
+  expect(responses.map((response) => response.status())).toEqual([404, 404, 404, 404, 404, 404, 404, 404])
 }

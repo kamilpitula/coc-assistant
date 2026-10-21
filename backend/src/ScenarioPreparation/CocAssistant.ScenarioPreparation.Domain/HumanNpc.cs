@@ -41,6 +41,12 @@ public class HumanNpc
     }
 
     /// <summary>
+    /// A new Human NPC of the same Campaign with the stored profile as it is and the name from <see cref="ProfileCopyName"/>.
+    /// It never re-validates and copies nothing else (spec.md, Constraints, Duplicate).
+    /// </summary>
+    public HumanNpc Duplicate(DateTimeOffset now) => new(CampaignId, ProfileCopyName.For(Name), Profile, now);
+
+    /// <summary>
     /// Replaces the name and the whole profile, or returns the problems and changes nothing. A null section removes it.
     /// </summary>
     public IReadOnlyList<NpcProfileProblem> Edit(string? name, NpcProfile profile, CombatSkillSpecializations specializations)

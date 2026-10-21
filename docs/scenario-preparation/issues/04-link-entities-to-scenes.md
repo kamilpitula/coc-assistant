@@ -31,6 +31,7 @@ Read: `docs/adr/0015-store-rich-text-as-validated-lexical-json.md`.
 - [ ] Entities from another Campaign are unavailable and rejected by the API.
 - [ ] Linked Mythos Creatures retain attacks, armor, special abilities, and sanity loss in Scene results.
 - [ ] Deleting a Non-Player Entity linked to an Active or Finished Scene is refused.
+- [ ] Duplicating a Non-Player Entity linked to a Scene creates a copy with no Scene links (spec scenario "Keeper duplicates a profile"; deferred from PBI-SP-010).
 
 ## Refinement Protocol
 If relationship cardinality or deletion behavior is unclear, clarify the Blueprint before implementation. Keep Non-Player Entities scoped to one Campaign and reusable across Scenes only within that Campaign. The profile never becomes Player-visible.

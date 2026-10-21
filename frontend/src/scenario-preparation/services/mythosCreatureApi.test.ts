@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { NonPlayerEntityNotFoundError, NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import type { MythosCreatureInput } from '@/scenario-preparation/types/MythosCreature'
 
-import { createMythosCreature, deleteMythosCreature, editMythosCreature, getMythosCreature } from './mythosCreatureApi'
+import { createMythosCreature, deleteMythosCreature, duplicateMythosCreature, editMythosCreature, getMythosCreature } from './mythosCreatureApi'
 
 const details = {
   creatureKind: 'Mythos',
@@ -140,5 +140,25 @@ describe('mythosCreatureApi', () => {
     await expect(deleteMythosCreature('t', 'c1', 'm1')).rejects.toBeInstanceOf(NonPlayerEntityNotFoundError)
     respond(500)
     await expect(deleteMythosCreature('t', 'c1', 'm1')).rejects.toThrow('Failed to delete the Mythos Creature (500)')
+  })
+
+  it('posts to the duplicate route with no body and reads the copy with its overrides', async () => {
+    const fetchSpy = respond(201, { ...full, id: 'm2', name: 'Ghoul (copy)' })
+
+    const copy = await duplicateMythosCreature('t', 'c1', 'm1')
+
+    expect(copy.id).toBe('m2')
+    expect(copy.characteristics?.overrides.hitPoints).toEqual({ value: 40, reason: 'Swollen' })
+    const [url, init] = fetchSpy.mock.calls[0]
+    expect(url).toBe('/api/campaigns/c1/mythos-creatures/m1/duplicate')
+    expect(init).toEqual(expect.objectContaining({ method: 'POST', headers: expect.objectContaining({ Authorization: 'Bearer t' }) }))
+    expect(init).not.toHaveProperty('body')
+  })
+
+  it('maps a duplicate 404 to not found and other failures to a plain error', async () => {
+    respond(404)
+    await expect(duplicateMythosCreature('t', 'c1', 'm1')).rejects.toBeInstanceOf(NonPlayerEntityNotFoundError)
+    respond(500)
+    await expect(duplicateMythosCreature('t', 'c1', 'm1')).rejects.toThrow('500')
   })
 })

@@ -1,6 +1,6 @@
 ---
 id: PBI-SP-010
-status: todo
+status: done
 blocked_by: [PBI-SP-003, PBI-SP-009]
 ---
 
@@ -28,10 +28,12 @@ Read: `docs/game-rules/project_ruleset.md` section 5.1.
 Read: `specs/scenario-preparation/ux.md` section 25.3 (Duplicate) and SP-UX-38.
 
 ## Verification
-- [ ] A Keeper can duplicate a Human NPC and a Mythos Creature; the copy has the same type, Campaign, and profile, and no Scene links.
-- [ ] Duplicating a profile of another Campaign or as a Player is reported as not found, with unit, integration, and E2E coverage.
+- [x] A Keeper can duplicate a Human NPC and a Mythos Creature; the copy has the same type, Campaign, and profile, and no Scene links.
+- [x] Duplicating a profile of another Campaign or as a Player is reported as not found, with unit, integration, and E2E coverage.
 
 ## Refinement Protocol
 If duplication should cover Scene links or other Campaigns, update the spec Constraints first; Non-Player Entities stay scoped to one Campaign in v1.
 
 ## Follow-ups
+- Duplicating a profile linked to a Scene copies no links (spec scenario "Keeper duplicates a profile"); verify once links exist -> PBI-SP-004
+- Run the Storybook accessibility checks on the new `DuplicateFailed` stories (320px reflow, SP-A11Y-26); the stories were written but Storybook was not run in this pass.

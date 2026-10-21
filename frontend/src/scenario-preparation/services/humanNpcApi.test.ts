@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { NonPlayerEntityNotFoundError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import type { HumanNpcInput } from '@/scenario-preparation/types/HumanNpc'
 
-import { createHumanNpc, deleteHumanNpc, editHumanNpc, getHumanNpc } from './humanNpcApi'
+import { createHumanNpc, deleteHumanNpc, duplicateHumanNpc, editHumanNpc, getHumanNpc } from './humanNpcApi'
 import { NonPlayerEntityValidationError } from './nonPlayerEntityApi'
 
 const details = {
@@ -99,5 +99,25 @@ describe('humanNpcApi', () => {
     await expect(deleteHumanNpc('t', 'c1', 'h1')).rejects.toBeInstanceOf(NonPlayerEntityNotFoundError)
     respond(500)
     await expect(deleteHumanNpc('t', 'c1', 'h1')).rejects.toThrow('500')
+  })
+
+  it('posts to the duplicate route with no body and reads the copy', async () => {
+    const fetchSpy = respond(201, { ...full, id: 'h2', name: 'Mr. Knott (copy)' })
+
+    const copy = await duplicateHumanNpc('t', 'c1', 'h1')
+
+    expect(copy.id).toBe('h2')
+    expect(copy.skills?.[0].difficulty).toBe('Hard')
+    const [url, init] = fetchSpy.mock.calls[0]
+    expect(url).toBe('/api/campaigns/c1/human-npcs/h1/duplicate')
+    expect(init).toEqual(expect.objectContaining({ method: 'POST', headers: expect.objectContaining({ Authorization: 'Bearer t' }) }))
+    expect(init).not.toHaveProperty('body')
+  })
+
+  it('maps a duplicate 404 to not found and other failures to a plain error', async () => {
+    respond(404)
+    await expect(duplicateHumanNpc('t', 'c1', 'h1')).rejects.toBeInstanceOf(NonPlayerEntityNotFoundError)
+    respond(500)
+    await expect(duplicateHumanNpc('t', 'c1', 'h1')).rejects.toThrow('500')
   })
 })

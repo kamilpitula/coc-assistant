@@ -81,4 +81,34 @@ public class MythosCreatureTests
 
         Assert.Equal(MonsterProfile.Empty, creature.Profile);
     }
+
+    [Fact]
+    public void Given_a_Mythos_Creature_with_overrides_When_duplicating_Then_the_copy_keeps_every_override_and_reason_under_a_copy_name()
+    {
+        var source = MonsterProfileSamples.MythosCreature();
+        var overrides = MonsterOverrides.None with { HitPoints = new NumberOverride(25, "Swollen with stolen life") };
+        Assert.Empty(source.Edit("Ghoul", MonsterProfileSamples.WithCharacteristics(MonsterProfileSamples.WithOverrides(overrides))));
+        var storedBefore = MonsterProfileJsonStorage.ToStorage(source.Profile);
+        var later = MonsterProfileSamples.Now.AddHours(2);
+
+        var copy = source.Duplicate(later);
+
+        Assert.NotEqual(source.Id, copy.Id);
+        Assert.NotEqual(Guid.Empty, copy.Id);
+        Assert.Equal(("Ghoul (copy)", MonsterProfileSamples.CampaignId, later), (copy.Name, copy.CampaignId, copy.CreatedAt));
+        Assert.Equal(new NumberOverride(25, "Swollen with stolen life"), copy.Profile.Characteristics!.Overrides.HitPoints);
+        Assert.Equal(storedBefore, MonsterProfileJsonStorage.ToStorage(copy.Profile));
+        Assert.Equal(("Ghoul", MonsterProfileSamples.Now, storedBefore), (source.Name, source.CreatedAt, MonsterProfileJsonStorage.ToStorage(source.Profile)));
+    }
+
+    [Fact]
+    public void Given_a_name_of_200_characters_When_duplicating_Then_the_copy_name_fits_200_and_ends_with_the_suffix()
+    {
+        var source = MonsterProfileSamples.MythosCreature(MonsterProfileSamples.LongText(200));
+
+        var copy = source.Duplicate(MonsterProfileSamples.Now);
+
+        Assert.Equal(200, copy.Name.Length);
+        Assert.EndsWith(" (copy)", copy.Name);
+    }
 }
