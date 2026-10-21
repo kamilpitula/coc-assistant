@@ -146,7 +146,7 @@ public class ScenesController : ScenarioPreparationControllerBase
             SceneWriteOutcome.InvalidKeeperNotes => Invalid(
                 "keeperNotes",
                 $"The Keeper notes must use only the allowed rich-text nodes and be at most {RichTextDocument.MaxBytes} bytes."),
-            SceneWriteOutcome.Finished => Problem(statusCode: StatusCodes.Status409Conflict, title: "A Finished Scene can't be changed."),
+            SceneWriteOutcome.Finished => Problem(statusCode: StatusCodes.Status409Conflict, title: SceneProblemTitles.Finished),
             _ => NotFound(),
         };
 
@@ -162,16 +162,13 @@ public class ScenesController : ScenarioPreparationControllerBase
     private static SceneListResponse ToListResponse(IReadOnlyList<SceneSummaryView> views) => new(views.Select(ToSummaryResponse).ToList());
 
     private static SceneResponse ToResponse(SceneDetailView view) =>
-        new(view.Id, view.Title, view.Location, ParseNotes(view.KeeperNotes), view.Status.ToString(), view.StartedAt, view.FinishedAt);
-
-    private static JsonElement? ParseNotes(string? storedJson)
-    {
-        if (storedJson is null)
-        {
-            return null;
-        }
-
-        using var document = JsonDocument.Parse(storedJson);
-        return document.RootElement.Clone();
-    }
+        new(
+            view.Id,
+            view.Title,
+            view.Location,
+            RichTextJson.Parse(view.KeeperNotes),
+            view.Status.ToString(),
+            view.StartedAt,
+            view.FinishedAt,
+            view.NonPlayerEntityLinks.Select(NonPlayerEntityLinksController.ToResponse).ToList());
 }

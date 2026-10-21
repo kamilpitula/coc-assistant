@@ -212,4 +212,86 @@ public class HumanNpcServiceTests : IDisposable
         Assert.Equal(1, await _builder.StoredHumanNpcCountAsync());
         Assert.Equal(1, await _builder.StoredMythosCreatureCountAsync());
     }
+
+    private async Task<(Guid ScenarioId, Guid SceneId)> SceneAsync()
+    {
+        var scenario = await _builder.CreateScenarioAsync(_builder.CampaignId, "The Haunting");
+        return (scenario.Id, (await _builder.CreateSceneAsync(_builder.CampaignId, scenario.Id, "The Corbitt House")).Id);
+    }
+
+    private async Task<HumanNpcDeleteOutcome> DeleteAsync(Guid id, INonPlayerEntityUsage? usage = null)
+    {
+        using var context = _builder.Fixture.CreateContext();
+        return await _builder.CreateHumanNpcService(context, null, usage).DeleteAsync(_builder.CampaignId, ScenarioPreparationTestBuilder.KeeperAccountId, id, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(SceneStatus.Active)]
+    [InlineData(SceneStatus.Finished)]
+    public async Task Given_a_Human_NPC_linked_to_a_played_scene_When_deleting_Then_it_is_refused_and_nothing_is_removed(SceneStatus status)
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var created = await _builder.CreateHumanNpcAsync(_builder.CampaignId);
+        await _builder.LinkAsync(_builder.CampaignId, scenarioId, sceneId, NonPlayerEntityType.HumanNpc, created.Id);
+        await _builder.PlayAsync(sceneId, status);
+
+        var outcome = await DeleteAsync(created.Id);
+
+        Assert.Equal(HumanNpcDeleteOutcome.LinkedToPlayedScene, outcome);
+        Assert.Equal(1, await _builder.StoredHumanNpcCountAsync());
+        Assert.Equal(1, await _builder.StoredLinkCountAsync());
+    }
+
+    [Fact]
+    public async Task Given_a_Human_NPC_linked_only_to_prepared_scenes_When_deleting_Then_it_is_deleted_with_its_links()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var created = await _builder.CreateHumanNpcAsync(_builder.CampaignId);
+        await _builder.LinkAsync(_builder.CampaignId, scenarioId, sceneId, NonPlayerEntityType.HumanNpc, created.Id);
+
+        var outcome = await DeleteAsync(created.Id);
+
+        Assert.Equal(HumanNpcDeleteOutcome.Deleted, outcome);
+        Assert.Equal((0, 0), (await _builder.StoredHumanNpcCountAsync(), await _builder.StoredLinkCountAsync()));
+        Assert.Empty((await _builder.GetSceneAsync(_builder.CampaignId, scenarioId, sceneId))!.NonPlayerEntityLinks);
+    }
+
+    [Fact]
+    public async Task Given_a_Human_NPC_of_another_Campaign_When_deleting_Then_it_is_NotFound_before_the_usage_check()
+    {
+        var other = await _builder.CreateHumanNpcAsync(_builder.OtherCampaignOfSameKeeperId);
+        var usage = new RecordingNonPlayerEntityUsage(true);
+
+        var outcome = await DeleteAsync(other.Id, usage);
+
+        Assert.Equal(HumanNpcDeleteOutcome.NotFound, outcome);
+        Assert.Empty(usage.Calls);
+    }
+
+    [Fact]
+    public async Task Given_a_Human_NPC_found_When_deleting_Then_the_usage_is_checked_for_its_Campaign_type_and_id()
+    {
+        var created = await _builder.CreateHumanNpcAsync(_builder.CampaignId);
+        var usage = new RecordingNonPlayerEntityUsage(false);
+
+        await DeleteAsync(created.Id, usage);
+
+        Assert.Equal((_builder.CampaignId, NonPlayerEntityType.HumanNpc, created.Id), Assert.Single(usage.Calls));
+    }
+
+    [Fact]
+    public async Task Given_a_Human_NPC_linked_to_a_scene_When_duplicating_it_Then_the_copy_has_no_links()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var created = await _builder.CreateHumanNpcAsync(_builder.CampaignId);
+        await _builder.LinkAsync(_builder.CampaignId, scenarioId, sceneId, NonPlayerEntityType.HumanNpc, created.Id);
+        using (var context = _builder.Fixture.CreateContext())
+        {
+            Assert.NotNull(await _builder.CreateHumanNpcService(context).DuplicateAsync(_builder.CampaignId, ScenarioPreparationTestBuilder.KeeperAccountId, created.Id, CancellationToken.None));
+        }
+
+        var link = Assert.Single((await _builder.GetSceneAsync(_builder.CampaignId, scenarioId, sceneId))!.NonPlayerEntityLinks);
+        Assert.Equal(created.Id, link.NonPlayerEntity.Id);
+        Assert.Equal(1, await _builder.StoredLinkCountAsync());
+    }
 }

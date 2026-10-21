@@ -19,4 +19,5 @@ public enum MythosCreatureDeleteOutcome
 {
     Deleted,
     NotFound,
+    LinkedToPlayedScene,
 }

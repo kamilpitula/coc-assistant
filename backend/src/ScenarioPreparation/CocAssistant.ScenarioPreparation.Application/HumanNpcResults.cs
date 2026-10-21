@@ -16,4 +16,5 @@ public enum HumanNpcDeleteOutcome
 {
     Deleted,
     NotFound,
+    LinkedToPlayedScene,
 }

@@ -11,13 +11,15 @@ public class SceneService
     private readonly ICampaignKeepers _keepers;
     private readonly IScenarioRepository _scenarios;
     private readonly ISceneRepository _scenes;
+    private readonly INonPlayerEntityDirectory _directory;
     private readonly TimeProvider _timeProvider;
 
-    public SceneService(ICampaignKeepers keepers, IScenarioRepository scenarios, ISceneRepository scenes, TimeProvider timeProvider)
+    public SceneService(ICampaignKeepers keepers, IScenarioRepository scenarios, ISceneRepository scenes, INonPlayerEntityDirectory directory, TimeProvider timeProvider)
     {
         _keepers = keepers;
         _scenarios = scenarios;
         _scenes = scenes;
+        _directory = directory;
         _timeProvider = timeProvider;
     }
 
@@ -36,7 +38,7 @@ public class SceneService
     public async Task<SceneDetailView?> GetAsync(Guid campaignId, Guid callerAccountId, Guid scenarioId, Guid sceneId, CancellationToken cancellationToken)
     {
         var scene = await FindSceneAsync(campaignId, callerAccountId, scenarioId, sceneId, cancellationToken);
-        return scene is null ? null : ToDetail(scene);
+        return scene is null ? null : await ToDetailAsync(scene, cancellationToken);
     }
 
     /// <summary>Appends a Prepared Scene after the Scenario's existing ones.</summary>
@@ -64,7 +66,7 @@ public class SceneService
 
         _scenes.Add(creation.Scene);
         await _scenes.SaveChangesAsync(cancellationToken);
-        return new SceneWriteResult(SceneWriteOutcome.Saved, ToDetail(creation.Scene));
+        return new SceneWriteResult(SceneWriteOutcome.Saved, ToDetail(creation.Scene, []));
     }
 
     /// <summary>Replaces a Scene's title, location, and Keeper notes; its place in the order is unchanged.</summary>
@@ -91,7 +93,7 @@ public class SceneService
         }
 
         await _scenes.SaveChangesAsync(cancellationToken);
-        return new SceneWriteResult(SceneWriteOutcome.Saved, ToDetail(scene));
+        return new SceneWriteResult(SceneWriteOutcome.Saved, await ToDetailAsync(scene, cancellationToken));
     }
 
     /// <summary>Removes a Prepared Scene; an Active or Finished Scene is never removed.</summary>
@@ -154,8 +156,17 @@ public class SceneService
 
     private static IReadOnlyList<SceneSummaryView> ToSummaries(IEnumerable<Scene> scenes) => scenes.Select(ToSummary).ToList();
 
-    private static SceneDetailView ToDetail(Scene scene) =>
-        new(scene.Id, scene.Title, scene.Location, scene.KeeperNotes, scene.Status, scene.StartedAt, scene.FinishedAt);
+    // The Campaign's entity list is read only when the Scene has links to name.
+    private async Task<SceneDetailView> ToDetailAsync(Scene scene, CancellationToken cancellationToken)
+    {
+        var entities = scene.NonPlayerEntityLinks.Count == 0
+            ? []
+            : await _directory.ListForCampaignAsync(scene.CampaignId, cancellationToken);
+        return ToDetail(scene, NonPlayerEntityLinkViews.Create(scene.NonPlayerEntityLinks, entities));
+    }
+
+    private static SceneDetailView ToDetail(Scene scene, IReadOnlyList<NonPlayerEntityLinkView> links) =>
+        new(scene.Id, scene.Title, scene.Location, scene.KeeperNotes, scene.Status, scene.StartedAt, scene.FinishedAt, links);
 
     private static SceneWriteOutcome ToWriteOutcome(SceneFieldsOutcome outcome) => outcome switch
     {
