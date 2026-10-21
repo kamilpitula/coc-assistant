@@ -27,8 +27,8 @@ import { campaignNav } from '../fixtures/overview'
  *
  * Exceptions: the Mythos Creature parts of the list, delete, duplicate, and Keeper-only scenarios are in
  * mythos-creatures.spec.ts. SP-UX-34 (the 100-row limit) and SP-UX-40 (double activation) are covered by component
- * tests, where an end-to-end run would only repeat them slowly. The scenario line "linked to no Scene" waits for Scene
- * links (PBI-SP-004).
+ * tests, where an end-to-end run would only repeat them slowly. The scenario line "linked to no Scene" and the delete
+ * dialog's Prepared Scene warning (SP-UX-58, SP-UX-59) are covered in scene-links.spec.ts, where a profile is linked first.
  */
 test.describe('Non-Player Entities', () => {
   test('Keeper creates a Human NPC and finds it in the list', async ({ page }) => {
