@@ -11,6 +11,8 @@ public class ScenarioPreparationDbContext : DbContext
 
     public DbSet<Scene> Scenes => Set<Scene>();
 
+    public DbSet<NonPlayerEntityLink> NonPlayerEntityLinks => Set<NonPlayerEntityLink>();
+
     public DbSet<HumanNpc> HumanNpcs => Set<HumanNpc>();
 
     public DbSet<MythosCreature> MythosCreatures => Set<MythosCreature>();
@@ -59,6 +61,39 @@ public class ScenarioPreparationDbContext : DbContext
 
             // Serves the prepared-order read; deliberately not unique (ADR 0014).
             builder.HasIndex(scene => new { scene.ScenarioId, scene.Position });
+        });
+
+        // A link is a child of its Scene, reached through the Scene's backing field. Its Human NPC and Mythos Creature keys are
+        // in-context foreign keys (ADR 0019) that cascade, so deleting a profile or a Prepared Scene removes its links atomically.
+        modelBuilder.Entity<Scene>().HasMany(scene => scene.NonPlayerEntityLinks)
+            .WithOne()
+            .HasForeignKey(link => link.SceneId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Scene>().Navigation(scene => scene.NonPlayerEntityLinks).UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        modelBuilder.Entity<NonPlayerEntityLink>(builder =>
+        {
+            builder.HasKey(link => link.Id);
+            builder.Property(link => link.Id).ValueGeneratedNever();
+            builder.Property<Guid?>("HumanNpcId");
+            builder.Property<Guid?>("MythosCreatureId");
+            builder.HasOne<HumanNpc>().WithMany().HasForeignKey("HumanNpcId").OnDelete(DeleteBehavior.Cascade);
+            builder.HasOne<MythosCreature>().WithMany().HasForeignKey("MythosCreatureId").OnDelete(DeleteBehavior.Cascade);
+            builder.Ignore(link => link.Type);
+            builder.Ignore(link => link.NonPlayerEntityId);
+            builder.Property(link => link.PlayerFacingName).IsRequired().HasMaxLength(NonPlayerEntityLink.PlayerFacingNameMaxLength);
+            builder.Property(link => link.PlayerFacingDescription);
+            builder.Property(link => link.CreatedAt).IsRequired().HasConversion(
+                createdAt => createdAt.UtcDateTime,
+                stored => new DateTimeOffset(DateTime.SpecifyKind(stored, DateTimeKind.Utc)));
+
+            // Exactly one of the two keys is set; portable to SQLite and SQL Server.
+            builder.ToTable(table => table.HasCheckConstraint(
+                "CK_NonPlayerEntityLinks_OneNonPlayerEntity",
+                "(HumanNpcId IS NOT NULL AND MythosCreatureId IS NULL) OR (HumanNpcId IS NULL AND MythosCreatureId IS NOT NULL)"));
+
+            builder.HasIndex("HumanNpcId");
+            builder.HasIndex("MythosCreatureId");
         });
 
         // A Human NPC is its own aggregate and table (D6 of PBI-SP-003); the type is the table. The NPC Profile is a
