@@ -1,6 +1,6 @@
 ---
 id: PBI-SP-004
-status: todo
+status: done
 blocked_by: [PBI-SP-002, PBI-SP-003, PBI-SP-009]
 ---
 
@@ -27,13 +27,22 @@ Read: `specs/scenario-preparation/spec.md`
 Read: `docs/adr/0015-store-rich-text-as-validated-lexical-json.md`.
 
 ## Verification
-- [ ] A Keeper can link, edit, and unlink Human NPCs and Mythos Creatures on a Prepared or Active Scene, with a Player-facing name and description.
-- [ ] Entities from another Campaign are unavailable and rejected by the API.
-- [ ] Linked Mythos Creatures retain attacks, armor, special abilities, and sanity loss in Scene results.
-- [ ] Deleting a Non-Player Entity linked to an Active or Finished Scene is refused.
-- [ ] Duplicating a Non-Player Entity linked to a Scene creates a copy with no Scene links (spec scenario "Keeper duplicates a profile"; deferred from PBI-SP-010).
+- [x] A Keeper can link, edit, and unlink Human NPCs and Mythos Creatures on a Prepared or Active Scene, with a Player-facing name and description.
+- [x] Entities from another Campaign are unavailable and rejected by the API.
+- [x] Linked Mythos Creatures retain attacks, armor, special abilities, and sanity loss in Scene results.
+- [x] Deleting a Non-Player Entity linked to an Active or Finished Scene is refused.
+- [x] Duplicating a Non-Player Entity linked to a Scene creates a copy with no Scene links (spec scenario "Keeper duplicates a profile"; deferred from PBI-SP-010).
 
 ## Refinement Protocol
 If relationship cardinality or deletion behavior is unclear, clarify the Blueprint before implementation. Keep Non-Player Entities scoped to one Campaign and reusable across Scenes only within that Campaign. The profile never becomes Player-visible.
 
 ## Follow-ups
+- Add a glossary entry "Non-Player Entity link" to `CONTEXT.md`; both specs already use the phrase (spec.md Constraints, scene-play spec) and the design record D7 relies on it.
+- PBI-SPL-001 must re-check, when it adds starting a Scene, the race between a profile delete (usage check, then delete) and a Scene being started in between; the cascade could then remove a link of a Scene that is already Active (design record, accepted limitation).
+- PBI-SPL-001 adds the end-to-end coverage that needs Active and Finished Scenes: the link actions hidden on a Finished Scene (SP-UX-57), "Material a played Scene refers to cannot be deleted" and the refused delete dialog (SP-UX-58); today they are covered by seeded integration tests and component tests.
+- PBI-SPL-002 must not let a Reveal block unlinking or the profile-delete cascade; the Reveal snapshot keeps the Player-facing content (scene-play spec line 39).
+- Show on a profile page which Scenes link it, and link from a profile page (ux.md section 39, deferred).
+- Reorder a Scene's links (ux.md section 39, deferred; links are shown in the order linked).
+- Decide whether a radio list with search is enough for Campaigns with many Non-Player Entities or a combobox is needed (ux.md section 39 research gap).
+- Run the Storybook accessibility checks on the new Scene link stories (320px reflow, SP-A11Y-36): the stories were written and type-checked but Storybook was not run in this pass.
+- When a link write targets a Finished Scene with an entity outside the Campaign, the API answers 400 `nonPlayerEntity` rather than 409, because the entity check runs before the Scene's Finished check; swap the order if a stricter contract is wanted.
