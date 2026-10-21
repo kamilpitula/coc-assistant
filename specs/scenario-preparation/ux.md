@@ -495,7 +495,7 @@ Keeper notes                    (fieldset)
 ### 25.3 Delete and Duplicate
 
 - **Delete (`delete-non-player-entity-dialog`, `AlertDialog`):** title "Delete {name}?", description "This can't be undone.", buttons "Cancel" and "Delete" ("Deleting..." while busy, both disabled). Failure: "We couldn't delete {name}. Try again." (`role=alert`) in the dialog. From PBI-SP-004, a refusal (409) shows "{name} is part of a Scene that has been played, so it can't be deleted.". Success navigates to the list page with the status "{name} deleted." and invalidates the list and counts. Cancel returns focus to "Delete".
-- **Duplicate (PBI-SP-010):** activates at once, with no dialog. The button reads "Duplicating..." and is disabled while busy. Success navigates to the copy's profile page with the status "Copy created. It isn't part of any Scene."; failure shows "We couldn't duplicate {name}. Try again." (`role=alert`) under the actions.
+- **Duplicate (PBI-SP-010):** activates at once, with no dialog. The button reads "Duplicating..." and is disabled while busy. Success navigates to the copy's profile page with the status "Copy created. It isn't part of any Scene." and moves focus to the copy's `h1`; failure, including a not-found answer, shows "We couldn't duplicate {name}. Try again." (`role=alert`) under the actions and focus stays on "Duplicate". Duplicate is shown only in the view, never in Edit mode. The server names the copy; the client never computes the name.
 
 ### 25.4 NPC Profile sections
 
@@ -728,7 +728,7 @@ Stories cover:
 - **SP-A11Y-19** Every field has a visible label; hints and errors are connected with `aria-describedby`; invalid fields have `aria-invalid="true"` (1.3.1, 3.3.1, 3.3.2).
 - **SP-A11Y-20** The error summary receives focus after a refused save, and each of its links moves focus to its field (2.4.3, 3.3.1, 3.3.3).
 - **SP-A11Y-21** "Add {section}", "Remove section", "Add {item}", and "Remove {item} {row label}" are `button`s with unique accessible names, at least 24 by 24 CSS pixels (40 by 40 used for row Remove) (2.4.6, 2.5.8, 4.1.2).
-- **SP-A11Y-22** Focus moves to a new section's or row's first field, after a removal to the place section 25.2 names, into and back out of every dialog, and is never lost to `body` (2.4.3).
+- **SP-A11Y-22** Focus moves to a new section's or row's first field, after a removal to the place section 25.2 names, after Duplicate to the copy's `h1`, into and back out of every dialog, and is never lost to `body` (2.4.3).
 - **SP-A11Y-23** Section changes, result counts, and status messages are announced through polite live regions or `role=status`, never on first load; failures use `role=alert` (4.1.3).
 - **SP-A11Y-24** A field that receives focus is never hidden behind the sticky action bar (2.4.11).
 - **SP-A11Y-25** Type, difficulty, overrides, and "not covered" are conveyed in text, never only by color (1.4.1).
