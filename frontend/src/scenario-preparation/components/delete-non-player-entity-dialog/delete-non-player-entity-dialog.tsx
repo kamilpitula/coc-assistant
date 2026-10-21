@@ -15,7 +15,7 @@ interface DeleteNonPlayerEntityDialogProps {
   pending: boolean
   /** The delete failed. */
   failed: boolean
-  /** The profile is part of a Scene that has been played (409); arrives with Scene links (PBI-SP-004). */
+  /** The profile is part of a Scene that has been played (409). */
   refused?: boolean
   onConfirm: () => void
   onCancel: () => void
@@ -39,7 +39,9 @@ export function DeleteNonPlayerEntityDialog({
       <AlertDialogContent onCloseAutoFocus={onCloseAutoFocus}>
         <AlertDialogHeader>
           <AlertDialogTitle className="break-words">Delete {name}?</AlertDialogTitle>
-          <AlertDialogDescription>This can&apos;t be undone.</AlertDialogDescription>
+          <AlertDialogDescription>
+            This can&apos;t be undone. It is also removed from any Prepared Scene it is part of.
+          </AlertDialogDescription>
         </AlertDialogHeader>
         {failed && (
           <p role="alert" className="text-sm text-destructive">

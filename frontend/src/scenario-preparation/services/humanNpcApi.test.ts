@@ -4,7 +4,7 @@ import { NonPlayerEntityNotFoundError } from '@/scenario-preparation/services/no
 import type { HumanNpcInput } from '@/scenario-preparation/types/HumanNpc'
 
 import { createHumanNpc, deleteHumanNpc, duplicateHumanNpc, editHumanNpc, getHumanNpc } from './humanNpcApi'
-import { NonPlayerEntityValidationError } from './nonPlayerEntityApi'
+import { NonPlayerEntityInUseError, NonPlayerEntityValidationError } from './nonPlayerEntityApi'
 
 const details = {
   professionOrRole: 'Landlord',
@@ -99,6 +99,12 @@ describe('humanNpcApi', () => {
     await expect(deleteHumanNpc('t', 'c1', 'h1')).rejects.toBeInstanceOf(NonPlayerEntityNotFoundError)
     respond(500)
     await expect(deleteHumanNpc('t', 'c1', 'h1')).rejects.toThrow('500')
+  })
+
+  it('maps a 409 on delete to the in-use refusal: the Human NPC is part of a played Scene', async () => {
+    respond(409, { title: "A Non-Player Entity linked to an Active or Finished Scene can't be deleted." })
+
+    await expect(deleteHumanNpc('t', 'c1', 'h1')).rejects.toBeInstanceOf(NonPlayerEntityInUseError)
   })
 
   it('posts to the duplicate route with no body and reads the copy', async () => {

@@ -29,6 +29,14 @@ export class NonPlayerEntityNotFoundError extends Error {
   }
 }
 
+/** The API answered 409 to a delete: the Non-Player Entity is part of a Scene that has been played. */
+export class NonPlayerEntityInUseError extends Error {
+  constructor() {
+    super('The Non-Player Entity is part of a played Scene')
+    this.name = 'NonPlayerEntityInUseError'
+  }
+}
+
 /** The API answered 400 with the refused values, keyed by lower-cased request path (ADR 0018). */
 export class NonPlayerEntityValidationError extends Error {
   readonly problems: ValidationProblem[]

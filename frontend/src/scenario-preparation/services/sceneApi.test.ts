@@ -27,7 +27,13 @@ function jsonResponse(status: number, body?: unknown): Response {
 
 const summary = { id: 'a1', title: 'Meeting Knott', status: 'Prepared', startedAt: null, finishedAt: null }
 const notes: RichTextDocument = { root: { type: 'root', children: [{ type: 'paragraph', children: [] }] } }
-const detail = { ...summary, location: 'Arkham', keeperNotes: notes }
+const link = {
+  id: 'l1',
+  nonPlayerEntity: { id: 'm1', type: 'MythosCreature', name: 'Ghoul' },
+  playerFacingName: 'A shape in the cellar',
+  playerFacingDescription: notes,
+}
+const detail = { ...summary, location: 'Arkham', keeperNotes: notes, nonPlayerEntityLinks: [link] }
 
 describe('scene API', () => {
   const fetchMock = vi.fn<typeof fetch>()
@@ -77,6 +83,32 @@ describe('scene API', () => {
   })
 
   describe('getScene', () => {
+    it('returns the links in the order sent, each as a reference with the live profile name and its Player-facing text', async () => {
+      const second = { ...link, id: 'l2', nonPlayerEntity: { id: 'h1', type: 'HumanNpc', name: 'Mr. Knott' }, playerFacingDescription: null }
+      fetchMock.mockResolvedValue(jsonResponse(200, { ...detail, nonPlayerEntityLinks: [link, second] }))
+
+      const scene = await getScene('token', 'c1', 's1', 'a1')
+
+      expect(scene?.nonPlayerEntityLinks.map((entry) => [entry.id, entry.nonPlayerEntity.type, entry.nonPlayerEntity.name, entry.playerFacingName])).toEqual([
+        ['l1', 'MythosCreature', 'Ghoul', 'A shape in the cellar'],
+        ['l2', 'HumanNpc', 'Mr. Knott', 'A shape in the cellar'],
+      ])
+      expect(scene?.nonPlayerEntityLinks[1].playerFacingDescription).toBeNull()
+    })
+
+    it('rejects a link that carries profile data beyond the reference, an unknown type, or a Scene without links', async () => {
+      const withProfile = { ...link, nonPlayerEntity: { ...link.nonPlayerEntity, profile: { age: 62 } } }
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...detail, nonPlayerEntityLinks: [withProfile] }))
+      await expect(getScene('token', 'c1', 's1', 'a1')).rejects.toThrow()
+
+      const unknownType = { ...link, nonPlayerEntity: { ...link.nonPlayerEntity, type: 'Item' } }
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...detail, nonPlayerEntityLinks: [unknownType] }))
+      await expect(getScene('token', 'c1', 's1', 'a1')).rejects.toThrow()
+
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...summary, location: 'Arkham', keeperNotes: notes }))
+      await expect(getScene('token', 'c1', 's1', 'a1')).rejects.toThrow()
+    })
+
     it('returns the Scene with its location and rich-text notes, and keeps unknown properties inside the notes', async () => {
       const looseNotes = { root: { type: 'root', children: [], extra: 1 }, extra: 2 }
       fetchMock.mockResolvedValue(jsonResponse(200, { ...detail, keeperNotes: looseNotes }))

@@ -9,7 +9,7 @@ import { HumanNpcForm } from '@/scenario-preparation/components/human-npc-form/h
 import { HumanNpcView } from '@/scenario-preparation/components/human-npc-view/human-npc-view'
 import { NonPlayerEntityNotFound } from '@/scenario-preparation/components/non-player-entity-not-found/non-player-entity-not-found'
 import { useDeleteHumanNpc, useDuplicateHumanNpc, useEditHumanNpc, useHumanNpc } from '@/scenario-preparation/hooks/useNonPlayerEntities'
-import { NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
+import { NonPlayerEntityInUseError, NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import type { HumanNpc } from '@/scenario-preparation/types/HumanNpc'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
@@ -154,6 +154,7 @@ interface ProfileActionsProps {
 function ProfileActions({ campaignId, humanNpc, editButtonRef, headingRef, onEdit }: ProfileActionsProps) {
   const [open, setOpen] = useState(false)
   const deletion = useDeleteHumanNpc(campaignId, humanNpc.id)
+  const deletionRefused = deletion.error instanceof NonPlayerEntityInUseError
   const duplication = useDuplicateHumanNpc(campaignId, humanNpc.id)
   const navigate = useNavigate()
   const deleteButtonRef = useRef<HTMLButtonElement>(null)
@@ -201,7 +202,8 @@ function ProfileActions({ campaignId, humanNpc, editButtonRef, headingRef, onEdi
           open={open}
           name={humanNpc.name}
           pending={deletion.isPending}
-          failed={deletion.isError}
+          failed={deletion.isError && !deletionRefused}
+          refused={deletionRefused}
           onConfirm={() =>
             deletion.mutate(undefined, {
               onSuccess: () =>

@@ -47,4 +47,20 @@ describe('RichTextView', () => {
     expect(container.querySelector('[contenteditable="true"]')).toBeNull()
     expect(container.querySelector('[contenteditable="false"]')).not.toBeNull()
   })
+
+  it('renders Heading and Subheading as h4 and h5 when the heading offset is 1 and does not render an h3', () => {
+    const { container } = render(<RichTextView document={everyNode} headingOffset={1} />)
+
+    expect(container.querySelector('h4')).toHaveTextContent('Heading')
+    expect(container.querySelector('h5')).toHaveTextContent('Subheading')
+    expect(container.querySelector('h3')).toBeNull()
+  })
+
+  it('keeps the other nodes and the read-only state when the heading offset is 1', () => {
+    const { container } = render(<RichTextView document={everyNode} headingOffset={1} />)
+
+    expect(container.querySelector('blockquote')).toHaveTextContent('Quote')
+    expect(container.querySelector('strong')).not.toBeNull()
+    expect(container.querySelector('[contenteditable="true"]')).toBeNull()
+  })
 })

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { NonPlayerEntityNotFoundError, NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
+import { NonPlayerEntityInUseError, NonPlayerEntityNotFoundError, NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import type { MythosCreatureInput } from '@/scenario-preparation/types/MythosCreature'
 
 import { createMythosCreature, deleteMythosCreature, duplicateMythosCreature, editMythosCreature, getMythosCreature } from './mythosCreatureApi'
@@ -98,6 +98,12 @@ describe('mythosCreatureApi', () => {
 
     respond(200, { ...full, characteristics: { ...full.characteristics, derived: { ...full.characteristics.derived, movementRate: 8 } } })
     await expect(getMythosCreature('t', 'c1', 'm1')).rejects.toThrow()
+  })
+
+  it('maps a 409 on delete to the in-use refusal: the Mythos Creature is part of a played Scene', async () => {
+    respond(409, { title: "A Non-Player Entity linked to an Active or Finished Scene can't be deleted." })
+
+    await expect(deleteMythosCreature('t', 'c1', 'm1')).rejects.toBeInstanceOf(NonPlayerEntityInUseError)
   })
 
   it('posts only the name when creating', async () => {

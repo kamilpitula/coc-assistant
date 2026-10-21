@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { authHeaders } from '@/campaign-play/services/authHeaders'
-import { failNonPlayerEntityWrite, NonPlayerEntityNotFoundError } from '@/scenario-preparation/services/nonPlayerEntityApi'
+import { failNonPlayerEntityWrite, NonPlayerEntityInUseError, NonPlayerEntityNotFoundError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import { difficultySchema, richTextSchema } from '@/scenario-preparation/services/profileSchemas'
 import type { HumanNpc, HumanNpcInput } from '@/scenario-preparation/types/HumanNpc'
 
@@ -143,6 +143,9 @@ export async function deleteHumanNpc(accessToken: string, campaignId: string, hu
 
   if (response.status === 404) {
     throw new NonPlayerEntityNotFoundError()
+  }
+  if (response.status === 409) {
+    throw new NonPlayerEntityInUseError()
   }
   if (!response.ok) {
     throw new Error(`Failed to delete the Human NPC (${response.status})`)

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { authHeaders } from '@/campaign-play/services/authHeaders'
-import { failNonPlayerEntityWrite, NonPlayerEntityNotFoundError } from '@/scenario-preparation/services/nonPlayerEntityApi'
+import { failNonPlayerEntityWrite, NonPlayerEntityInUseError, NonPlayerEntityNotFoundError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import { difficultySchema, richTextSchema } from '@/scenario-preparation/services/profileSchemas'
 import { CREATURE_KINDS, MOVEMENT_MODES, type MythosCreature, type MythosCreatureInput } from '@/scenario-preparation/types/MythosCreature'
 
@@ -177,6 +177,9 @@ export async function deleteMythosCreature(accessToken: string, campaignId: stri
 
   if (response.status === 404) {
     throw new NonPlayerEntityNotFoundError()
+  }
+  if (response.status === 409) {
+    throw new NonPlayerEntityInUseError()
   }
   if (!response.ok) {
     throw new Error(`Failed to delete the Mythos Creature (${response.status})`)
