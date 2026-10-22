@@ -40,6 +40,9 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
     public NonPlayerEntityLinkService CreateLinkService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
         new(Keepers, repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), TimeProvider);
 
+    public HandoutService CreateHandoutService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
+        new(Keepers, repository ?? new EfSceneRepository(context), TimeProvider);
+
     public HumanNpcService CreateHumanNpcService(ScenarioPreparationDbContext context, IHumanNpcRepository? repository = null, INonPlayerEntityUsage? usage = null) =>
         new(Keepers, repository ?? new EfHumanNpcRepository(context), usage ?? new EfNonPlayerEntityUsage(context), new FakeNonPlayerEntityRuleData(), TimeProvider);
 
@@ -107,6 +110,23 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
             campaignId, KeeperAccountId, scenarioId, sceneId, type, nonPlayerEntityId, playerFacingName, playerFacingDescription, CancellationToken.None);
         Assert.Equal(NonPlayerEntityLinkWriteOutcome.Saved, result.Outcome);
         return result.Link!;
+    }
+
+    /// <summary>Adds a Handout to a Scene as the Keeper one minute after the previous call and returns it.</summary>
+    public async Task<HandoutView> AddHandoutAsync(
+        Guid campaignId,
+        Guid scenarioId,
+        Guid sceneId,
+        string title = "The cellar",
+        HandoutKind kind = HandoutKind.ReadAloud,
+        HandoutVisibility visibility = HandoutVisibility.PlayerFacing,
+        string content = "{\"root\":{\"type\":\"root\",\"children\":[{\"type\":\"paragraph\",\"children\":[{\"type\":\"text\",\"text\":\"The door creaks open\"}]}]}}")
+    {
+        TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        using var context = Fixture.CreateContext();
+        var result = await CreateHandoutService(context).CreateAsync(campaignId, KeeperAccountId, scenarioId, sceneId, kind, visibility, title, content, CancellationToken.None);
+        Assert.Equal(HandoutWriteOutcome.Saved, result.Outcome);
+        return result.Handout!;
     }
 
     public async Task<SceneDetailView?> GetSceneAsync(Guid campaignId, Guid scenarioId, Guid sceneId, Guid? callerAccountId = null)

@@ -20,6 +20,7 @@ public static class ScenarioPreparationInfrastructureServiceCollectionExtensions
         services.AddScoped<ScenarioService>();
         services.AddScoped<SceneService>();
         services.AddScoped<NonPlayerEntityLinkService>();
+        services.AddScoped<HandoutService>();
         services.AddScoped<HumanNpcService>();
         services.AddScoped<MythosCreatureService>();
         services.AddScoped<NonPlayerEntityService>();

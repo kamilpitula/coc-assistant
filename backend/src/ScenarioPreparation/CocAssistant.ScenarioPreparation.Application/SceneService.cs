@@ -166,7 +166,7 @@ public class SceneService
     }
 
     private static SceneDetailView ToDetail(Scene scene, IReadOnlyList<NonPlayerEntityLinkView> links) =>
-        new(scene.Id, scene.Title, scene.Location, scene.KeeperNotes, scene.Status, scene.StartedAt, scene.FinishedAt, links);
+        new(scene.Id, scene.Title, scene.Location, scene.KeeperNotes, scene.Status, scene.StartedAt, scene.FinishedAt, links, scene.Handouts.Select(HandoutViews.ToSummary).ToList());
 
     private static SceneWriteOutcome ToWriteOutcome(SceneFieldsOutcome outcome) => outcome switch
     {
