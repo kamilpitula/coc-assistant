@@ -21,6 +21,14 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
 
     public FakeCampaignKeepers Keepers { get; } = new();
 
+    public FakeHandoutFileStore FileStore { get; } = new();
+
+    public RecordingLogger<HandoutService> HandoutLogger { get; } = new();
+
+    public RecordingLogger<HandoutFileService> HandoutFileLogger { get; } = new();
+
+    public RecordingLogger<SceneService> SceneLogger { get; } = new();
+
     public FakeTimeProvider TimeProvider { get; } = new(new DateTimeOffset(2026, 10, 16, 12, 0, 0, TimeSpan.Zero));
 
     public Guid CampaignId { get; } = Guid.NewGuid();
@@ -35,13 +43,16 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
         new(Keepers, repository ?? new EfScenarioRepository(context), TimeProvider);
 
     public SceneService CreateSceneService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
-        new(Keepers, new EfScenarioRepository(context), repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), TimeProvider);
+        new(Keepers, new EfScenarioRepository(context), repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), FileStore, TimeProvider, SceneLogger);
 
     public NonPlayerEntityLinkService CreateLinkService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
         new(Keepers, repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), TimeProvider);
 
     public HandoutService CreateHandoutService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
-        new(Keepers, repository ?? new EfSceneRepository(context), TimeProvider);
+        new(Keepers, repository ?? new EfSceneRepository(context), FileStore, TimeProvider, HandoutLogger);
+
+    public HandoutFileService CreateHandoutFileService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
+        new(Keepers, repository ?? new EfSceneRepository(context), FileStore, TimeProvider, HandoutFileLogger);
 
     public HumanNpcService CreateHumanNpcService(ScenarioPreparationDbContext context, IHumanNpcRepository? repository = null, INonPlayerEntityUsage? usage = null) =>
         new(Keepers, repository ?? new EfHumanNpcRepository(context), usage ?? new EfNonPlayerEntityUsage(context), new FakeNonPlayerEntityRuleData(), TimeProvider);

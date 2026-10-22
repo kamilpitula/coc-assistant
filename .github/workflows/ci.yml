@@ -21,6 +21,8 @@ concurrency:
 env:
   MSSQL_SA_PASSWORD: CiOnly_Passw0rd!
   COC_SQLSERVER_CONNECTION: Server=localhost,1433;User Id=sa;Password=CiOnly_Passw0rd!;TrustServerCertificate=True
+  # The local Azurite blob emulator service container (the well-known development account, not a secret).
+  COC_AZURITE_CONNECTION: UseDevelopmentStorage=true
 
 jobs:
   changes:
@@ -115,8 +117,8 @@ jobs:
     permissions:
       contents: read
       checks: write
-    services: &sql-service
-      sql:
+    services:
+      sql: &sql-service
         image: mcr.microsoft.com/mssql/server:2022-latest
         env:
           ACCEPT_EULA: Y
@@ -128,6 +130,11 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 12
+      # Blob emulator for the Handout file store contract tests (the Azure adapter); its default command serves blobs on 10000.
+      azurite:
+        image: mcr.microsoft.com/azure-storage/azurite
+        ports:
+          - 10000:10000
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-dotnet
@@ -181,7 +188,8 @@ jobs:
     env:
       # Committed mock-only keystore password, see e2e/docker/mock-oauth2-config.json.
       COC_E2E_CERT_PASSWORD: CocE2eDevCertP@ss1!
-    services: *sql-service
+    services:
+      sql: *sql-service
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-dotnet

@@ -11,4 +11,8 @@ public enum HandoutOutcome
     InvalidVisibility,
     MissingContent,
     InvalidContent,
+    KindChangeNotAllowed,
+    MissingFile,
+    UnsupportedFileType,
+    FileTooLarge,
 }

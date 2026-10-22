@@ -9,13 +9,17 @@ public class HandoutService
 {
     private readonly ICampaignKeepers _keepers;
     private readonly ISceneRepository _scenes;
+    private readonly IHandoutFileStore _fileStore;
     private readonly TimeProvider _timeProvider;
+    private readonly ILogger<HandoutService> _logger;
 
-    public HandoutService(ICampaignKeepers keepers, ISceneRepository scenes, TimeProvider timeProvider)
+    public HandoutService(ICampaignKeepers keepers, ISceneRepository scenes, IHandoutFileStore fileStore, TimeProvider timeProvider, ILogger<HandoutService> logger)
     {
         _keepers = keepers;
         _scenes = scenes;
+        _fileStore = fileStore;
         _timeProvider = timeProvider;
+        _logger = logger;
     }
 
     /// <summary>The Handout with its content, or null when the caller is not the Keeper or nothing matches.</summary>
@@ -72,6 +76,7 @@ public class HandoutService
             return HandoutRemoveOutcome.NotFound;
         }
 
+        var fileKey = scene.Handouts.FirstOrDefault(candidate => candidate.Id == handoutId)?.FileKey;
         var outcome = scene.RemoveHandout(handoutId);
         if (outcome != HandoutRemovalOutcome.Removed)
         {
@@ -79,6 +84,11 @@ public class HandoutService
         }
 
         await _scenes.SaveChangesAsync(cancellationToken);
+        if (fileKey is not null)
+        {
+            await _fileStore.TryDeleteAsync(_logger, fileKey);
+        }
+
         return HandoutRemoveOutcome.Removed;
     }
 
@@ -111,7 +121,7 @@ public class HandoutService
     {
         if (result.Handout is null)
         {
-            return Refused(ToWriteOutcome(result.Outcome));
+            return Refused(HandoutWriteOutcomes.From(result.Outcome));
         }
 
         await _scenes.SaveChangesAsync(cancellationToken);
@@ -125,18 +135,7 @@ public class HandoutService
 
     private static HandoutWriteResult Refused(HandoutWriteOutcome outcome) => new(outcome, null);
 
-    private static HandoutView ToView(Handout handout) => new(handout.Id, handout.Kind, handout.Visibility, handout.Title, handout.Content);
-
-    private static HandoutWriteOutcome ToWriteOutcome(HandoutOutcome outcome) => outcome switch
-    {
-        HandoutOutcome.SceneFinished => HandoutWriteOutcome.Finished,
-        HandoutOutcome.HandoutNotFound => HandoutWriteOutcome.NotFound,
-        HandoutOutcome.InvalidTitle => HandoutWriteOutcome.InvalidTitle,
-        HandoutOutcome.InvalidKind => HandoutWriteOutcome.InvalidKind,
-        HandoutOutcome.InvalidVisibility => HandoutWriteOutcome.InvalidVisibility,
-        HandoutOutcome.MissingContent => HandoutWriteOutcome.MissingContent,
-        _ => HandoutWriteOutcome.InvalidContent,
-    };
+    private static HandoutView ToView(Handout handout) => HandoutViews.ToView(handout);
 
     private static HandoutReorderOutcome ToReorderOutcome(HandoutOrderOutcome outcome) => outcome switch
     {

@@ -190,16 +190,66 @@ public class Scene
             return new HandoutResult(HandoutOutcome.SceneFinished, null);
         }
 
-        var outcome = Handout.Validate(kind, visibility, title, content, out var trimmedTitle);
+        var outcome = Handout.Validate(kind, visibility, title, content, null, out var trimmedTitle);
         if (outcome != HandoutOutcome.Accepted)
         {
             return new HandoutResult(outcome, null);
         }
 
-        var position = _handouts.Count == 0 ? 1 : _handouts.Max(existing => existing.Position) + 1;
-        var handout = Handout.Create(Id, kind!.Value, visibility!.Value, trimmedTitle, content!, position, now);
+        var handout = Handout.Create(Id, kind!.Value, visibility!.Value, trimmedTitle, content!, NextHandoutPosition(), now);
         _handouts.Add(handout);
         return new HandoutResult(outcome, handout);
+    }
+
+    /// <summary>
+    /// Adds an Image, Document, or Map Handout after the others while the Scene is Prepared or Active. Status is checked
+    /// before the fields; a refused add changes nothing. The caller has detected the file's media type from its bytes.
+    /// </summary>
+    public HandoutResult AddFileHandout(HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, DateTimeOffset now)
+    {
+        if (Status == SceneStatus.Finished)
+        {
+            return new HandoutResult(HandoutOutcome.SceneFinished, null);
+        }
+
+        var outcome = Handout.ValidateFile(kind, visibility, title, file, null, out var trimmedTitle);
+        if (outcome != HandoutOutcome.Accepted)
+        {
+            return new HandoutResult(outcome, null);
+        }
+
+        var handout = Handout.CreateFile(Id, kind!.Value, visibility!.Value, trimmedTitle, file!, NextHandoutPosition(), now);
+        _handouts.Add(handout);
+        return new HandoutResult(outcome, handout);
+    }
+
+    /// <summary>
+    /// Replaces a file Handout's kind (within its family), visibility, and title, and its file when one is given, while the
+    /// Scene is Prepared or Active; Position is kept. The replaced key is returned only on a Prepared Scene, where the old
+    /// blob can never have been revealed and may be deleted (ADR 0021).
+    /// </summary>
+    public HandoutFileEditResult EditFileHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file)
+    {
+        if (Status == SceneStatus.Finished)
+        {
+            return new HandoutFileEditResult(HandoutOutcome.SceneFinished, null, null);
+        }
+
+        var handout = _handouts.Find(candidate => candidate.Id == handoutId);
+        if (handout is null)
+        {
+            return new HandoutFileEditResult(HandoutOutcome.HandoutNotFound, null, null);
+        }
+
+        var outcome = Handout.ValidateFile(kind, visibility, title, file, handout.Kind, out var trimmedTitle);
+        if (outcome != HandoutOutcome.Accepted)
+        {
+            return new HandoutFileEditResult(outcome, null, null);
+        }
+
+        var replacedKey = file is not null && Status == SceneStatus.Prepared ? handout.FileKey : null;
+        handout.ReplaceFile(kind!.Value, visibility!.Value, trimmedTitle, file);
+        return new HandoutFileEditResult(outcome, handout, replacedKey);
     }
 
     /// <summary>Replaces a Handout's fields, including its kind, while the Scene is Prepared or Active. Status, then the Handout, then the fields are checked; Position is kept.</summary>
@@ -216,7 +266,7 @@ public class Scene
             return new HandoutResult(HandoutOutcome.HandoutNotFound, null);
         }
 
-        var outcome = Handout.Validate(kind, visibility, title, content, out var trimmedTitle);
+        var outcome = Handout.Validate(kind, visibility, title, content, handout.Kind, out var trimmedTitle);
         if (outcome != HandoutOutcome.Accepted)
         {
             return new HandoutResult(outcome, null);
@@ -273,6 +323,8 @@ public class Scene
 
         return HandoutOrderOutcome.Reordered;
     }
+
+    private int NextHandoutPosition() => _handouts.Count == 0 ? 1 : _handouts.Max(existing => existing.Position) + 1;
 
     /// <summary>Sets the place in the prepared order; only <see cref="SceneOrder"/> reorders.</summary>
     internal void MoveTo(int position) => Position = position;

@@ -17,10 +17,13 @@ public static class ScenarioPreparationInfrastructureServiceCollectionExtensions
         services.AddScoped<INonPlayerEntityUsage, EfNonPlayerEntityUsage>();
         services.AddScoped<ICampaignKeepers, CampaignPlayCampaignKeepers>();
         services.AddSingleton<INonPlayerEntityRuleData, CampaignPlayNonPlayerEntityRuleData>();
+        // Resolved on first use, not at registration, so EF design-time tooling works without storage settings.
+        services.AddSingleton(provider => HandoutFileStoreRegistration.Create(provider.GetRequiredService<IConfiguration>()));
         services.AddScoped<ScenarioService>();
         services.AddScoped<SceneService>();
         services.AddScoped<NonPlayerEntityLinkService>();
         services.AddScoped<HandoutService>();
+        services.AddScoped<HandoutFileService>();
         services.AddScoped<HumanNpcService>();
         services.AddScoped<MythosCreatureService>();
         services.AddScoped<NonPlayerEntityService>();
