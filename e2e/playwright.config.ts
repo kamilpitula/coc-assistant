@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 import { existsSync, readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -10,6 +11,8 @@ const REPO_ROOT = resolve(E2E_DIR, '..')
 const PFX_PATH = resolve(E2E_DIR, '.certs/dev-cert.pfx')
 const PFX_PASSWORD_FILE = resolve(E2E_DIR, '.certs/dev-cert.password')
 const E2E_CONNECTION_STRING = resolveE2eConnectionString()
+// Handout files go to a temporary directory, so the suite needs no Azure Storage (PBI-SP-007 D7).
+const E2E_HANDOUT_FILES_DIRECTORY = resolve(tmpdir(), 'coc-e2e-handout-files')
 
 /**
  * Resolves the dev-cert PFX password at config load time so the webServer env captures the
@@ -82,6 +85,7 @@ export default defineConfig({
         ConnectionStrings__IdentityDb: E2E_CONNECTION_STRING,
         ConnectionStrings__CampaignPlayDb: E2E_CONNECTION_STRING,
         ConnectionStrings__ScenarioPreparationDb: E2E_CONNECTION_STRING,
+        HandoutFiles__LocalDirectory: E2E_HANDOUT_FILES_DIRECTORY,
         ASPNETCORE_Kestrel__Certificates__Default__Path: PFX_PATH,
         ASPNETCORE_Kestrel__Certificates__Default__Password: certPassword,
       },
