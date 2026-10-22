@@ -30,6 +30,7 @@ const scene: Scene = {
       playerFacingDescription: null,
     },
   ],
+  handouts: [],
 }
 
 interface StoryArgs {

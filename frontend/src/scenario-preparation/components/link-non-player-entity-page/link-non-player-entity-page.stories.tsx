@@ -23,6 +23,7 @@ const prepared: Scene = {
   startedAt: null,
   finishedAt: null,
   nonPlayerEntityLinks: [],
+  handouts: [],
 }
 const entities = [
   { id: 'knott', type: 'HumanNpc' as const, name: 'Mr. Knott' },

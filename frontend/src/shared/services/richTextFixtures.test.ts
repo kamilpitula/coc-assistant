@@ -3,8 +3,9 @@ import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { RICH_TEXT_MAX_BYTES, RICH_TEXT_NODE_TYPES } from '@/shared/services/richText'
+import { isEmptyRichText, RICH_TEXT_MAX_BYTES, RICH_TEXT_NODE_TYPES } from '@/shared/services/richText'
 import { createTestEditor, loadDocument, serialize } from '@/shared/test-support/richTextEditor'
+import type { RichTextDocument } from '@/shared/types/RichText'
 
 // The shared definition both stacks satisfy (ADR 0015 amendment); the backend reads the same file in RichTextDocumentTests.
 interface FixtureCase {
@@ -13,9 +14,16 @@ interface FixtureCase {
   document: unknown
 }
 
+// The cases both stacks use for "the text must not be empty" (design record PBI-SP-005, D4); the backend runs the same file.
+interface TextPresenceCase {
+  name: string
+  hasVisibleText: boolean
+  document: RichTextDocument
+}
+
 const fixtures = JSON.parse(
   readFileSync(resolve(process.cwd(), '../specs/scenario-preparation/rich-text-fixtures.json'), 'utf-8'),
-) as { maxBytes: number; cases: FixtureCase[] }
+) as { maxBytes: number; cases: FixtureCase[]; textPresence: TextPresenceCase[] }
 
 const accepted = fixtures.cases.filter((fixtureCase) => fixtureCase.expected === 'accepted')
 const everyNode = fixtures.cases.find((fixtureCase) => fixtureCase.name === 'every allowed node')
@@ -53,4 +61,11 @@ describe('rich-text fixtures', () => {
 
     expect(serialize(editor)).toEqual(everyNode?.document)
   })
+
+  it.each(fixtures.textPresence.map((fixtureCase) => [fixtureCase.name, fixtureCase] as const))(
+    'agrees with the backend on whether "%s" has visible text',
+    (_name, fixtureCase) => {
+      expect(isEmptyRichText(fixtureCase.document)).toBe(!fixtureCase.hasVisibleText)
+    },
+  )
 })

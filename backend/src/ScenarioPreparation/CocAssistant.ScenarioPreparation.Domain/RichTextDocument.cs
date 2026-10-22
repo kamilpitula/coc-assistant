@@ -27,6 +27,42 @@ public static class RichTextDocument
         }
     }
 
+    /// <summary>
+    /// True when a <c>text</c> node holds text that is not blank after <c>Trim()</c>; mirrors the frontend <c>isEmptyRichText</c>
+    /// and shares its cases (rich-text-fixtures.json, textPresence). Malformed input has no visible text.
+    /// </summary>
+    public static bool HasVisibleText(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("root", out var root)
+                && ContainsVisibleText(root);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private static bool ContainsVisibleText(JsonElement node)
+    {
+        if (node.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        if (node.TryGetProperty("text", out var text) && text.ValueKind == JsonValueKind.String && text.GetString()!.Trim().Length > 0)
+        {
+            return true;
+        }
+
+        return node.TryGetProperty("children", out var children)
+            && children.ValueKind == JsonValueKind.Array
+            && children.EnumerateArray().Any(ContainsVisibleText);
+    }
+
     private static RichTextOutcome ValidateRoot(JsonElement document)
     {
         if (document.ValueKind != JsonValueKind.Object

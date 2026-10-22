@@ -29,6 +29,12 @@ Scene links (PBI-SP-004): **Option B, dedicated link pages** (a "Non-Player Enti
 
 Scene links are specified in sections 31 to 39. Design record: [docs/scenario-preparation/issues/04-link-entities-to-scenes.design.md](../../docs/scenario-preparation/issues/04-link-entities-to-scenes.design.md).
 
+Handouts (PBI-SP-005): **Option C, a compact ordered "Handouts" list on the Scene page with a page per Handout (view plus Edit toggle)**, chosen 2026-10-22. The kind may change between Read-aloud and Text; the text is required; Handouts can be moved on Active Scenes. Alternatives considered:
+- **Option A (each Handout in full on the Scene page, with add and edit pages like Scene links):** not selected. The Scene page grows long with several long Handouts, moves are hard to follow, and each Handout gets no page of its own ahead of file and Item Handouts.
+- **Option B (inline editing inside each Handout card):** not selected. It adds a third editing pattern (per-section editing was already rejected for profiles), puts a rich-text editor inside a long page with move controls, and risks losing text on a refetch.
+
+Handouts are specified in sections 40 to 49. Design record: [docs/scenario-preparation/issues/05-attach-protect-handouts.design.md](../../docs/scenario-preparation/issues/05-attach-protect-handouts.design.md).
+
 ## 1. Information architecture
 
 ```
@@ -251,6 +257,7 @@ The Corbitt House                                 (h1)
 Location   Arkham, Boston Road                    (dl)
 Keeper notes                                      (h2)
 <rendered notes, or "No Keeper notes yet.">
+Handouts                                          (h2)  [Add Handout]  (section 41)
 Non-Player Entities                               (h2)  [Link a Non-Player Entity]  (section 32)
 [Edit] [Remove Scene]
 ```
@@ -261,6 +268,7 @@ Non-Player Entities                               (h2)  [Link a Non-Player Entit
   - `h1` the Scene title (`break-words`), then a line with the status badge and the times (section 12).
   - A `dl` with "Location" and its value, only when a location is set.
   - `h2` "Keeper notes" with `rich-text-view`, or "No Keeper notes yet." in muted text when there are none.
+  - The "Handouts" section (section 41), in view mode only.
   - The "Non-Player Entities" section (section 32), in view mode only; in Edit mode it is not shown.
 - **Actions by status:** Prepared: outline "Edit" and "Remove Scene" (outline, destructive text). Active: "Edit" only. Finished: no actions, and the muted sentence "This Scene is finished and can't be changed."
 - **Edit:** "Edit" swaps the view for `scene-form`, prefilled; the `h1` keeps the saved title. Actions "Save" ("Saving..." while busy, disabled) and "Cancel". Focus moves to the Title field.
@@ -907,3 +915,212 @@ Stories cover:
 
 - **Deferred:** reordering a Scene's links; showing on a profile page which Scenes link it; linking from the profile page (section 30); live updates across the Keeper's own tabs (no SignalR, design record D6).
 - **Research gap:** whether a radio list with search is enough for Campaigns with many Non-Player Entities, or a combobox is needed.
+
+## 40. Handouts: information architecture
+
+```
+/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId                       Scene page, "Handouts" section (section 41)
+/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId/handouts/new          Add Handout (section 43)
+/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId/handouts/$handoutId   Handout page, view and Edit (section 42)
+```
+
+- Both pages keep the Campaign header with Overview as the current tab (extends SP-UX-25).
+- Players get no entry point. Every Handout URL shows them `scene-not-found`, without an API call.
+- Kinds in this PBI: Read-aloud and Text. Visibility is Player-facing or Keeper-facing, always chosen explicitly.
+- UI copy never uses "attachment", "asset", "file", "article", "boxed text", or "narration" (root CONTEXT.md).
+
+## 41. Handouts section on the Scene page (`scene-handout-section`)
+
+```
+Handouts                                          (h2)  [Add Handout]
+Player-facing Handouts reach Players only when you reveal them. Keeper-facing Handouts are never revealed.
+1. The front door                                 (link)   [up] [down]
+   Read-aloud . Player-facing                     (badges)
+2. Corbitt's true nature                          (link)   [up] [down]
+   Text . Keeper-facing
+```
+
+- **Placement:** a `section` labelled by its `h2` (`tabIndex=-1`, used as a focus target), after Keeper notes and before Non-Player Entities, in view mode only. The muted hint sits under the heading.
+- **Action:** "Add Handout", a link styled as a small button to `/handouts/new`, right of the `h2` (it wraps below 640px). It is shown only on Prepared and Active Scenes.
+- **List:** an `ol` in stored order. Each item has:
+  - the title as a link to the Handout page (`break-words`, `id` for focus after a create);
+  - `handout-badges`: a kind badge ("Read-aloud" or "Text") and a visibility badge ("Player-facing" with an `aria-hidden` Eye icon, or "Keeper-facing" with an `aria-hidden` Lock icon);
+  - `move-controls` ("Move {title} up" and "Move {title} down"), on Prepared and Active Scenes only, as in the Scene list (section 13).
+- **Moves:** saved per move through `usePreparedOrderReordering`.
+  - Success: the polite announcement "{title} moved to position {n} of {total}."
+  - Failure: "We couldn't change the order. Try again." (`role=alert`).
+  - A 409 shows "The Handouts changed in another window. Check the order and try again." and refetches the Scene. A Scene finished meanwhile then shows the Finished state without move controls.
+- **Empty:** "No Handouts yet." and, on Prepared and Active Scenes, the action.
+- **Finished:** the list without "Add Handout" or move controls.
+- **Loading and errors:** the section loads with the Scene and uses its Skeleton and error states (section 14).
+- **Status:** the page's `role=status` paragraph shows "{title} added." and "{title} deleted.".
+
+## 42. Handout page (`handout-page`, `handout-content`, `read-aloud-text`)
+
+```
+< Back to the Scene
+Handout saved.                                    (role=status)
+The front door                                    (h1)
+Scene: The Corbitt House                          (muted)
+Read-aloud . Player-facing                        (badges)
++--------------------------------------------+
+| Read-aloud                         (h2)    |   left rule, tinted panel
+| <rendered text, headings h3/h4>            |
++--------------------------------------------+
+[Edit] [Delete Handout]
+```
+
+- **View:**
+  - A link "Back to the Scene" with an `aria-hidden` ArrowLeft icon, and the `role=status` paragraph.
+  - `h1` with the title (`tabIndex=-1`), the muted "Scene: {title}", and the badges.
+  - The content in `handout-content`:
+    - Read-aloud: `read-aloud-text`, a `section` labelled by its `h2` "Read-aloud" with an `aria-hidden` BookOpenText icon. It has a 4px left rule in the primary color and a muted background (rule against background at least 3:1; text at least 4.5:1) and holds `rich-text-view`.
+    - Text: an `h2` "Text" followed by `rich-text-view`.
+    - Both use `headingOffset` 0, so the text's headings are `h3` and `h4`.
+- **Actions by Scene status:**
+  - Prepared: outline "Edit" and "Delete Handout" (outline, destructive text).
+  - Active: "Edit" only, and the muted sentence "This Scene has been started, so its Handouts can't be deleted."
+  - Finished: no actions, and the muted sentence "This Scene is finished and can't be changed."
+- **Edit:** "Edit" swaps the view for `handout-form`, prefilled. The `h1` keeps the saved title. The actions are "Save" ("Saving..." while busy, disabled) and "Cancel". Focus moves to Title. `useUnsavedChangesPrompt` guards navigation away.
+- **Save success:** back to the view, with the status "Handout saved." and focus on "Edit".
+- **Cancel:** discards the edits without confirmation, as in section 14. Focus moves to "Edit".
+- **Save failure:** "We couldn't save the Handout. Try again." (`role=alert`), and the input is kept.
+- **Save refused because the Scene is Finished (409):** the form stays, with the alert from section 16. Cancel shows the refetched Finished view.
+- **Server problems (400, ADR 0018):** each message is shown at its field.
+- **Loading:** a Skeleton for the `h1` and the content, with `aria-busy`.
+- **Error:** "We couldn't load this Handout." with "Try again".
+- **Not found:**
+  - A Player or an unknown Scene gets `scene-not-found`.
+  - An unknown Handout id, or a 404 on save, shows `handout-not-found`: `h1` "We couldn't find that Handout" and the link "Back to the Scene".
+
+## 43. Add Handout page and form (`add-handout-page`, `handout-form`)
+
+```
+Add Handout                                       (h1)
+Scene: The Corbitt House                          (muted)
+Title [__________]
+Kind                                              (fieldset legend)
+  ( ) Read-aloud   Text you read to the Players. It is shown as read-aloud text.
+  ( ) Text         Any other text, such as a letter or a newspaper clipping.
+Who can see it                                    (fieldset legend)
+  ( ) Player-facing   Players can receive it when you reveal it.
+  ( ) Keeper-facing   Only you can read it. It is never revealed.
+Text                                              <rich-text-editor>
+  You can format text and add links.
+[Add Handout]  Cancel
+```
+
+- **Fields, in this order:**
+  1. "Title" (`Input`).
+  2. "Kind" (a `RadioGroup` in a `fieldset`).
+  3. "Who can see it" (a `RadioGroup` in a `fieldset`).
+  4. "Text" (`rich-text-editor`, section 15).
+
+  No radio is preselected on the add page. Each option is labelled by its name and described by its sentence. No field has `maxLength`.
+- **Validation on submit,** in field order:
+  - "Enter a title." / "Title must be 200 characters or fewer."
+  - "Choose Read-aloud or Text."
+  - "Choose who can see this Handout."
+  - "Enter the Handout text." (no visible text) / "The text is too long. Shorten it and try again." (over 204,800 bytes)
+  - Errors are inline (`aria-invalid`, and `aria-describedby` on the field or fieldset). Focus moves to the first invalid field; for a radio group, the first radio.
+  - The server message "This text can't be saved. Shorten it or remove unsupported content." is shown at Text.
+- **Actions:** primary "Add Handout" ("Adding..." while busy, disabled); secondary "Cancel", a link back to the Scene page.
+- **Success:** navigate to the Scene page with the status "{title} added.", move focus to that Handout's link in the list, and invalidate the Scene.
+- **Failure:** "We couldn't add the Handout. Try again." (`role=alert`), and the input is kept.
+- **Finished:**
+  - A submit refused because the Scene is Finished (409) shows the section 16 conflict alert.
+  - Opening the page for a Finished Scene shows "This Scene is finished and can't be changed." and "Back to the Scene" instead of the form.
+- **Unsaved input:** `useUnsavedChangesPrompt(isDirty)`.
+
+## 44. Delete Handout (`delete-handout-dialog`, `AlertDialog`)
+
+- Title "Delete {title}?", description "This can't be undone.", and the buttons "Cancel" and "Delete Handout" ("Deleting..." while busy, both disabled).
+- **Success:** navigate to the Scene page with the status "{title} deleted.", move focus to the Handouts `h2`, and invalidate the Scene. A 404 counts as success.
+- **Failure:** "We couldn't delete the Handout. Try again." (`role=alert`) in the dialog.
+- **Refused (409):** "This Scene has been started, so this Handout can't be deleted." Closing the dialog refetches the Scene and moves focus to the `h1`, because "Delete Handout" is gone.
+- **Cancel:** returns focus to "Delete Handout".
+
+## 45. Handout content
+
+| Key | Copy |
+|---|---|
+| Section | Handouts / Player-facing Handouts reach Players only when you reveal them. Keeper-facing Handouts are never revealed. / No Handouts yet. |
+| Kinds | Read-aloud / Text |
+| Kind descriptions | Text you read to the Players. It is shown as read-aloud text. / Any other text, such as a letter or a newspaper clipping. |
+| Visibility | Player-facing / Keeper-facing |
+| Visibility descriptions | Players can receive it when you reveal it. / Only you can read it. It is never revealed. |
+| Actions | Add Handout / Edit / Save / Cancel / Delete Handout / Back to the Scene |
+| Busy | Adding... / Saving... / Deleting... |
+| Fields | Title / Kind / Who can see it / Text |
+| Hints | You can format text and add links. |
+| Errors | Enter a title. / Title must be 200 characters or fewer. / Choose Read-aloud or Text. / Choose who can see this Handout. / Enter the Handout text. / The text is too long. Shorten it and try again. / This text can't be saved. Shorten it or remove unsupported content. |
+| Status | {title} added. / Handout saved. / {title} deleted. / {title} moved to position {n} of {total}. |
+| Failures | We couldn't add the Handout. Try again. / We couldn't save the Handout. Try again. / We couldn't delete the Handout. Try again. / We couldn't load this Handout. / We couldn't change the order. Try again. |
+| Stale | The Handouts changed in another window. Check the order and try again. |
+| Conflicts | As section 16 / This Scene has been started, so this Handout can't be deleted. |
+| Active | This Scene has been started, so its Handouts can't be deleted. |
+| Finished | This Scene is finished and can't be changed. |
+| Delete dialog | Delete {title}? / This can't be undone. / Cancel / Delete Handout |
+| Move buttons | Move {title} up / Move {title} down |
+| Not found | We couldn't find that Handout / Back to the Scene |
+| Page | Add Handout / Scene: {title} |
+
+## 46. Handout component mapping
+
+| Element | Component |
+|---|---|
+| Section | New `scene-handout-section`, mounted by `scene-page` in view mode |
+| Badges | New `handout-badges` (`Badge`, the label maps in `types/Handout.ts`) |
+| Content | New `handout-content` (picks `read-aloud-text` or a plain "Text" heading) and `read-aloud-text`, in the slice |
+| Handout page | New `handout-page`, route `routes/campaigns.$campaignId.scenarios.$scenarioId.scenes.$sceneId.handouts.$handoutId.tsx` |
+| Add page | New `add-handout-page`, route `routes/campaigns.$campaignId.scenarios.$scenarioId.scenes.$sceneId.handouts.new.tsx` |
+| Form | New `handout-form`, shared by add and edit |
+| Delete dialog | New `delete-handout-dialog` (`AlertDialog`, like `remove-scene-dialog`) |
+| Not found | New `handout-not-found`; existing `scene-not-found` |
+| Reorder | Existing `move-controls`, `usePreparedOrderReordering`, `preparedOrder.ts` |
+| Primitives | Existing only (`Badge`, `Button`, `Input`, `Label`, `RadioGroup`, `Alert`, `AlertDialog`, `Skeleton`) |
+
+Stories cover:
+- **`scene-handout-section`:** empty, several Handouts of both kinds and visibilities, Active, Finished, a long title at 320px, reorder saving, failure, and stale.
+- **`handout-page`:** Read-aloud and Text on a Prepared, an Active, and a Finished Scene; edit; saved; the save refused as Finished; loading; error; not found.
+- **`handout-form`:** empty, prefilled, every error, and busy.
+- **`add-handout-page`:** idle, adding, failure, and Finished.
+- **`delete-handout-dialog`:** idle, deleting, failure, and refused.
+- **`read-aloud-text`:** with every allowed node.
+
+## 47. Handout UX acceptance criteria
+
+- **SP-UX-64** The Scene page shows "Handouts" after Keeper notes, listing each Handout in stored order as a link with its kind and visibility as text; with none, it shows "No Handouts yet.".
+- **SP-UX-65** On a Prepared or Active Scene, "Add Handout" opens the add page. A valid submit returns to the Scene page with "{title} added.", the Handout is listed last, and its text and formatting show on its page after a reload.
+- **SP-UX-66** An empty or over-200-character title, no kind, no visibility, empty text, or text over 204,800 bytes shows its message from section 45, focuses the first invalid field, and saves nothing. A server refusal shows its message at the field.
+- **SP-UX-67** The add page preselects neither a kind nor a visibility. Every Handout shows "Player-facing" or "Keeper-facing" in the list and on its page.
+- **SP-UX-68** A Read-aloud Handout's page shows its text in a panel headed "Read-aloud". A Text Handout's page shows it under "Text", without the panel.
+- **SP-UX-69** "Edit" then "Save" stores the title, kind, visibility, and text, shows "Handout saved.", and survives a reload. The kind can change between Read-aloud and Text. "Cancel" discards the edits.
+- **SP-UX-70** Moving Handouts behaves as SP-UX-11 to SP-UX-14, with Handout titles and the messages from section 45. The new order survives a reload.
+- **SP-UX-71** Only a Prepared Scene's Handout page shows "Delete Handout". "Cancel" keeps the Handout. Confirming returns to the Scene page with "{title} deleted." and without the Handout. A refused delete shows "This Scene has been started, so this Handout can't be deleted.".
+- **SP-UX-72** On an Active Scene, "Add Handout", "Edit", and the move buttons are offered, and "Delete Handout" is not; the Handout page says "This Scene has been started, so its Handouts can't be deleted.".
+- **SP-UX-73** A Finished Scene shows its Handouts without "Add Handout", move buttons, "Edit", or "Delete Handout". The add page says the Scene can't be changed. A write refused because the Scene was finished meanwhile shows the conflict message.
+- **SP-UX-74** A Player opening a Handout or add URL sees "We couldn't find that Scene". An unknown Handout id shows "We couldn't find that Handout".
+- **SP-UX-75** While an add, save, delete, or move is in flight its button is disabled (`aria-disabled` for moves). A second activation does nothing.
+- **SP-UX-76** Handout pages keep the Campaign header with Overview as the current tab (extends SP-UX-25).
+
+## 48. Handout accessibility acceptance criteria (WCAG 2.2 AA)
+
+- **SP-A11Y-37** Each page has exactly one `h1`. The section is a `section` labelled by its `h2`, and the list is an `ol`. On the Handout page the content is under an `h2` ("Read-aloud" or "Text"), and the text's headings are only `h3` and `h4` (1.3.1, 2.4.6).
+- **SP-A11Y-38** Kind and visibility are text in badges, with `aria-hidden` icons. Read-aloud is identified by its visible "Read-aloud" heading, not by color. Panel text has a contrast of at least 4.5:1 and the rule at least 3:1 (1.3.1, 1.4.1, 1.4.3, 1.4.11).
+- **SP-A11Y-39** Kind and "Who can see it" are each a `fieldset` with a `legend`, holding a `radiogroup`. Each radio is named by its label and described by its sentence. A group error is text connected to its fieldset with `aria-describedby`. The text field follows SP-A11Y-12 (1.3.1, 3.3.1, 3.3.2, 4.1.2).
+- **SP-A11Y-40** Focus moves to the new Handout's link after Add; to Title on "Edit", and to "Edit" after Save or Cancel; to the Handouts `h2` after Delete; back to "Delete Handout" when the dialog is cancelled; to the `h1` after a refused delete or a save refused as Finished, once the refetch removes the control; to the first invalid field after a refused submit; and after moves as in SP-A11Y-15. It is never lost to `body` (2.4.3).
+- **SP-A11Y-41** "{title} added.", "Handout saved.", and "{title} deleted." are announced through `role=status` without moving focus. Moves use the section's polite live region, and nothing is announced on first load. Failures and refusals use `role=alert` (4.1.3).
+- **SP-A11Y-42** The move buttons include the title in their accessible names. Every control is at least 24 by 24 CSS pixels and has a visible focus ring (2.4.6, 2.4.7, 2.5.8).
+- **SP-A11Y-43** At 320px and at 200% zoom, the section, the Handout page, the read-aloud panel, and the form fit without horizontal scrolling, and long titles wrap (1.4.10).
+
+## 49. Handout open decisions and research gaps
+
+- **Decided (U1, approved 2026-10-22):** the Kind radio has no default, so the Keeper always chooses deliberately. The alternative was preselecting "Text".
+- **Deferred:**
+  - file Handouts (PBI-SP-007) and Item Handouts (PBI-SP-008), which extend sections 41 to 44;
+  - revealing a Handout, and a "revealed" marker (PBI-SPL-002);
+  - Active and Finished journeys end to end (PBI-SPL-001);
+  - previews of the text in the Scene list;
+  - live updates across the Keeper's own tabs.
+- **Research gap:** whether Keepers want to read all Read-aloud Handouts in sequence before play without opening each page. Option A's inline list is the fallback.

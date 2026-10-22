@@ -114,7 +114,7 @@ public class SceneServiceTests : IDisposable
         using var context = _builder.Fixture.CreateContext();
         var view = await _builder.CreateSceneService(context).GetAsync(_builder.CampaignId, Keeper, scenarioId, created.Id, CancellationToken.None);
 
-        Assert.Equal(created with { NonPlayerEntityLinks = view!.NonPlayerEntityLinks }, view);
+        Assert.Equal(created with { NonPlayerEntityLinks = view!.NonPlayerEntityLinks, Handouts = view.Handouts }, view);
         Assert.Empty(view.NonPlayerEntityLinks);
         Assert.Equal(("Arkham", Notes), (view!.Location, view.KeeperNotes));
     }
@@ -144,7 +144,7 @@ public class SceneServiceTests : IDisposable
 
         using var context = _builder.Fixture.CreateContext();
         var stored = await _builder.CreateSceneService(context).GetAsync(_builder.CampaignId, Keeper, scenarioId, scene.Id, CancellationToken.None);
-        Assert.Equal(scene with { NonPlayerEntityLinks = stored!.NonPlayerEntityLinks }, stored);
+        Assert.Equal(scene with { NonPlayerEntityLinks = stored!.NonPlayerEntityLinks, Handouts = stored.Handouts }, stored);
     }
 
     [Fact]

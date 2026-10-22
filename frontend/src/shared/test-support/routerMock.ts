@@ -7,7 +7,17 @@ import { vi } from 'vitest'
  */
 export const navigateSpy = vi.fn()
 
-export const routerState = { location: { state: {} as { statusMessage?: string; focusHeading?: boolean; focusLinkId?: string } } }
+export const routerState = {
+  location: {
+    state: {} as {
+      statusMessage?: string
+      focusHeading?: boolean
+      focusLinkId?: string
+      focusHandoutId?: string
+      focusHandoutsHeading?: boolean
+    },
+  },
+}
 
 function resolvePath(to: string, params: Record<string, string> = {}): string {
   return Object.entries(params).reduce((path, [name, value]) => path.replace(`$${name}`, value), to)
@@ -21,10 +31,11 @@ interface MockLinkProps {
   onClick?: MouseEventHandler<HTMLAnchorElement>
   'aria-current'?: 'page'
   'aria-label'?: string
+  id?: string
 }
 
-function MockLink({ to, params, children, className, onClick, 'aria-current': ariaCurrent, 'aria-label': ariaLabel }: MockLinkProps) {
-  return createElement('a', { href: resolvePath(to, params), className, onClick, 'aria-current': ariaCurrent, 'aria-label': ariaLabel }, children)
+function MockLink({ to, params, children, className, onClick, 'aria-current': ariaCurrent, 'aria-label': ariaLabel, id }: MockLinkProps) {
+  return createElement('a', { href: resolvePath(to, params), className, onClick, 'aria-current': ariaCurrent, 'aria-label': ariaLabel, id }, children)
 }
 
 export const routerMock = {

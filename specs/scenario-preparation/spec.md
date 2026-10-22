@@ -17,11 +17,12 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - **Scene API:** Keeper only, with the same 404 rule as the Scenario API, including for a Scene of another Scenario. Scenes follow the ordering contract of [ADR 0014](../../docs/adr/0014-order-preparation-records-by-stored-position-with-tie-break.md).
   - `GET /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes` lists the Scenario's Scenes in prepared order, each with `{id, title, status, startedAt, finishedAt}`.
   - `POST /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes` creates a Prepared Scene at the end of the prepared order.
-  - `GET /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` returns one Scene with its title, location, Keeper notes, status, and dates, and its Non-Player Entity links, each `{id, nonPlayerEntity: {id, type, name}, playerFacingName, playerFacingDescription}`, in the order they were linked.
+  - `GET /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` returns one Scene with its title, location, Keeper notes, status, and dates, and its Non-Player Entity links, each `{id, nonPlayerEntity: {id, type, name}, playerFacingName, playerFacingDescription}`, in the order they were linked, and its Handouts, each `{id, kind, visibility, title}`, in stored order ([ADR 0014](../../docs/adr/0014-order-preparation-records-by-stored-position-with-tie-break.md)), without their text.
   - `PUT /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` replaces its title, location, and Keeper notes; 409 when the Scene is Finished.
   - `DELETE /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` removes a Prepared Scene; 409 when it is Active or Finished.
   - `PUT /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/order` replaces the prepared order with the complete list of the Scenario's Scene ids, as for Scenarios.
   - `POST /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}/non-player-entity-links` links a Non-Player Entity of the same Campaign; `PUT` and `DELETE .../non-player-entity-links/{linkId}` replace its Player-facing name and description or unlink it; 409 when the Scene is Finished; 400 for a Non-Player Entity that is not in the Campaign (PBI-SP-004).
+  - `GET`, `PUT`, and `DELETE /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}/handouts/{handoutId}` and `POST .../scenes/{sceneId}/handouts` read one Handout with its text, replace its kind, visibility, title, and text, delete it, or add one at the end; `PUT .../scenes/{sceneId}/handouts/order` replaces the Scene's Handout order with the complete list of its Handout ids. Writes answer 409 when the Scene is Finished; `DELETE` answers 409 unless the Scene is Prepared; 400 for a missing or unknown kind or visibility, a title outside 1-200 characters, or missing, empty, or invalid text (PBI-SP-005).
 - **Non-Player Entity API:** Keeper only, with the same 404 rule as the Scenario API, including for a profile of another Campaign or a profile addressed with the wrong type. Responses include the computed derived values; requests never carry them.
   - `GET /api/campaigns/{campaignId}/non-player-entities` lists the Campaign's Human NPCs and Mythos Creatures, each with `{id, type, name}`.
   - `POST /api/campaigns/{campaignId}/human-npcs` creates a Human NPC; `GET`, `PUT`, and `DELETE /api/campaigns/{campaignId}/human-npcs/{humanNpcId}` read, replace, and delete its NPC Profile.
@@ -32,7 +33,7 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - **Scene status:** A Scene is Prepared, Active, or Finished, and moves only Prepared -> Active -> Finished. The Scene aggregate owns the status and the editing rules that follow from it; Scene Play triggers the transitions. How Scene Play reaches the Scene aggregate, and where Reveals and their snapshots are stored, is decided in an architect decision record before PBI-SPL-001.
 - **Rich text:** Scene Keeper notes, rich-text Handouts, Item descriptions, and Player-facing descriptions of Non-Player Entities in a Scene are stored as Lexical serialized editor state (JSON). The frontend edits it with Lexical and renders it with a read-only Lexical renderer that registers the same nodes. Choosing Lexical is recorded in an ADR.
 - **Handout kinds:** Read-aloud and Text hold rich text (PBI-SP-005). Image, Document, and Map hold a file in Azure Blob Storage (PBI-SP-007). A Map is shown prominently in Scene Play; it is a static image.
-- **UX specification:** [ux.md](ux.md). The Keeper's Scenario page lists the Scenario's Scenes in prepared order with each Scene's status and, once played, its start and finish dates; the Scene layout is in [ux.md](ux.md) sections 11 to 20, the Non-Player Entity list, create page, and profile pages in sections 21 to 30, and linking Non-Player Entities on the Scene page in sections 31 to 39.
+- **UX specification:** [ux.md](ux.md). The Keeper's Scenario page lists the Scenario's Scenes in prepared order with each Scene's status and, once played, its start and finish dates; the Scene layout is in [ux.md](ux.md) sections 11 to 20, the Non-Player Entity list, create page, and profile pages in sections 21 to 30, linking Non-Player Entities on the Scene page in sections 31 to 39, and Handouts on the Scene page and their own pages in sections 40 to 49.
 - **Manual preparation:** v1 provides Keeper-managed Scene, Handout, Human NPC, Mythos Creature, and Item records.
 - **File storage:** Azure Blob Storage stores file Handouts in v1 and uploaded Scenario source documents in the later extraction flow.
 - **LLM extraction boundary:** The later extraction flow uses direct structured-output calls to a Microsoft Foundry model and maps results into the same Scenario, Scene, Human NPC, and Mythos Creature concepts used by manual preparation.
@@ -65,6 +66,7 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - **[DEPRECATED 2026-10-17]**
   ~~Handouts may be player-facing or Keeper-facing; Keeper-facing material must not be exposed to Players before the Keeper reveals it.~~
   Replaced by: every Handout has a visibility of Player-facing or Keeper-facing. A Player-facing Handout reaches a Player only through a Reveal in Scene Play; a Keeper-facing Handout is Keeper reference material and is never revealed.
+- A rich-text Handout has a kind, Read-aloud or Text, which may change between the two; a visibility, chosen explicitly with no default; a required title (1-200 characters); and required rich text with visible text. A Scene's Handouts are ordered per [ADR 0014](../../docs/adr/0014-order-preparation-records-by-stored-position-with-tie-break.md); reordering them changes the Scene's content, so a Finished Scene refuses it. A Handout can be deleted only while its Scene is Prepared, and removing a Prepared Scene removes its Handouts.
 - Later model extraction uses structured output and direct model calls rather than an agentic orchestration layer.
 
 ## Contract
@@ -90,6 +92,7 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - An NPC Profile's derived values always follow the shared formulas; only a Monster Profile has Derived Value Overrides, and each has a reason.
 - Non-Player Entity profiles are never returned to Players or to another Campaign's Keeper through the Scenario Preparation API.
 - Keeper-facing Scenario material and Handouts are not exposed to Players by default.
+- No Player-visible API returns a Handout: a Player-facing Handout reaches a Player only as a Reveal in Scene Play, and a Keeper-facing Handout never does.
 - A Non-Player Entity profile never reaches a Player; only its Player-facing name and description in a Scene do, and only through a Reveal.
 - A Finished Scene's content never changes; its position in the prepared order may.
 - Material that an Active or Finished Scene refers to is never deleted.
@@ -159,13 +162,13 @@ Scenario: A played Scene cannot be removed
 
 # The Handout parts of the next three scenarios are covered by PBI-SP-004 and PBI-SP-005.
 Scenario: A Finished Scene is read-only
-  # SP-UX-22
+  # SP-UX-22, SP-UX-73
   Given the Scene "Meeting Knott" is Finished
   When the Keeper changes its title, a Handout, or a Non-Player Entity link
   Then the change is refused and the Scene is unchanged
 
 Scenario: The Keeper edits an Active Scene
-  # SP-UX-22
+  # SP-UX-22, SP-UX-72
   Given the Scene "The Corbitt House" is Active
   When the Keeper adds a Text Handout to it
   Then the Handout is stored on the Scene
@@ -313,10 +316,37 @@ Scenario: A Non-Player Entity can be linked to a Scene twice
   Then the Scene shows both links
 
 Scenario: Read-aloud passages are separate Handouts
+  # SP-UX-65, SP-UX-67, SP-UX-68
   Given a Keeper is editing a Scene
   When the Keeper adds two Read-aloud Handouts
   Then the Scene has both Handouts in the order they were added
   And each has its own visibility
+
+Scenario: Keeper edits, reorders, and deletes Handouts
+  # SP-UX-69, SP-UX-70, SP-UX-71
+  Given the Prepared Scene "The Corbitt House" has the Handouts "The front door" and "Diary page"
+  When the Keeper changes "Diary page" from Text to Read-aloud
+  And moves "Diary page" above "The front door"
+  And deletes "The front door"
+  Then the Scene has only the Read-aloud Handout "Diary page"
+
+Scenario: A Handout on an Active Scene cannot be deleted
+  # SP-UX-72
+  Given the Scene "The Corbitt House" is Active with the Handout "The front door"
+  When the Keeper deletes "The front door"
+  Then the deletion is refused and the Handout is unchanged
+
+Scenario: A Handout needs an explicit visibility
+  # SP-UX-66, SP-UX-67
+  Given a Keeper is adding a Handout to a Scene
+  When the Keeper saves it without choosing Player-facing or Keeper-facing
+  Then the save is refused and no Handout is added
+
+Scenario: Handouts are the Keeper's alone
+  # SP-UX-74
+  Given the Scene "The Corbitt House" has the Player-facing Handout "The front door"
+  When a Player or another Campaign's Keeper requests the Scene or the Handout
+  Then each gets not found and no Handout content
 
 Scenario: Keeper attaches a file Handout
   Given a Keeper is editing a Scene
@@ -332,6 +362,7 @@ Scenario: Scene Keeper notes outside the allowed nodes are refused
 
 # The Handout part is covered by PBI-SP-005.
 Scenario: Rich text outside the allowed nodes is refused
+  # SP-UX-66
   Given a Keeper is editing a Text Handout
   When the Keeper saves rich text that contains an image node or a "javascript:" link
   Then the save is refused with 400 and the Handout is unchanged

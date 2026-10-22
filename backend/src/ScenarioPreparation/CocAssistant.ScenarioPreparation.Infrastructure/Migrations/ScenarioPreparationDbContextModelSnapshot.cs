@@ -22,6 +22,46 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Handout", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SceneId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Visibility")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SceneId", "Position");
+
+                    b.ToTable("Handouts", (string)null);
+                });
+
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.HumanNpc", b =>
                 {
                     b.Property<Guid>("Id")
@@ -194,6 +234,15 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                     b.ToTable("Scenes");
                 });
 
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Handout", b =>
+                {
+                    b.HasOne("CocAssistant.ScenarioPreparation.Domain.Scene", null)
+                        .WithMany("Handouts")
+                        .HasForeignKey("SceneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.NonPlayerEntityLink", b =>
                 {
                     b.HasOne("CocAssistant.ScenarioPreparation.Domain.HumanNpc", null)
@@ -224,6 +273,8 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
 
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Scene", b =>
                 {
+                    b.Navigation("Handouts");
+
                     b.Navigation("NonPlayerEntityLinks");
                 });
 #pragma warning restore 612, 618

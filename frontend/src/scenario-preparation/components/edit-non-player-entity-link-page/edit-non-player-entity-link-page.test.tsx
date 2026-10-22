@@ -46,6 +46,7 @@ const scene: Scene = {
       playerFacingDescription: description,
     },
   ],
+  handouts: [],
 }
 
 const editing = (overrides: Record<string, unknown> = {}) => ({ mutate, isPending: false, isError: false, error: null, ...overrides })

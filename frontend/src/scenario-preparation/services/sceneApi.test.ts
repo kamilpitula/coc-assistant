@@ -33,7 +33,8 @@ const link = {
   playerFacingName: 'A shape in the cellar',
   playerFacingDescription: notes,
 }
-const detail = { ...summary, location: 'Arkham', keeperNotes: notes, nonPlayerEntityLinks: [link] }
+const handoutSummary = { id: 'h1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door' }
+const detail = { ...summary, location: 'Arkham', keeperNotes: notes, nonPlayerEntityLinks: [link], handouts: [handoutSummary] }
 
 describe('scene API', () => {
   const fetchMock = vi.fn<typeof fetch>()
@@ -114,6 +115,30 @@ describe('scene API', () => {
       fetchMock.mockResolvedValue(jsonResponse(200, { ...detail, keeperNotes: looseNotes }))
 
       expect(await getScene('token', 'c1', 's1', 'a1')).toEqual({ ...detail, keeperNotes: looseNotes })
+    })
+
+    it('returns the Handouts in the order sent, each with its kind, visibility, and title but no text', async () => {
+      const second = { id: 'h2', kind: 'Text', visibility: 'KeeperFacing', title: 'A letter' }
+      fetchMock.mockResolvedValue(jsonResponse(200, { ...detail, handouts: [handoutSummary, second] }))
+
+      const scene = await getScene('token', 'c1', 's1', 'a1')
+
+      expect(scene?.handouts).toEqual([handoutSummary, second])
+    })
+
+    it('rejects a Handout with content or a position, an unknown kind or visibility, and a Scene without handouts', async () => {
+      for (const handout of [
+        { ...handoutSummary, content: notes },
+        { ...handoutSummary, position: 1 },
+        { ...handoutSummary, kind: 'Image' },
+        { ...handoutSummary, visibility: 'Everyone' },
+      ]) {
+        fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...detail, handouts: [handout] }))
+        await expect(getScene('token', 'c1', 's1', 'a1')).rejects.toThrow()
+      }
+
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...detail, handouts: undefined }))
+      await expect(getScene('token', 'c1', 's1', 'a1')).rejects.toThrow()
     })
 
     it('accepts no notes', async () => {
