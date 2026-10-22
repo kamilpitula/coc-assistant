@@ -76,6 +76,45 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                     b.ToTable("MythosCreatures");
                 });
 
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.NonPlayerEntityLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("HumanNpcId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("MythosCreatureId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PlayerFacingDescription")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PlayerFacingName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("SceneId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HumanNpcId");
+
+                    b.HasIndex("MythosCreatureId");
+
+                    b.HasIndex("SceneId");
+
+                    b.ToTable("NonPlayerEntityLinks", t =>
+                        {
+                            t.HasCheckConstraint("CK_NonPlayerEntityLinks_OneNonPlayerEntity", "(HumanNpcId IS NOT NULL AND MythosCreatureId IS NULL) OR (HumanNpcId IS NULL AND MythosCreatureId IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Scenario", b =>
                 {
                     b.Property<Guid>("Id")
@@ -155,6 +194,25 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                     b.ToTable("Scenes");
                 });
 
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.NonPlayerEntityLink", b =>
+                {
+                    b.HasOne("CocAssistant.ScenarioPreparation.Domain.HumanNpc", null)
+                        .WithMany()
+                        .HasForeignKey("HumanNpcId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("CocAssistant.ScenarioPreparation.Domain.MythosCreature", null)
+                        .WithMany()
+                        .HasForeignKey("MythosCreatureId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("CocAssistant.ScenarioPreparation.Domain.Scene", null)
+                        .WithMany("NonPlayerEntityLinks")
+                        .HasForeignKey("SceneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Scene", b =>
                 {
                     b.HasOne("CocAssistant.ScenarioPreparation.Domain.Scenario", null)
@@ -162,6 +220,11 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                         .HasForeignKey("ScenarioId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Scene", b =>
+                {
+                    b.Navigation("NonPlayerEntityLinks");
                 });
 #pragma warning restore 612, 618
         }

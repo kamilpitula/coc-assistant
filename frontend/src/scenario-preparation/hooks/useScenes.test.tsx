@@ -26,7 +26,7 @@ vi.mock('@/scenario-preparation/services/sceneApi', async (importOriginal) => ({
 }))
 
 const knott: SceneSummary = { id: 'a1', title: 'Meeting Knott', status: 'Prepared', startedAt: null, finishedAt: null }
-const detail: Scene = { ...knott, location: '', keeperNotes: null }
+const detail: Scene = { ...knott, location: '', keeperNotes: null, nonPlayerEntityLinks: [] }
 const input = { title: 'Meeting Knott', location: '', keeperNotes: null }
 
 function setup() {

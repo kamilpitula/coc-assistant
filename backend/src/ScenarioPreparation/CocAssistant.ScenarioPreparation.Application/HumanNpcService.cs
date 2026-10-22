@@ -9,13 +9,15 @@ public class HumanNpcService
 {
     private readonly ICampaignKeepers _keepers;
     private readonly IHumanNpcRepository _humanNpcs;
+    private readonly INonPlayerEntityUsage _usage;
     private readonly INonPlayerEntityRuleData _ruleData;
     private readonly TimeProvider _timeProvider;
 
-    public HumanNpcService(ICampaignKeepers keepers, IHumanNpcRepository humanNpcs, INonPlayerEntityRuleData ruleData, TimeProvider timeProvider)
+    public HumanNpcService(ICampaignKeepers keepers, IHumanNpcRepository humanNpcs, INonPlayerEntityUsage usage, INonPlayerEntityRuleData ruleData, TimeProvider timeProvider)
     {
         _keepers = keepers;
         _humanNpcs = humanNpcs;
+        _usage = usage;
         _ruleData = ruleData;
         _timeProvider = timeProvider;
     }
@@ -94,13 +96,18 @@ public class HumanNpcService
         return ToView(copy);
     }
 
-    /// <summary>Deletes a Human NPC. Refusing when it is linked to a played Scene arrives with Scene links (PBI-SP-004).</summary>
+    /// <summary>Deletes a Human NPC; one linked to an Active or Finished Scene is refused. Prepared links go with it (ADR 0019).</summary>
     public async Task<HumanNpcDeleteOutcome> DeleteAsync(Guid campaignId, Guid callerAccountId, Guid humanNpcId, CancellationToken cancellationToken)
     {
         var humanNpc = await FindAsync(campaignId, callerAccountId, humanNpcId, cancellationToken);
         if (humanNpc is null)
         {
             return HumanNpcDeleteOutcome.NotFound;
+        }
+
+        if (await _usage.IsLinkedToPlayedSceneAsync(campaignId, NonPlayerEntityType.HumanNpc, humanNpcId, cancellationToken))
+        {
+            return HumanNpcDeleteOutcome.LinkedToPlayedScene;
         }
 
         _humanNpcs.Remove(humanNpc);

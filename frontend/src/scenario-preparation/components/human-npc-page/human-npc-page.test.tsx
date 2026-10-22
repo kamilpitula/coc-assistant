@@ -1,8 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { NonPlayerEntityNotFoundError, NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
+import { NonPlayerEntityInUseError, NonPlayerEntityNotFoundError, NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import { gangsterHumanNpc, knottHumanNpc } from '@/scenario-preparation/test-support/humanNpcFixtures'
 import { navigateSpy, routerState } from '@/shared/test-support/routerMock'
 
@@ -134,6 +134,18 @@ describe('HumanNpcPage', () => {
       params: { campaignId: 'c1' },
       state: { statusMessage: 'Gangster deleted.' },
     })
+  })
+
+  it('explains that a profile part of a played Scene cannot be deleted and disables Delete (SP-UX-58)', async () => {
+    mockUseDelete.mockReturnValue(mutation(deleteMutate, { isError: true, error: new NonPlayerEntityInUseError() }))
+    render(<HumanNpcPage campaignId="c1" humanNpcId="h1" />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+
+    const dialog = screen.getByRole('alertdialog', { name: 'Delete Gangster?' })
+    expect(dialog).toHaveTextContent("Gangster is part of a Scene that has been played, so it can't be deleted.")
+    expect(dialog).not.toHaveTextContent("We couldn't delete")
+    expect(within(dialog).getByRole('button', { name: 'Delete' })).toBeDisabled()
   })
 
   it('keeps the profile when the Keeper cancels the deletion and returns focus to Delete (SP-UX-37)', async () => {

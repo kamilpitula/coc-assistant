@@ -1,10 +1,11 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
 import { NonPlayerEntityNotFound } from '@/scenario-preparation/components/non-player-entity-not-found/non-player-entity-not-found'
+import { useFilterAnnouncement } from '@/scenario-preparation/hooks/useFilterAnnouncement'
 import { useNonPlayerEntities } from '@/scenario-preparation/hooks/useNonPlayerEntities'
 import { filterNonPlayerEntities } from '@/scenario-preparation/services/nonPlayerEntityFilter'
 import {
@@ -19,8 +20,6 @@ import { Label } from '@/shared/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table'
-
-const ANNOUNCEMENT_DELAY_MS = 500
 
 const TYPE_OPTIONS: { value: NonPlayerEntityTypeFilter; label: string }[] = [
   { value: 'All', label: 'All' },
@@ -121,7 +120,7 @@ function FilteredList({ campaignId, items }: { campaignId: string; items: NonPla
   const [search, setSearch] = useState('')
   const [type, setType] = useState<NonPlayerEntityTypeFilter>('All')
   const shown = useMemo(() => filterNonPlayerEntities(items, search, type), [items, search, type])
-  const announcement = useAnnouncement(shown.length, `${search}|${type}`)
+  const announcement = useFilterAnnouncement(shown.length, `${search}|${type}`)
 
   const clearFilters = () => {
     setSearch('')
@@ -161,23 +160,6 @@ function FilteredList({ campaignId, items }: { campaignId: string; items: NonPla
       )}
     </>
   )
-}
-
-/** "{n} shown." after the search or filter changes, debounced; empty on first load (SP-A11Y-23). */
-function useAnnouncement(count: number, filterKey: string): string {
-  const [announcement, setAnnouncement] = useState('')
-  const previousKey = useRef(filterKey)
-
-  useEffect(() => {
-    if (previousKey.current === filterKey) {
-      return
-    }
-    previousKey.current = filterKey
-    const timer = setTimeout(() => setAnnouncement(`${count} shown.`), ANNOUNCEMENT_DELAY_MS)
-    return () => clearTimeout(timer)
-  }, [count, filterKey])
-
-  return announcement
 }
 
 const ENTITY_LINK_CLASS = 'inline-flex min-h-6 items-center font-medium break-words underline-offset-4 hover:underline'

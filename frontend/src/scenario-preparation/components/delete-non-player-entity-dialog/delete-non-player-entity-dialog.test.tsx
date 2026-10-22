@@ -25,7 +25,9 @@ describe('DeleteNonPlayerEntityDialog', () => {
   it('asks "Delete {name}?" with "This can\'t be undone." and Cancel and Delete', async () => {
     const props = show()
 
-    expect(screen.getByRole('alertdialog', { name: 'Delete Mr. Knott?' })).toHaveAccessibleDescription("This can't be undone.")
+    expect(screen.getByRole('alertdialog', { name: 'Delete Mr. Knott?' })).toHaveAccessibleDescription(
+      "This can't be undone. It is also removed from any Prepared Scene it is part of.",
+    )
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
     expect(props.onConfirm).toHaveBeenCalled()
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))

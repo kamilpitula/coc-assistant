@@ -79,7 +79,7 @@ public class HumanNpcsController : ScenarioPreparationControllerBase
         return view is null ? NotFound() : StatusCode(StatusCodes.Status201Created, HumanNpcMapping.ToResponse(view));
     }
 
-    /// <summary>Deletes a Human NPC.</summary>
+    /// <summary>Deletes a Human NPC. 409 when it is linked to an Active or Finished Scene.</summary>
     [HttpDelete("{humanNpcId:guid}")]
     public async Task<IActionResult> Delete(Guid campaignId, Guid humanNpcId, CancellationToken cancellationToken)
     {
@@ -90,7 +90,14 @@ public class HumanNpcsController : ScenarioPreparationControllerBase
         }
 
         var outcome = await _humanNpcService.DeleteAsync(campaignId, accountId.Value, humanNpcId, cancellationToken);
-        return outcome == HumanNpcDeleteOutcome.Deleted ? NoContent() : NotFound();
+        return outcome switch
+        {
+            HumanNpcDeleteOutcome.Deleted => NoContent(),
+            HumanNpcDeleteOutcome.LinkedToPlayedScene => Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: NonPlayerEntityLinkProblemMessages.LinkedToPlayedSceneTitle),
+            _ => NotFound(),
+        };
     }
 
     private ActionResult Failure(HumanNpcWriteResult result)

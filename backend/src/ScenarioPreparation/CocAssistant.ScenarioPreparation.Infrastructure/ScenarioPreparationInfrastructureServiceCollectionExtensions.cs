@@ -14,10 +14,12 @@ public static class ScenarioPreparationInfrastructureServiceCollectionExtensions
         services.AddScoped<IHumanNpcRepository, EfHumanNpcRepository>();
         services.AddScoped<IMythosCreatureRepository, EfMythosCreatureRepository>();
         services.AddScoped<INonPlayerEntityDirectory, EfNonPlayerEntityDirectory>();
+        services.AddScoped<INonPlayerEntityUsage, EfNonPlayerEntityUsage>();
         services.AddScoped<ICampaignKeepers, CampaignPlayCampaignKeepers>();
         services.AddSingleton<INonPlayerEntityRuleData, CampaignPlayNonPlayerEntityRuleData>();
         services.AddScoped<ScenarioService>();
         services.AddScoped<SceneService>();
+        services.AddScoped<NonPlayerEntityLinkService>();
         services.AddScoped<HumanNpcService>();
         services.AddScoped<MythosCreatureService>();
         services.AddScoped<NonPlayerEntityService>();

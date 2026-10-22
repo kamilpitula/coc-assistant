@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
 
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
+import { SceneLinkSection } from '@/scenario-preparation/components/scene-link-section/scene-link-section'
 import { RemoveSceneDialog } from '@/scenario-preparation/components/remove-scene-dialog/remove-scene-dialog'
 import { SceneForm } from '@/scenario-preparation/components/scene-form/scene-form'
 import { SceneNotFound } from '@/scenario-preparation/components/scene-not-found/scene-not-found'
@@ -69,8 +70,10 @@ interface SceneDetailProps {
 
 function SceneDetail({ campaignId, scenarioId, scene, onRefetch }: SceneDetailProps) {
   const navigationMessage = useRouterState({ select: (state) => state.location.state.statusMessage })
+  const focusLinkId = useRouterState({ select: (state) => state.location.state.focusLinkId })
   const edit = useEditScene(campaignId, scenarioId, scene.id)
   const [isEditing, setIsEditing] = useState(false)
+  const [unlinkedMessage, setUnlinkedMessage] = useState<string | null>(null)
   const [justSaved, setJustSaved] = useState(false)
   const [returnedFromEdit, setReturnedFromEdit] = useState(false)
   const editButtonRef = useRef<HTMLButtonElement>(null)
@@ -86,12 +89,14 @@ function SceneDetail({ campaignId, scenarioId, scene, onRefetch }: SceneDetailPr
   const startEditing = () => {
     edit.reset()
     setJustSaved(false)
+    setUnlinkedMessage(null)
     setReturnedFromEdit(false)
     setIsEditing(true)
   }
 
   const stopEditing = (saved: boolean) => {
     setJustSaved(saved)
+    setUnlinkedMessage(null)
     setReturnedFromEdit(true)
     setIsEditing(false)
     if (!saved && edit.error instanceof SceneFinishedError) {
@@ -110,7 +115,7 @@ function SceneDetail({ campaignId, scenarioId, scene, onRefetch }: SceneDetailPr
         Back to the Scenario
       </Link>
       <p role="status" className="text-sm empty:hidden">
-        {justSaved ? 'Scene saved.' : navigationMessage}
+        {unlinkedMessage ?? (justSaved ? 'Scene saved.' : navigationMessage)}
       </p>
       <div className="flex flex-col gap-2">
         <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold break-words outline-none">
@@ -130,7 +135,9 @@ function SceneDetail({ campaignId, scenarioId, scene, onRefetch }: SceneDetailPr
           scene={scene}
           editButtonRef={editButtonRef}
           headingRef={headingRef}
+          focusLinkId={focusLinkId}
           onEdit={startEditing}
+          onUnlinked={(name) => setUnlinkedMessage(`${name} unlinked.`)}
           onRefetch={onRefetch}
         />
       )}
@@ -181,11 +188,13 @@ interface SceneViewProps {
   scene: Scene
   editButtonRef: RefObject<HTMLButtonElement | null>
   headingRef: RefObject<HTMLHeadingElement | null>
+  focusLinkId: string | undefined
   onEdit: () => void
+  onUnlinked: (playerFacingName: string) => void
   onRefetch: () => void
 }
 
-function SceneView({ campaignId, scenarioId, scene, editButtonRef, headingRef, onEdit, onRefetch }: SceneViewProps) {
+function SceneView({ campaignId, scenarioId, scene, editButtonRef, headingRef, focusLinkId, onEdit, onUnlinked, onRefetch }: SceneViewProps) {
   return (
     <>
       {scene.location !== '' && (
@@ -202,6 +211,16 @@ function SceneView({ campaignId, scenarioId, scene, editButtonRef, headingRef, o
           <p className="text-sm text-muted-foreground">No Keeper notes yet.</p>
         )}
       </section>
+      <SceneLinkSection
+        campaignId={campaignId}
+        scenarioId={scenarioId}
+        sceneId={scene.id}
+        status={scene.status}
+        links={scene.nonPlayerEntityLinks}
+        focusLinkId={focusLinkId}
+        onUnlinked={onUnlinked}
+        onRefetch={onRefetch}
+      />
       {scene.status === 'Finished' ? (
         <p className="text-sm text-muted-foreground">This Scene is finished and can&apos;t be changed.</p>
       ) : (

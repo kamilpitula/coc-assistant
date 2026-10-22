@@ -23,6 +23,12 @@ Overview entry: **counts with "View all"**, not recent profiles. The list's sear
 
 Monster Profile field-level design (PBI-SP-009): **Option B, a long form plus an "On this page" section index**, chosen 2026-10-18 (section 25.5). Option A (the plain long form) was rejected because Sanity loss and attacks are hard to find in a full profile at the table; Option C (per-section editing) was rejected because it reopens section 25.2 and adds a second editing pattern. Design record: [docs/scenario-preparation/issues/09-create-mythos-creature-profiles.design.md](../../docs/scenario-preparation/issues/09-create-mythos-creature-profiles.design.md).
 
+Scene links (PBI-SP-004): **Option B, dedicated link pages** (a "Non-Player Entities" section on the Scene page, a link page with a searchable picker, and an edit page per link), chosen 2026-10-21. A Non-Player Entity may be linked to the same Scene more than once; the Scene page shows only a link to the profile, not a profile summary; the Player-facing name starts empty. Alternatives considered:
+- **Option A (a link dialog on the Scene page):** rejected because the rich-text editor's link dialog would nest inside it, the editor and picker are cramped at 320px, and dismissing the dialog could silently discard a long description.
+- **Option C (links as repeating rows in the Scene's Edit mode):** rejected because several rich-text editors make one heavy form, a `Select` cannot search a long list, and editing one description during play would open the whole Scene form.
+
+Scene links are specified in sections 31 to 39. Design record: [docs/scenario-preparation/issues/04-link-entities-to-scenes.design.md](../../docs/scenario-preparation/issues/04-link-entities-to-scenes.design.md).
+
 ## 1. Information architecture
 
 ```
@@ -245,6 +251,7 @@ The Corbitt House                                 (h1)
 Location   Arkham, Boston Road                    (dl)
 Keeper notes                                      (h2)
 <rendered notes, or "No Keeper notes yet.">
+Non-Player Entities                               (h2)  [Link a Non-Player Entity]  (section 32)
 [Edit] [Remove Scene]
 ```
 
@@ -254,6 +261,7 @@ Keeper notes                                      (h2)
   - `h1` the Scene title (`break-words`), then a line with the status badge and the times (section 12).
   - A `dl` with "Location" and its value, only when a location is set.
   - `h2` "Keeper notes" with `rich-text-view`, or "No Keeper notes yet." in muted text when there are none.
+  - The "Non-Player Entities" section (section 32), in view mode only; in Edit mode it is not shown.
 - **Actions by status:** Prepared: outline "Edit" and "Remove Scene" (outline, destructive text). Active: "Edit" only. Finished: no actions, and the muted sentence "This Scene is finished and can't be changed."
 - **Edit:** "Edit" swaps the view for `scene-form`, prefilled; the `h1` keeps the saved title. Actions "Save" ("Saving..." while busy, disabled) and "Cancel". Focus moves to the Title field.
 - **Save success:** back to the view, the status says "Scene saved.", focus moves to "Edit".
@@ -494,7 +502,7 @@ Keeper notes                    (fieldset)
 
 ### 25.3 Delete and Duplicate
 
-- **Delete (`delete-non-player-entity-dialog`, `AlertDialog`):** title "Delete {name}?", description "This can't be undone.", buttons "Cancel" and "Delete" ("Deleting..." while busy, both disabled). Failure: "We couldn't delete {name}. Try again." (`role=alert`) in the dialog. From PBI-SP-004, a refusal (409) shows "{name} is part of a Scene that has been played, so it can't be deleted.". Success navigates to the list page with the status "{name} deleted." and invalidates the list and counts. Cancel returns focus to "Delete".
+- **Delete (`delete-non-player-entity-dialog`, `AlertDialog`):** title "Delete {name}?", description "This can't be undone. It is also removed from any Prepared Scene it is part of.", buttons "Cancel" and "Delete" ("Deleting..." while busy, both disabled). Failure: "We couldn't delete {name}. Try again." (`role=alert`) in the dialog. From PBI-SP-004, a refusal (409) shows "{name} is part of a Scene that has been played, so it can't be deleted." and disables Delete; Cancel closes the dialog. Success navigates to the list page with the status "{name} deleted." and invalidates the list and counts. Cancel returns focus to "Delete".
 - **Duplicate (PBI-SP-010):** activates at once, with no dialog. The button reads "Duplicating..." and is disabled while busy. Success navigates to the copy's profile page with the status "Copy created. It isn't part of any Scene." and moves focus to the copy's `h1`; failure, including a not-found answer, shows "We couldn't duplicate {name}. Try again." (`role=alert`) under the actions and focus stays on "Duplicate". Duplicate is shown only in the view, never in Edit mode. The server names the copy; the client never computes the name.
 
 ### 25.4 NPC Profile sections
@@ -661,7 +669,7 @@ Fixed order: Details, Characteristics, Movement, Combat, Defenses, Skills, Spell
 | MOV gap | Not covered by the rules for this age |
 | Error summary | There is 1 problem / There are {n} problems |
 | Failures | We couldn't create the Non-Player Entity. Try again. / We couldn't save the {type}. Try again. / We couldn't delete {name}. Try again. / We couldn't duplicate {name}. Try again. |
-| Delete dialog | Delete {name}? / This can't be undone. / Delete |
+| Delete dialog | Delete {name}? / This can't be undone. It is also removed from any Prepared Scene it is part of. / Delete |
 | Delete refused (PBI-SP-004) | {name} is part of a Scene that has been played, so it can't be deleted. |
 | Empty view | No details yet. / No Keeper notes yet. |
 | Not found | We couldn't find that Non-Player Entity / Back to your Campaign |
@@ -743,5 +751,159 @@ Stories cover:
 - **Resolved (PBI-SP-009):** Monster Profile field-level content, section 25.5 (long form plus a section index, selected 2026-10-18).
 - **Deferred:** a profession or Creature Kind column in the list; the list response carries only `{id, type, name}`.
 - **Deferred:** linking a profile to a Scene from its profile page (PBI-SP-004 designs linking on the Scene page).
+- **Resolved (PBI-SP-004):** linking Non-Player Entities on the Scene page, sections 31 to 39 (Option B, selected 2026-10-21).
 - **Research gap:** whether the section index (section 25.5) is enough for a full Monster Profile at the table, or per-section editing (Option C of PBI-SP-009) is needed after all.
 - **Research gap:** whether Keepers want the list grouped by Scenario once Scene links exist.
+
+## 31. Scene links: information architecture
+
+```
+/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId                                  Scene page, "Non-Player Entities" section (section 32)
+/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId/non-player-entity-links/new      Link a Non-Player Entity (section 33)
+/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId/non-player-entity-links/$linkId  Edit a link (section 33)
+```
+
+- Both pages keep the Campaign header with Overview as the current tab (extends SP-UX-25).
+- Players get no entry point; every link URL shows them `scene-not-found`, without an API call.
+- A link's Non-Player Entity is fixed; to change it, the Keeper unlinks and links again.
+- A Non-Player Entity may be linked to the same Scene more than once (spec Constraints).
+- UI copy says "Player-facing name" and "Player-facing description". Never write "NPC" alone, "monster", or "stat block" (root CONTEXT.md).
+
+## 32. Non-Player Entities section on the Scene page (`scene-link-section`)
+
+```
+Non-Player Entities                               (h2)  [Link a Non-Player Entity]
+Only the Player-facing name and description can reach Players, and only when you reveal them.
+- A shape in the cellar                           (h3)
+  Mythos Creature: Ghoul                          (muted; "Ghoul" links to the profile)
+  <description, or "No Player-facing description yet.">
+  [Edit] [Unlink]
+```
+
+- **Placement:** a `section` labelled by its `h2`, after Keeper notes and before the Scene actions, shown in view mode only. The muted hint sits under the heading.
+- **Action:** "Link a Non-Player Entity", a link styled as a small button to the link page, right of the `h2` (wraps under it below 640px), shown only while the Scene is Prepared or Active.
+- **List:** a `ul` in the order the links were made. Each item has:
+  - an `h3` with the Player-facing name (`break-words`, `tabIndex=-1` as a focus target);
+  - a muted line "{type label}: " followed by the profile name as a link to the profile page;
+  - the description in `rich-text-view` with `headingOffset` 1 (its headings render as `h4` and `h5`), or "No Player-facing description yet." in muted text;
+  - outline "Edit", a link to the edit page with the accessible name "Edit {Player-facing name}", and "Unlink" (outline, destructive text) with the accessible name "Unlink {Player-facing name}", both only on Prepared and Active Scenes.
+- **Empty:** "No Non-Player Entities linked yet." and, on Prepared and Active Scenes, the action.
+- **Finished:** the links are shown without "Link a Non-Player Entity", "Edit", or "Unlink".
+- **Loading and errors:** the links load with the Scene and use its Skeleton and error states (section 14).
+- **Status:** the page's `role=status` paragraph shows "{Player-facing name} linked.", "{Player-facing name} saved.", and "{Player-facing name} unlinked.".
+
+## 33. Link and Edit link pages (`link-non-player-entity-page`, `edit-non-player-entity-link-page`, `scene-link-form`, `non-player-entity-picker`)
+
+```
+Link a Non-Player Entity                          (h1)
+Scene: The Corbitt House                          (muted)
+Non-Player Entity                                 (fieldset legend)
+  Search by name [__________]
+  Type  (o) All  ( ) Human NPCs  ( ) Mythos Creatures
+  Selected: Ghoul, Mythos Creature                (muted, once one is chosen)
+  12 shown.                                       (polite live region)
+  ( ) Ghoul            Mythos Creature
+  ( ) Mr. Knott        Human NPC . Already in this Scene
+Player-facing name [__________]
+  What the Investigators know it as, for example A shape in the cellar.
+Player-facing description (optional)              <rich-text-editor>
+  What the Investigators may learn. Players see it only when you reveal it. You can format text and add links.
+[Link]  Cancel
+```
+
+- **Picker (`non-player-entity-picker`):**
+  - A `fieldset` with the legend "Non-Player Entity", holding the search and type filter exactly as in section 23 (reusing `nonPlayerEntityFilter`) and the results.
+  - Results are a `RadioGroup` sorted by name (`Intl.Collator`, viewer's locale). Each option is labelled by the profile name and described (`aria-describedby`) by its type label, plus " . Already in this Scene" when this Scene already links it.
+  - Only the Campaign's own Human NPCs and Mythos Creatures are offered.
+  - A choice stays selected when the filters hide it; the "Selected:" line always names it.
+  - **No match:** "No Non-Player Entities match these filters." with "Clear filters", which resets both and moves focus to the search field.
+  - **Empty Campaign:** "No Non-Player Entities yet." and the link "Create Non-Player Entity" to `/non-player-entities/new`; search and filter are not rendered.
+  - **Loading:** three Skeleton rows with `aria-busy="true"`. **Error:** "We couldn't load the Non-Player Entities." with "Try again".
+- **Fields:** "Player-facing name" (`Input`), which starts empty and is never prefilled from the profile; "Player-facing description (optional)" (`rich-text-editor`, section 15). Hints as in the wireframe, connected with `aria-describedby`. No field has a `maxLength` attribute.
+- **Validation on submit,** in the order picker, name, description: "Choose a Non-Player Entity." / "Enter a Player-facing name." / "Player-facing name must be 200 characters or fewer." / "Player-facing description is too long. Shorten it and try again." (more than 204,800 bytes). Errors are inline (`aria-invalid`, `aria-describedby`; the picker's error is connected to its fieldset). Focus moves to the first invalid field; for the picker, the checked radio, else the first radio, else the search field.
+- **Server problems (400, ADR 0018):** each message is shown at its field by key; a `nonPlayerEntity` problem is shown at the picker and the picker's list is refetched.
+- **Actions:** link page primary "Link" ("Linking..." while busy, disabled); edit page primary "Save" ("Saving..." while busy, disabled); secondary "Cancel", a link back to the Scene page.
+- **Edit page:** `h1` "Edit {saved Player-facing name}"; the muted lines "Scene: {title}" and "{type label}: {profile name}" (text, no picker); the fields prefilled.
+- **Success:** navigate to the Scene page with the navigation status message "{name} linked." or "{name} saved.", move focus to that link's `h3`, and invalidate the Scene.
+- **Failure:** an `Alert` (`role=alert`) "We couldn't link the Non-Player Entity. Try again." or "We couldn't save the link. Try again."; the input is kept.
+- **Finished:** a save refused because the Scene is Finished (409) keeps the form with the alert "This Scene has been finished, so it can't be changed. Copy anything you need, then select Cancel.". Opening either page for a Finished Scene shows "This Scene is finished and can't be changed." and "Back to the Scene" instead of the form.
+- **Not found:** a Player or an unknown Scene gets `scene-not-found`. An unknown link id, or a 404 on save, shows `non-player-entity-link-not-found`: `h1` "We couldn't find that link" and the link "Back to the Scene".
+- **Unsaved edits:** `useUnsavedChangesPrompt(isDirty)`; choosing an entity, typing a name, or an editor change counts.
+
+## 34. Unlink (`unlink-non-player-entity-dialog`, `AlertDialog`)
+
+- Title "Unlink {Player-facing name}?", description "Its Player-facing name and description are deleted. {profile name} stays in the Campaign.", buttons "Cancel" and "Unlink" ("Unlinking..." while busy, both disabled).
+- **Success:** the dialog closes, the status says "{name} unlinked.", focus moves to the section `h2` (`tabIndex=-1`), and the Scene is invalidated. A 404 counts as success.
+- **Failure:** "We couldn't unlink {name}. Try again." (`role=alert`) in the dialog.
+- **Refused (409):** "This Scene has been finished, so it can't be changed."; closing the dialog refetches the Scene.
+- **Cancel:** returns focus to "Unlink".
+
+## 35. Scene link content
+
+| Key | Copy |
+|---|---|
+| Section | Non-Player Entities / Only the Player-facing name and description can reach Players, and only when you reveal them. / No Non-Player Entities linked yet. / No Player-facing description yet. |
+| Actions | Link a Non-Player Entity / Edit / Unlink / Link / Save / Cancel / Clear filters / Create Non-Player Entity / Back to the Scene |
+| Busy | Linking... / Saving... / Unlinking... |
+| Pages | Link a Non-Player Entity / Edit {name} / Scene: {title} / {type}: {profile name} / Selected: {profile name}, {type} / Already in this Scene |
+| Fields | Non-Player Entity / Search by name / Type / Player-facing name / Player-facing description (optional) |
+| Hints | What the Investigators know it as, for example A shape in the cellar. / What the Investigators may learn. Players see it only when you reveal it. You can format text and add links. |
+| Errors | Choose a Non-Player Entity. / Choose a Non-Player Entity from this Campaign. / Enter a Player-facing name. / Player-facing name must be 200 characters or fewer. / Player-facing description is too long. Shorten it and try again. / This Player-facing description can't be saved. Shorten it or remove unsupported content. |
+| Status | {name} linked. / {name} saved. / {name} unlinked. / {n} shown. |
+| Failures | We couldn't link the Non-Player Entity. Try again. / We couldn't save the link. Try again. / We couldn't unlink {name}. Try again. / We couldn't load the Non-Player Entities. |
+| Conflicts | As section 16 |
+| Finished | This Scene is finished and can't be changed. |
+| Unlink dialog | Unlink {name}? / Its Player-facing name and description are deleted. {profile name} stays in the Campaign. / Cancel / Unlink |
+| Not found | We couldn't find that link / Back to the Scene |
+
+## 36. Scene link component mapping
+
+| Element | Component |
+|---|---|
+| Section | New `scene-link-section` in `frontend/src/scenario-preparation/components/`, mounted by `scene-page` in view mode |
+| Unlink dialog | New `unlink-non-player-entity-dialog` (`AlertDialog`, like `remove-scene-dialog`) |
+| Pages | New `link-non-player-entity-page` and `edit-non-player-entity-link-page`, routes per section 31; the Scene route becomes `routes/campaigns.$campaignId.scenarios.$scenarioId.scenes.$sceneId.index.tsx` |
+| Form | New `scene-link-form`, shared by both pages |
+| Picker | New `non-player-entity-picker` (`RadioGroup`, `Input`, `nonPlayerEntityFilter`) |
+| Not found | New `non-player-entity-link-not-found`; existing `scene-not-found` |
+| Rich text | Existing `rich-text-editor`; `rich-text-view` gains an optional `headingOffset` |
+| Primitives | Existing only; no new primitives |
+
+Stories cover:
+- **`scene-link-section`:** empty, links with and without a description, Active, Finished, and a long name at 320px.
+- **`non-player-entity-picker`:** empty Campaign, many entities, filtered, no match, selected but hidden, already linked, loading, and error.
+- **`scene-link-form`:** empty, every error, busy, and the Finished conflict.
+- **`link-non-player-entity-page` and `edit-non-player-entity-link-page`:** idle, busy, failure, Finished, and not found.
+- **`unlink-non-player-entity-dialog`:** idle, unlinking, failure, and refused.
+
+## 37. Scene link UX acceptance criteria
+
+- **SP-UX-50** The Scene page shows "Non-Player Entities" after Keeper notes, listing each link's Player-facing name, its type and profile name (a link to the profile page), and its description or "No Player-facing description yet."; with no links, "No Non-Player Entities linked yet.".
+- **SP-UX-51** On a Prepared or Active Scene, "Link a Non-Player Entity" opens the link page, whose picker offers only this Campaign's Human NPCs and Mythos Creatures, by name with their type; search and the type filter narrow it and announce "{n} shown."; "Clear filters" restores it.
+- **SP-UX-52** Choosing an entity, entering a Player-facing name and optionally a description, and selecting "Link" returns to the Scene page with "{name} linked." and the link; the link and its formatting survive a reload.
+- **SP-UX-53** Submitting without an entity, with an empty name, with a name over 200 characters, or with a description over 204,800 bytes shows its message from section 35, focuses the first invalid field, and saves nothing; a server refusal shows its message at the field.
+- **SP-UX-54** An entity already linked to the Scene is still offered, marked "Already in this Scene", and can be linked again.
+- **SP-UX-55** "Edit" opens the edit page with the entity as text and the fields prefilled; "Save" stores the change with "{name} saved."; "Cancel" changes nothing.
+- **SP-UX-56** "Unlink" asks first; "Cancel" keeps the link; confirming removes it with "{name} unlinked.", and the profile stays in the Non-Player Entity list.
+- **SP-UX-57** A Finished Scene shows its links without "Link a Non-Player Entity", "Edit", or "Unlink"; the link and edit pages say it can't be changed; a write refused because the Scene was finished meanwhile shows the conflict message.
+- **SP-UX-58** Deleting a profile linked to an Active or Finished Scene shows "{name} is part of a Scene that has been played, so it can't be deleted." with Delete disabled; a profile linked only to Prepared Scenes is deleted, and those Scenes no longer list it.
+- **SP-UX-59** The copy of a linked profile is linked to no Scene (extends SP-UX-38).
+- **SP-UX-60** A Player opening a link URL sees "We couldn't find that Scene"; an unknown link id shows "We couldn't find that link".
+- **SP-UX-61** While a link, save, or unlink is in flight its button is disabled; a second activation does nothing.
+- **SP-UX-62** With no Non-Player Entities in the Campaign, the picker says "No Non-Player Entities yet." and links to "Create Non-Player Entity".
+- **SP-UX-63** The Player-facing name starts empty; it is never prefilled from the profile.
+
+## 38. Scene link accessibility acceptance criteria (WCAG 2.2 AA)
+
+- **SP-A11Y-30** Each page has exactly one `h1`. The section is a `section` labelled by its `h2`, each link's Player-facing name is an `h3` in a `ul`, and description headings are only `h4` and `h5` (1.3.1, 2.4.6).
+- **SP-A11Y-31** The picker is a `fieldset` with the legend "Non-Player Entity"; the search has a visible label; the type filter is a `fieldset` with a legend; each radio is named by the profile name and described by its type and "Already in this Scene" (1.3.1, 4.1.2).
+- **SP-A11Y-32** "{n} shown." is announced through a polite live region (debounced 500 ms), never on first load; status messages use `role=status`; failures and refusals use `role=alert` (4.1.3).
+- **SP-A11Y-33** Focus moves to the link's `h3` after Link or Save, to the section `h2` after Unlink, back to "Unlink" when the dialog is cancelled, to the search field after "Clear filters", and to the first invalid field after a refused submit; it is never lost to `body` (2.4.3).
+- **SP-A11Y-34** "Edit" and "Unlink" include the Player-facing name in their accessible names; every control is at least 24 by 24 CSS pixels with a visible focus ring (2.4.6, 2.4.7, 2.5.8).
+- **SP-A11Y-35** Errors are text next to their field; fields have `aria-invalid="true"` and `aria-describedby`, and the picker's error is connected to its fieldset (3.3.1, 3.3.2).
+- **SP-A11Y-36** At 320px and at 200% zoom the section, the picker, and both pages fit without horizontal scrolling; long names wrap (1.4.10).
+
+## 39. Scene link open decisions and research gaps
+
+- **Deferred:** reordering a Scene's links; showing on a profile page which Scenes link it; linking from the profile page (section 30); live updates across the Keeper's own tabs (no SignalR, design record D6).
+- **Research gap:** whether a radio list with search is enough for Campaigns with many Non-Player Entities, or a combobox is needed.

@@ -21,9 +21,22 @@ const richTextSchema = z.looseObject({
   root: z.looseObject({ type: z.literal('root'), children: z.array(z.unknown()) }),
 })
 
+// The link carries the entity reference only: no profile data beyond the name (design record PBI-SP-004, D8).
+export const nonPlayerEntityLinkSchema = z.strictObject({
+  id: z.string(),
+  nonPlayerEntity: z.strictObject({
+    id: z.string(),
+    type: z.enum(['HumanNpc', 'MythosCreature']),
+    name: z.string(),
+  }),
+  playerFacingName: z.string(),
+  playerFacingDescription: richTextSchema.nullable(),
+})
+
 const sceneSchema = sceneSummarySchema.extend({
   location: z.string(),
   keeperNotes: richTextSchema.nullable(),
+  nonPlayerEntityLinks: z.array(nonPlayerEntityLinkSchema),
 })
 
 const sceneListSchema = z.strictObject({ scenes: z.array(sceneSummarySchema) })

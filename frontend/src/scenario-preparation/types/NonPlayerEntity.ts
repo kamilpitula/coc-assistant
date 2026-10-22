@@ -17,6 +17,15 @@ export const NON_PLAYER_ENTITY_TYPE_LABELS: Record<NonPlayerEntityType, string> 
   MythosCreature: 'Mythos Creature',
 }
 
+/**
+ * Where each type's profile page is: its route and the name of the route's id parameter. A lookup rather than a switch,
+ * so a link to a profile never branches on the type (design record PBI-SP-004, Patterns).
+ */
+export const NON_PLAYER_ENTITY_PROFILE_PATHS = {
+  HumanNpc: { to: '/campaigns/$campaignId/human-npcs/$humanNpcId', idParam: 'humanNpcId' },
+  MythosCreature: { to: '/campaigns/$campaignId/mythos-creatures/$mythosCreatureId', idParam: 'mythosCreatureId' },
+} as const satisfies Record<NonPlayerEntityType, { to: string; idParam: string }>
+
 /** The longest Non-Player Entity name and the age range (specs/scenario-preparation/spec.md; project_ruleset.md section 5.2). */
 export const NON_PLAYER_ENTITY_NAME_MAX_LENGTH = 200
 export const HUMAN_NPC_AGE_MAXIMUM = 150

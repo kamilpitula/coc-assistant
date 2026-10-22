@@ -42,3 +42,6 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const EveryAllowedNode: Story = { args: { document: everyNode } }
+
+/** Under an h2 and an h3, Heading and Subheading render as h4 and h5. */
+export const HeadingOffsetOne: Story = { args: { document: everyNode, headingOffset: 1 } }

@@ -20,7 +20,7 @@ public class EfSceneRepository : ISceneRepository
         await InPreparedOrder(campaignId, scenarioId).ToListAsync(cancellationToken);
 
     public Task<Scene?> FindByIdAsync(Guid campaignId, Guid scenarioId, Guid sceneId, CancellationToken cancellationToken) =>
-        _dbContext.Scenes.SingleOrDefaultAsync(
+        _dbContext.Scenes.Include(scene => scene.NonPlayerEntityLinks).SingleOrDefaultAsync(
             scene => scene.CampaignId == campaignId && scene.ScenarioId == scenarioId && scene.Id == sceneId,
             cancellationToken);
 

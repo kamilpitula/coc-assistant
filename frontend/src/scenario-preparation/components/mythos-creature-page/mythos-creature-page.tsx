@@ -10,7 +10,7 @@ import { MythosCreatureHeading } from '@/scenario-preparation/components/mythos-
 import { MythosCreatureView } from '@/scenario-preparation/components/mythos-creature-view/mythos-creature-view'
 import { NonPlayerEntityNotFound } from '@/scenario-preparation/components/non-player-entity-not-found/non-player-entity-not-found'
 import { useDeleteMythosCreature, useDuplicateMythosCreature, useEditMythosCreature, useMythosCreature } from '@/scenario-preparation/hooks/useNonPlayerEntities'
-import { NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
+import { NonPlayerEntityInUseError, NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import type { MythosCreature } from '@/scenario-preparation/types/MythosCreature'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
@@ -155,6 +155,7 @@ interface ProfileActionsProps {
 function ProfileActions({ campaignId, mythosCreature, editButtonRef, headingRef, onEdit }: ProfileActionsProps) {
   const [open, setOpen] = useState(false)
   const deletion = useDeleteMythosCreature(campaignId, mythosCreature.id)
+  const deletionRefused = deletion.error instanceof NonPlayerEntityInUseError
   const duplication = useDuplicateMythosCreature(campaignId, mythosCreature.id)
   const navigate = useNavigate()
   const deleteButtonRef = useRef<HTMLButtonElement>(null)
@@ -202,7 +203,8 @@ function ProfileActions({ campaignId, mythosCreature, editButtonRef, headingRef,
           open={open}
           name={mythosCreature.name}
           pending={deletion.isPending}
-          failed={deletion.isError}
+          failed={deletion.isError && !deletionRefused}
+          refused={deletionRefused}
           onConfirm={() =>
             deletion.mutate(undefined, {
               onSuccess: () =>

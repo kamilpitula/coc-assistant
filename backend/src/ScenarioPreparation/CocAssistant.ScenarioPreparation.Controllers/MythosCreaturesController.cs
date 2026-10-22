@@ -80,7 +80,7 @@ public class MythosCreaturesController : ScenarioPreparationControllerBase
         return view is null ? NotFound() : StatusCode(StatusCodes.Status201Created, MythosCreatureMapping.ToResponse(view));
     }
 
-    /// <summary>Deletes a Mythos Creature.</summary>
+    /// <summary>Deletes a Mythos Creature. 409 when it is linked to an Active or Finished Scene.</summary>
     [HttpDelete("{mythosCreatureId:guid}")]
     public async Task<IActionResult> Delete(Guid campaignId, Guid mythosCreatureId, CancellationToken cancellationToken)
     {
@@ -91,7 +91,14 @@ public class MythosCreaturesController : ScenarioPreparationControllerBase
         }
 
         var outcome = await _mythosCreatureService.DeleteAsync(campaignId, accountId.Value, mythosCreatureId, cancellationToken);
-        return outcome == MythosCreatureDeleteOutcome.Deleted ? NoContent() : NotFound();
+        return outcome switch
+        {
+            MythosCreatureDeleteOutcome.Deleted => NoContent(),
+            MythosCreatureDeleteOutcome.LinkedToPlayedScene => Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: NonPlayerEntityLinkProblemMessages.LinkedToPlayedSceneTitle),
+            _ => NotFound(),
+        };
     }
 
     private ActionResult Failure(MythosCreatureWriteResult result)

@@ -11,7 +11,7 @@ import { ScenePage } from './scene-page'
 
 // specs/scenario-preparation/ux.md section 14; SP-UX-20 to SP-UX-23, SP-UX-26, SP-UX-27, SP-A11Y-15, SP-A11Y-16.
 
-const { mockUseCampaign, mockUseScene, mockUseEdit, mockUseRemove, editMutate, removeMutate, reset, removeReset, refetch } = vi.hoisted(
+const { mockUseCampaign, mockUseScene, mockUseEdit, mockUseRemove, editMutate, removeMutate, unlinkMutate, reset, removeReset, refetch } = vi.hoisted(
   () => ({
     mockUseCampaign: vi.fn(),
     mockUseScene: vi.fn(),
@@ -19,6 +19,7 @@ const { mockUseCampaign, mockUseScene, mockUseEdit, mockUseRemove, editMutate, r
     mockUseRemove: vi.fn(),
     editMutate: vi.fn(),
     removeMutate: vi.fn(),
+    unlinkMutate: vi.fn(),
     reset: vi.fn(),
     removeReset: vi.fn(),
     refetch: vi.fn(),
@@ -27,6 +28,9 @@ const { mockUseCampaign, mockUseScene, mockUseEdit, mockUseRemove, editMutate, r
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
+vi.mock('@/scenario-preparation/hooks/useNonPlayerEntityLinks', () => ({
+  useUnlinkNonPlayerEntity: () => ({ mutate: unlinkMutate, reset: vi.fn(), isPending: false, isError: false, error: null }),
+}))
 vi.mock('@/scenario-preparation/hooks/useScenes', () => ({
   useScene: mockUseScene,
   useEditScene: mockUseEdit,
@@ -53,6 +57,7 @@ const prepared: Scene = {
   status: 'Prepared',
   startedAt: null,
   finishedAt: null,
+  nonPlayerEntityLinks: [],
 }
 const active: Scene = { ...prepared, status: 'Active', startedAt: '2026-10-12T19:40:00Z' }
 const finished: Scene = { ...active, status: 'Finished', finishedAt: '2026-10-12T21:05:00Z' }
@@ -184,6 +189,67 @@ describe('ScenePage', () => {
 
       expect(screen.getByText("We couldn't load this Scene.")).toBeInTheDocument()
       expect(refetch).toHaveBeenCalled()
+    })
+  })
+
+  describe('Non-Player Entity links', () => {
+    const withLink: Scene = {
+      ...prepared,
+      nonPlayerEntityLinks: [
+        { id: 'l1', nonPlayerEntity: { id: 'm1', type: 'MythosCreature', name: 'Ghoul' }, playerFacingName: 'A shape in the cellar', playerFacingDescription: null },
+      ],
+    }
+
+    it('shows the Non-Player Entities section after the Keeper notes and before the actions (SP-UX-50)', () => {
+      mockUseScene.mockReturnValue(query(withLink))
+
+      renderPage()
+
+      const keeperNotes = screen.getByRole('heading', { level: 2, name: 'Keeper notes' })
+      const links = screen.getByRole('heading', { level: 2, name: 'Non-Player Entities' })
+      const edit = screen.getByRole('button', { name: 'Edit' })
+      expect(keeperNotes.compareDocumentPosition(links) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(links.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(screen.getByRole('heading', { level: 3, name: 'A shape in the cellar' })).toBeInTheDocument()
+    })
+
+    it('does not show the section while the Scene is being edited (SP-UX-20)', async () => {
+      mockUseScene.mockReturnValue(query(withLink))
+      renderPage()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+
+      expect(screen.queryByRole('heading', { level: 2, name: 'Non-Player Entities' })).not.toBeInTheDocument()
+    })
+
+    it('hides the link actions of a Finished Scene but keeps its links listed (SP-UX-57)', () => {
+      mockUseScene.mockReturnValue(query({ ...withLink, status: 'Finished', startedAt: '2026-10-12T19:40:00Z', finishedAt: '2026-10-12T21:05:00Z' }))
+
+      renderPage()
+
+      expect(screen.getByRole('heading', { level: 3, name: 'A shape in the cellar' })).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Link a Non-Player Entity' })).not.toBeInTheDocument()
+    })
+
+    it('announces "{name} unlinked." after an unlink (SP-UX-56)', async () => {
+      unlinkMutate.mockImplementation((_variables: undefined, options: { onSuccess: () => void }) => options.onSuccess())
+      mockUseScene.mockReturnValue(query(withLink))
+      renderPage()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Unlink A shape in the cellar' }))
+      await userEvent.click(within_dialog('Unlink'))
+
+      expect(screen.getByRole('status')).toHaveTextContent('A shape in the cellar unlinked.')
+    })
+
+    it('announces the navigation message from linking and moves focus to that link (SP-UX-52, SP-A11Y-33)', () => {
+      routerState.location.state = { statusMessage: 'A shape in the cellar linked.', focusLinkId: 'l1' }
+      mockUseScene.mockReturnValue(query(withLink))
+
+      renderPage()
+
+      expect(screen.getByRole('status')).toHaveTextContent('A shape in the cellar linked.')
+      expect(screen.getByRole('heading', { level: 3, name: 'A shape in the cellar' })).toHaveFocus()
     })
   })
 

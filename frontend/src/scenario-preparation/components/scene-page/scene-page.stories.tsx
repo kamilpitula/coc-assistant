@@ -33,6 +33,20 @@ const prepared: Scene = {
   status: 'Prepared',
   startedAt: null,
   finishedAt: null,
+  nonPlayerEntityLinks: [],
+}
+
+const withLinks: Scene = {
+  ...prepared,
+  nonPlayerEntityLinks: [
+    {
+      id: 'link-1',
+      nonPlayerEntity: { id: 'ghoul', type: 'MythosCreature', name: 'Ghoul' },
+      playerFacingName: 'A shape in the cellar',
+      playerFacingDescription: notes,
+    },
+    { id: 'link-2', nonPlayerEntity: { id: 'knott', type: 'HumanNpc', name: 'Mr. Knott' }, playerFacingName: 'The landlord', playerFacingDescription: null },
+  ],
 }
 
 interface StoryArgs {
@@ -67,6 +81,8 @@ type Story = StoryObj<typeof meta>
 export const PreparedWithLocationAndNotes: Story = {}
 
 export const PreparedWithoutLocationAndNotes: Story = { args: { scene: { ...prepared, location: '', keeperNotes: null } } }
+
+export const WithLinkedNonPlayerEntities: Story = { args: { scene: withLinks } }
 
 export const Active: Story = {
   args: { scene: { ...prepared, status: 'Active', startedAt: '2026-10-12T19:40:00Z' } },

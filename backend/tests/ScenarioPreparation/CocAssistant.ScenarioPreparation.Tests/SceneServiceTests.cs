@@ -114,7 +114,8 @@ public class SceneServiceTests : IDisposable
         using var context = _builder.Fixture.CreateContext();
         var view = await _builder.CreateSceneService(context).GetAsync(_builder.CampaignId, Keeper, scenarioId, created.Id, CancellationToken.None);
 
-        Assert.Equal(created, view);
+        Assert.Equal(created with { NonPlayerEntityLinks = view!.NonPlayerEntityLinks }, view);
+        Assert.Empty(view.NonPlayerEntityLinks);
         Assert.Equal(("Arkham", Notes), (view!.Location, view.KeeperNotes));
     }
 
@@ -143,7 +144,7 @@ public class SceneServiceTests : IDisposable
 
         using var context = _builder.Fixture.CreateContext();
         var stored = await _builder.CreateSceneService(context).GetAsync(_builder.CampaignId, Keeper, scenarioId, scene.Id, CancellationToken.None);
-        Assert.Equal(scene, stored);
+        Assert.Equal(scene with { NonPlayerEntityLinks = stored!.NonPlayerEntityLinks }, stored);
     }
 
     [Fact]
@@ -313,5 +314,32 @@ public class SceneServiceTests : IDisposable
         Assert.Equal(SceneWriteOutcome.NotFound, (await service.EditAsync(_builder.CampaignId, Keeper, second, scene.Id, "X", null, null, CancellationToken.None)).Outcome);
         Assert.Equal(SceneRemoveOutcome.NotFound, await service.RemoveAsync(_builder.CampaignId, Keeper, second, scene.Id, CancellationToken.None));
         Assert.Equal([("A", 1)], await _builder.StoredScenePositionsAsync(first));
+    }
+
+    [Fact]
+    public async Task Given_a_scene_with_links_When_the_keeper_edits_it_Then_the_saved_scene_carries_its_links_in_the_order_linked()
+    {
+        var scenarioId = await ScenarioAsync();
+        var scene = await _builder.CreateSceneAsync(_builder.CampaignId, scenarioId, "The Corbitt House");
+        var human = await _builder.CreateHumanNpcAsync(_builder.CampaignId, "Mr. Knott");
+        var creature = await _builder.CreateMythosCreatureAsync(_builder.CampaignId, "Ghoul");
+        await _builder.LinkAsync(_builder.CampaignId, scenarioId, scene.Id, NonPlayerEntityType.MythosCreature, creature.Id, "First");
+        await _builder.LinkAsync(_builder.CampaignId, scenarioId, scene.Id, NonPlayerEntityType.HumanNpc, human.Id, "Second");
+
+        var result = await EditAsync(_builder.CampaignId, Keeper, scenarioId, scene.Id, "Renamed");
+
+        Assert.Equal(
+            [("First", "Ghoul"), ("Second", "Mr. Knott")],
+            result.Scene!.NonPlayerEntityLinks.Select(link => (link.PlayerFacingName, link.NonPlayerEntity.Name)));
+    }
+
+    [Fact]
+    public async Task Given_a_new_scene_When_created_Then_it_has_no_links()
+    {
+        var scenarioId = await ScenarioAsync();
+
+        var created = await _builder.CreateSceneAsync(_builder.CampaignId, scenarioId, "The Corbitt House");
+
+        Assert.Empty(created.NonPlayerEntityLinks);
     }
 }

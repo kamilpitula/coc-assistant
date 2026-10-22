@@ -9,17 +9,20 @@ public class MythosCreatureService
 {
     private readonly ICampaignKeepers _keepers;
     private readonly IMythosCreatureRepository _mythosCreatures;
+    private readonly INonPlayerEntityUsage _usage;
     private readonly INonPlayerEntityRuleData _ruleData;
     private readonly TimeProvider _timeProvider;
 
     public MythosCreatureService(
         ICampaignKeepers keepers,
         IMythosCreatureRepository mythosCreatures,
+        INonPlayerEntityUsage usage,
         INonPlayerEntityRuleData ruleData,
         TimeProvider timeProvider)
     {
         _keepers = keepers;
         _mythosCreatures = mythosCreatures;
+        _usage = usage;
         _ruleData = ruleData;
         _timeProvider = timeProvider;
     }
@@ -93,13 +96,18 @@ public class MythosCreatureService
         return ToView(copy);
     }
 
-    /// <summary>Deletes a Mythos Creature. Refusing when it is linked to a played Scene arrives with Scene links (PBI-SP-004).</summary>
+    /// <summary>Deletes a Mythos Creature; one linked to an Active or Finished Scene is refused. Prepared links go with it (ADR 0019).</summary>
     public async Task<MythosCreatureDeleteOutcome> DeleteAsync(Guid campaignId, Guid callerAccountId, Guid mythosCreatureId, CancellationToken cancellationToken)
     {
         var mythosCreature = await FindAsync(campaignId, callerAccountId, mythosCreatureId, cancellationToken);
         if (mythosCreature is null)
         {
             return MythosCreatureDeleteOutcome.NotFound;
+        }
+
+        if (await _usage.IsLinkedToPlayedSceneAsync(campaignId, NonPlayerEntityType.MythosCreature, mythosCreatureId, cancellationToken))
+        {
+            return MythosCreatureDeleteOutcome.LinkedToPlayedScene;
         }
 
         _mythosCreatures.Remove(mythosCreature);

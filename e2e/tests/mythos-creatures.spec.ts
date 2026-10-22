@@ -29,7 +29,8 @@ import { campaignNav } from '../fixtures/overview'
  *
  * Exceptions: SP-UX-34 (the 100-row limit), SP-UX-40 (double activation), SP-UX-49 (APP and EDU), and the override
  * range edges are covered by component and unit tests, where an end-to-end run would only repeat them slowly. The
- * scenario line "linked to no Scene" waits for Scene links (PBI-SP-004).
+ * scenario line "linked to no Scene" and the delete dialog's Prepared Scene warning (SP-UX-58, SP-UX-59) are covered in
+ * scene-links.spec.ts, where a profile is linked first.
  */
 test.describe('Mythos Creatures', () => {
   test('Keeper creates a Mythos Creature and finds it in the list', async ({ page }) => {

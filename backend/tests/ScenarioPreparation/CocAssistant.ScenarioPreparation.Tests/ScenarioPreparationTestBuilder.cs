@@ -35,13 +35,16 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
         new(Keepers, repository ?? new EfScenarioRepository(context), TimeProvider);
 
     public SceneService CreateSceneService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
-        new(Keepers, new EfScenarioRepository(context), repository ?? new EfSceneRepository(context), TimeProvider);
+        new(Keepers, new EfScenarioRepository(context), repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), TimeProvider);
 
-    public HumanNpcService CreateHumanNpcService(ScenarioPreparationDbContext context, IHumanNpcRepository? repository = null) =>
-        new(Keepers, repository ?? new EfHumanNpcRepository(context), new FakeNonPlayerEntityRuleData(), TimeProvider);
+    public NonPlayerEntityLinkService CreateLinkService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
+        new(Keepers, repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), TimeProvider);
 
-    public MythosCreatureService CreateMythosCreatureService(ScenarioPreparationDbContext context, IMythosCreatureRepository? repository = null) =>
-        new(Keepers, repository ?? new EfMythosCreatureRepository(context), new FakeNonPlayerEntityRuleData(), TimeProvider);
+    public HumanNpcService CreateHumanNpcService(ScenarioPreparationDbContext context, IHumanNpcRepository? repository = null, INonPlayerEntityUsage? usage = null) =>
+        new(Keepers, repository ?? new EfHumanNpcRepository(context), usage ?? new EfNonPlayerEntityUsage(context), new FakeNonPlayerEntityRuleData(), TimeProvider);
+
+    public MythosCreatureService CreateMythosCreatureService(ScenarioPreparationDbContext context, IMythosCreatureRepository? repository = null, INonPlayerEntityUsage? usage = null) =>
+        new(Keepers, repository ?? new EfMythosCreatureRepository(context), usage ?? new EfNonPlayerEntityUsage(context), new FakeNonPlayerEntityRuleData(), TimeProvider);
 
     public NonPlayerEntityService CreateNonPlayerEntityService(ScenarioPreparationDbContext context, INonPlayerEntityDirectory? directory = null) =>
         new(Keepers, directory ?? new EfNonPlayerEntityDirectory(context));
@@ -86,6 +89,36 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
         var result = await CreateSceneService(context).CreateAsync(campaignId, KeeperAccountId, scenarioId, title, location, keeperNotes, CancellationToken.None);
         Assert.Equal(SceneWriteOutcome.Saved, result.Outcome);
         return result.Scene!;
+    }
+
+    /// <summary>Links a Non-Player Entity to a Scene as the Keeper one minute after the previous call and returns the link.</summary>
+    public async Task<NonPlayerEntityLinkView> LinkAsync(
+        Guid campaignId,
+        Guid scenarioId,
+        Guid sceneId,
+        NonPlayerEntityType type,
+        Guid nonPlayerEntityId,
+        string playerFacingName = "A shape in the cellar",
+        string? playerFacingDescription = null)
+    {
+        TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        using var context = Fixture.CreateContext();
+        var result = await CreateLinkService(context).LinkAsync(
+            campaignId, KeeperAccountId, scenarioId, sceneId, type, nonPlayerEntityId, playerFacingName, playerFacingDescription, CancellationToken.None);
+        Assert.Equal(NonPlayerEntityLinkWriteOutcome.Saved, result.Outcome);
+        return result.Link!;
+    }
+
+    public async Task<SceneDetailView?> GetSceneAsync(Guid campaignId, Guid scenarioId, Guid sceneId, Guid? callerAccountId = null)
+    {
+        using var context = Fixture.CreateContext();
+        return await CreateSceneService(context).GetAsync(campaignId, callerAccountId ?? KeeperAccountId, scenarioId, sceneId, CancellationToken.None);
+    }
+
+    public async Task<int> StoredLinkCountAsync()
+    {
+        using var context = Fixture.CreateContext();
+        return await context.NonPlayerEntityLinks.CountAsync();
     }
 
     public async Task<IReadOnlyList<SceneSummaryView>?> ListScenesAsync(Guid campaignId, Guid scenarioId, Guid callerAccountId)
