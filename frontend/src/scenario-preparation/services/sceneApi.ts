@@ -17,7 +17,7 @@ const sceneSummarySchema = z.strictObject({
 })
 
 // Only the inside of keeperNotes is loose: the editor and the server validate the nodes (ADR 0015).
-const richTextSchema = z.looseObject({
+export const richTextSchema = z.looseObject({
   root: z.looseObject({ type: z.literal('root'), children: z.array(z.unknown()) }),
 })
 
@@ -33,10 +33,19 @@ export const nonPlayerEntityLinkSchema = z.strictObject({
   playerFacingDescription: richTextSchema.nullable(),
 })
 
+// A Handout in a Scene's list: no content and no position (design record PBI-SP-005, D2).
+export const handoutSummarySchema = z.strictObject({
+  id: z.string(),
+  kind: z.enum(['ReadAloud', 'Text']),
+  visibility: z.enum(['PlayerFacing', 'KeeperFacing']),
+  title: z.string(),
+})
+
 const sceneSchema = sceneSummarySchema.extend({
   location: z.string(),
   keeperNotes: richTextSchema.nullable(),
   nonPlayerEntityLinks: z.array(nonPlayerEntityLinkSchema),
+  handouts: z.array(handoutSummarySchema),
 })
 
 const sceneListSchema = z.strictObject({ scenes: z.array(sceneSummarySchema) })

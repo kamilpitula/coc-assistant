@@ -1,3 +1,4 @@
+import type { HandoutSummary } from '@/scenario-preparation/types/Handout'
 import type { NonPlayerEntitySummary, NonPlayerEntityType } from '@/scenario-preparation/types/NonPlayerEntity'
 import type { RichTextDocument } from '@/shared/types/RichText'
 
@@ -25,11 +26,15 @@ export interface NonPlayerEntityLink {
   playerFacingDescription: RichTextDocument | null
 }
 
-/** A Scene with its location ("" when empty), rich-text Keeper notes (null when none), and its links in the order linked. */
+/**
+ * A Scene with its location ("" when empty), rich-text Keeper notes (null when none), its links in the order linked, and its
+ * Handouts in stored order (without their text).
+ */
 export interface Scene extends SceneSummary {
   location: string
   keeperNotes: RichTextDocument | null
   nonPlayerEntityLinks: NonPlayerEntityLink[]
+  handouts: HandoutSummary[]
 }
 
 /** What the Keeper enters for a link (specs/scenario-preparation/ux.md section 33); the entity is chosen once, when linking. */

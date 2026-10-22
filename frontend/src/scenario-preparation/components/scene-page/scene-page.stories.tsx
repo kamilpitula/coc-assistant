@@ -34,6 +34,7 @@ const prepared: Scene = {
   startedAt: null,
   finishedAt: null,
   nonPlayerEntityLinks: [],
+  handouts: [],
 }
 
 const withLinks: Scene = {
@@ -46,6 +47,14 @@ const withLinks: Scene = {
       playerFacingDescription: notes,
     },
     { id: 'link-2', nonPlayerEntity: { id: 'knott', type: 'HumanNpc', name: 'Mr. Knott' }, playerFacingName: 'The landlord', playerFacingDescription: null },
+  ],
+}
+
+const withHandouts: Scene = {
+  ...withLinks,
+  handouts: [
+    { id: 'handout-1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door' },
+    { id: 'handout-2', kind: 'Text', visibility: 'KeeperFacing', title: "Corbitt's true nature" },
   ],
 }
 
@@ -83,6 +92,8 @@ export const PreparedWithLocationAndNotes: Story = {}
 export const PreparedWithoutLocationAndNotes: Story = { args: { scene: { ...prepared, location: '', keeperNotes: null } } }
 
 export const WithLinkedNonPlayerEntities: Story = { args: { scene: withLinks } }
+
+export const WithHandouts: Story = { args: { scene: withHandouts } }
 
 export const Active: Story = {
   args: { scene: { ...prepared, status: 'Active', startedAt: '2026-10-12T19:40:00Z' } },

@@ -31,6 +31,7 @@ vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampai
 vi.mock('@/scenario-preparation/hooks/useNonPlayerEntityLinks', () => ({
   useUnlinkNonPlayerEntity: () => ({ mutate: unlinkMutate, reset: vi.fn(), isPending: false, isError: false, error: null }),
 }))
+vi.mock('@/scenario-preparation/hooks/useHandouts', () => ({ useReorderHandouts: () => ({ mutate: vi.fn(), isPending: false }) }))
 vi.mock('@/scenario-preparation/hooks/useScenes', () => ({
   useScene: mockUseScene,
   useEditScene: mockUseEdit,
@@ -58,6 +59,7 @@ const prepared: Scene = {
   startedAt: null,
   finishedAt: null,
   nonPlayerEntityLinks: [],
+  handouts: [],
 }
 const active: Scene = { ...prepared, status: 'Active', startedAt: '2026-10-12T19:40:00Z' }
 const finished: Scene = { ...active, status: 'Finished', finishedAt: '2026-10-12T21:05:00Z' }
@@ -65,6 +67,7 @@ const finished: Scene = { ...active, status: 'Finished', finishedAt: '2026-10-12
 const query = (data: Scene | null | undefined, overrides: Record<string, unknown> = {}) => ({
   data,
   isError: false,
+  dataUpdatedAt: 1,
   refetch,
   ...overrides,
 })
@@ -84,6 +87,9 @@ const removing = (overrides: Record<string, unknown> = {}) => ({
   error: null,
   ...overrides,
 })
+
+// The page's own status message comes first; the Handouts section has a live region of its own for moves.
+const pageStatus = () => screen.getAllByRole('status')[0]
 
 const renderPage = () => render(<ScenePage campaignId="c1" scenarioId="s1" sceneId="a1" />)
 
@@ -128,7 +134,7 @@ describe('ScenePage', () => {
 
       renderPage()
 
-      expect(screen.getByRole('status')).toHaveTextContent('Scene created.')
+      expect(pageStatus()).toHaveTextContent('Scene created.')
     })
 
     it('shows an Active Scene with its start time, Edit, and no Remove Scene (SP-UX-21, SP-UX-23)', () => {
@@ -239,7 +245,7 @@ describe('ScenePage', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Unlink A shape in the cellar' }))
       await userEvent.click(within_dialog('Unlink'))
 
-      expect(screen.getByRole('status')).toHaveTextContent('A shape in the cellar unlinked.')
+      expect(pageStatus()).toHaveTextContent('A shape in the cellar unlinked.')
     })
 
     it('announces the navigation message from linking and moves focus to that link (SP-UX-52, SP-A11Y-33)', () => {
@@ -248,8 +254,76 @@ describe('ScenePage', () => {
 
       renderPage()
 
-      expect(screen.getByRole('status')).toHaveTextContent('A shape in the cellar linked.')
+      expect(pageStatus()).toHaveTextContent('A shape in the cellar linked.')
       expect(screen.getByRole('heading', { level: 3, name: 'A shape in the cellar' })).toHaveFocus()
+    })
+  })
+
+  describe('Handouts', () => {
+    const withHandouts: Scene = {
+      ...prepared,
+      handouts: [
+        { id: 'h1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door' },
+        { id: 'h2', kind: 'Text', visibility: 'KeeperFacing', title: "Corbitt's true nature" },
+      ],
+    }
+
+    it('shows the Handouts section after the Keeper notes and before the Non-Player Entities (SP-UX-50, SP-UX-64)', () => {
+      mockUseScene.mockReturnValue(query(withHandouts))
+
+      renderPage()
+
+      const keeperNotes = screen.getByRole('heading', { level: 2, name: 'Keeper notes' })
+      const handouts = screen.getByRole('heading', { level: 2, name: 'Handouts' })
+      const links = screen.getByRole('heading', { level: 2, name: 'Non-Player Entities' })
+      expect(keeperNotes.compareDocumentPosition(handouts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(handouts.compareDocumentPosition(links) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(screen.getByRole('link', { name: 'The front door' })).toHaveAttribute('href', '/campaigns/c1/scenarios/s1/scenes/a1/handouts/h1')
+    })
+
+    it('says there are no Handouts yet on a Scene without any (SP-UX-64)', () => {
+      renderPage()
+
+      expect(screen.getByText('No Handouts yet.')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Add Handout' })).toBeInTheDocument()
+    })
+
+    it('does not show the section while the Scene is being edited (SP-UX-20)', async () => {
+      mockUseScene.mockReturnValue(query(withHandouts))
+      renderPage()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+
+      expect(screen.queryByRole('heading', { level: 2, name: 'Handouts' })).not.toBeInTheDocument()
+    })
+
+    it('lists the Handouts of a Finished Scene without Add Handout or move buttons (SP-UX-73)', () => {
+      mockUseScene.mockReturnValue(query({ ...withHandouts, status: 'Finished', startedAt: '2026-10-12T19:40:00Z', finishedAt: '2026-10-12T21:05:00Z' }))
+
+      renderPage()
+
+      expect(screen.getByRole('link', { name: 'The front door' })).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Add Handout' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /^Move / })).not.toBeInTheDocument()
+    })
+
+    it('announces "{title} added." from the navigation state and moves focus to that Handout (SP-UX-65, SP-A11Y-40)', () => {
+      routerState.location.state = { statusMessage: 'The front door added.', focusHandoutId: 'h1' }
+      mockUseScene.mockReturnValue(query(withHandouts))
+
+      renderPage()
+
+      expect(pageStatus()).toHaveTextContent('The front door added.')
+      expect(screen.getByRole('link', { name: 'The front door' })).toHaveFocus()
+    })
+
+    it('announces "{title} deleted." and moves focus to the Handouts heading (SP-UX-71, SP-A11Y-40)', () => {
+      routerState.location.state = { statusMessage: 'The front door deleted.', focusHandoutsHeading: true }
+
+      renderPage()
+
+      expect(pageStatus()).toHaveTextContent('The front door deleted.')
+      expect(screen.getByRole('heading', { level: 2, name: 'Handouts' })).toHaveFocus()
     })
   })
 
@@ -276,7 +350,7 @@ describe('ScenePage', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
       expect(editMutate.mock.calls[0][0]).toMatchObject({ title: 'The Corbitt Cellar', location: 'Arkham, Boston Road' })
-      expect(screen.getByRole('status')).toHaveTextContent('Scene saved.')
+      expect(pageStatus()).toHaveTextContent('Scene saved.')
       expect(screen.getByRole('button', { name: 'Edit' })).toHaveFocus()
     })
 

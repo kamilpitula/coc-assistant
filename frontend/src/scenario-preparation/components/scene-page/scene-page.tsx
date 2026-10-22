@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
 
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
+import { SceneHandoutSection } from '@/scenario-preparation/components/scene-handout-section/scene-handout-section'
 import { SceneLinkSection } from '@/scenario-preparation/components/scene-link-section/scene-link-section'
 import { RemoveSceneDialog } from '@/scenario-preparation/components/remove-scene-dialog/remove-scene-dialog'
 import { SceneForm } from '@/scenario-preparation/components/scene-form/scene-form'
@@ -58,19 +59,30 @@ export function ScenePage({ campaignId, scenarioId, sceneId }: ScenePageProps) {
     )
   }
 
-  return <SceneDetail campaignId={campaignId} scenarioId={scenarioId} scene={scene.data} onRefetch={() => void scene.refetch()} />
+  return (
+    <SceneDetail
+      campaignId={campaignId}
+      scenarioId={scenarioId}
+      scene={scene.data}
+      sceneUpdatedAt={scene.dataUpdatedAt}
+      onRefetch={() => void scene.refetch()}
+    />
+  )
 }
 
 interface SceneDetailProps {
   campaignId: string
   scenarioId: string
   scene: Scene
+  sceneUpdatedAt: number
   onRefetch: () => void
 }
 
-function SceneDetail({ campaignId, scenarioId, scene, onRefetch }: SceneDetailProps) {
+function SceneDetail({ campaignId, scenarioId, scene, sceneUpdatedAt, onRefetch }: SceneDetailProps) {
   const navigationMessage = useRouterState({ select: (state) => state.location.state.statusMessage })
   const focusLinkId = useRouterState({ select: (state) => state.location.state.focusLinkId })
+  const focusHandoutId = useRouterState({ select: (state) => state.location.state.focusHandoutId })
+  const focusHandoutsHeading = useRouterState({ select: (state) => state.location.state.focusHandoutsHeading })
   const edit = useEditScene(campaignId, scenarioId, scene.id)
   const [isEditing, setIsEditing] = useState(false)
   const [unlinkedMessage, setUnlinkedMessage] = useState<string | null>(null)
@@ -133,9 +145,12 @@ function SceneDetail({ campaignId, scenarioId, scene, onRefetch }: SceneDetailPr
           campaignId={campaignId}
           scenarioId={scenarioId}
           scene={scene}
+          sceneUpdatedAt={sceneUpdatedAt}
           editButtonRef={editButtonRef}
           headingRef={headingRef}
           focusLinkId={focusLinkId}
+          focusHandoutId={focusHandoutId}
+          focusHandoutsHeading={focusHandoutsHeading}
           onEdit={startEditing}
           onUnlinked={(name) => setUnlinkedMessage(`${name} unlinked.`)}
           onRefetch={onRefetch}
@@ -186,15 +201,31 @@ interface SceneViewProps {
   campaignId: string
   scenarioId: string
   scene: Scene
+  sceneUpdatedAt: number
   editButtonRef: RefObject<HTMLButtonElement | null>
   headingRef: RefObject<HTMLHeadingElement | null>
   focusLinkId: string | undefined
+  focusHandoutId: string | undefined
+  focusHandoutsHeading: boolean | undefined
   onEdit: () => void
   onUnlinked: (playerFacingName: string) => void
   onRefetch: () => void
 }
 
-function SceneView({ campaignId, scenarioId, scene, editButtonRef, headingRef, focusLinkId, onEdit, onUnlinked, onRefetch }: SceneViewProps) {
+function SceneView({
+  campaignId,
+  scenarioId,
+  scene,
+  sceneUpdatedAt,
+  editButtonRef,
+  headingRef,
+  focusLinkId,
+  focusHandoutId,
+  focusHandoutsHeading,
+  onEdit,
+  onUnlinked,
+  onRefetch,
+}: SceneViewProps) {
   return (
     <>
       {scene.location !== '' && (
@@ -211,6 +242,16 @@ function SceneView({ campaignId, scenarioId, scene, editButtonRef, headingRef, f
           <p className="text-sm text-muted-foreground">No Keeper notes yet.</p>
         )}
       </section>
+      <SceneHandoutSection
+        campaignId={campaignId}
+        scenarioId={scenarioId}
+        sceneId={scene.id}
+        status={scene.status}
+        handouts={scene.handouts}
+        sceneUpdatedAt={sceneUpdatedAt}
+        focusHandoutId={focusHandoutId}
+        focusHeading={focusHandoutsHeading}
+      />
       <SceneLinkSection
         campaignId={campaignId}
         scenarioId={scenarioId}
