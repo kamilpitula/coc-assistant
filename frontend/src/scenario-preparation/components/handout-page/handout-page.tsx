@@ -15,7 +15,7 @@ import { useScene } from '@/scenario-preparation/hooks/useScenes'
 import { HandoutNotDeletableError, HandoutNotFoundError, HandoutValidationError } from '@/scenario-preparation/services/handoutApi'
 import { HANDOUT_SCENE_FINISHED_MEANWHILE } from '@/scenario-preparation/services/handoutForm'
 import { SceneFinishedError } from '@/scenario-preparation/services/sceneApi'
-import type { Handout } from '@/scenario-preparation/types/Handout'
+import { isFileHandout, type Handout } from '@/scenario-preparation/types/Handout'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
@@ -184,7 +184,13 @@ function EditHandoutForm({ handout, edit, onDone }: EditHandoutFormProps) {
 
   return (
     <HandoutForm
-      initialValues={{ title: handout.title, kind: handout.kind, visibility: handout.visibility, content: handout.content }}
+      initialValues={{
+        title: handout.title,
+        kind: handout.kind,
+        visibility: handout.visibility,
+        content: isFileHandout(handout) ? null : handout.content,
+        storedFile: isFileHandout(handout) ? handout.file : null,
+      }}
       submitLabel="Save"
       busyLabel="Saving..."
       pending={edit.isPending}
@@ -215,7 +221,7 @@ interface HandoutViewProps {
 function HandoutView({ campaignId, scenarioId, scene, handout, editButtonRef, headingRef, onEdit, onRefetchScene }: HandoutViewProps) {
   return (
     <>
-      <HandoutContent kind={handout.kind} content={handout.content} />
+      <HandoutContent handout={handout} campaignId={campaignId} scenarioId={scenarioId} sceneId={scene.id} />
       {scene.status === 'Finished' ? (
         <p className="text-sm text-muted-foreground">This Scene is finished and can&apos;t be changed.</p>
       ) : (

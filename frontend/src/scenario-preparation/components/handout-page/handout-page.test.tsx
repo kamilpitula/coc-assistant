@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   HandoutNotDeletableError,
@@ -17,8 +17,9 @@ import { HandoutPage } from './handout-page'
 
 // specs/scenario-preparation/ux.md sections 42 and 44; SP-UX-68 to SP-UX-76, SP-A11Y-37, SP-A11Y-38, SP-A11Y-40, SP-A11Y-41.
 
-const { mockUseCampaign, mockUseScene, mockUseHandout, mockUseEdit, mockUseDelete, editMutate, deleteMutate, editReset, deleteReset, refetchScene, refetchHandout } =
+const { mockUseHandoutFile, mockUseCampaign, mockUseScene, mockUseHandout, mockUseEdit, mockUseDelete, editMutate, deleteMutate, editReset, deleteReset, refetchScene, refetchHandout } =
   vi.hoisted(() => ({
+    mockUseHandoutFile: vi.fn(),
     mockUseCampaign: vi.fn(),
     mockUseScene: vi.fn(),
     mockUseHandout: vi.fn(),
@@ -37,6 +38,7 @@ vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampai
 vi.mock('@/scenario-preparation/hooks/useScenes', () => ({ useScene: mockUseScene }))
 vi.mock('@/scenario-preparation/hooks/useHandouts', () => ({
   useHandout: mockUseHandout,
+  useHandoutFile: mockUseHandoutFile,
   useEditHandout: mockUseEdit,
   useDeleteHandout: mockUseDelete,
 }))
@@ -102,6 +104,51 @@ describe('HandoutPage', () => {
     mockUseHandout.mockReturnValue(handoutQuery(readAloud))
     mockUseEdit.mockReturnValue(editing())
     mockUseDelete.mockReturnValue(deleting())
+    mockUseHandoutFile.mockReturnValue({ data: new Blob(['x']), isError: false, errorUpdatedAt: 0, isFetching: false, refetch: vi.fn() })
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:test/1', revokeObjectURL: vi.fn() }))
+  })
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  describe('file Handouts', () => {
+    const map: Handout = {
+      id: 'h2',
+      kind: 'Map',
+      visibility: 'PlayerFacing',
+      title: 'Corbitt House',
+      file: { name: 'corbitt-house.png', mediaType: 'image/png', sizeBytes: 870_400 },
+    }
+
+    it('shows the image with its name, size, and actions on a Prepared Scene (SP-UX-81, SP-UX-89)', () => {
+      mockUseHandout.mockReturnValue(handoutQuery(map))
+
+      renderPage()
+
+      expect(screen.getByRole('img', { name: 'Corbitt House' })).toBeInTheDocument()
+      expect(screen.getByText('corbitt-house.png, 850 KB')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Delete Handout' })).toBeInTheDocument()
+    })
+
+    it('opens the form with the current image and a Replace field, and saves without a new file (SP-UX-84)', async () => {
+      mockUseHandout.mockReturnValue(handoutQuery(map))
+      renderPage()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+      expect(screen.getByText('Current image: corbitt-house.png, 850 KB')).toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      expect(editMutate).toHaveBeenCalledWith({ kind: 'Map', visibility: 'PlayerFacing', title: 'Corbitt House', file: null }, expect.anything())
+    })
+
+    it('keeps the image viewable but offers no Edit or Delete on a Finished Scene (SP-UX-73, SP-UX-89)', () => {
+      mockUseScene.mockReturnValue(sceneQuery(finished))
+      mockUseHandout.mockReturnValue(handoutQuery(map))
+
+      renderPage()
+
+      expect(screen.getByRole('link', { name: 'Download corbitt-house.png' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    })
   })
 
   describe('view', () => {

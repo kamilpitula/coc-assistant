@@ -1,7 +1,7 @@
 import { $createParagraphNode, $createTextNode, $getRoot, type LexicalEditor } from 'lexical'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { HandoutFormValues } from '@/scenario-preparation/services/handoutForm'
 import type { RichTextDocument } from '@/shared/types/RichText'
@@ -50,8 +50,16 @@ describe('HandoutForm', () => {
     const visibility = screen.getByRole('group', { name: 'Who can see it' })
     expect(title.compareDocumentPosition(kind) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(kind.compareDocumentPosition(visibility) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(visibility.compareDocumentPosition(textBox()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(title).not.toHaveAttribute('maxlength')
+    expect(screen.getByText('Choose a kind to add its content.')).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Text' })).not.toBeInTheDocument()
+  })
+
+  it('shows the text field after Who can see it once a rich-text kind is chosen (SP-UX-77, SP-A11Y-45)', () => {
+    render(<HandoutForm {...baseProps} initialValues={{ ...emptyValues, kind: 'Text' }} onSubmit={vi.fn()} />)
+
+    const visibility = screen.getByRole('group', { name: 'Who can see it' })
+    expect(visibility.compareDocumentPosition(textBox()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(textBox()).toHaveAccessibleDescription('You can format text and add links.')
   })
 
@@ -99,11 +107,18 @@ describe('HandoutForm', () => {
     expect(onSubmit).not.toHaveBeenCalled()
     expect(screen.getByLabelText('Title')).toHaveAccessibleDescription('Enter a title.')
     expect(screen.getByLabelText('Title')).toBeInvalid()
-    expect(screen.getByRole('group', { name: 'Kind' })).toHaveAccessibleDescription('Choose Read-aloud or Text.')
+    expect(screen.getByRole('group', { name: 'Kind' })).toHaveAccessibleDescription('Choose a kind.')
     expect(screen.getByRole('group', { name: 'Who can see it' })).toHaveAccessibleDescription('Choose who can see this Handout.')
+    expect(screen.getByLabelText('Title')).toHaveFocus()
+  })
+
+  it('shows the text error at the text field once a rich-text kind is chosen (SP-UX-66)', async () => {
+    render(<HandoutForm {...baseProps} initialValues={{ ...emptyValues, title: 'T', kind: 'Text', visibility: 'KeeperFacing' }} onSubmit={vi.fn()} />)
+
+    await userEvent.click(submitButton('Add Handout'))
+
     expect(textBox()).toHaveAccessibleDescription('You can format text and add links. Enter the Handout text.')
     expect(textBox()).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByLabelText('Title')).toHaveFocus()
   })
 
   it('focuses the first radio of Kind when only the kind, the visibility, and the text are missing', async () => {
@@ -193,5 +208,128 @@ describe('HandoutForm', () => {
     await userEvent.type(screen.getByLabelText('Title'), '!')
 
     expect(leaving()).toBe(true)
+  })
+
+  describe('file kinds', () => {
+    const png = new File(['png'], 'plan.png', { type: 'image/png' })
+    const pdf = new File(['pdf'], 'letter.pdf', { type: 'application/pdf' })
+    const fileInput = () => document.querySelector('input[type=file]') as HTMLInputElement
+    const radioValues = () => screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'))
+
+    beforeEach(() => {
+      vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:test/1', revokeObjectURL: vi.fn() }))
+    })
+
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('offers five kinds on the add page and shows the image field for a Map without moving focus (SP-UX-77)', async () => {
+      render(<HandoutForm {...baseProps} onSubmit={vi.fn()} />)
+      expect(radioValues().slice(0, 5)).toEqual(['ReadAloud', 'Text', 'Image', 'Document', 'Map'])
+
+      await userEvent.click(screen.getByRole('radio', { name: 'Map' }))
+
+      expect(fileInput()).toHaveAttribute('accept', 'image/png,image/jpeg,image/webp,image/gif')
+      expect(screen.getByText('PNG, JPEG, WebP, or GIF, up to 20 MB.')).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: 'Map' })).toHaveFocus()
+    })
+
+    it('submits the chosen image with the kind and visibility (SP-UX-78)', async () => {
+      const onSubmit = vi.fn()
+      render(<HandoutForm {...baseProps} initialValues={{ ...emptyValues, title: ' Plan ', visibility: 'PlayerFacing' }} onSubmit={onSubmit} />)
+
+      await userEvent.click(screen.getByRole('radio', { name: 'Image' }))
+      await userEvent.upload(fileInput(), png)
+      await userEvent.click(submitButton('Add Handout'))
+
+      expect(onSubmit).toHaveBeenCalledWith({ kind: 'Image', visibility: 'PlayerFacing', title: 'Plan', file: png })
+    })
+
+    it('previews the chosen image and shows its name and size (SP-UX-77)', async () => {
+      render(<HandoutForm {...baseProps} initialValues={{ ...emptyValues, kind: 'Image' }} onSubmit={vi.fn()} />)
+
+      await userEvent.upload(fileInput(), png)
+
+      expect(screen.getByRole('img', { name: 'Preview of plan.png' })).toBeInTheDocument()
+      expect(screen.getByText('plan.png, 1 KB')).toBeInTheDocument()
+    })
+
+    it('refuses a missing or wrong-type file at the file field, focused, and sends nothing (SP-UX-79, SP-A11Y-44)', async () => {
+      const onSubmit = vi.fn()
+      render(<HandoutForm {...baseProps} initialValues={{ ...emptyValues, title: 'T', kind: 'Document', visibility: 'KeeperFacing' }} onSubmit={onSubmit} />)
+
+      await userEvent.click(submitButton('Add Handout'))
+      expect(fileInput()).toHaveAccessibleDescription('PDF, up to 20 MB. Choose a PDF.')
+      expect(fileInput()).toBeInvalid()
+      expect(fileInput()).toHaveFocus()
+
+      await userEvent.upload(fileInput(), new File(['x'], 'a.png', { type: 'image/png' }), { applyAccept: false })
+      await userEvent.click(submitButton('Add Handout'))
+      expect(screen.getByText("This isn't a PDF. Choose a PDF.")).toBeInTheDocument()
+      expect(onSubmit).not.toHaveBeenCalled()
+    })
+
+    it('keeps the chosen image across kind switches (SP-UX-87)', async () => {
+      render(<HandoutForm {...baseProps} onSubmit={vi.fn()} />)
+      await userEvent.click(screen.getByRole('radio', { name: 'Image' }))
+      await userEvent.upload(fileInput(), png)
+
+      await userEvent.click(screen.getByRole('radio', { name: 'Text' }))
+      expect(screen.queryByText('plan.png, 1 KB')).not.toBeInTheDocument()
+      await userEvent.click(screen.getByRole('radio', { name: 'Map' }))
+
+      expect(screen.getByText('plan.png, 1 KB')).toBeInTheDocument()
+    })
+
+    it('shows the server message at the file field and focuses it', () => {
+      render(
+        <HandoutForm {...baseProps} initialValues={{ ...emptyValues, kind: 'Image' }} serverErrors={{ file: 'Choose a PNG, JPEG, WebP, or GIF image.' }} onSubmit={vi.fn()} />,
+      )
+
+      expect(fileInput()).toHaveAccessibleDescription('PNG, JPEG, WebP, or GIF, up to 20 MB. Choose a PNG, JPEG, WebP, or GIF image.')
+      expect(fileInput()).toHaveFocus()
+    })
+
+    it('on an edit of an Image offers only Image and Map, shows the current image, and keeps it when none is chosen (SP-UX-84, SP-UX-86)', async () => {
+      const onSubmit = vi.fn()
+      const storedFile = { name: 'plan.png', mediaType: 'image/png', sizeBytes: 870_400 }
+      render(
+        <HandoutForm
+          {...baseProps}
+          initialValues={{ title: 'Plan', kind: 'Image', visibility: 'KeeperFacing', content: null, storedFile }}
+          submitLabel="Save"
+          onSubmit={onSubmit}
+        />,
+      )
+
+      expect(radioValues().slice(0, 2)).toEqual(['Image', 'Map'])
+      expect(screen.queryByRole('radio', { name: 'Document' })).not.toBeInTheDocument()
+      expect(screen.getByText('Current image: plan.png, 850 KB')).toBeInTheDocument()
+      expect(screen.getByLabelText('Replace image')).toHaveAccessibleDescription('Leave empty to keep the current image. PNG, JPEG, WebP, or GIF, up to 20 MB.')
+
+      await userEvent.click(submitButton('Save'))
+
+      expect(onSubmit).toHaveBeenCalledWith({ kind: 'Image', visibility: 'KeeperFacing', title: 'Plan', file: null })
+    })
+
+    it('on an edit of a Document shows no kind radios, only the fixed sentence (SP-UX-86, SP-A11Y-50)', () => {
+      const storedFile = { name: 'letter.pdf', mediaType: 'application/pdf', sizeBytes: 2048 }
+      render(<HandoutForm {...baseProps} initialValues={{ title: 'Letter', kind: 'Document', visibility: 'KeeperFacing', content: null, storedFile }} onSubmit={vi.fn()} />)
+
+      expect(screen.getByRole('group', { name: 'Kind' })).toHaveTextContent('Document. A Document Handout stays a Document.')
+      expect(screen.queryByRole('radio', { name: 'Image' })).not.toBeInTheDocument()
+      expect(screen.getByLabelText('Replace document')).toBeInTheDocument()
+      expect(screen.getByText('Current document: letter.pdf, 2 KB')).toBeInTheDocument()
+    })
+
+    it('replaces the stored file with a chosen one on an edit (SP-UX-85)', async () => {
+      const onSubmit = vi.fn()
+      const storedFile = { name: 'letter.pdf', mediaType: 'application/pdf', sizeBytes: 2048 }
+      render(<HandoutForm {...baseProps} initialValues={{ title: 'Letter', kind: 'Document', visibility: 'KeeperFacing', content: null, storedFile }} onSubmit={onSubmit} />)
+
+      await userEvent.upload(fileInput(), pdf)
+      await userEvent.click(submitButton('Add Handout'))
+
+      expect(onSubmit).toHaveBeenCalledWith({ kind: 'Document', visibility: 'KeeperFacing', title: 'Letter', file: pdf })
+    })
   })
 })

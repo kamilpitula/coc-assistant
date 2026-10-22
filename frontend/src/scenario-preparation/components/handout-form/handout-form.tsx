@@ -1,14 +1,21 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react'
 
+import { HandoutContentField } from '@/scenario-preparation/components/handout-content-field/handout-content-field'
 import type { HandoutFieldErrors } from '@/scenario-preparation/services/handoutApi'
+import type { HandoutFileFamily } from '@/scenario-preparation/services/handoutFile'
 import {
   firstInvalidField,
   validateHandoutForm,
   type HandoutFormErrors,
   type HandoutFormValues,
 } from '@/scenario-preparation/services/handoutForm'
-import type { HandoutField, HandoutInput, HandoutKind, HandoutVisibility } from '@/scenario-preparation/types/Handout'
-import { RichTextEditor } from '@/shared/components/rich-text-editor/rich-text-editor'
+import {
+  HANDOUT_KIND_FAMILIES,
+  type HandoutField,
+  type HandoutInput,
+  type HandoutKind,
+  type HandoutVisibility,
+} from '@/scenario-preparation/types/Handout'
 import { Alert } from '@/shared/components/ui/alert'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
@@ -17,17 +24,29 @@ import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group'
 import { useUnsavedChangesPrompt } from '@/shared/hooks/useUnsavedChangesPrompt'
 import type { RichTextDocument } from '@/shared/types/RichText'
 
-const TEXT_HINT = 'You can format text and add links.'
-
 const KIND_OPTIONS: ChoiceOption<HandoutKind>[] = [
   { value: 'ReadAloud', label: 'Read-aloud', description: 'Text you read to the Players. It is shown as read-aloud text.' },
   { value: 'Text', label: 'Text', description: 'Any other text, such as a letter or a newspaper clipping.' },
+  { value: 'Image', label: 'Image', description: 'A picture, such as a photograph or a portrait.' },
+  { value: 'Document', label: 'Document', description: 'A PDF, such as a letter, a diary, or a newspaper.' },
+  { value: 'Map', label: 'Map', description: 'A picture of a place, such as a house or a town. It is shown large.' },
 ]
 
 const VISIBILITY_OPTIONS: ChoiceOption<HandoutVisibility>[] = [
   { value: 'PlayerFacing', label: 'Player-facing', description: 'Players can receive it when you reveal it.' },
   { value: 'KeeperFacing', label: 'Keeper-facing', description: 'Only you can read it. It is never revealed.' },
 ]
+
+const DOCUMENT_STAYS_A_DOCUMENT = 'Document. A Document Handout stays a Document.'
+
+/** An edit offers the kinds of its own family only (SP-UX-86); a new Handout offers all five. */
+function kindOptionsFor(initialKind: HandoutKind | null): ChoiceOption<HandoutKind>[] {
+  if (initialKind === null) {
+    return KIND_OPTIONS
+  }
+  const family = HANDOUT_KIND_FAMILIES[initialKind]
+  return KIND_OPTIONS.filter((option) => HANDOUT_KIND_FAMILIES[option.value] === family)
+}
 
 interface HandoutFormProps {
   initialValues: HandoutFormValues
@@ -68,10 +87,12 @@ interface ChoiceGroupProps<TValue extends string> {
   onChange: (value: TValue) => void
   error?: string
   errorId: string
+  /** Replaces the radios with a sentence, for a kind that cannot change (SP-A11Y-50). */
+  fixedText?: string
 }
 
 /** A fieldset with a legend and a radiogroup; each radio is named by its label and described by its sentence (SP-A11Y-39). */
-function ChoiceGroup<TValue extends string>({ legend, idPrefix, options, value, onChange, error, errorId }: ChoiceGroupProps<TValue>) {
+function ChoiceGroup<TValue extends string>({ legend, idPrefix, options, value, onChange, error, errorId, fixedText }: ChoiceGroupProps<TValue>) {
   const legendId = `${idPrefix}-legend`
 
   return (
@@ -79,39 +100,44 @@ function ChoiceGroup<TValue extends string>({ legend, idPrefix, options, value, 
       <legend id={legendId} className="text-sm font-medium">
         {legend}
       </legend>
-      <RadioGroup
-        value={value ?? ''}
-        onValueChange={(next) => onChange(next as TValue)}
-        aria-labelledby={legendId}
-        aria-invalid={error ? true : undefined}
-        className="gap-3"
-      >
-        {options.map((option) => (
-          <div key={option.value} className="flex items-start gap-3">
-            <RadioGroupItem
-              value={option.value}
-              id={`${idPrefix}-${option.value}`}
-              aria-describedby={`${idPrefix}-${option.value}-description`}
-              className="mt-1 size-4 shrink-0"
-            />
-            <div className="flex flex-col gap-0.5">
-              <Label htmlFor={`${idPrefix}-${option.value}`}>{option.label}</Label>
-              <p id={`${idPrefix}-${option.value}-description`} className="text-sm text-muted-foreground">
-                {option.description}
-              </p>
+      {fixedText ? (
+        <p className="text-sm">{fixedText}</p>
+      ) : (
+        <RadioGroup
+          value={value ?? ''}
+          onValueChange={(next) => onChange(next as TValue)}
+          aria-labelledby={legendId}
+          aria-invalid={error ? true : undefined}
+          className="gap-3"
+        >
+          {options.map((option) => (
+            <div key={option.value} className="flex items-start gap-3">
+              <RadioGroupItem
+                value={option.value}
+                id={`${idPrefix}-${option.value}`}
+                aria-describedby={`${idPrefix}-${option.value}-description`}
+                className="mt-1 size-4 shrink-0"
+              />
+              <div className="flex flex-col gap-0.5">
+                <Label htmlFor={`${idPrefix}-${option.value}`}>{option.label}</Label>
+                <p id={`${idPrefix}-${option.value}-description`} className="text-sm text-muted-foreground">
+                  {option.description}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
-      </RadioGroup>
+          ))}
+        </RadioGroup>
+      )}
       <FieldError id={errorId} message={error} />
     </fieldset>
   )
 }
 
 /**
- * The title, kind, visibility, and text form shared by the add and edit pages (specs/scenario-preparation/ux.md section 43).
- * Neither the kind nor the visibility has a default. Validates on submit, explains each invalid field next to it, focuses the
- * first invalid field, and warns before leaving with unsaved edits.
+ * The title, kind, visibility, and content form shared by the add and edit pages (specs/scenario-preparation/ux.md sections 43
+ * and 51). Neither the kind nor the visibility has a default, and the kind decides the content field: text, or an image or PDF.
+ * Validates on submit, explains each invalid field next to it, focuses the first invalid field, and warns before leaving with
+ * unsaved edits.
  */
 export function HandoutForm({
   initialValues,
@@ -135,23 +161,27 @@ export function HandoutForm({
     contentLabel: useId(),
     contentHint: useId(),
     contentError: useId(),
+    file: useId(),
+    fileError: useId(),
   }
   const [title, setTitle] = useState(initialValues.title)
   const [kind, setKind] = useState(initialValues.kind)
   const [visibility, setVisibility] = useState(initialValues.visibility)
+  const [text, setText] = useState<RichTextDocument | null>(initialValues.content)
+  const [files, setFiles] = useState<Record<HandoutFileFamily, File | null>>({ picture: null, document: null })
   const [clientErrors, setClientErrors] = useState<HandoutFormErrors>({})
   const [contentChanged, setContentChanged] = useState(false)
-  const content = useRef<RichTextDocument | null>(initialValues.content)
   const errors: HandoutFormErrors = { ...serverErrors, ...clientErrors }
-  const isDirty = title !== initialValues.title || kind !== initialValues.kind || visibility !== initialValues.visibility || contentChanged
-  useUnsavedChangesPrompt(isDirty)
+  const kindOptions = kindOptionsFor(initialValues.kind)
+  useUnsavedChangesPrompt(isFormDirty(initialValues, { title, kind, visibility, contentChanged, files }))
 
   const focusField = (field: HandoutField | null) => {
     const targets: Record<HandoutField, string> = {
       title: ids.title,
-      kind: `${ids.kind}-${KIND_OPTIONS[0].value}`,
+      kind: `${ids.kind}-${kindOptions[0].value}`,
       visibility: `${ids.visibility}-${VISIBILITY_OPTIONS[0].value}`,
       content: ids.content,
+      file: ids.file,
     }
     if (field) {
       document.getElementById(targets[field])?.focus()
@@ -162,7 +192,7 @@ export function HandoutForm({
     if (autoFocusTitle) {
       document.getElementById(ids.title)?.focus()
     }
-    // Focus once, when the form appears.
+    // Focus once, when the form appears (editing).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFocusTitle])
 
@@ -176,7 +206,14 @@ export function HandoutForm({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const result = validateHandoutForm({ title, kind, visibility, content: content.current })
+    const result = validateHandoutForm({
+      title,
+      kind,
+      visibility,
+      content: text,
+      file: kind ? files[fileFamilyOf(kind)] : null,
+      hasStoredFile: Boolean(initialValues.storedFile),
+    })
     if (result.success) {
       setClientErrors({})
       onSubmit(result.data)
@@ -204,11 +241,12 @@ export function HandoutForm({
       <ChoiceGroup
         legend="Kind"
         idPrefix={ids.kind}
-        options={KIND_OPTIONS}
+        options={kindOptions}
         value={kind}
         onChange={setKind}
         error={errors.kind}
         errorId={ids.kindError}
+        fixedText={isKindFixed(initialValues.kind) ? DOCUMENT_STAYS_A_DOCUMENT : undefined}
       />
 
       <ChoiceGroup
@@ -221,39 +259,75 @@ export function HandoutForm({
         errorId={ids.visibilityError}
       />
 
-      <div className="flex flex-col gap-2">
-        <Label id={ids.contentLabel} htmlFor={ids.content} onClick={() => document.getElementById(ids.content)?.focus()}>
-          Text
-        </Label>
-        <RichTextEditor
-          id={ids.content}
-          labelledBy={ids.contentLabel}
-          describedBy={errors.content ? `${ids.contentHint} ${ids.contentError}` : ids.contentHint}
-          invalid={Boolean(errors.content)}
-          initialValue={initialValues.content}
-          onChange={(value) => {
-            content.current = value
-            setContentChanged(true)
-          }}
-        />
-        <p id={ids.contentHint} className="text-sm text-muted-foreground">
-          {TEXT_HINT}
-        </p>
-        <FieldError id={ids.contentError} message={errors.content} />
-      </div>
+      <HandoutContentField
+        kind={kind}
+        ids={ids}
+        textInitialValue={text}
+        onTextChange={(value) => {
+          setText(value)
+          setContentChanged(true)
+        }}
+        files={files}
+        onFileChange={(family, file) => setFiles((current) => ({ ...current, [family]: file }))}
+        storedFile={initialValues.storedFile}
+        contentError={errors.content}
+        fileError={errors.file}
+      />
 
+      <FormActions failureMessage={failureMessage} pending={pending} submitLabel={submitLabel} busyLabel={busyLabel} cancel={cancel} />
+    </form>
+  )
+}
+
+interface FormActionsProps {
+  failureMessage?: string | null
+  pending: boolean
+  submitLabel: string
+  busyLabel: string
+  cancel: ReactNode
+}
+
+function FormActions({ failureMessage, pending, submitLabel, busyLabel, cancel }: FormActionsProps) {
+  return (
+    <>
       {failureMessage && (
         <Alert variant="destructive" role="alert">
           {failureMessage}
         </Alert>
       )}
-
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={pending}>
           {pending ? busyLabel : submitLabel}
         </Button>
         {cancel}
       </div>
-    </form>
+    </>
   )
+}
+
+// A Document stays a Document, so its kind is a sentence instead of a choice (SP-A11Y-50).
+const isKindFixed = (initialKind: HandoutKind | null): boolean => initialKind !== null && HANDOUT_KIND_FAMILIES[initialKind] === 'document'
+
+interface FormState {
+  title: string
+  kind: HandoutKind | null
+  visibility: HandoutVisibility | null
+  contentChanged: boolean
+  files: Record<HandoutFileFamily, File | null>
+}
+
+function isFormDirty(initial: HandoutFormValues, state: FormState): boolean {
+  return (
+    state.title !== initial.title ||
+    state.kind !== initial.kind ||
+    state.visibility !== initial.visibility ||
+    state.contentChanged ||
+    state.files.picture !== null ||
+    state.files.document !== null
+  )
+}
+
+// The family of a kind that holds a file; a rich-text kind has none, so its form value is never read.
+function fileFamilyOf(kind: HandoutKind): HandoutFileFamily {
+  return HANDOUT_KIND_FAMILIES[kind] === 'document' ? 'document' : 'picture'
 }

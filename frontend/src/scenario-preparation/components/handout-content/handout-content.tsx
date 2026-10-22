@@ -1,26 +1,57 @@
+import type { ComponentType } from 'react'
+
+import { HandoutDocument } from '@/scenario-preparation/components/handout-document/handout-document'
+import { HandoutImage } from '@/scenario-preparation/components/handout-image/handout-image'
 import { ReadAloudText } from '@/scenario-preparation/components/read-aloud-text/read-aloud-text'
-import type { HandoutKind } from '@/scenario-preparation/types/Handout'
+import { isFileHandout, type Handout, type HandoutKind } from '@/scenario-preparation/types/Handout'
 import { RichTextView } from '@/shared/components/rich-text-view/rich-text-view'
-import type { RichTextDocument } from '@/shared/types/RichText'
 
 interface HandoutContentProps {
-  kind: HandoutKind
-  content: RichTextDocument
+  handout: Handout
+  campaignId: string
+  scenarioId: string
+  sceneId: string
 }
 
-/**
- * A Handout's text by kind (specs/scenario-preparation/ux.md section 42): a Read-aloud Handout in the read-aloud panel, a Text
- * Handout under an h2 "Text". Both keep the text's headings at h3 and h4.
- */
-export function HandoutContent({ kind, content }: HandoutContentProps) {
-  if (kind === 'ReadAloud') {
-    return <ReadAloudText document={content} />
+function ReadAloudView({ handout }: HandoutContentProps) {
+  return isFileHandout(handout) ? null : <ReadAloudText document={handout.content} />
+}
+
+function TextView({ handout }: HandoutContentProps) {
+  if (isFileHandout(handout)) {
+    return null
   }
 
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-lg font-semibold">Text</h2>
-      <RichTextView document={content} />
+      <RichTextView document={handout.content} />
     </section>
   )
+}
+
+function ImageView({ handout, campaignId, scenarioId, sceneId }: HandoutContentProps) {
+  return isFileHandout(handout) ? <HandoutImage campaignId={campaignId} scenarioId={scenarioId} sceneId={sceneId} handout={handout} /> : null
+}
+
+function DocumentView({ handout, campaignId, scenarioId, sceneId }: HandoutContentProps) {
+  return isFileHandout(handout) ? <HandoutDocument campaignId={campaignId} scenarioId={scenarioId} sceneId={sceneId} handout={handout} /> : null
+}
+
+// One view per kind (ux.md section 56); a Map is the Image view with the full content width.
+const VIEWS: Record<HandoutKind, ComponentType<HandoutContentProps>> = {
+  ReadAloud: ReadAloudView,
+  Text: TextView,
+  Image: ImageView,
+  Document: DocumentView,
+  Map: ImageView,
+}
+
+/**
+ * A Handout's content by kind (specs/scenario-preparation/ux.md sections 42, 52, and 53): a Read-aloud Handout in the read-aloud
+ * panel, a Text Handout under an h2 "Text", an Image or Map as an image, a Document as a name with "Open" and "Download".
+ */
+export function HandoutContent(props: HandoutContentProps) {
+  const View = VIEWS[props.handout.kind]
+  return <View {...props} />
 }
