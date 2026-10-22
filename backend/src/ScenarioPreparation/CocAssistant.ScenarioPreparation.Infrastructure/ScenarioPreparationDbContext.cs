@@ -96,6 +96,31 @@ public class ScenarioPreparationDbContext : DbContext
             builder.HasIndex("MythosCreatureId");
         });
 
+        // A Handout is a child of its Scene in one Handouts table (ADR 0020); removing a Prepared Scene removes its Handouts.
+        modelBuilder.Entity<Scene>().HasMany(scene => scene.Handouts)
+            .WithOne()
+            .HasForeignKey(handout => handout.SceneId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Scene>().Navigation(scene => scene.Handouts).UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        modelBuilder.Entity<Handout>(builder =>
+        {
+            builder.ToTable("Handouts");
+            builder.HasKey(handout => handout.Id);
+            builder.Property(handout => handout.Id).ValueGeneratedNever();
+            builder.Property(handout => handout.Kind).IsRequired().HasConversion<string>().HasMaxLength(20);
+            builder.Property(handout => handout.Visibility).IsRequired().HasConversion<string>().HasMaxLength(20);
+            builder.Property(handout => handout.Title).IsRequired().HasMaxLength(Handout.TitleMaxLength);
+            builder.Property(handout => handout.Content).IsRequired();
+            builder.Property(handout => handout.Position).IsRequired();
+            builder.Property(handout => handout.CreatedAt).IsRequired().HasConversion(
+                createdAt => createdAt.UtcDateTime,
+                stored => new DateTimeOffset(DateTime.SpecifyKind(stored, DateTimeKind.Utc)));
+
+            // Serves the Scene's order read; deliberately not unique (ADR 0014).
+            builder.HasIndex(handout => new { handout.SceneId, handout.Position });
+        });
+
         // A Human NPC is its own aggregate and table (D6 of PBI-SP-003); the type is the table. The NPC Profile is a
         // versioned JSON column (ADR 0005, ADR 0007) and the Campaign is referenced by id only (ADR 0013).
         modelBuilder.Entity<HumanNpc>(builder =>

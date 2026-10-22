@@ -33,6 +33,29 @@ public class RichTextDocumentTests
         Assert.Equal(accepted, outcome == RichTextOutcome.Accepted);
     }
 
+    public static TheoryData<string> TextPresenceNames()
+    {
+        var names = new TheoryData<string>();
+        foreach (var fixtureCase in Fixtures.Value.RootElement.GetProperty("textPresence").EnumerateArray())
+        {
+            names.Add(fixtureCase.GetProperty("name").GetString()!);
+        }
+
+        return names;
+    }
+
+    [Theory]
+    [MemberData(nameof(TextPresenceNames))]
+    public void Given_a_shared_text_presence_case_When_checking_for_visible_text_Then_the_result_is_the_expected_one(string caseName)
+    {
+        var fixtureCase = Fixtures.Value.RootElement.GetProperty("textPresence").EnumerateArray()
+            .Single(candidate => candidate.GetProperty("name").GetString() == caseName);
+
+        var hasVisibleText = RichTextDocument.HasVisibleText(fixtureCase.GetProperty("document").GetRawText());
+
+        Assert.Equal(fixtureCase.GetProperty("hasVisibleText").GetBoolean(), hasVisibleText);
+    }
+
     [Fact]
     public void Given_the_fixture_When_compared_with_the_backend_limit_Then_the_byte_limits_match()
     {

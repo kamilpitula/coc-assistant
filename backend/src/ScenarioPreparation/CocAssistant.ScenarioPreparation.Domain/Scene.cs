@@ -11,6 +11,7 @@ public class Scene
     public const int LocationMaxLength = 200;
 
     private readonly List<NonPlayerEntityLink> _nonPlayerEntityLinks = [];
+    private readonly List<Handout> _handouts = [];
 
     public Guid Id { get; private set; }
     public Guid CampaignId { get; private set; }
@@ -30,6 +31,10 @@ public class Scene
     /// <summary>The Non-Player Entity links in the order linked: CreatedAt, then Id (spec.md, Scene API).</summary>
     public IReadOnlyList<NonPlayerEntityLink> NonPlayerEntityLinks =>
         _nonPlayerEntityLinks.OrderBy(link => link.CreatedAt).ThenBy(link => link.Id).ToList();
+
+    /// <summary>The Handouts in the Scene's order: Position, then CreatedAt, then Id (ADR 0014).</summary>
+    public IReadOnlyList<Handout> Handouts =>
+        _handouts.OrderBy(handout => handout.Position).ThenBy(handout => handout.CreatedAt).ThenBy(handout => handout.Id).ToList();
 
     /// <summary>Only a Prepared Scene can be removed.</summary>
     public bool IsRemovable => Status == SceneStatus.Prepared;
@@ -172,6 +177,101 @@ public class Scene
 
         _nonPlayerEntityLinks.Remove(link);
         return NonPlayerEntityLinkOutcome.Accepted;
+    }
+
+    /// <summary>
+    /// Adds a Handout after the others while the Scene is Prepared or Active. Status is checked before the fields; a refused
+    /// add changes nothing.
+    /// </summary>
+    public HandoutResult AddHandout(HandoutKind? kind, HandoutVisibility? visibility, string title, string? content, DateTimeOffset now)
+    {
+        if (Status == SceneStatus.Finished)
+        {
+            return new HandoutResult(HandoutOutcome.SceneFinished, null);
+        }
+
+        var outcome = Handout.Validate(kind, visibility, title, content, out var trimmedTitle);
+        if (outcome != HandoutOutcome.Accepted)
+        {
+            return new HandoutResult(outcome, null);
+        }
+
+        var position = _handouts.Count == 0 ? 1 : _handouts.Max(existing => existing.Position) + 1;
+        var handout = Handout.Create(Id, kind!.Value, visibility!.Value, trimmedTitle, content!, position, now);
+        _handouts.Add(handout);
+        return new HandoutResult(outcome, handout);
+    }
+
+    /// <summary>Replaces a Handout's fields, including its kind, while the Scene is Prepared or Active. Status, then the Handout, then the fields are checked; Position is kept.</summary>
+    public HandoutResult EditHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, string? content)
+    {
+        if (Status == SceneStatus.Finished)
+        {
+            return new HandoutResult(HandoutOutcome.SceneFinished, null);
+        }
+
+        var handout = _handouts.Find(candidate => candidate.Id == handoutId);
+        if (handout is null)
+        {
+            return new HandoutResult(HandoutOutcome.HandoutNotFound, null);
+        }
+
+        var outcome = Handout.Validate(kind, visibility, title, content, out var trimmedTitle);
+        if (outcome != HandoutOutcome.Accepted)
+        {
+            return new HandoutResult(outcome, null);
+        }
+
+        handout.Replace(kind!.Value, visibility!.Value, trimmedTitle, content!);
+        return new HandoutResult(outcome, handout);
+    }
+
+    /// <summary>Removes a Handout only while the Scene is Prepared; status is checked before the Handout, so an unknown id on an Active Scene is still refused.</summary>
+    public HandoutRemovalOutcome RemoveHandout(Guid handoutId)
+    {
+        if (!IsRemovable)
+        {
+            return HandoutRemovalOutcome.SceneNotPrepared;
+        }
+
+        var handout = _handouts.Find(candidate => candidate.Id == handoutId);
+        if (handout is null)
+        {
+            return HandoutRemovalOutcome.HandoutNotFound;
+        }
+
+        _handouts.Remove(handout);
+        return HandoutRemovalOutcome.Removed;
+    }
+
+    /// <summary>
+    /// Renumbers the Handouts 1..n to the requested order while the Scene is Prepared or Active (ADR 0014). All or nothing.
+    /// Kept beside <see cref="SceneOrder"/> rather than generalized, so Position stays writable in one place per type (SP-002 D7).
+    /// </summary>
+    public HandoutOrderOutcome ReorderHandouts(IReadOnlyList<Guid> handoutIds)
+    {
+        if (Status == SceneStatus.Finished)
+        {
+            return HandoutOrderOutcome.SceneFinished;
+        }
+
+        if (handoutIds.Distinct().Count() != handoutIds.Count)
+        {
+            return HandoutOrderOutcome.DuplicateIds;
+        }
+
+        var byId = _handouts.ToDictionary(handout => handout.Id);
+        if (byId.Count != handoutIds.Count || !handoutIds.All(byId.ContainsKey))
+        {
+            return HandoutOrderOutcome.DoesNotMatchHandouts;
+        }
+
+        for (var index = 0; index < handoutIds.Count; index++)
+        {
+            byId[handoutIds[index]].MoveTo(index + 1);
+        }
+
+        return HandoutOrderOutcome.Reordered;
     }
 
     /// <summary>Sets the place in the prepared order; only <see cref="SceneOrder"/> reorders.</summary>
