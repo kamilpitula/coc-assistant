@@ -111,7 +111,7 @@ A Scene that has been played. It is read-only for everyone and is never reopened
 _Avoid_: Closed scene, past scene, archived scene
 
 **Handout**:
-A piece of Player-facing or Keeper-facing material on a Scene or an Item, either rich text or a file. Its kind is Read-aloud, Text, Image, Document, or Map. A Player-facing Handout reaches Players only through a Reveal; a Keeper-facing Handout never does.
+A piece of Player-facing or Keeper-facing material on a Scene or an Item, either rich text or a file. Its kind is Read-aloud, Text, Image, Document, or Map. A Player-facing Handout reaches Players only through a Reveal; a Keeper-facing Handout never does. An Image, Document, or Map Handout holds one file; 'file' names that stored content, never the Handout itself, and UI copy says 'image', 'PDF', or 'document' instead.
 _Avoid_: Attachment, asset, file, article
 
 **Read-aloud Handout**:

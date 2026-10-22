@@ -35,6 +35,12 @@ Handouts (PBI-SP-005): **Option C, a compact ordered "Handouts" list on the Scen
 
 Handouts are specified in sections 40 to 49. Design record: [docs/scenario-preparation/issues/05-attach-protect-handouts.design.md](../../docs/scenario-preparation/issues/05-attach-protect-handouts.design.md).
 
+Image, Document, and Map Handouts (PBI-SP-007): **Option A, one Add Handout form where the kind decides the content field, with Replace inside Edit**, chosen 2026-10-22. UI copy says "image", "PDF", or "document", never "file" (CONTEXT.md, Handout). Alternatives considered:
+- **Option B (a separate file-first "Add image or document" page, with an immediate Replace action):** not selected. It adds a second add path and form, and replace becomes a separate request.
+- **Option C (an upload dialog on the Scene page, with thumbnails in the list):** not selected. A form in a dialog is harder to make accessible, it departs from the page-based add flow, and thumbnails need an authenticated fetch per Handout.
+
+They are specified in sections 50 to 58. Design record: [docs/scenario-preparation/issues/07-file-image-and-map-handouts.design.md](../../docs/scenario-preparation/issues/07-file-image-and-map-handouts.design.md).
+
 ## 1. Information architecture
 
 ```
@@ -926,8 +932,8 @@ Stories cover:
 
 - Both pages keep the Campaign header with Overview as the current tab (extends SP-UX-25).
 - Players get no entry point. Every Handout URL shows them `scene-not-found`, without an API call.
-- Kinds in this PBI: Read-aloud and Text. Visibility is Player-facing or Keeper-facing, always chosen explicitly.
-- UI copy never uses "attachment", "asset", "file", "article", "boxed text", or "narration" (root CONTEXT.md).
+- Kinds: Read-aloud and Text (rich text); Image, Document, and Map (sections 50 to 58). Visibility is Player-facing or Keeper-facing, always chosen explicitly.
+- UI copy never uses "attachment", "asset", "file", "article", "boxed text", or "narration" (root CONTEXT.md). It names the content of a file kind "image", "PDF", or "document".
 
 ## 41. Handouts section on the Scene page (`scene-handout-section`)
 
@@ -944,7 +950,7 @@ Player-facing Handouts reach Players only when you reveal them. Keeper-facing Ha
 - **Action:** "Add Handout", a link styled as a small button to `/handouts/new`, right of the `h2` (it wraps below 640px). It is shown only on Prepared and Active Scenes.
 - **List:** an `ol` in stored order. Each item has:
   - the title as a link to the Handout page (`break-words`, `id` for focus after a create);
-  - `handout-badges`: a kind badge ("Read-aloud" or "Text") and a visibility badge ("Player-facing" with an `aria-hidden` Eye icon, or "Keeper-facing" with an `aria-hidden` Lock icon);
+  - `handout-badges`: a kind badge ("Read-aloud", "Text", "Image", "Document", or "Map"; no thumbnails) and a visibility badge ("Player-facing" with an `aria-hidden` Eye icon, or "Keeper-facing" with an `aria-hidden` Lock icon);
   - `move-controls` ("Move {title} up" and "Move {title} down"), on Prepared and Active Scenes only, as in the Scene list (section 13).
 - **Moves:** saved per move through `usePreparedOrderReordering`.
   - Success: the polite announcement "{title} moved to position {n} of {total}."
@@ -1014,12 +1020,12 @@ Text                                              <rich-text-editor>
   1. "Title" (`Input`).
   2. "Kind" (a `RadioGroup` in a `fieldset`).
   3. "Who can see it" (a `RadioGroup` in a `fieldset`).
-  4. "Text" (`rich-text-editor`, section 15).
+  4. "Text" (`rich-text-editor`, section 15) for Read-aloud and Text. Image, Document, and Map show their own field instead (section 51). Before a kind is chosen, the muted line "Choose a kind to add its content." stands in the field's place.
 
   No radio is preselected on the add page. Each option is labelled by its name and described by its sentence. No field has `maxLength`.
 - **Validation on submit,** in field order:
   - "Enter a title." / "Title must be 200 characters or fewer."
-  - "Choose Read-aloud or Text."
+  - "Choose a kind." (the add page offers five kinds; the server's message for a JSON request stays "Choose Read-aloud or Text.")
   - "Choose who can see this Handout."
   - "Enter the Handout text." (no visible text) / "The text is too long. Shorten it and try again." (over 204,800 bytes)
   - Errors are inline (`aria-invalid`, and `aria-describedby` on the field or fieldset). Focus moves to the first invalid field; for a radio group, the first radio.
@@ -1045,7 +1051,7 @@ Text                                              <rich-text-editor>
 | Key | Copy |
 |---|---|
 | Section | Handouts / Player-facing Handouts reach Players only when you reveal them. Keeper-facing Handouts are never revealed. / No Handouts yet. |
-| Kinds | Read-aloud / Text |
+| Kinds | Read-aloud / Text / Image / Document / Map (section 55) |
 | Kind descriptions | Text you read to the Players. It is shown as read-aloud text. / Any other text, such as a letter or a newspaper clipping. |
 | Visibility | Player-facing / Keeper-facing |
 | Visibility descriptions | Players can receive it when you reveal it. / Only you can read it. It is never revealed. |
@@ -1053,7 +1059,7 @@ Text                                              <rich-text-editor>
 | Busy | Adding... / Saving... / Deleting... |
 | Fields | Title / Kind / Who can see it / Text |
 | Hints | You can format text and add links. |
-| Errors | Enter a title. / Title must be 200 characters or fewer. / Choose Read-aloud or Text. / Choose who can see this Handout. / Enter the Handout text. / The text is too long. Shorten it and try again. / This text can't be saved. Shorten it or remove unsupported content. |
+| Errors | Enter a title. / Title must be 200 characters or fewer. / Choose a kind. (server, JSON: Choose Read-aloud or Text.) / Choose who can see this Handout. / Enter the Handout text. / The text is too long. Shorten it and try again. / This text can't be saved. Shorten it or remove unsupported content. |
 | Status | {title} added. / Handout saved. / {title} deleted. / {title} moved to position {n} of {total}. |
 | Failures | We couldn't add the Handout. Try again. / We couldn't save the Handout. Try again. / We couldn't delete the Handout. Try again. / We couldn't load this Handout. / We couldn't change the order. Try again. |
 | Stale | The Handouts changed in another window. Check the order and try again. |
@@ -1079,6 +1085,7 @@ Text                                              <rich-text-editor>
 | Not found | New `handout-not-found`; existing `scene-not-found` |
 | Reorder | Existing `move-controls`, `usePreparedOrderReordering`, `preparedOrder.ts` |
 | Primitives | Existing only (`Badge`, `Button`, `Input`, `Label`, `RadioGroup`, `Alert`, `AlertDialog`, `Skeleton`) |
+| Image, Document, and Map | Section 56 |
 
 Stories cover:
 - **`scene-handout-section`:** empty, several Handouts of both kinds and visibilities, Active, Finished, a long title at 320px, reorder saving, failure, and stale.
@@ -1092,7 +1099,7 @@ Stories cover:
 
 - **SP-UX-64** The Scene page shows "Handouts" after Keeper notes, listing each Handout in stored order as a link with its kind and visibility as text; with none, it shows "No Handouts yet.".
 - **SP-UX-65** On a Prepared or Active Scene, "Add Handout" opens the add page. A valid submit returns to the Scene page with "{title} added.", the Handout is listed last, and its text and formatting show on its page after a reload.
-- **SP-UX-66** An empty or over-200-character title, no kind, no visibility, empty text, or text over 204,800 bytes shows its message from section 45, focuses the first invalid field, and saves nothing. A server refusal shows its message at the field.
+- **SP-UX-66** An empty or over-200-character title, no kind ("Choose a kind."), no visibility, empty text, or text over 204,800 bytes shows its message from section 45, focuses the first invalid field, and saves nothing. A server refusal shows its message at the field.
 - **SP-UX-67** The add page preselects neither a kind nor a visibility. Every Handout shows "Player-facing" or "Keeper-facing" in the list and on its page.
 - **SP-UX-68** A Read-aloud Handout's page shows its text in a panel headed "Read-aloud". A Text Handout's page shows it under "Text", without the panel.
 - **SP-UX-69** "Edit" then "Save" stores the title, kind, visibility, and text, shows "Handout saved.", and survives a reload. The kind can change between Read-aloud and Text. "Cancel" discards the edits.
@@ -1118,9 +1125,163 @@ Stories cover:
 
 - **Decided (U1, approved 2026-10-22):** the Kind radio has no default, so the Keeper always chooses deliberately. The alternative was preselecting "Text".
 - **Deferred:**
-  - file Handouts (PBI-SP-007) and Item Handouts (PBI-SP-008), which extend sections 41 to 44;
+  - Item Handouts (PBI-SP-008), which extend sections 41 to 44 (Image, Document, and Map Handouts are in sections 50 to 58);
+  - an image description for screen-reader users beside the title (flag for PBI-SPL-002, where Players see images), thumbnails in the list, drag and drop, and upload progress (PBI-SP-007);
   - revealing a Handout, and a "revealed" marker (PBI-SPL-002);
   - Active and Finished journeys end to end (PBI-SPL-001);
   - previews of the text in the Scene list;
   - live updates across the Keeper's own tabs.
 - **Research gap:** whether Keepers want to read all Read-aloud Handouts in sequence before play without opening each page. Option A's inline list is the fallback.
+
+## 50. Image, Document, and Map Handouts: scope
+
+- They use the same routes, Scene page section, Handout page, and delete dialog as sections 40 to 44.
+- **By Scene status:** Add, Edit (including Replace), and the move buttons on Prepared and Active Scenes; Delete only on Prepared Scenes; viewing, Open, and Download on every status.
+- **Formats:** Image and Map hold one PNG, JPEG, WebP, or GIF image; Document holds one PDF. Each is at most 20 MB (20,971,520 bytes). Rules: [spec.md](spec.md), Constraints.
+- Players get no entry point; every URL shows them `scene-not-found`.
+
+## 51. The content field on the add and edit form (`handout-content-field`, `handout-file-field`)
+
+```
+Kind                                              (fieldset legend)
+  ( ) Read-aloud   Text you read to the Players. It is shown as read-aloud text.
+  ( ) Text         Any other text, such as a letter or a newspaper clipping.
+  ( ) Image        A picture, such as a photograph or a portrait.
+  ( ) Document     A PDF, such as a letter, a diary, or a newspaper.
+  ( ) Map          A picture of a place, such as a house or a town. It is shown large.
+Who can see it ...
+Image                                             (label)
+  PNG, JPEG, WebP, or GIF, up to 20 MB.           (hint)
+  [native input]
+  [preview]  corbitt-house.png, 1.2 MB
+```
+
+- **Field order:** Title, Kind, Who can see it, then the content field.
+- **Content field by kind:**
+  - Read-aloud or Text: the rich-text editor (section 43).
+  - Image or Map: the label "Image", a native `input type=file` with `accept="image/png,image/jpeg,image/webp,image/gif"`, and the hint "PNG, JPEG, WebP, or GIF, up to 20 MB.".
+  - Document: the label "Document", `accept="application/pdf"`, and the hint "PDF, up to 20 MB.".
+  - No kind yet: the muted line "Choose a kind to add its content.".
+- **Switching kinds** keeps the text and the chosen image or PDF per family (rich text; Image and Map; Document), so switching back restores them. Switching does not move focus.
+- **After choosing:**
+  - Image or Map: a preview `img` (max height 240px, `object-contain`, alt "Preview of {name}") and the text "{name}, {size}".
+  - Document: the text "{name}, {size}".
+  - Size: "{n} KB" (whole, rounded up) below 1 MB, otherwise "{n.n} MB" (1 MB = 1,048,576 bytes).
+- **Client checks on submit,** after title, kind, and visibility, by the browser's type and the size:
+  - Missing: "Choose an image." / "Choose a PDF.".
+  - Wrong type: "Choose a PNG, JPEG, WebP, or GIF image." / "This isn't a PDF. Choose a PDF.".
+  - Too large: "The image is larger than 20 MB. Choose a smaller one." / "The PDF is larger than 20 MB. Choose a smaller one.".
+  - The server returns the same messages at `file`; a 413 shows the too-large message.
+- **Edit:**
+  - Kind offers only Read-aloud and Text for rich text, and only Image and Map for an Image or Map. For a Document, the Kind fieldset holds the sentence "Document. A Document Handout stays a Document." and no radios.
+  - The content field reads "Current image: {name}, {size}" or "Current document: {name}, {size}", then the input labelled "Replace image" or "Replace document" with the hint "Leave empty to keep the current image." or "Leave empty to keep the current document.", followed by the format hint.
+  - A chosen replacement shows its preview as on the add page.
+- **Unsaved input:** choosing an image or PDF makes the form dirty (`useUnsavedChangesPrompt`).
+- **Busy:** "Adding..." and "Saving..." as before; no progress bar.
+- **Failures:** as sections 43 and 42 ("We couldn't add the Handout. Try again." / "We couldn't save the Handout. Try again."). The chosen image or PDF stays selected and the input keeps it.
+
+## 52. Handout page content for an Image or Map (`handout-image`)
+
+```
+Corbitt House                                      (h1)
+Scene: The Corbitt House
+Map . Player-facing
+Map                                                (h2)
++------------------------------------------+
+| <image, fitted to the content width>     |
++------------------------------------------+
+corbitt-house.png, 1.2 MB                          (muted)
+[Open full size] [Download]
+```
+
+- **Heading:** an `h2` "Image" or "Map".
+- **Image:** a `figure` with an `img` (`alt` = the title, `max-w-full h-auto`).
+  - An Image has a max height of 70vh with `object-contain`.
+  - A Map uses the full content width with no height cap; a tall Map scrolls the page.
+  - The `figcaption` is "{name}, {size}".
+- **Actions:** links styled as outline buttons, on the object URL.
+  - "Open full size" (`target=_blank`, `rel="noopener noreferrer"`, accessible name "Open {title} full size").
+  - "Download" (`download={name}`, accessible name "Download {name}").
+- **Loading:** a Skeleton block (`aria-busy`, about 16:9) and no actions.
+- **Error:** "We couldn't load the image." (`role=alert`) with "Try again", which refetches. Focus stays on "Try again" if the retry fails.
+
+## 53. Handout page content for a Document (`handout-document`)
+
+```
+Document                                           (h2)
+diary-page.pdf                                     (break-words)
+PDF, 1.2 MB                                        (muted)
+[Open] [Download]
+```
+
+- The PDF loads with the page, so "Open" and "Download" are plain links on its object URL and are not blocked as pop-ups.
+- Accessible names: "Open {name}" (new tab, `rel="noopener noreferrer"`) and "Download {name}".
+- Loading and errors work as in section 52, with "We couldn't load the document.".
+
+## 54. Replace, delete, and status rules
+
+- **Replace** happens through Edit (section 42). On success the page shows "Handout saved.", the view shows the new image or details, and focus moves to "Edit".
+- **Delete:** section 44, unchanged.
+- **Active Scene:** Edit with Replace is offered; Delete is not.
+- **Finished Scene:** viewing, Open, and Download only.
+
+## 55. Image, Document, and Map content (additions to section 45)
+
+| Key | Copy |
+|---|---|
+| Kinds | Image / Document / Map |
+| Kind descriptions | A picture, such as a photograph or a portrait. / A PDF, such as a letter, a diary, or a newspaper. / A picture of a place, such as a house or a town. It is shown large. |
+| Kind error | Choose a kind. |
+| Placeholder | Choose a kind to add its content. |
+| Fields | Image / Document / Replace image / Replace document |
+| Hints | PNG, JPEG, WebP, or GIF, up to 20 MB. / PDF, up to 20 MB. / Leave empty to keep the current image. / Leave empty to keep the current document. |
+| Current | Current image: {name}, {size} / Current document: {name}, {size} / Document. A Document Handout stays a Document. |
+| Errors | Choose an image. / Choose a PDF. / Choose a PNG, JPEG, WebP, or GIF image. / This isn't a PDF. Choose a PDF. / The image is larger than 20 MB. Choose a smaller one. / The PDF is larger than 20 MB. Choose a smaller one. |
+| Server kind errors | Choose Image, Document, or Map. / A Handout's kind can change only between Read-aloud and Text, or between Image and Map. |
+| View | Image / Map / Document / {name}, {size} / PDF, {size} / Open full size / Open / Download |
+| Load failures | We couldn't load the image. / We couldn't load the document. / Try again |
+| Preview alt | Preview of {name} |
+
+## 56. Image, Document, and Map component mapping
+
+| Element | Component |
+|---|---|
+| Content field switch | New `handout-content-field` (editor, image or PDF field, or placeholder by family) |
+| Image or PDF input | New `handout-file-field` (native input, `Label`, hint, error, preview through `useObjectUrl`) |
+| Image or Map view | New `handout-image` |
+| Document view | New `handout-document` |
+| Content by kind | `handout-content`, a map from kind to view |
+| Data | `useHandoutFile` (React Query, Blob), `useObjectUrl`, `handoutFile.ts` |
+| Primitives | Existing only (`Label`, `Button`, `Alert`, `Skeleton`, `Badge`) |
+
+Stories cover:
+- **`handout-file-field`:** empty, a chosen image, a chosen PDF, each error, and edit with the current image or PDF.
+- **`handout-image`:** an Image, a Map, a tall Map at 320px, loading, and error.
+- **`handout-document`:** loaded, loading, and error.
+- **`handout-form`:** each kind, and no kind chosen.
+
+## 57. Image, Document, and Map UX acceptance criteria
+
+- **SP-UX-77** The add page offers five kinds with none preselected. Before a kind is chosen, "Choose a kind to add its content." stands in for the content field; choosing a kind shows its field (section 51).
+- **SP-UX-78** A valid Image, Document, or Map submit returns to the Scene page with "{title} added.". The Handout is listed last with its kind badge, and its content shows after a reload.
+- **SP-UX-79** A missing, wrong-type, or over-20 MB image or PDF shows its section 55 message at the field, focuses the field, and sends nothing. The same server messages, and a 413, show at the field.
+- **SP-UX-80** A failed add or save shows the section 43 or 42 failure, keeps every input including the chosen image or PDF, and adds or changes no Handout.
+- **SP-UX-81** An Image or Map page shows the image under "Image" or "Map", with "{name}, {size}", "Open full size", and "Download". A Map spans the content width.
+- **SP-UX-82** "Download" saves the image or PDF under its original name; "Open" and "Open full size" open it in a new tab.
+- **SP-UX-83** A Document page shows the name, "PDF, {size}", "Open", and "Download", without an inline preview.
+- **SP-UX-84** Edit shows "Current image" or "Current document" and an optional "Replace image" or "Replace document". Saving without choosing one keeps the stored image or PDF.
+- **SP-UX-85** Saving with a replacement shows "Handout saved." and, after a reload, the new image or details. The Handout keeps its place in the order.
+- **SP-UX-86** Edit offers only Read-aloud and Text for rich text, only Image and Map for an Image or Map, and no kind choice for a Document.
+- **SP-UX-87** Switching kinds on the add page and back restores the text or the chosen image or PDF.
+- **SP-UX-88** While the image or PDF loads, a Skeleton shows and no actions do. A failed load shows "We couldn't load the image." or "We couldn't load the document." with "Try again".
+- **SP-UX-89** SP-UX-71 to SP-UX-76 apply to Image, Document, and Map Handouts unchanged.
+
+## 58. Image, Document, and Map accessibility acceptance criteria (WCAG 2.2 AA)
+
+- **SP-A11Y-44** The image or PDF input has a visible `label`. It is described by its hint and, when there is one, its error (`aria-describedby`, `aria-invalid`) (1.3.1, 3.3.1, 3.3.2).
+- **SP-A11Y-45** The content field appearing after a kind is chosen does not move focus. It follows the Kind fieldset in DOM and reading order (2.4.3, 3.2.2).
+- **SP-A11Y-46** The image on the Handout page has `alt` equal to the title, and the preview has "Preview of {name}". The name and size are text, not part of the image (1.1.1).
+- **SP-A11Y-47** "Open full size", "Open", and "Download" include the title or name in their accessible names. Links that open a new tab say so in their accessible description ("Opens in a new tab"). Each is at least 24 by 24 CSS pixels with a visible focus ring (2.4.4, 2.4.7, 2.5.8).
+- **SP-A11Y-48** Load failures use `role=alert`, and the loading Skeleton region has `aria-busy="true"`. "Adding..." and "Saving..." stay as in SP-A11Y-41 (4.1.3).
+- **SP-A11Y-49** At 320px and 200% zoom, the image, the Map, the preview, long names, and the actions fit without horizontal scrolling, and images scale to the width (1.4.10).
+- **SP-A11Y-50** On edit, a Document's fixed kind is text inside the Kind fieldset, so the legend still names it (1.3.1).
