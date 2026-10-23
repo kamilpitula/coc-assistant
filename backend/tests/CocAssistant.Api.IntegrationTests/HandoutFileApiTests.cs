@@ -345,6 +345,51 @@ public class HandoutFileApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
     }
 
     [Fact]
+    public async Task Given_a_request_with_no_content_type_When_adding_or_editing_Then_the_json_actions_answer_415_not_an_ambiguous_match_500()
+    {
+        var client = _factory.CreateClient();
+        var scene = await SceneAsync(client, "file-keeper-24");
+        var image = await AddImageAsync(client, scene, "file-keeper-24");
+        var created = BuildRequest(HttpMethod.Post, HandoutsUri(scene), "file-keeper-24");
+        var edited = BuildRequest(HttpMethod.Put, HandoutsUri(scene, $"/{image.GetProperty("id").GetGuid()}"), "file-keeper-24");
+
+        var createdResponse = await client.SendAsync(created);
+        var editedResponse = await client.SendAsync(edited);
+
+        Assert.Null(created.Content);
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, createdResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, editedResponse.StatusCode);
+        Assert.Single(StoredBlobs());
+    }
+
+    [Fact]
+    public async Task Given_no_bearer_token_When_using_the_file_routes_Then_each_is_401_and_nothing_is_stored_or_read()
+    {
+        var client = _factory.CreateClient();
+        var scene = await SceneAsync(client, "file-keeper-25");
+        var image = await AddImageAsync(client, scene, "file-keeper-25");
+        var id = image.GetProperty("id").GetGuid();
+        var blobsBefore = StoredBlobs();
+        var requests = new[]
+        {
+            Multipart(HttpMethod.Post, HandoutsUri(scene), "file-keeper-25", file: Png),
+            Multipart(HttpMethod.Put, HandoutsUri(scene, $"/{id}"), "file-keeper-25", file: Padded(Png, 100)),
+            BuildRequest(HttpMethod.Get, HandoutsUri(scene, $"/{id}/file"), "file-keeper-25"),
+        };
+
+        foreach (var request in requests)
+        {
+            request.Headers.Add("X-Test-Unauthenticated", "true");
+            var response = await client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+            Assert.Empty(await response.Content.ReadAsByteArrayAsync());
+        }
+
+        Assert.Equal(blobsBefore, StoredBlobs());
+        Assert.Equal(1, (await GetSceneAsync(client, scene, "file-keeper-25")).GetProperty("handouts").GetArrayLength());
+    }
+
+    [Fact]
     public async Task Given_a_request_with_another_content_type_When_adding_Then_it_is_415()
     {
         var client = _factory.CreateClient();
