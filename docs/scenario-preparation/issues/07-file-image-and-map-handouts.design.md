@@ -73,7 +73,7 @@
 
 - **Chosen:** A, because Correctness ("no orphaned Handout") and Simplicity decide it - giving up a later direct-to-blob path.
 - **Rejected:** B - staging state and abandoned blobs; C - size and memory. The Developer must not add an upload-staging endpoint or base64 content.
-- Multipart fields: `kind`, `visibility`, `title`, `file` (required on create; optional on edit, where absent keeps the current file). The JSON actions get `[Consumes("application/json")]`, the multipart actions `[Consumes("multipart/form-data")]`. Cross-controller action selection is verified by an integration test; if it is ambiguous, escalate.
+- Multipart fields: `kind`, `visibility`, `title`, `file` (required on create; optional on edit, where absent keeps the current file). Only the multipart actions carry `[Consumes("multipart/form-data")]`; the JSON actions carry no `[Consumes]` and answer every other content type, so a missing or other Content-Type gets 415 from the JSON actions (Revisions, 2026-10-23). The multipart actions also carry `DisableFormValueProviderAttribute` and read the form themselves, so an over-limit body answers 413, not 400. Cross-controller action selection is verified by integration tests.
 
 ### D4: Keeper-only download under bearer-token auth
 | Metric | A: `GET .../handouts/{handoutId}/file` streams through the API after the Keeper check; the client fetches with the bearer header into a Blob and uses an object URL | B: the API returns a short-lived SAS URL; the browser reads Blob Storage directly | C: cookie-authenticated file endpoint |
@@ -196,7 +196,7 @@
 2. Persistence: mapping and check constraint, migration `AddHandoutFiles`, SQLite persistence tests.
 3. Application: `IHandoutFileStore`, `HandoutFileStoreException`, `HandoutFileService`, post-commit deletes in `HandoutService` and `SceneService`, view and result changes, dictionary lookup in `ToWriteOutcome`.
 4. Infrastructure: `Azure.Storage.Blobs` in SP.Infrastructure; `AzureBlobHandoutFileStore`, `FileSystemHandoutFileStore`; registration inside `AddScenarioPreparationInfrastructure` (fail on first resolution; `Program.cs` unchanged); `appsettings.Development.json` key; `.gitignore` entry.
-5. Controllers: `HandoutFilesController` (multipart POST and PUT, file GET), `HandoutFileProblemMessages`, `[Consumes]` on the JSON actions, `HandoutResponse` changes.
+5. Controllers: `HandoutFilesController` (multipart POST and PUT, file GET), `HandoutFileProblemMessages`, `[Consumes("multipart/form-data")]` and `DisableFormValueProviderAttribute` on the multipart actions only (Revisions, 2026-10-23), `HandoutResponse` changes.
 6. Backend tests (see TDD units): `IdentityApiFactory` temp directory; a failing-store factory variant; adapter contract tests for both adapters; CI Azurite service and `COC_AZURITE_CONNECTION`; README local test note.
 7. Frontend data: `bearerHeaders`, types, schemas, API, hooks, `useObjectUrl`, `handoutFile.ts` (accepted types, `HANDOUT_FILE_MAX_BYTES`, size formatting, client validation).
 8. Frontend UI (ux.md sections 50 to 58): `handout-content-field`, `handout-file-field`, `handout-image`, `handout-document`; changes to `handout-form`, `handout-content`, `handout-page`, `handout-badges`; stories and tests; update tests for "Choose a kind." (ux.md section 45).
@@ -244,4 +244,8 @@ New `e2e/tests/scene-file-handouts.spec.ts`; `e2e/fixtures/scene-handouts.ts` ga
 - 2026-10-22, plan gate: "Approve as written". G1 "Yes, in design commit": the spec.md contract text, the scene-play spec note, and the CONTEXT.md Handout clarification are committed with this design. G2 "Immutable blobs": D6-A kept. G3 "Fail on first use": D7-A kept in every environment, including Production.
 
 ## Revisions
-_(empty)_
+- 2026-10-23, clarification (tactical deviations found in verification; D3's chosen option A, the rejected options, and every invariant are unchanged):
+  - **`[Consumes]` only on the multipart actions.** D3 asked for `[Consumes("application/json")]` on the JSON Handout actions. With it, a request with no Content-Type matched both `HandoutsController` and `HandoutFilesController` and threw `AmbiguousMatchException` (500, before authentication, so an unauthenticated request got 500 instead of 401); `IsOptional = true` did not help. The JSON actions therefore carry no `[Consumes]`, and only the multipart actions carry `[Consumes("multipart/form-data")]` (`HandoutFilesController.cs:27`, `:64`); the JSON actions take every other content type and answer 415 for a missing or unsupported one.
+  - **`DisableFormValueProviderAttribute` on the multipart actions** (`HandoutFilesController.cs:28`, `:65`; `DisableFormValueProviderAttribute.cs`): the actions read the form themselves, so a body over the request limit answers 413 as D3 specifies, not 400 from model binding.
+  - Covered by `HandoutFileApiTests` (commit ae4608b): an authenticated POST or PUT with no Content-Type answers 415 and stores no blob; an unauthenticated multipart POST, multipart PUT, and file GET each answer 401 with nothing stored or read; `text/plain` answers 415.
+  - Procedure: D3 said to escalate if action selection was ambiguous. The Developer resolved it tactically and reported it afterwards; the Verifier judged it tactical. D3 and Implementation plan step 5 now describe what was built.
