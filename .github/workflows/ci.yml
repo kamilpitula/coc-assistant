@@ -130,14 +130,21 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 12
-      # Blob emulator for the Handout file store contract tests (the Azure adapter); its default command serves blobs on 10000.
-      azurite:
-        image: mcr.microsoft.com/azure-storage/azurite
-        ports:
-          - 10000:10000
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-dotnet
+      # Blob emulator for the Handout file store contract tests (the Azure adapter). It runs from a step, not a service
+      # container, because a service cannot change the command: --skipApiVersionCheck is needed since the Azure SDK
+      # requests API versions newer than the emulator image supports.
+      - name: Start Azurite
+        run: |
+          docker run -d --name azurite -p 10000:10000 mcr.microsoft.com/azure-storage/azurite azurite-blob --blobHost 0.0.0.0 --skipApiVersionCheck
+          for _ in $(seq 1 30); do
+            if curl --silent --output /dev/null http://127.0.0.1:10000/; then exit 0; fi
+            sleep 2
+          done
+          docker logs azurite
+          exit 1
       - name: Integration tests
         run: >-
           dotnet test backend/tests/CocAssistant.Api.IntegrationTests --configuration Release

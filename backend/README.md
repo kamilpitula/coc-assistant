@@ -5,8 +5,8 @@
 - Unit tests (`backend/tests/*/`) need nothing but the .NET SDK: `dotnet test backend/tests/ScenarioPreparation/CocAssistant.ScenarioPreparation.Tests`.
 - The integration tests (`backend/tests/CocAssistant.Api.IntegrationTests`) need SQL Server (LocalDB by default, or `COC_SQLSERVER_CONNECTION`) and
   the Azurite blob emulator, which the Azure Handout file store contract tests run against.
-  Start Azurite before running them, with Docker (`docker run -p 10000:10000 mcr.microsoft.com/azure-storage/azurite azurite-blob --blobHost 0.0.0.0`)
-  or Node (`npx -p azurite azurite-blob --blobHost 127.0.0.1`). They use `UseDevelopmentStorage=true` unless `COC_AZURITE_CONNECTION` is set.
+  Start Azurite before running them, with Docker (`docker run -p 10000:10000 mcr.microsoft.com/azure-storage/azurite azurite-blob --blobHost 0.0.0.0 --skipApiVersionCheck`)
+  or Node (`npx -p azurite azurite-blob --blobHost 127.0.0.1 --skipApiVersionCheck`). `--skipApiVersionCheck` is needed because the Azure SDK can request an API version newer than the emulator supports (CI does the same). They use `UseDevelopmentStorage=true` unless `COC_AZURITE_CONNECTION` is set.
   The API tests themselves store Handout files in a temporary directory and need no Azure.
 
 ## Handout file storage
