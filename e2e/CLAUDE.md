@@ -46,6 +46,7 @@
 - Assert the app is ready before critical actions (page loaded, key component visible).
 - Use `expect.poll()` only for _true polling needs_ (eventual consistency), with a clear timeout and message.
 - Keep timeouts local and justified (e.g. a known slow external sandbox), rather than raising global timeouts.
+- A slow first request after navigation on LocalDB is memory starvation, not a timeout problem: see "Troubleshooting: slow first request after navigation" in `docs/e2e/authenticated-harness.md`.
 
 **DON'T**
 

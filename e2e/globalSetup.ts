@@ -1,8 +1,9 @@
-import { execSync } from 'node:child_process'
+import { execFileSync, execSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { buildMinServerMemoryScript, resolveLocalDbInstance } from './localDbMemory'
 import { resolveE2eConnectionString } from './sqlServerConnection'
 
 const E2E_DIR = dirname(fileURLToPath(import.meta.url))
@@ -44,6 +45,25 @@ function run(command: string, env: NodeJS.ProcessEnv = {}): void {
   })
 }
 
+// Only LocalDB is touched; any other server (such as the CI container) is left alone.
+function raiseLocalDbMemoryFloor(connectionString: string): void {
+  const instance = resolveLocalDbInstance(connectionString)
+  if (!instance) {
+    return
+  }
+  try {
+    execFileSync('sqlcmd', ['-S', instance, '-E', '-b', '-Q', buildMinServerMemoryScript()], {
+      stdio: 'pipe',
+    })
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    console.warn(
+      `Could not set LocalDB min server memory; E2E may be slow on a low-RAM machine. ${reason}\n` +
+        'See docs/e2e/authenticated-harness.md, "Troubleshooting: slow first request after navigation".',
+    )
+  }
+}
+
 export default async function globalSetup(): Promise<void> {
   if (!existsSync(PFX_PATH)) {
     abortWithGuidance(`Dev certificate PFX not found at ${PFX_PATH}.`)
@@ -61,6 +81,8 @@ export default async function globalSetup(): Promise<void> {
     ConnectionStrings__ScenarioPreparationDb: E2E_CONNECTION_STRING,
     ASPNETCORE_ENVIRONMENT: 'E2E',
   }
+
+  raiseLocalDbMemoryFloor(E2E_CONNECTION_STRING)
 
   run('dotnet tool restore')
   run(
