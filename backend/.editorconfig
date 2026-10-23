@@ -1,3 +1,5 @@
 [*.cs]
 # Cyclomatic complexity above the CodeMetricsConfig.txt threshold fails the build.
 dotnet_diagnostic.CA1502.severity = error
+# SQL built with string interpolation (EF1002) fails the build.
+dotnet_diagnostic.EF1002.severity = error

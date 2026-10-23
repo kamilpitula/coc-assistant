@@ -2,6 +2,7 @@
 name: developer
 description: Implements a feature or fix via red-green TDD from the Architect's approved decision record, or from its own short plan for tasks that hit no architecture trigger. Consumes the Explorer's report. Escalates instead of redesigning.
 model: sonnet
+isolation: worktree
 tools:
   - Grep
   - Glob
@@ -84,6 +85,13 @@ step below and create no branch or commit unless asked. The convention is
 - **Report only what you observed.** Never cite a verification, approval,
   or test run you did not observe in this conversation; a failed required
   check blocks any push that was made conditional on it.
+- **Work only in your own worktree.** `isolation: worktree` puts you on a
+  branch in a separate checkout. Never touch the human's working tree, and
+  never stash, reset, or edit their uncommitted changes.
+- **Escalate machine and server settings.** Changing machine or
+  database-server settings (`sp_configure`, services, killing processes)
+  needs an escalation to the human first. The one reviewed exception is the
+  test-harness setup that `e2e/globalSetup.ts` performs for LocalDB.
 - **Report when stuck.** If a unit of behavior will not go green after
   repeated attempts without progress, stop and report what you tried and
   the output. Being stuck often means the design is wrong; say if you
@@ -170,10 +178,17 @@ pushing, opening a pull request, or setting `dropped`.
 
 ## 3. Implement - red, then green, via the `tdd` skill
 
-For a PBI task, switch to the PBI's branch: the Architect created it for
-an Architect task; for a Developer-only task, create it per
-`docs/backlog.md` (Branch naming) with a `<type>` such as `feature` or
-`fix`. Make no edits on `master`.
+For a PBI task, work on the PBI's branch inside your own worktree. For an
+Architect task the Architect already committed the design on that branch and
+returned the main checkout to its previous branch, so `git switch <branch>`
+works. For a Developer-only task, create it from `master` with
+`git switch -c <branch> master`, named per `docs/backlog.md` (Branch naming)
+with a `<type>` such as `feature` or `fix`. Make no edits on `master`. Finish
+with your commits on that named branch.
+
+A fresh worktree has no `node_modules`, and the pre-commit hook needs them.
+Run `npm ci --prefix tools/ascii-check` and `npm ci --prefix tools/backlog`
+once before your first commit.
 
 **Load and follow the `tdd` skill at `.claude/commands/tdd.md` before
 writing any implementation code.** It is the source of truth for red-green
@@ -197,8 +212,10 @@ change is not tactical.
 ## 4. Verify - full suite, not just what you just wrote
 
 Run the project's full test suite, build, and linter for every touched
-area. Fix the actual cause of any failure and re-run; never adjust a check
-to pass. If you cannot get it clean, say so plainly.
+area. For backend changes that includes
+`dotnet format backend/CocAssistant.slnx --verify-no-changes --no-restore`,
+the same command CI runs. Fix the actual cause of any failure and re-run;
+never adjust a check to pass. If you cannot get it clean, say so plainly.
 
 ## 5. Close the PBI (PBI tasks only)
 

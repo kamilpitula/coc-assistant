@@ -16,4 +16,4 @@
 - Do not commit secrets, generated build output, local environment files, or dependency caches.
 - Use ASCII (`tools/ascii-check` enforces it and lists its exclusions) and keep comments short and purposeful.
 - Track PBIs as described in `docs/backlog.md`: frontmatter status and dependencies, derived in-progress branches, Deferred items, and Follow-ups. Run `/backlog` to see the backlog.
-- Git hooks: run `git config core.hooksPath .githooks` once per clone to run the ASCII and backlog checks before each commit. CI runs the same checks.
+- Git hooks: run `git config core.hooksPath .githooks` once per clone to run the ASCII and backlog checks before each commit and `dotnet format --verify-no-changes` on the pushed commit before each push. CI runs the same checks. The setting lives in the shared repo config, so linked worktrees pick it up too.

@@ -201,8 +201,44 @@ Under .NET 10's JwtBearer defaults, the inbound `oid` claim is remapped away fro
 the `username` field in the mock login form must carry the Account's identifier. The
 `signIn` fixture already does this.
 
+### Troubleshooting: slow first request after navigation
+
+**Symptom.** On LocalDB, the first API call after a `page.goto` takes about 25 s and EF Core logs
+`Executed DbCommand (25,032ms)` for ordinary queries. Specs fail waiting for data, or pass only
+with a long local timeout.
+
+**Cause.** On a machine low on free RAM, LocalDB trims itself to a memory-grant target of about
+7 MB, so queries wait on `RESOURCE_SEMAPHORE`. Check it while a slow request is running:
+
+```sql
+-- Waiting requests show wait_type = RESOURCE_SEMAPHORE
+SELECT r.session_id, r.wait_type, r.wait_time, g.requested_memory_kb, g.granted_memory_kb
+FROM sys.dm_exec_requests r
+LEFT JOIN sys.dm_exec_query_memory_grants g ON g.session_id = r.session_id
+WHERE r.session_id > 50;
+
+-- A target_memory_kb of a few thousand KB confirms the starvation
+SELECT pool_id, target_memory_kb, available_memory_kb, grantee_count, waiter_count
+FROM sys.dm_exec_query_resource_semaphores;
+```
+
+**What global setup does.** When the E2E connection string targets LocalDB, `globalSetup.ts`
+raises `min server memory (MB)` to `LOCALDB_MIN_SERVER_MEMORY_MB` (900, in
+`e2e/localDbMemory.ts`) through `sqlcmd`. It only raises the value, so reruns change nothing, and
+it skips any other server (for example `COC_SQLSERVER_CONNECTION` in CI). If `sqlcmd` is missing
+or the call fails, it logs a warning and the run continues. With 900 MB the grant target rose to
+about 539 MB and the first call took 5 ms.
+
+**Revert manually.**
+
+```sql
+EXEC sp_configure 'min server memory (MB)', 0; RECONFIGURE;
+```
+
 ## Decisions and exemptions
 
+- The LocalDB helpers in `e2e/localDbMemory.ts` are unit-tested (`npm run test:unit`); the
+  `sqlcmd` call in `globalSetup.ts` is test infrastructure and is not.
 - Fixtures in `e2e/fixtures/` are test code. They are intentionally not unit-tested per
   PBI-E2E-001's exemption.
 - `backend/src/CocAssistant.Api/appsettings.E2E.json` is declarative configuration with no

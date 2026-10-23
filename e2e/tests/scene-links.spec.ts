@@ -283,8 +283,7 @@ test.describe('Scene links', () => {
     try {
       await test.step("SP-UX-51: the Campaign's own entities are offered and another Campaign's is not", async () => {
         await page.goto(newLinkPath)
-        // The entity list loads after the page; a loaded dev server can take longer than the default 5 s.
-        await expect(picker(page).getByRole('radio', { name: 'Mr. Knott', exact: true })).toBeVisible({ timeout: 20_000 })
+        await expect(picker(page).getByRole('radio', { name: 'Mr. Knott', exact: true })).toBeVisible()
         await expect(picker(page).getByRole('radio', { name: 'Elsewhere NPC' })).toHaveCount(0)
       })
 

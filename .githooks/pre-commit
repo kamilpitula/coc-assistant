@@ -2,6 +2,12 @@
 # Enable once per clone: git config core.hooksPath .githooks
 set -e
 cd "$(git rev-parse --show-toplevel)"
+for tool in ascii-check backlog; do
+  if [ ! -d "tools/$tool/node_modules" ]; then
+    echo "pre-commit: run 'npm ci --prefix tools/$tool' first (fresh clone or worktree)" >&2
+    exit 1
+  fi
+done
 echo "pre-commit: ascii-check"
 node tools/ascii-check/src/cli.ts
 echo "pre-commit: backlog --check"

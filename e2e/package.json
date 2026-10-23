@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "playwright test",
+    "test:unit": "node --test localDbMemory.test.ts",
     "test:ui": "playwright test --ui",
     "report": "playwright show-report"
   },
