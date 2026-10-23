@@ -132,6 +132,10 @@ to the Developer.
 
 ## 5. Developer
 
+The Developer and the Verifier set `isolation: worktree` in their own
+frontmatter, so each runs on a branch in a separate checkout and never
+touches the human's working tree. Pass the PBI branch name in the hand-off.
+
 Hand the Developer the original task, the Explorer's report, and the
 committed decision record path (or the inline record for a no-PBI task).
 For a Developer-only task, relay its plan-approval gate the same way as
