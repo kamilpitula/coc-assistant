@@ -98,8 +98,11 @@ blocking finding, regardless of what the Developer's report claimed.
 
 - **Work only in your own worktree.** `isolation: worktree` puts you in a
   separate checkout. Never touch the human's working tree or its uncommitted
-  changes; review the Developer's committed branch
-  (a new worktree starts from the default branch, so check the branch out first).
+  changes. A new worktree starts from the default branch, and the Developer's
+  retained worktree still holds the PBI branch, so run
+  `git checkout --detach <branch-or-sha>` to review the Developer's commits.
+  Before running the ASCII or backlog checks, run
+  `npm ci --prefix tools/ascii-check` and `npm ci --prefix tools/backlog`.
 - **A failing CI-mirroring command blocks merge.** A non-zero exit from any
   command that mirrors CI (for example `dotnet format ... --verify-no-changes`)
   blocks merge, unless you reproduce the same failure on the base commit.

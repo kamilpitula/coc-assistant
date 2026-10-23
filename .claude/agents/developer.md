@@ -178,10 +178,17 @@ pushing, opening a pull request, or setting `dropped`.
 
 ## 3. Implement - red, then green, via the `tdd` skill
 
-For a PBI task, switch to the PBI's branch: the Architect created it for
-an Architect task; for a Developer-only task, create it per
-`docs/backlog.md` (Branch naming) with a `<type>` such as `feature` or
-`fix`. Make no edits on `master`.
+For a PBI task, work on the PBI's branch inside your own worktree. For an
+Architect task the Architect already committed the design on that branch and
+returned the main checkout to its previous branch, so `git switch <branch>`
+works. For a Developer-only task, create it from `master` with
+`git switch -c <branch> master`, named per `docs/backlog.md` (Branch naming)
+with a `<type>` such as `feature` or `fix`. Make no edits on `master`. Finish
+with your commits on that named branch.
+
+A fresh worktree has no `node_modules`, and the pre-commit hook needs them.
+Run `npm ci --prefix tools/ascii-check` and `npm ci --prefix tools/backlog`
+once before your first commit.
 
 **Load and follow the `tdd` skill at `.claude/commands/tdd.md` before
 writing any implementation code.** It is the source of truth for red-green
@@ -207,8 +214,8 @@ change is not tactical.
 Run the project's full test suite, build, and linter for every touched
 area. For backend changes that includes
 `dotnet format backend/CocAssistant.slnx --verify-no-changes --no-restore`,
-the same command CI runs. Fix the actual cause of any failure and re-run; never adjust a check
-to pass. If you cannot get it clean, say so plainly.
+the same command CI runs. Fix the actual cause of any failure and re-run;
+never adjust a check to pass. If you cannot get it clean, say so plainly.
 
 ## 5. Close the PBI (PBI tasks only)
 

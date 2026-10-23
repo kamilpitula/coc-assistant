@@ -1,10 +1,20 @@
 #!/bin/sh
 # Enable once per clone: git config core.hooksPath .githooks
 # Mirrors the CI "Verify formatting" step against the pushed commit, not the working tree.
-set -e
-cd "$(git rev-parse --show-toplevel)"
+cd "$(git rev-parse --show-toplevel)" || exit 1
 zero=0000000000000000000000000000000000000000
 status=0
+tmp=""
+cleanup() {
+  if [ -n "$tmp" ]; then
+    git worktree remove --force "$tmp/checkout" 2>/dev/null
+    rm -rf "$tmp"
+    git worktree prune
+  fi
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 while read -r local_ref local_sha remote_ref remote_sha; do
   [ "$local_sha" = "$zero" ] && continue
   if [ "$remote_sha" != "$zero" ] && git cat-file -e "$remote_sha^{commit}" 2>/dev/null \
@@ -14,17 +24,16 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   fi
   echo "pre-push: dotnet format --verify-no-changes on $local_sha ($local_ref)"
   tmp="$(mktemp -d)"
-  git worktree add --detach --quiet "$tmp/checkout" "$local_sha"
-  # A fresh worktree has no obj/, so restore here instead of asking for a manual restore.
-  if (cd "$tmp/checkout" \
-    && dotnet restore backend/CocAssistant.slnx --verbosity quiet \
-    && dotnet format backend/CocAssistant.slnx --verify-no-changes --no-restore); then
+  if git worktree add --detach --quiet "$tmp/checkout" "$local_sha" \
+    && (cd "$tmp/checkout" \
+      && dotnet restore backend/CocAssistant.slnx --verbosity quiet \
+      && dotnet format backend/CocAssistant.slnx --verify-no-changes --no-restore); then
     echo "pre-push: formatting check passed for $local_sha"
   else
     echo "pre-push: formatting check failed for $local_sha; run dotnet format backend/CocAssistant.slnx" >&2
     status=1
   fi
-  git worktree remove --force "$tmp/checkout"
-  rm -rf "$tmp"
+  cleanup
+  tmp=""
 done
 exit $status

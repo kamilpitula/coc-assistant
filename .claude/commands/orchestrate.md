@@ -134,7 +134,11 @@ to the Developer.
 
 The Developer and the Verifier set `isolation: worktree` in their own
 frontmatter, so each runs on a branch in a separate checkout and never
-touches the human's working tree. Pass the PBI branch name in the hand-off.
+touches the human's working tree. Pass the PBI branch name in the hand-off:
+the Developer switches to it (or creates it, for a Developer-only task) in its
+worktree, and the Verifier reviews it with `git checkout --detach`. Only the
+Architect works in the main checkout; it returns it to its previous branch
+after committing the design.
 
 Hand the Developer the original task, the Explorer's report, and the
 committed decision record path (or the inline record for a no-PBI task).

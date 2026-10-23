@@ -254,7 +254,9 @@ record, any ADR, and any `ux.md` with its `spec.md` link, exactly as
 approved. Run `node tools/ascii-check/src/cli.ts` and
 `node tools/backlog/src/cli.ts --check`, fix any failure, then commit in the
 repo's style, for example `docs(design): <summary> (PBI-<AREA>-<NNN>)`.
-Report the branch and commit sha. For a no-PBI task, write nothing unless
+Then switch the main checkout back to the branch it was on before, so the
+PBI branch is free for the Developer's own worktree. Report the branch and
+commit sha. For a no-PBI task, write nothing unless
 asked; the record goes inline to the Developer.
 
 ## Revisions
