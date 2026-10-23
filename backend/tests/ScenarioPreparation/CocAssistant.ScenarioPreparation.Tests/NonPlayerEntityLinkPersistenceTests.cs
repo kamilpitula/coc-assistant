@@ -21,7 +21,7 @@ public class NonPlayerEntityLinkPersistenceTests : IDisposable
     {
         using var context = _builder.Fixture.CreateContext();
         var scene = await new EfSceneRepository(context).FindByIdAsync(_builder.CampaignId, await ScenarioIdOfAsync(context, sceneId), sceneId, CancellationToken.None);
-        var link = scene!.LinkNonPlayerEntity(type, entityId, name, Description, Now).Link!;
+        var link = scene!.LinkNonPlayerEntity(type, entityId, true, name, Description, Now).Link!;
         await context.SaveChangesAsync();
         return link.Id;
     }

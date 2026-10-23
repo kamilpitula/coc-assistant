@@ -4,7 +4,7 @@ namespace CocAssistant.ScenarioPreparation.Application;
 /// Links, edits, and unlinks the Non-Player Entities of a Scene for its Campaign's Keeper (specs/scenario-preparation/spec.md).
 /// The Keeper check runs first, so anyone else, a missing Scene, or a Scene of another Scenario or Campaign ends as NotFound
 /// before any Scene is read (ADR 0013, ADR 0016). The Scene decides every change (Finished first); an entity outside the
-/// Campaign is a validation outcome because 404 means the Scene was not found.
+/// Campaign is a validation outcome, decided by the Scene after Finished, because 404 means the Scene was not found.
 /// </summary>
 public class NonPlayerEntityLinkService
 {
@@ -40,12 +40,8 @@ public class NonPlayerEntityLinkService
         }
 
         var entities = await _directory.ListForCampaignAsync(campaignId, cancellationToken);
-        if (type is null || nonPlayerEntityId is null || !entities.Any(entity => entity.Type == type && entity.Id == nonPlayerEntityId))
-        {
-            return Refused(NonPlayerEntityLinkWriteOutcome.NonPlayerEntityNotInCampaign);
-        }
-
-        var result = scene.LinkNonPlayerEntity(type.Value, nonPlayerEntityId.Value, playerFacingName, playerFacingDescription, _timeProvider.GetUtcNow());
+        var entityInCampaign = type is not null && nonPlayerEntityId is not null && entities.Any(entity => entity.Type == type && entity.Id == nonPlayerEntityId);
+        var result = scene.LinkNonPlayerEntity(type ?? default, nonPlayerEntityId ?? Guid.Empty, entityInCampaign, playerFacingName, playerFacingDescription, _timeProvider.GetUtcNow());
         return await SaveAsync(result, entities, cancellationToken);
     }
 
@@ -121,6 +117,7 @@ public class NonPlayerEntityLinkService
     {
         NonPlayerEntityLinkOutcome.SceneFinished => NonPlayerEntityLinkWriteOutcome.Finished,
         NonPlayerEntityLinkOutcome.LinkNotFound => NonPlayerEntityLinkWriteOutcome.NotFound,
+        NonPlayerEntityLinkOutcome.NonPlayerEntityNotInCampaign => NonPlayerEntityLinkWriteOutcome.NonPlayerEntityNotInCampaign,
         NonPlayerEntityLinkOutcome.InvalidPlayerFacingName => NonPlayerEntityLinkWriteOutcome.InvalidPlayerFacingName,
         _ => NonPlayerEntityLinkWriteOutcome.InvalidPlayerFacingDescription,
     };

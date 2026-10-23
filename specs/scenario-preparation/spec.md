@@ -21,11 +21,11 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
   - `PUT /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` replaces its title, location, and Keeper notes; 409 when the Scene is Finished.
   - `DELETE /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` removes a Prepared Scene; 409 when it is Active or Finished.
   - `PUT /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/order` replaces the prepared order with the complete list of the Scenario's Scene ids, as for Scenarios.
-  - `POST /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}/non-player-entity-links` links a Non-Player Entity of the same Campaign; `PUT` and `DELETE .../non-player-entity-links/{linkId}` replace its Player-facing name and description or unlink it; 409 when the Scene is Finished; 400 for a Non-Player Entity that is not in the Campaign (PBI-SP-004).
+  - `POST /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}/non-player-entity-links` links a Non-Player Entity of the same Campaign; `PUT` and `DELETE .../non-player-entity-links/{linkId}` replace its Player-facing name and description or unlink it; 409 when the Scene is Finished, before any 400; 400 for a Non-Player Entity that is not in the Campaign (PBI-SP-004, PBI-SP-006).
   - `POST /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}/item-links` with `{itemId}` links an Item of the same Campaign:
     - 201 with the new link;
     - 200 with the existing link when the Item is already linked;
-    - 409 when the Scene is Finished;
+    - 409 when the Scene is Finished, before any 400;
     - 400 keyed `itemId` for an Item that is not in the Campaign.
 
     `DELETE .../item-links/{linkId}` unlinks it, with 409 when the Scene is Finished (PBI-SP-008).
@@ -453,7 +453,15 @@ Scenario: Campaign boundaries isolate Scenario material
   Then the Human NPC and the Item are not available to link from Campaign B
 
 Scenario: Manual preparation works without extraction
+  # SP-UX-15, SP-UX-50, SP-UX-64, SP-UX-67, SP-UX-97
   Given no Scenario source document has been uploaded
-  When the Keeper enters Scenes and Non-Player Entities manually
+  When the Keeper enters Scenes, Non-Player Entities, Handouts of every kind, and Items manually
   Then the Scenario is usable for Campaign preparation
+
+Scenario: Prepared material stays hidden from Players
+  # SP-UX-9, SP-UX-26, SP-UX-28, SP-UX-39, SP-UX-74, SP-UX-90, SP-UX-102
+  Given a Keeper has prepared a Scenario with Scenes, Non-Player Entity links, Handouts, and Items
+  When a Player of the Campaign opens the Campaign and those pages
+  Then the Player sees none of it
+  And the Player receives no live update about it
 ```

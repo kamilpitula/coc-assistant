@@ -203,6 +203,24 @@ public class NonPlayerEntityLinkServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Given_a_finished_scene_When_linking_an_outside_or_missing_entity_Then_Finished_wins_and_nothing_is_stored()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var elsewhere = await _builder.CreateHumanNpcAsync(_builder.OtherCampaignOfSameKeeperId, "Elsewhere");
+        await _builder.PlayAsync(sceneId, SceneStatus.Finished);
+
+        var results = new[]
+        {
+            await LinkAsync(scenarioId, sceneId, NonPlayerEntityType.HumanNpc, elsewhere.Id),
+            await LinkAsync(scenarioId, sceneId, null, Guid.NewGuid()),
+            await LinkAsync(scenarioId, sceneId, NonPlayerEntityType.HumanNpc, null),
+        };
+
+        Assert.All(results, result => Assert.Equal(NonPlayerEntityLinkWriteOutcome.Finished, result.Outcome));
+        Assert.Equal(0, await _builder.StoredLinkCountAsync());
+    }
+
+    [Fact]
     public async Task Given_a_link_When_editing_it_Then_the_new_fields_are_stored_and_the_entity_is_unchanged()
     {
         var (scenarioId, sceneId) = await SceneAsync();
