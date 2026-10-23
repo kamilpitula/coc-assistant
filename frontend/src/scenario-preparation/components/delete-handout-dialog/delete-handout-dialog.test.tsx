@@ -4,10 +4,11 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { DeleteHandoutDialog } from './delete-handout-dialog'
 
-// specs/scenario-preparation/ux.md section 44; SP-UX-71, SP-UX-75.
+// specs/scenario-preparation/ux.md sections 44 and 65; SP-UX-71, SP-UX-75, SP-UX-100.
+const REFUSED = "This Scene has been started, so this Handout can't be deleted."
 function renderDialog(overrides: Partial<Parameters<typeof DeleteHandoutDialog>[0]> = {}) {
   const handlers = { onConfirm: vi.fn(), onCancel: vi.fn(), onCloseAutoFocus: vi.fn() }
-  render(<DeleteHandoutDialog open handoutTitle="The front door" pending={false} failed={false} refused={false} {...handlers} {...overrides} />)
+  render(<DeleteHandoutDialog open handoutTitle="The front door" pending={false} failed={false} refused={false} refusedMessage={REFUSED} {...handlers} {...overrides} />)
   return handlers
 }
 
@@ -42,10 +43,16 @@ describe('DeleteHandoutDialog', () => {
     expect(screen.getByRole('alert')).toHaveTextContent("We couldn't delete the Handout. Try again.")
   })
 
-  it('alerts when the Scene has been started and does not offer the delete again (SP-UX-71)', () => {
+  it('alerts with the message of the owner when the delete is refused and does not offer the delete again (SP-UX-71)', () => {
     renderDialog({ refused: true })
 
     expect(screen.getByRole('alert')).toHaveTextContent("This Scene has been started, so this Handout can't be deleted.")
     expect(screen.getByRole('button', { name: 'Delete Handout' })).toBeDisabled()
+  })
+
+  it('shows the refusal of an Item that is part of a played Scene (SP-UX-100)', () => {
+    renderDialog({ refused: true, refusedMessage: "This Item is now part of a Scene that has been played, so this Handout can't be deleted." })
+
+    expect(screen.getByRole('alert')).toHaveTextContent("This Item is now part of a Scene that has been played, so this Handout can't be deleted.")
   })
 })

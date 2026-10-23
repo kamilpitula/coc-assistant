@@ -37,6 +37,7 @@ const scene: Scene = {
   nonPlayerEntityLinks: [
     { id: 'l1', nonPlayerEntity: { id: 'm1', type: 'MythosCreature', name: 'Ghoul' }, playerFacingName: 'Earlier', playerFacingDescription: null },
   ],
+  itemLinks: [],
   handouts: [],
 }
 const entities = [

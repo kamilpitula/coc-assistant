@@ -7,7 +7,7 @@ import { HandoutNotFound } from './handout-not-found'
 const meta = {
   title: 'ScenarioPreparation/HandoutNotFound',
   component: HandoutNotFound,
-  args: { campaignId: 'story-campaign', scenarioId: 'story-scenario', sceneId: 'story-scene' },
+  args: { owner: { type: 'scene', campaignId: 'story-campaign', scenarioId: 'story-scenario', sceneId: 'story-scene' }, backLabel: 'Back to the Scene' },
   decorators: [
     (Story) => (
       <StoryProviders>

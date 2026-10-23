@@ -59,6 +59,7 @@ const prepared: Scene = {
   startedAt: null,
   finishedAt: null,
   nonPlayerEntityLinks: [],
+  itemLinks: [],
   handouts: [],
 }
 const active: Scene = { ...prepared, status: 'Active', startedAt: '2026-10-12T19:40:00Z' }

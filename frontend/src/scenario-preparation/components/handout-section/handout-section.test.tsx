@@ -3,9 +3,10 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { StaleHandoutOrderError } from '@/scenario-preparation/services/handoutApi'
+import { sceneOwner } from '@/scenario-preparation/test-support/handoutOwnerFixtures'
 import type { HandoutSummary } from '@/scenario-preparation/types/Handout'
 
-import { SceneHandoutSection } from './scene-handout-section'
+import { HandoutSection } from './handout-section'
 
 // specs/scenario-preparation/ux.md section 41; SP-UX-64, SP-UX-65, SP-UX-67, SP-UX-70, SP-UX-72, SP-UX-73, SP-UX-75, SP-A11Y-37,
 // SP-A11Y-38, SP-A11Y-40, SP-A11Y-41, SP-A11Y-42, SP-A11Y-43.
@@ -21,21 +22,11 @@ const cellar: HandoutSummary = { id: 'h3', kind: 'ReadAloud', visibility: 'Keepe
 
 const reordering = (overrides: Record<string, unknown> = {}) => ({ mutate: reorderMutate, isPending: false, ...overrides })
 
-function renderSection(overrides: Partial<Parameters<typeof SceneHandoutSection>[0]> = {}) {
-  return render(
-    <SceneHandoutSection
-      campaignId="c1"
-      scenarioId="s1"
-      sceneId="a1"
-      status="Prepared"
-      handouts={[door, truth, cellar]}
-      sceneUpdatedAt={1}
-      {...overrides}
-    />,
-  )
+function renderSection(overrides: Partial<Parameters<typeof HandoutSection>[0]> = {}) {
+  return render(<HandoutSection owner={sceneOwner} canChange handouts={[door, truth, cellar]} ownerUpdatedAt={1} {...overrides} />)
 }
 
-describe('SceneHandoutSection', () => {
+describe('HandoutSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseReorder.mockReturnValue(reordering())
@@ -73,8 +64,8 @@ describe('SceneHandoutSection', () => {
     expect(screen.getByRole('link', { name: 'Add Handout' })).toHaveAttribute('href', '/campaigns/c1/scenarios/s1/scenes/a1/handouts/new')
   })
 
-  it.each(['Prepared', 'Active'] as const)('offers Add Handout and the move buttons, named by title, on a %s Scene (SP-UX-72, SP-A11Y-42)', (status) => {
-    renderSection({ status })
+  it.each(['Prepared', 'Active'] as const)('offers Add Handout and the move buttons, named by title, on a %s Scene (SP-UX-72, SP-A11Y-42)', () => {
+    renderSection({ canChange: true })
 
     expect(screen.getByRole('link', { name: 'Add Handout' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Move The front door down' })).toBeInTheDocument()
@@ -86,7 +77,7 @@ describe('SceneHandoutSection', () => {
   })
 
   it('shows the list of a Finished Scene without Add Handout or move buttons (SP-UX-73)', () => {
-    renderSection({ status: 'Finished' })
+    renderSection({ canChange: false })
 
     expect(screen.getByRole('link', { name: 'The front door' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Add Handout' })).not.toBeInTheDocument()
@@ -123,7 +114,7 @@ describe('SceneHandoutSection', () => {
 
       await userEvent.click(screen.getByRole('button', { name: 'Move The front door down' }))
       rerender(
-        <SceneHandoutSection campaignId="c1" scenarioId="s1" sceneId="a1" status="Prepared" handouts={[truth, door, cellar]} sceneUpdatedAt={2} />,
+        <HandoutSection owner={sceneOwner} canChange handouts={[truth, door, cellar]} ownerUpdatedAt={2} />,
       )
 
       expect(screen.getByRole('status')).toHaveTextContent('The front door moved to position 2 of 3.')
@@ -166,15 +157,7 @@ describe('SceneHandoutSection', () => {
       expect(screen.getByRole('link', { name: 'The front door' })).not.toHaveFocus()
 
       rerender(
-        <SceneHandoutSection
-          campaignId="c1"
-          scenarioId="s1"
-          sceneId="a1"
-          status="Prepared"
-          handouts={[door, truth]}
-          sceneUpdatedAt={2}
-          focusHandoutId="h2"
-        />,
+        <HandoutSection owner={sceneOwner} canChange handouts={[door, truth]} ownerUpdatedAt={2} focusHandoutId="h2" />,
       )
 
       await waitFor(() => expect(screen.getByRole('link', { name: "Corbitt's true nature" })).toHaveFocus())

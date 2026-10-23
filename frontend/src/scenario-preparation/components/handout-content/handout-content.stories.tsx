@@ -19,9 +19,7 @@ const meta = {
   title: 'ScenarioPreparation/HandoutContent',
   component: HandoutContent,
   args: {
-    campaignId: 'c1',
-    scenarioId: 's1',
-    sceneId: 'a1',
+    owner: { type: 'scene', campaignId: 'c1', scenarioId: 's1', sceneId: 'a1' },
     handout: { id: 'h1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The letter', content },
   },
 } satisfies Meta<typeof HandoutContent>

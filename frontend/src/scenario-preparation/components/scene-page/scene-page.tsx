@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
 
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
-import { SceneHandoutSection } from '@/scenario-preparation/components/scene-handout-section/scene-handout-section'
+import { HandoutSection } from '@/scenario-preparation/components/handout-section/handout-section'
 import { SceneLinkSection } from '@/scenario-preparation/components/scene-link-section/scene-link-section'
 import { RemoveSceneDialog } from '@/scenario-preparation/components/remove-scene-dialog/remove-scene-dialog'
 import { SceneForm } from '@/scenario-preparation/components/scene-form/scene-form'
@@ -242,13 +242,11 @@ function SceneView({
           <p className="text-sm text-muted-foreground">No Keeper notes yet.</p>
         )}
       </section>
-      <SceneHandoutSection
-        campaignId={campaignId}
-        scenarioId={scenarioId}
-        sceneId={scene.id}
-        status={scene.status}
+      <HandoutSection
+        owner={{ type: 'scene', campaignId, scenarioId, sceneId: scene.id }}
+        canChange={scene.status !== 'Finished'}
         handouts={scene.handouts}
-        sceneUpdatedAt={sceneUpdatedAt}
+        ownerUpdatedAt={sceneUpdatedAt}
         focusHandoutId={focusHandoutId}
         focusHeading={focusHandoutsHeading}
       />

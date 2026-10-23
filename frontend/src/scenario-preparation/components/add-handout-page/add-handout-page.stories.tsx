@@ -1,9 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { userEvent, within } from 'storybook/test'
 
-import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
-import { keeperCampaign, STORY_CAMPAIGN_ID } from '@/campaign-play/test-support/rosterFixtures'
-import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
+import { STORY_CAMPAIGN_ID } from '@/campaign-play/test-support/rosterFixtures'
+import { sceneHandoutContext } from '@/scenario-preparation/services/handoutOwnerContext'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
@@ -22,6 +21,7 @@ const prepared: Scene = {
   startedAt: null,
   finishedAt: null,
   nonPlayerEntityLinks: [],
+  itemLinks: [],
   handouts: [],
 }
 
@@ -30,16 +30,13 @@ interface StoryArgs {
   tokens?: 'pending' | 'failing' | 'granted'
 }
 
+const OWNER = { type: 'scene', campaignId: STORY_CAMPAIGN_ID, scenarioId: SCENARIO_ID, sceneId: SCENE_ID } as const
+
 function PageStory({ scene = prepared, tokens = 'pending' }: StoryArgs) {
   return (
     <StoryMsal tokens={tokens}>
-      <StoryProviders
-        seed={(client) => {
-          client.setQueryData(campaignQueryKeys.detail(STORY_CAMPAIGN_ID), keeperCampaign)
-          client.setQueryData(sceneQueryKeys.detail(STORY_CAMPAIGN_ID, SCENARIO_ID, SCENE_ID), scene)
-        }}
-      >
-        <AddHandoutPage campaignId={STORY_CAMPAIGN_ID} scenarioId={SCENARIO_ID} sceneId={SCENE_ID} />
+      <StoryProviders>
+        <AddHandoutPage owner={OWNER} context={sceneHandoutContext(scene, () => undefined)} ownerNotFound={<p>The Scene was not found.</p>} />
       </StoryProviders>
     </StoryMsal>
   )

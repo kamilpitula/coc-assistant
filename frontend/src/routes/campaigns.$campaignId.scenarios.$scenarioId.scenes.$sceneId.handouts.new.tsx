@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { AddHandoutPage } from '@/scenario-preparation/components/add-handout-page/add-handout-page'
+import { SceneHandoutRoute } from '@/scenario-preparation/components/scene-handout-route/scene-handout-route'
 
 export const Route = createFileRoute('/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId/handouts/new')({
   component: AddHandoutRoute,
@@ -9,5 +9,5 @@ export const Route = createFileRoute('/campaigns/$campaignId/scenarios/$scenario
 function AddHandoutRoute() {
   const { campaignId, scenarioId, sceneId } = Route.useParams()
 
-  return <AddHandoutPage campaignId={campaignId} scenarioId={scenarioId} sceneId={sceneId} />
+  return <SceneHandoutRoute campaignId={campaignId} scenarioId={scenarioId} sceneId={sceneId} />
 }

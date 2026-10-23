@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { sceneOwner } from '@/scenario-preparation/test-support/handoutOwnerFixtures'
 import type { FileHandout } from '@/scenario-preparation/types/Handout'
 
 import { HandoutDocument } from './handout-document'
@@ -27,7 +28,7 @@ const query = (overrides: Record<string, unknown> = {}) => ({
   refetch,
   ...overrides,
 })
-const renderDocument = () => render(<HandoutDocument campaignId="c1" scenarioId="s1" sceneId="a1" handout={document1} />)
+const renderDocument = () => render(<HandoutDocument owner={sceneOwner} handout={document1} />)
 
 describe('HandoutDocument', () => {
   beforeEach(() => {

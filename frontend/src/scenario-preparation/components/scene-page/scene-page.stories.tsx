@@ -34,6 +34,7 @@ const prepared: Scene = {
   startedAt: null,
   finishedAt: null,
   nonPlayerEntityLinks: [],
+  itemLinks: [],
   handouts: [],
 }
 
@@ -52,6 +53,7 @@ const withLinks: Scene = {
 
 const withHandouts: Scene = {
   ...withLinks,
+  itemLinks: [],
   handouts: [
     { id: 'handout-1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door' },
     { id: 'handout-2', kind: 'Text', visibility: 'KeeperFacing', title: "Corbitt's true nature" },

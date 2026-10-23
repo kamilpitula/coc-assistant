@@ -10,94 +10,93 @@ import {
   reorderHandouts,
   StaleHandoutOrderError,
 } from '@/scenario-preparation/services/handoutApi'
-import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
+import { describeHandoutOwner, type HandoutOwner } from '@/scenario-preparation/services/handoutOwner'
 import type { HandoutInput, HandoutSummary } from '@/scenario-preparation/types/Handout'
-import type { Scene } from '@/scenario-preparation/types/Scene'
 import { useAccessToken } from '@/shared/hooks/useAccessToken'
 
 /** One Handout with its content; resolves to null when the API answers 404. Enabled only for the Keeper. */
-export function useHandout(campaignId: string, scenarioId: string, sceneId: string, handoutId: string, enabled: boolean) {
+export function useHandout(owner: HandoutOwner, handoutId: string, enabled: boolean) {
   const getAccessToken = useAccessToken()
 
   return useQuery({
-    queryKey: handoutQueryKeys.detail(campaignId, scenarioId, sceneId, handoutId),
-    queryFn: async () => getHandout(await getAccessToken(), campaignId, scenarioId, sceneId, handoutId),
+    queryKey: handoutQueryKeys.detail(owner, handoutId),
+    queryFn: async () => getHandout(await getAccessToken(), owner, handoutId),
     enabled,
   })
 }
 
 /** The stored file of an Image, Document, or Map Handout as a Blob; enabled only for the Keeper of a file Handout. */
-export function useHandoutFile(campaignId: string, scenarioId: string, sceneId: string, handoutId: string, enabled: boolean) {
+export function useHandoutFile(owner: HandoutOwner, handoutId: string, enabled: boolean) {
   const getAccessToken = useAccessToken()
 
   return useQuery({
-    queryKey: handoutQueryKeys.file(campaignId, scenarioId, sceneId, handoutId),
-    queryFn: async () => getHandoutFile(await getAccessToken(), campaignId, scenarioId, sceneId, handoutId),
+    queryKey: handoutQueryKeys.file(owner, handoutId),
+    queryFn: async () => getHandoutFile(await getAccessToken(), owner, handoutId),
     enabled,
   })
 }
 
-/** Every Handout write changes the Scene's response, so the confirmed write reloads the Scene. */
-function useInvalidateScene(campaignId: string, scenarioId: string, sceneId: string) {
+/** Every Handout write changes the owner's response, so the confirmed write reloads the owner. */
+function useInvalidateOwner(owner: HandoutOwner) {
   const queryClient = useQueryClient()
-  return () => queryClient.invalidateQueries({ queryKey: sceneQueryKeys.detail(campaignId, scenarioId, sceneId) })
+  return () => queryClient.invalidateQueries({ queryKey: describeHandoutOwner(owner).detailKey })
 }
 
-/** Adds a Handout to a Scene. */
-export function useCreateHandout(campaignId: string, scenarioId: string, sceneId: string) {
+/** Adds a Handout to its owner. */
+export function useCreateHandout(owner: HandoutOwner) {
   const getAccessToken = useAccessToken()
-  const invalidateScene = useInvalidateScene(campaignId, scenarioId, sceneId)
+  const invalidateOwner = useInvalidateOwner(owner)
 
   return useMutation({
-    mutationFn: async (input: HandoutInput) => createHandout(await getAccessToken(), campaignId, scenarioId, sceneId, input),
-    onSuccess: invalidateScene,
+    mutationFn: async (input: HandoutInput) => createHandout(await getAccessToken(), owner, input),
+    onSuccess: invalidateOwner,
   })
 }
 
 /** Saves a Handout; the confirmed Handout replaces the cached one. */
-export function useEditHandout(campaignId: string, scenarioId: string, sceneId: string, handoutId: string) {
+export function useEditHandout(owner: HandoutOwner, handoutId: string) {
   const getAccessToken = useAccessToken()
   const queryClient = useQueryClient()
-  const invalidateScene = useInvalidateScene(campaignId, scenarioId, sceneId)
+  const invalidateOwner = useInvalidateOwner(owner)
 
   return useMutation({
-    mutationFn: async (input: HandoutInput) => editHandout(await getAccessToken(), campaignId, scenarioId, sceneId, handoutId, input),
+    mutationFn: async (input: HandoutInput) => editHandout(await getAccessToken(), owner, handoutId, input),
     onSuccess: (handout) => {
-      queryClient.setQueryData(handoutQueryKeys.detail(campaignId, scenarioId, sceneId, handoutId), handout)
-      void queryClient.invalidateQueries({ queryKey: handoutQueryKeys.file(campaignId, scenarioId, sceneId, handoutId) })
-      return invalidateScene()
+      queryClient.setQueryData(handoutQueryKeys.detail(owner, handoutId), handout)
+      void queryClient.invalidateQueries({ queryKey: handoutQueryKeys.file(owner, handoutId) })
+      return invalidateOwner()
     },
   })
 }
 
-/** Deletes a Handout of a Prepared Scene; its cache entry goes and the Scene reloads. */
-export function useDeleteHandout(campaignId: string, scenarioId: string, sceneId: string, handoutId: string) {
+/** Deletes a Handout; its cache entry goes and the owner reloads. */
+export function useDeleteHandout(owner: HandoutOwner, handoutId: string) {
   const getAccessToken = useAccessToken()
   const queryClient = useQueryClient()
-  const invalidateScene = useInvalidateScene(campaignId, scenarioId, sceneId)
+  const invalidateOwner = useInvalidateOwner(owner)
 
   return useMutation({
-    mutationFn: async () => deleteHandout(await getAccessToken(), campaignId, scenarioId, sceneId, handoutId),
+    mutationFn: async () => deleteHandout(await getAccessToken(), owner, handoutId),
     onSuccess: () => {
-      queryClient.removeQueries({ queryKey: handoutQueryKeys.detail(campaignId, scenarioId, sceneId, handoutId) })
-      return invalidateScene()
+      queryClient.removeQueries({ queryKey: handoutQueryKeys.detail(owner, handoutId) })
+      return invalidateOwner()
     },
   })
 }
 
 /**
- * Sends the complete new order. Updates are confirmed, not optimistic: the cached Scene's Handouts are replaced with the
- * server's answer, and a stale order (409) reloads the Scene instead.
+ * Sends the complete new order. Updates are confirmed, not optimistic: the cached owner's Handouts are replaced with the
+ * server's answer, and a stale order (409) reloads the owner instead.
  */
-export function useReorderHandouts(campaignId: string, scenarioId: string, sceneId: string) {
+export function useReorderHandouts(owner: HandoutOwner) {
   const getAccessToken = useAccessToken()
   const queryClient = useQueryClient()
-  const sceneKey = sceneQueryKeys.detail(campaignId, scenarioId, sceneId)
+  const ownerKey = describeHandoutOwner(owner).detailKey
 
   return useMutation({
-    mutationFn: async (handoutIds: string[]) => reorderHandouts(await getAccessToken(), campaignId, scenarioId, sceneId, handoutIds),
+    mutationFn: async (handoutIds: string[]) => reorderHandouts(await getAccessToken(), owner, handoutIds),
     onSuccess: (handouts: HandoutSummary[]) =>
-      queryClient.setQueryData<Scene | null | undefined>(sceneKey, (scene) => (scene ? { ...scene, handouts } : scene)),
-    onError: (error) => (error instanceof StaleHandoutOrderError ? queryClient.invalidateQueries({ queryKey: sceneKey }) : undefined),
+      queryClient.setQueryData<{ handouts: HandoutSummary[] } | null | undefined>(ownerKey, (cached) => (cached ? { ...cached, handouts } : cached)),
+    onError: (error) => (error instanceof StaleHandoutOrderError ? queryClient.invalidateQueries({ queryKey: ownerKey }) : undefined),
   })
 }

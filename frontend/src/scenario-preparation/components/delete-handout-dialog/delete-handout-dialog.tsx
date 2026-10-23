@@ -13,23 +13,26 @@ interface DeleteHandoutDialogProps {
   open: boolean
   handoutTitle: string
   pending: boolean
-  /** The delete failed for a reason other than the Scene having been started. */
+  /** The delete failed for a reason other than a refusal. */
   failed: boolean
-  /** The Scene is no longer Prepared (409). */
+  /** The server refused the delete (409): the Scene has been started, or the Item is in play. */
   refused: boolean
+  /** What the refusal says, naming the owner. */
+  refusedMessage: string
   onConfirm: () => void
   onCancel: () => void
   /** Called when the dialog has closed, so the owner can choose where focus goes. */
   onCloseAutoFocus: (event: Event) => void
 }
 
-/** The Keeper's confirmation before deleting a Handout of a Prepared Scene (specs/scenario-preparation/ux.md section 44). */
+/** The Keeper's confirmation before deleting a Handout (specs/scenario-preparation/ux.md sections 44 and 65). */
 export function DeleteHandoutDialog({
   open,
   handoutTitle,
   pending,
   failed,
   refused,
+  refusedMessage,
   onConfirm,
   onCancel,
   onCloseAutoFocus,
@@ -48,7 +51,7 @@ export function DeleteHandoutDialog({
         )}
         {refused && (
           <p role="alert" className="text-sm text-destructive">
-            This Scene has been started, so this Handout can&apos;t be deleted.
+            {refusedMessage}
           </p>
         )}
         <AlertDialogFooter>

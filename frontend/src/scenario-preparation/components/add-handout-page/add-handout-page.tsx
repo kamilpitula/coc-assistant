@@ -1,23 +1,24 @@
 import { Link, useNavigate } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
 
-import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
 import { HandoutForm } from '@/scenario-preparation/components/handout-form/handout-form'
-import { SceneNotFound } from '@/scenario-preparation/components/scene-not-found/scene-not-found'
 import { useCreateHandout } from '@/scenario-preparation/hooks/useHandouts'
-import { useScene } from '@/scenario-preparation/hooks/useScenes'
 import { HandoutNotFoundError, HandoutValidationError } from '@/scenario-preparation/services/handoutApi'
 import { HANDOUT_SCENE_FINISHED_MEANWHILE, type HandoutFormValues } from '@/scenario-preparation/services/handoutForm'
+import { describeHandoutOwner, type HandoutOwner } from '@/scenario-preparation/services/handoutOwner'
 import { SceneFinishedError } from '@/scenario-preparation/services/sceneApi'
+import type { HandoutOwnerContext } from '@/scenario-preparation/types/HandoutOwnerContext'
 import { buttonVariants } from '@/shared/components/ui/button'
-import { Skeleton } from '@/shared/components/ui/skeleton'
 
 const EMPTY_HANDOUT: HandoutFormValues = { title: '', kind: null, visibility: null, content: null }
 
 interface AddHandoutPageProps {
-  campaignId: string
-  scenarioId: string
-  sceneId: string
+  /** The Scene or Item that gets the Handout; the caller has already checked that the viewer is the Keeper. */
+  owner: HandoutOwner
+  context: HandoutOwnerContext
+  /** Shown when the owner turns out to be gone: the not-found page of the owner's type. */
+  ownerNotFound: ReactNode
 }
 
 function failureMessageFor(error: unknown): string | null {
@@ -28,45 +29,30 @@ function failureMessageFor(error: unknown): string | null {
 }
 
 /**
- * "Add Handout" (specs/scenario-preparation/ux.md section 43). A Player or an unknown Scene gets the Scene not-found page and
- * no request is made; a Finished Scene gets the sentence that it can't be changed instead of the form.
+ * "Add Handout" (specs/scenario-preparation/ux.md sections 43 and 65). An owner that can not be changed gets the sentence that says
+ * so instead of the form; an owner that has gone gets its not-found page.
  */
-export function AddHandoutPage({ campaignId, scenarioId, sceneId }: AddHandoutPageProps) {
-  const campaign = useCampaign(campaignId)
-  const isKeeper = campaign.data?.role === 'Keeper'
-  const scene = useScene(campaignId, scenarioId, sceneId, isKeeper)
-  const creating = useCreateHandout(campaignId, scenarioId, sceneId)
+export function AddHandoutPage({ owner, context, ownerNotFound }: AddHandoutPageProps) {
+  const creating = useCreateHandout(owner)
   const navigate = useNavigate()
+  const pages = describeHandoutOwner(owner)
 
-  if (!isKeeper || scene.data === null || creating.error instanceof HandoutNotFoundError) {
-    return <SceneNotFound campaignId={campaignId} />
+  if (creating.error instanceof HandoutNotFoundError) {
+    return ownerNotFound
   }
 
-  if (!scene.data) {
-    return (
-      <div aria-busy="true" className="flex max-w-2xl flex-col gap-3">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-24 w-full" />
-      </div>
-    )
-  }
-
-  const backToScene = (
-    <Link
-      to="/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId"
-      params={{ campaignId, scenarioId, sceneId }}
-      className={buttonVariants({ variant: 'link', className: 'px-0' })}
-    >
-      {scene.data.status === 'Finished' ? 'Back to the Scene' : 'Cancel'}
+  const backToOwner = (
+    <Link {...pages.ownerPage} className={buttonVariants({ variant: 'link', className: 'px-0' })}>
+      {context.canChange ? 'Cancel' : context.backLabel}
     </Link>
   )
 
-  if (scene.data.status === 'Finished') {
+  if (!context.canChange) {
     return (
       <div className="flex flex-col items-start gap-4">
         <h1 className="text-2xl font-semibold">Add Handout</h1>
-        <p className="text-sm text-muted-foreground">This Scene is finished and can&apos;t be changed.</p>
-        {backToScene}
+        <p className="text-sm text-muted-foreground">{context.lockedMessage}</p>
+        {backToOwner}
       </div>
     )
   }
@@ -77,7 +63,9 @@ export function AddHandoutPage({ campaignId, scenarioId, sceneId }: AddHandoutPa
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">Add Handout</h1>
-        <p className="text-sm break-words text-muted-foreground">Scene: {scene.data.title}</p>
+        <p className="text-sm break-words text-muted-foreground">
+          {context.ownerLabel}: {context.ownerName}
+        </p>
       </div>
       <HandoutForm
         initialValues={EMPTY_HANDOUT}
@@ -86,15 +74,11 @@ export function AddHandoutPage({ campaignId, scenarioId, sceneId }: AddHandoutPa
         pending={creating.isPending}
         failureMessage={failureMessageFor(creating.error)}
         serverErrors={validationError?.fieldErrors}
-        cancel={backToScene}
+        cancel={backToOwner}
         onSubmit={(input) =>
           creating.mutate(input, {
             onSuccess: (handout) =>
-              void navigate({
-                to: '/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId',
-                params: { campaignId, scenarioId, sceneId },
-                state: { statusMessage: `${handout.title} added.`, focusHandoutId: handout.id },
-              }),
+              void navigate({ ...pages.ownerPage, state: { statusMessage: `${handout.title} added.`, focusHandoutId: handout.id } }),
           })
         }
       />

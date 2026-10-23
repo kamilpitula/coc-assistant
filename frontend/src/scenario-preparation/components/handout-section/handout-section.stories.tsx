@@ -2,11 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { userEvent, within } from 'storybook/test'
 
 import type { HandoutSummary } from '@/scenario-preparation/types/Handout'
-import type { SceneStatus } from '@/scenario-preparation/types/Scene'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 
-import { SceneHandoutSection } from './scene-handout-section'
+import { HandoutSection } from './handout-section'
 
 const door: HandoutSummary = { id: 'h1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door' }
 const truth: HandoutSummary = { id: 'h2', kind: 'Text', visibility: 'KeeperFacing', title: "Corbitt's true nature" }
@@ -21,23 +20,21 @@ const longTitle: HandoutSummary = {
 
 interface StoryArgs {
   handouts: HandoutSummary[]
-  status?: SceneStatus
+  canChange?: boolean
   tokens?: 'pending' | 'failing' | 'granted'
   width?: number
 }
 
-function SectionStory({ handouts, status = 'Prepared', tokens = 'pending', width }: StoryArgs) {
+function SectionStory({ handouts, canChange = true, tokens = 'pending', width }: StoryArgs) {
   return (
     <StoryMsal tokens={tokens}>
       <StoryProviders>
         <div style={width ? { width } : undefined}>
-          <SceneHandoutSection
-            campaignId="story-campaign"
-            scenarioId="story-scenario"
-            sceneId="story-scene"
-            status={status}
+          <HandoutSection
+            owner={{ type: 'scene', campaignId: 'story-campaign', scenarioId: 'story-scenario', sceneId: 'story-scene' }}
+            canChange={canChange}
             handouts={handouts}
-            sceneUpdatedAt={1}
+            ownerUpdatedAt={1}
           />
         </div>
       </StoryProviders>
@@ -46,7 +43,7 @@ function SectionStory({ handouts, status = 'Prepared', tokens = 'pending', width
 }
 
 const meta = {
-  title: 'ScenarioPreparation/SceneHandoutSection',
+  title: 'ScenarioPreparation/HandoutSection',
   component: SectionStory,
 } satisfies Meta<typeof SectionStory>
 
@@ -58,9 +55,7 @@ export const Empty: Story = { args: { handouts: [] } }
 /** Both kinds and both visibilities. */
 export const SeveralHandouts: Story = { args: { handouts: [door, truth, cellar, clipping] } }
 
-export const Active: Story = { args: { handouts: [door, truth], status: 'Active' } }
-
-export const Finished: Story = { args: { handouts: [door, truth], status: 'Finished' } }
+export const Finished: Story = { args: { handouts: [door, truth], canChange: false } }
 
 /** A long title wraps and the controls stay on its row at 320px. */
 export const LongTitleAt320px: Story = { args: { handouts: [door, longTitle], width: 320 } }

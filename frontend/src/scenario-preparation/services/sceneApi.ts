@@ -33,6 +33,12 @@ export const nonPlayerEntityLinkSchema = z.strictObject({
   playerFacingDescription: richTextSchema.nullable(),
 })
 
+// The link carries the Item's id and live name only: it has no fields of its own (design record PBI-SP-008, D2).
+export const itemLinkSchema = z.strictObject({
+  id: z.string(),
+  item: z.strictObject({ id: z.string(), name: z.string() }),
+})
+
 // A Handout in a Scene's list: no content and no position (design record PBI-SP-005, D2).
 export const handoutSummarySchema = z.strictObject({
   id: z.string(),
@@ -45,6 +51,7 @@ const sceneSchema = sceneSummarySchema.extend({
   location: z.string(),
   keeperNotes: richTextSchema.nullable(),
   nonPlayerEntityLinks: z.array(nonPlayerEntityLinkSchema),
+  itemLinks: z.array(itemLinkSchema),
   handouts: z.array(handoutSummarySchema),
 })
 
