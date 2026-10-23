@@ -21,5 +21,6 @@ public interface ISceneRepository
     /// <summary>The highest Position in the Scenario; 0 when it has no Scenes.</summary>
     Task<int> MaxPositionAsync(Guid scenarioId, CancellationToken cancellationToken);
 
+    /// <summary>Saves the changes. Throws <see cref="ItemLinkConflictException"/> when the same Item was linked to the Scene concurrently.</summary>
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

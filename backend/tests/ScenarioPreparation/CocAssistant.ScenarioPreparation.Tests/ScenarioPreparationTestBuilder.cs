@@ -23,6 +23,10 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
 
     public FakeHandoutFileStore FileStore { get; } = new();
 
+    public FakeItemHolders ItemHolders { get; } = new();
+
+    public RecordingLogger<ItemService> ItemLogger { get; } = new();
+
     public RecordingLogger<HandoutService> HandoutLogger { get; } = new();
 
     public RecordingLogger<HandoutFileService> HandoutFileLogger { get; } = new();
@@ -43,16 +47,25 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
         new(Keepers, repository ?? new EfScenarioRepository(context), TimeProvider);
 
     public SceneService CreateSceneService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
-        new(Keepers, new EfScenarioRepository(context), repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), FileStore, TimeProvider, SceneLogger);
+        new(Keepers, new EfScenarioRepository(context), repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), new EfItemDirectory(context), FileStore, TimeProvider, SceneLogger);
 
     public NonPlayerEntityLinkService CreateLinkService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
         new(Keepers, repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), TimeProvider);
 
-    public HandoutService CreateHandoutService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
-        new(Keepers, repository ?? new EfSceneRepository(context), FileStore, TimeProvider, HandoutLogger);
+    public ItemLinkService CreateItemLinkService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
+        new(Keepers, repository ?? new EfSceneRepository(context), new EfItemDirectory(context), TimeProvider);
 
-    public HandoutFileService CreateHandoutFileService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
-        new(Keepers, repository ?? new EfSceneRepository(context), FileStore, TimeProvider, HandoutFileLogger);
+    public ItemService CreateItemService(ScenarioPreparationDbContext context, IItemRepository? repository = null, IItemUsage? usage = null, IItemHolders? holders = null) =>
+        new(Keepers, repository ?? new EfItemRepository(context), new EfItemDirectory(context), usage ?? new EfItemUsage(context), holders ?? ItemHolders, FileStore, TimeProvider, ItemLogger);
+
+    public HandoutOwnerLocator CreateHandoutOwnerLocator(ScenarioPreparationDbContext context, ISceneRepository? scenes = null, IItemRepository? items = null) =>
+        new(Keepers, scenes ?? new EfSceneRepository(context), items ?? new EfItemRepository(context), new EfItemUsage(context), ItemHolders);
+
+    public HandoutService CreateHandoutService(ScenarioPreparationDbContext context, ISceneRepository? repository = null, IItemRepository? items = null) =>
+        new(CreateHandoutOwnerLocator(context, repository, items), FileStore, TimeProvider, HandoutLogger);
+
+    public HandoutFileService CreateHandoutFileService(ScenarioPreparationDbContext context, ISceneRepository? repository = null, IItemRepository? items = null) =>
+        new(CreateHandoutOwnerLocator(context, repository, items), FileStore, TimeProvider, HandoutFileLogger);
 
     public HumanNpcService CreateHumanNpcService(ScenarioPreparationDbContext context, IHumanNpcRepository? repository = null, INonPlayerEntityUsage? usage = null) =>
         new(Keepers, repository ?? new EfHumanNpcRepository(context), usage ?? new EfNonPlayerEntityUsage(context), new FakeNonPlayerEntityRuleData(), TimeProvider);
@@ -135,10 +148,81 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
     {
         TimeProvider.Advance(TimeSpan.FromMinutes(1));
         using var context = Fixture.CreateContext();
-        var result = await CreateHandoutService(context).CreateAsync(campaignId, KeeperAccountId, scenarioId, sceneId, kind, visibility, title, content, CancellationToken.None);
+        var result = await CreateHandoutService(context).CreateAsync(campaignId, KeeperAccountId, new SceneHandoutOwnerReference(scenarioId, sceneId), kind, visibility, title, content, CancellationToken.None);
         Assert.Equal(HandoutWriteOutcome.Saved, result.Outcome);
         return result.Handout!;
     }
+
+    /// <summary>Creates an Item as the Keeper one minute after the previous call and returns its view.</summary>
+    public async Task<ItemView> CreateItemAsync(
+        Guid campaignId,
+        string name = "Walter Corbitt's diary",
+        string? description = null,
+        string? keeperNotes = null)
+    {
+        TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        using var context = Fixture.CreateContext();
+        var result = await CreateItemService(context).CreateAsync(campaignId, KeeperAccountId, name, description ?? RichText("A leather diary"), keeperNotes, CancellationToken.None);
+        Assert.Equal(ItemWriteOutcome.Saved, result.Outcome);
+        return result.Item!;
+    }
+
+    /// <summary>Links an Item to a Scene as the Keeper one minute after the previous call and returns the link.</summary>
+    public async Task<ItemLinkView> LinkItemAsync(Guid campaignId, Guid scenarioId, Guid sceneId, Guid itemId)
+    {
+        TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        using var context = Fixture.CreateContext();
+        var result = await CreateItemLinkService(context).LinkAsync(campaignId, KeeperAccountId, scenarioId, sceneId, itemId, CancellationToken.None);
+        Assert.Equal(ItemLinkWriteOutcome.Linked, result.Outcome);
+        return result.Link!;
+    }
+
+    /// <summary>Adds a rich-text Handout to an Item as the Keeper one minute after the previous call and returns it.</summary>
+    public async Task<HandoutView> AddItemHandoutAsync(Guid campaignId, Guid itemId, string title = "The last entry", HandoutKind kind = HandoutKind.Text)
+    {
+        TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        using var context = Fixture.CreateContext();
+        var result = await CreateHandoutService(context).CreateAsync(
+            campaignId, KeeperAccountId, new ItemHandoutOwnerReference(itemId), kind, HandoutVisibility.PlayerFacing, title, RichText("The last entry"), CancellationToken.None);
+        Assert.Equal(HandoutWriteOutcome.Saved, result.Outcome);
+        return result.Handout!;
+    }
+
+    /// <summary>Adds a PNG Image Handout to an Item as the Keeper and returns it with the blob key that was stored.</summary>
+    public async Task<(HandoutView Handout, string Key)> AddItemImageHandoutAsync(Guid campaignId, Guid itemId, string title = "A photograph")
+    {
+        TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        var png = HandoutFileSamples.Png();
+        var knownKeys = FileStore.StoredKeys.ToHashSet();
+        using var context = Fixture.CreateContext();
+        var result = await CreateHandoutFileService(context).CreateAsync(
+            campaignId, KeeperAccountId, new ItemHandoutOwnerReference(itemId), HandoutKind.Image, HandoutVisibility.PlayerFacing, title,
+            new HandoutUpload("photo.png", png.Length, new MemoryStream(png)), CancellationToken.None);
+        Assert.Equal(HandoutWriteOutcome.Saved, result.Outcome);
+        return (result.Handout!, FileStore.StoredKeys.Single(key => !knownKeys.Contains(key)));
+    }
+
+    public async Task<ItemView?> GetItemAsync(Guid campaignId, Guid itemId, Guid? callerAccountId = null)
+    {
+        using var context = Fixture.CreateContext();
+        return await CreateItemService(context).GetAsync(campaignId, callerAccountId ?? KeeperAccountId, itemId, CancellationToken.None);
+    }
+
+    public async Task<int> StoredItemCountAsync()
+    {
+        using var context = Fixture.CreateContext();
+        return await context.Items.CountAsync();
+    }
+
+    public async Task<int> StoredItemLinkCountAsync()
+    {
+        using var context = Fixture.CreateContext();
+        return await context.ItemLinks.CountAsync();
+    }
+
+    /// <summary>A Lexical document with one paragraph holding the text.</summary>
+    public static string RichText(string text) =>
+        "{\"root\":{\"type\":\"root\",\"children\":[{\"type\":\"paragraph\",\"children\":[{\"type\":\"text\",\"text\":\"" + text + "\"}]}]}}";
 
     public async Task<SceneDetailView?> GetSceneAsync(Guid campaignId, Guid scenarioId, Guid sceneId, Guid? callerAccountId = null)
     {

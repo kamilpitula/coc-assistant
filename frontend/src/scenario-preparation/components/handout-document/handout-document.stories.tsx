@@ -7,7 +7,7 @@ import { StoryProviders } from '@/shared/storybook/storyProviders'
 
 import { HandoutDocument } from './handout-document'
 
-const IDS = { campaignId: 'story-campaign', scenarioId: 'story-scenario', sceneId: 'story-scene' }
+const OWNER = { type: 'scene', campaignId: 'story-campaign', scenarioId: 'story-scenario', sceneId: 'story-scene' } as const
 
 const diary: FileHandout = {
   id: 'story-handout',
@@ -28,13 +28,13 @@ function DocumentStory({ state = 'loaded' }: StoryArgs) {
         seed={(client) => {
           if (state === 'loaded') {
             client.setQueryData(
-              handoutQueryKeys.file(IDS.campaignId, IDS.scenarioId, IDS.sceneId, diary.id),
+              handoutQueryKeys.file(OWNER, diary.id),
               new Blob(['%PDF-1.4'], { type: 'application/pdf' }),
             )
           }
         }}
       >
-        <HandoutDocument {...IDS} handout={diary} />
+        <HandoutDocument owner={OWNER} handout={diary} />
       </StoryProviders>
     </StoryMsal>
   )

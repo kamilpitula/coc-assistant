@@ -33,7 +33,7 @@ public class HandoutFileServiceTests : IDisposable
     {
         using var context = _builder.Fixture.CreateContext();
         return await _builder.CreateHandoutFileService(context, repository)
-            .CreateAsync(_builder.CampaignId, caller ?? Keeper, scenarioId, sceneId, kind, visibility, title, upload, CancellationToken.None);
+            .CreateAsync(_builder.CampaignId, caller ?? Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), kind, visibility, title, upload, CancellationToken.None);
     }
 
     private async Task<HandoutWriteResult> EditAsync(
@@ -49,14 +49,14 @@ public class HandoutFileServiceTests : IDisposable
     {
         using var context = _builder.Fixture.CreateContext();
         return await _builder.CreateHandoutFileService(context, repository)
-            .EditAsync(_builder.CampaignId, caller ?? Keeper, scenarioId, sceneId, handoutId, kind, visibility, title, upload, CancellationToken.None);
+            .EditAsync(_builder.CampaignId, caller ?? Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), handoutId, kind, visibility, title, upload, CancellationToken.None);
     }
 
     private async Task<HandoutFileOpenResult> OpenAsync(Guid scenarioId, Guid sceneId, Guid handoutId, Guid? caller = null)
     {
         using var context = _builder.Fixture.CreateContext();
         return await _builder.CreateHandoutFileService(context)
-            .OpenAsync(_builder.CampaignId, caller ?? Keeper, scenarioId, sceneId, handoutId, CancellationToken.None);
+            .OpenAsync(_builder.CampaignId, caller ?? Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), handoutId, CancellationToken.None);
     }
 
     private async Task<(HandoutView Handout, string Key)> AddImageAsync(Guid scenarioId, Guid sceneId)
@@ -184,7 +184,7 @@ public class HandoutFileServiceTests : IDisposable
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _builder.CreateHandoutFileService(context, repository).CreateAsync(
-                _builder.CampaignId, Keeper, scenarioId, sceneId, HandoutKind.Image, HandoutVisibility.PlayerFacing, "Floor plan", Upload(HandoutFileSamples.Png()), CancellationToken.None));
+                _builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), HandoutKind.Image, HandoutVisibility.PlayerFacing, "Floor plan", Upload(HandoutFileSamples.Png()), CancellationToken.None));
 
         Assert.Equal(_builder.FileStore.SavedKeys, _builder.FileStore.DeletedKeys);
         Assert.Empty(_builder.FileStore.StoredKeys);
@@ -200,7 +200,7 @@ public class HandoutFileServiceTests : IDisposable
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _builder.CreateHandoutFileService(context, repository).CreateAsync(
-                _builder.CampaignId, Keeper, scenarioId, sceneId, HandoutKind.Image, HandoutVisibility.PlayerFacing, "Floor plan", Upload(HandoutFileSamples.Png()), CancellationToken.None));
+                _builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), HandoutKind.Image, HandoutVisibility.PlayerFacing, "Floor plan", Upload(HandoutFileSamples.Png()), CancellationToken.None));
 
         var key = Assert.Single(_builder.FileStore.SavedKeys);
         var entry = Assert.Single(_builder.HandoutFileLogger.Entries);
@@ -259,7 +259,7 @@ public class HandoutFileServiceTests : IDisposable
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _builder.CreateHandoutFileService(context, repository).EditAsync(
-                _builder.CampaignId, Keeper, scenarioId, sceneId, handout.Id, HandoutKind.Image, HandoutVisibility.KeeperFacing, "Renamed", Upload(HandoutFileSamples.Png()), CancellationToken.None));
+                _builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), handout.Id, HandoutKind.Image, HandoutVisibility.KeeperFacing, "Renamed", Upload(HandoutFileSamples.Png()), CancellationToken.None));
 
         Assert.Equal([oldKey], _builder.FileStore.StoredKeys);
         Assert.Single(_builder.FileStore.DeletedKeys);
@@ -424,7 +424,7 @@ public class HandoutFileServiceTests : IDisposable
         var (handout, key) = await AddImageAsync(scenarioId, sceneId);
 
         using var context = _builder.Fixture.CreateContext();
-        var outcome = await _builder.CreateHandoutService(context).RemoveAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, handout.Id, CancellationToken.None);
+        var outcome = await _builder.CreateHandoutService(context).RemoveAsync(_builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), handout.Id, CancellationToken.None);
 
         Assert.Equal(HandoutRemoveOutcome.Removed, outcome);
         Assert.Equal([key], _builder.FileStore.DeletedKeys);
@@ -439,7 +439,7 @@ public class HandoutFileServiceTests : IDisposable
         _builder.FileStore.FailDelete = true;
 
         using var context = _builder.Fixture.CreateContext();
-        var outcome = await _builder.CreateHandoutService(context).RemoveAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, handout.Id, CancellationToken.None);
+        var outcome = await _builder.CreateHandoutService(context).RemoveAsync(_builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), handout.Id, CancellationToken.None);
 
         Assert.Equal(HandoutRemoveOutcome.Removed, outcome);
         var entry = Assert.Single(_builder.HandoutLogger.Entries);
@@ -456,7 +456,7 @@ public class HandoutFileServiceTests : IDisposable
         await _builder.PlayAsync(sceneId, SceneStatus.Active);
 
         using var context = _builder.Fixture.CreateContext();
-        var outcome = await _builder.CreateHandoutService(context).RemoveAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, handout.Id, CancellationToken.None);
+        var outcome = await _builder.CreateHandoutService(context).RemoveAsync(_builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), handout.Id, CancellationToken.None);
 
         Assert.Equal(HandoutRemoveOutcome.NotPrepared, outcome);
         Assert.Empty(_builder.FileStore.DeletedKeys);
@@ -470,7 +470,7 @@ public class HandoutFileServiceTests : IDisposable
         var text = await _builder.AddHandoutAsync(_builder.CampaignId, scenarioId, sceneId);
 
         using var context = _builder.Fixture.CreateContext();
-        await _builder.CreateHandoutService(context).RemoveAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, text.Id, CancellationToken.None);
+        await _builder.CreateHandoutService(context).RemoveAsync(_builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), text.Id, CancellationToken.None);
 
         Assert.Equal(0, _builder.FileStore.CallCount);
     }
@@ -529,7 +529,7 @@ public class HandoutFileServiceTests : IDisposable
         var (handout, _) = await AddImageAsync(scenarioId, sceneId);
 
         using var context = _builder.Fixture.CreateContext();
-        var view = await _builder.CreateHandoutService(context).GetAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, handout.Id, CancellationToken.None);
+        var view = await _builder.CreateHandoutService(context).GetAsync(_builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), handout.Id, CancellationToken.None);
 
         Assert.Equal(handout, view);
         Assert.Null(view!.Content);

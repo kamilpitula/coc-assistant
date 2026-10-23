@@ -5,43 +5,30 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { HandoutNotFoundError, HandoutValidationError } from '@/scenario-preparation/services/handoutApi'
 import { SceneFinishedError } from '@/scenario-preparation/services/sceneApi'
-import type { Scene } from '@/scenario-preparation/types/Scene'
+import { sceneContext, sceneOwner } from '@/scenario-preparation/test-support/handoutOwnerFixtures'
+import type { HandoutOwnerContext } from '@/scenario-preparation/types/HandoutOwnerContext'
 import { navigateSpy } from '@/shared/test-support/routerMock'
 
 import { AddHandoutPage } from './add-handout-page'
 
-// specs/scenario-preparation/ux.md section 43; SP-UX-65 to SP-UX-67, SP-UX-72, SP-UX-73, SP-UX-74, SP-UX-75, SP-A11Y-40.
+// specs/scenario-preparation/ux.md sections 43 and 65; SP-UX-65 to SP-UX-67, SP-UX-72, SP-UX-73, SP-UX-75, SP-UX-100, SP-A11Y-40.
+// The page takes its owner and what the owner allows as a context; the Scene gating is in scene-handout-route.
 
-const { mockUseCampaign, mockUseScene, mockUseCreate, mutate } = vi.hoisted(() => ({
-  mockUseCampaign: vi.fn(),
-  mockUseScene: vi.fn(),
+const { mockUseCreate, mutate } = vi.hoisted(() => ({
   mockUseCreate: vi.fn(),
   mutate: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
-vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
-vi.mock('@/scenario-preparation/hooks/useScenes', () => ({ useScene: mockUseScene }))
 vi.mock('@/scenario-preparation/hooks/useHandouts', () => ({ useCreateHandout: mockUseCreate }))
-
-const scene: Scene = {
-  id: 'a1',
-  title: 'The Corbitt House',
-  location: '',
-  keeperNotes: null,
-  status: 'Prepared',
-  startedAt: null,
-  finishedAt: null,
-  nonPlayerEntityLinks: [],
-  handouts: [],
-}
 
 interface EditableElement extends HTMLElement {
   __lexicalEditor?: LexicalEditor
 }
 
 const creating = (overrides: Record<string, unknown> = {}) => ({ mutate, isPending: false, isError: false, error: null, ...overrides })
-const renderPage = () => render(<AddHandoutPage campaignId="c1" scenarioId="s1" sceneId="a1" />)
+const renderPage = (context: HandoutOwnerContext = sceneContext('Prepared')) =>
+  render(<AddHandoutPage owner={sceneOwner} context={context} ownerNotFound={<h1>The Scene was not found</h1>} />)
 const submitButton = () => screen.getAllByRole('button', { name: 'Add Handout' }).find((button) => button.getAttribute('type') === 'submit')!
 
 async function fillAndSubmit() {
@@ -60,8 +47,6 @@ async function fillAndSubmit() {
 describe('AddHandoutPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseCampaign.mockReturnValue({ data: { id: 'c1', role: 'Keeper' } })
-    mockUseScene.mockReturnValue({ data: scene })
     mockUseCreate.mockReturnValue(creating())
   })
 
@@ -140,17 +125,13 @@ describe('AddHandoutPage', () => {
   })
 
   it('offers the form on an Active Scene (SP-UX-72)', () => {
-    mockUseScene.mockReturnValue({ data: { ...scene, status: 'Active' } })
-
-    renderPage()
+    renderPage(sceneContext('Active'))
 
     expect(screen.getByLabelText('Title')).toBeInTheDocument()
   })
 
   it('says a Finished Scene can not be changed and offers only the way back instead of the form (SP-UX-73)', () => {
-    mockUseScene.mockReturnValue({ data: { ...scene, status: 'Finished' } })
-
-    renderPage()
+    renderPage(sceneContext('Finished'))
 
     expect(screen.getByRole('heading', { level: 1, name: 'Add Handout' })).toBeInTheDocument()
     expect(screen.getByText("This Scene is finished and can't be changed.")).toBeInTheDocument()
@@ -158,32 +139,11 @@ describe('AddHandoutPage', () => {
     expect(screen.getByRole('link', { name: 'Back to the Scene' })).toHaveAttribute('href', '/campaigns/c1/scenarios/s1/scenes/a1')
   })
 
-  it('shows the Scene not-found page to a Player and when the Scene is unknown, and enables no query for a Player (SP-UX-74)', () => {
-    mockUseCampaign.mockReturnValue({ data: { id: 'c1', role: 'Player' } })
-    const { unmount } = renderPage()
-    expect(screen.getByRole('heading', { level: 1, name: "We couldn't find that Scene" })).toBeInTheDocument()
-    expect(mockUseScene).toHaveBeenLastCalledWith('c1', 's1', 'a1', false)
-    unmount()
-
-    mockUseCampaign.mockReturnValue({ data: { id: 'c1', role: 'Keeper' } })
-    mockUseScene.mockReturnValue({ data: null })
-    renderPage()
-    expect(screen.getByRole('heading', { level: 1, name: "We couldn't find that Scene" })).toBeInTheDocument()
-  })
-
-  it('shows the Scene not-found page when a save answers 404', () => {
+  it('shows the not-found page of the owner when a save answers 404', () => {
     mockUseCreate.mockReturnValue(creating({ isError: true, error: new HandoutNotFoundError() }))
 
     renderPage()
 
-    expect(screen.getByRole('heading', { level: 1, name: "We couldn't find that Scene" })).toBeInTheDocument()
-  })
-
-  it('shows a Skeleton while the Scene loads', () => {
-    mockUseScene.mockReturnValue({ data: undefined })
-
-    const { container } = renderPage()
-
-    expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'The Scene was not found' })).toBeInTheDocument()
   })
 })

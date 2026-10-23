@@ -27,6 +27,9 @@ vi.mock('@/scenario-preparation/components/scenario-list-section/scenario-list-s
 vi.mock('@/scenario-preparation/components/non-player-entity-summary-section/non-player-entity-summary-section', () => ({
   NonPlayerEntitySummarySection: () => <h2>Non-Player Entities</h2>,
 }))
+vi.mock('@/scenario-preparation/components/item-summary-section/item-summary-section', () => ({
+  ItemSummarySection: () => <h2>Items</h2>,
+}))
 
 const keeperCampaign = {
   id: 'c1',
@@ -46,7 +49,7 @@ describe('CampaignPage (the overview)', () => {
     routerState.location.state = {}
   })
 
-  it('shows the Player what needs them, then who is at the table, then the Wall, and no Scenarios, Non-Player Entities, Invite or Rules options (CO-UX-3, CO-UX-14, SP-UX-9, SP-UX-28)', () => {
+  it('shows the Player what needs them, then who is at the table, then the Wall, and no Scenarios, Non-Player Entities, Items, Invite or Rules options (CO-UX-3, CO-UX-14, SP-UX-9, SP-UX-28, SP-UX-90)', () => {
     mockUseCampaign.mockReturnValue({ data: playerCampaign })
 
     render(<CampaignPage campaignId="c1" />)
@@ -59,7 +62,7 @@ describe('CampaignPage (the overview)', () => {
   })
 
   // specs/campaign-overview/ux.md section 3 and specs/scenario-preparation/ux.md section 2: the Keeper's Scenarios follow "At the table".
-  it('shows the Keeper what needs them, then who is at the table, then the Scenarios, then the Non-Player Entities, then the Wall (CO-UX-3, SP-UX-1, SP-UX-28)', () => {
+  it('shows the Keeper what needs them, then who is at the table, then the Scenarios, then the Non-Player Entities, then the Items, then the Wall (CO-UX-3, SP-UX-1, SP-UX-28, SP-UX-90)', () => {
     mockUseCampaign.mockReturnValue({ data: keeperCampaign })
 
     render(<CampaignPage campaignId="c1" />)
@@ -69,6 +72,7 @@ describe('CampaignPage (the overview)', () => {
       'At the table',
       'Scenarios',
       'Non-Player Entities',
+      'Items',
       'Wall',
     ])
   })

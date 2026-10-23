@@ -30,6 +30,7 @@ const scene: Scene = {
       playerFacingDescription: null,
     },
   ],
+  itemLinks: [],
   handouts: [],
 }
 

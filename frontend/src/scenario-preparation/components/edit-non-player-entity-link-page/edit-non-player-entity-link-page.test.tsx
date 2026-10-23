@@ -46,6 +46,7 @@ const scene: Scene = {
       playerFacingDescription: description,
     },
   ],
+  itemLinks: [],
   handouts: [],
 }
 

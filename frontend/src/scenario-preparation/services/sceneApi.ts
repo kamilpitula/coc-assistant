@@ -5,7 +5,7 @@ import { SCENE_FIELD_MESSAGES, type SceneFieldErrors } from '@/scenario-preparat
 import { readErrorKeys } from '@/scenario-preparation/services/validationProblem'
 import type { Scene, SceneInput, SceneSummary } from '@/scenario-preparation/types/Scene'
 
-const sceneStatusSchema = z.enum(['Prepared', 'Active', 'Finished'])
+export const sceneStatusSchema = z.enum(['Prepared', 'Active', 'Finished'])
 
 // Strict, so a field the contract does not name (such as a position) is rejected instead of silently passed on.
 const sceneSummarySchema = z.strictObject({
@@ -33,6 +33,12 @@ export const nonPlayerEntityLinkSchema = z.strictObject({
   playerFacingDescription: richTextSchema.nullable(),
 })
 
+// The link carries the Item's id and live name only: it has no fields of its own (design record PBI-SP-008, D2).
+export const itemLinkSchema = z.strictObject({
+  id: z.string(),
+  item: z.strictObject({ id: z.string(), name: z.string() }),
+})
+
 // A Handout in a Scene's list: no content and no position (design record PBI-SP-005, D2).
 export const handoutSummarySchema = z.strictObject({
   id: z.string(),
@@ -45,12 +51,15 @@ const sceneSchema = sceneSummarySchema.extend({
   location: z.string(),
   keeperNotes: richTextSchema.nullable(),
   nonPlayerEntityLinks: z.array(nonPlayerEntityLinkSchema),
+  itemLinks: z.array(itemLinkSchema),
   handouts: z.array(handoutSummarySchema),
 })
 
 const sceneListSchema = z.strictObject({ scenes: z.array(sceneSummarySchema) })
 
 export const sceneQueryKeys = {
+  /** Every Scenario and Scene query of the Campaign, for example after an Item that Scenes link is deleted. */
+  inCampaign: (campaignId: string) => ['campaigns', campaignId, 'scenarios'] as const,
   all: (campaignId: string, scenarioId: string) => ['campaigns', campaignId, 'scenarios', scenarioId, 'scenes'] as const,
   list: (campaignId: string, scenarioId: string) => ['campaigns', campaignId, 'scenarios', scenarioId, 'scenes', 'list'] as const,
   detail: (campaignId: string, scenarioId: string, sceneId: string) =>

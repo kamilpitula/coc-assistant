@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { handoutQueryKeys, StaleHandoutOrderError } from '@/scenario-preparation/services/handoutApi'
 import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
+import { sceneOwner } from '@/scenario-preparation/test-support/handoutOwnerFixtures'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import type { RichTextDocument } from '@/shared/types/RichText'
 
@@ -37,6 +38,7 @@ const scene: Scene = {
   location: '',
   keeperNotes: null,
   nonPlayerEntityLinks: [],
+  itemLinks: [],
   handouts: [{ id: 'h1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door' }],
 }
 
@@ -53,12 +55,12 @@ describe('Handout hooks', () => {
     api.getHandout.mockResolvedValue(handout)
     const { wrapper } = setup()
 
-    const disabled = renderHook(() => useHandout('c1', 's1', 'a1', 'h1', false), { wrapper })
-    const enabled = renderHook(() => useHandout('c1', 's1', 'a1', 'h1', true), { wrapper })
+    const disabled = renderHook(() => useHandout(sceneOwner, 'h1', false), { wrapper })
+    const enabled = renderHook(() => useHandout(sceneOwner, 'h1', true), { wrapper })
 
     await waitFor(() => expect(enabled.result.current.data).toEqual(handout))
     expect(disabled.result.current.fetchStatus).toBe('idle')
-    expect(api.getHandout).toHaveBeenCalledWith('token', 'c1', 's1', 'a1', 'h1')
+    expect(api.getHandout).toHaveBeenCalledWith('token', sceneOwner, 'h1')
   })
 
   it('creates a Handout with the token and ids, then invalidates the Scene', async () => {
@@ -66,10 +68,10 @@ describe('Handout hooks', () => {
     const { client, wrapper } = setup()
     const invalidate = vi.spyOn(client, 'invalidateQueries')
 
-    const { result } = renderHook(() => useCreateHandout('c1', 's1', 'a1'), { wrapper })
+    const { result } = renderHook(() => useCreateHandout(sceneOwner), { wrapper })
     await act(() => result.current.mutateAsync(input))
 
-    expect(api.createHandout).toHaveBeenCalledWith('token', 'c1', 's1', 'a1', input)
+    expect(api.createHandout).toHaveBeenCalledWith('token', sceneOwner, input)
     expect(invalidate).toHaveBeenCalledWith({ queryKey: sceneQueryKeys.detail('c1', 's1', 'a1') })
   })
 
@@ -78,11 +80,11 @@ describe('Handout hooks', () => {
     const { client, wrapper } = setup()
     const invalidate = vi.spyOn(client, 'invalidateQueries')
 
-    const { result } = renderHook(() => useEditHandout('c1', 's1', 'a1', 'h1'), { wrapper })
+    const { result } = renderHook(() => useEditHandout(sceneOwner, 'h1'), { wrapper })
     await act(() => result.current.mutateAsync(input))
 
-    expect(api.editHandout).toHaveBeenCalledWith('token', 'c1', 's1', 'a1', 'h1', input)
-    expect(client.getQueryData(handoutQueryKeys.detail('c1', 's1', 'a1', 'h1'))).toEqual({ ...handout, title: 'Renamed' })
+    expect(api.editHandout).toHaveBeenCalledWith('token', sceneOwner, 'h1', input)
+    expect(client.getQueryData(handoutQueryKeys.detail(sceneOwner, 'h1'))).toEqual({ ...handout, title: 'Renamed' })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: sceneQueryKeys.detail('c1', 's1', 'a1') })
   })
 
@@ -91,10 +93,10 @@ describe('Handout hooks', () => {
     const { client, wrapper } = setup()
     const invalidate = vi.spyOn(client, 'invalidateQueries')
 
-    const { result } = renderHook(() => useEditHandout('c1', 's1', 'a1', 'h1'), { wrapper })
+    const { result } = renderHook(() => useEditHandout(sceneOwner, 'h1'), { wrapper })
     await act(() => result.current.mutateAsync(input))
 
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: handoutQueryKeys.file('c1', 's1', 'a1', 'h1') })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: handoutQueryKeys.file(sceneOwner, 'h1') })
   })
 
   it('loads the stored file of a Handout as a Blob with the token and ids, only when enabled', async () => {
@@ -102,25 +104,25 @@ describe('Handout hooks', () => {
     api.getHandoutFile.mockResolvedValue(blob)
     const { wrapper } = setup()
 
-    const disabled = renderHook(() => useHandoutFile('c1', 's1', 'a1', 'h1', false), { wrapper })
-    const enabled = renderHook(() => useHandoutFile('c1', 's1', 'a1', 'h1', true), { wrapper })
+    const disabled = renderHook(() => useHandoutFile(sceneOwner, 'h1', false), { wrapper })
+    const enabled = renderHook(() => useHandoutFile(sceneOwner, 'h1', true), { wrapper })
 
     await waitFor(() => expect(enabled.result.current.data).toBe(blob))
     expect(disabled.result.current.fetchStatus).toBe('idle')
-    expect(api.getHandoutFile).toHaveBeenCalledWith('token', 'c1', 's1', 'a1', 'h1')
+    expect(api.getHandoutFile).toHaveBeenCalledWith('token', sceneOwner, 'h1')
   })
 
   it('deletes a Handout, removes its cache entry, then invalidates the Scene', async () => {
     api.deleteHandout.mockResolvedValue(undefined)
     const { client, wrapper } = setup()
-    client.setQueryData(handoutQueryKeys.detail('c1', 's1', 'a1', 'h1'), handout)
+    client.setQueryData(handoutQueryKeys.detail(sceneOwner, 'h1'), handout)
     const invalidate = vi.spyOn(client, 'invalidateQueries')
 
-    const { result } = renderHook(() => useDeleteHandout('c1', 's1', 'a1', 'h1'), { wrapper })
+    const { result } = renderHook(() => useDeleteHandout(sceneOwner, 'h1'), { wrapper })
     await act(() => result.current.mutateAsync())
 
-    expect(api.deleteHandout).toHaveBeenCalledWith('token', 'c1', 's1', 'a1', 'h1')
-    expect(client.getQueryData(handoutQueryKeys.detail('c1', 's1', 'a1', 'h1'))).toBeUndefined()
+    expect(api.deleteHandout).toHaveBeenCalledWith('token', sceneOwner, 'h1')
+    expect(client.getQueryData(handoutQueryKeys.detail(sceneOwner, 'h1'))).toBeUndefined()
     expect(invalidate).toHaveBeenCalledWith({ queryKey: sceneQueryKeys.detail('c1', 's1', 'a1') })
   })
 
@@ -130,17 +132,17 @@ describe('Handout hooks', () => {
     const { client, wrapper } = setup()
     client.setQueryData(sceneQueryKeys.detail('c1', 's1', 'a1'), scene)
 
-    const { result } = renderHook(() => useReorderHandouts('c1', 's1', 'a1'), { wrapper })
+    const { result } = renderHook(() => useReorderHandouts(sceneOwner), { wrapper })
     await act(() => result.current.mutateAsync(['h2']))
 
-    expect(api.reorderHandouts).toHaveBeenCalledWith('token', 'c1', 's1', 'a1', ['h2'])
+    expect(api.reorderHandouts).toHaveBeenCalledWith('token', sceneOwner, ['h2'])
     expect(client.getQueryData(sceneQueryKeys.detail('c1', 's1', 'a1'))).toEqual({ ...scene, handouts: reordered })
   })
 
   it('reloads the Scene when the order is stale, and leaves the cache alone on other failures', async () => {
     const { client, wrapper } = setup()
     const invalidate = vi.spyOn(client, 'invalidateQueries')
-    const { result } = renderHook(() => useReorderHandouts('c1', 's1', 'a1'), { wrapper })
+    const { result } = renderHook(() => useReorderHandouts(sceneOwner), { wrapper })
 
     api.reorderHandouts.mockRejectedValueOnce(new Error('boom'))
     await act(() => result.current.mutateAsync(['h1']).catch(() => undefined))

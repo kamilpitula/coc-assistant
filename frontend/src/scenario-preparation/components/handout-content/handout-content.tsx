@@ -3,14 +3,13 @@ import type { ComponentType } from 'react'
 import { HandoutDocument } from '@/scenario-preparation/components/handout-document/handout-document'
 import { HandoutImage } from '@/scenario-preparation/components/handout-image/handout-image'
 import { ReadAloudText } from '@/scenario-preparation/components/read-aloud-text/read-aloud-text'
+import type { HandoutOwner } from '@/scenario-preparation/services/handoutOwner'
 import { isFileHandout, type Handout, type HandoutKind } from '@/scenario-preparation/types/Handout'
 import { RichTextView } from '@/shared/components/rich-text-view/rich-text-view'
 
 interface HandoutContentProps {
   handout: Handout
-  campaignId: string
-  scenarioId: string
-  sceneId: string
+  owner: HandoutOwner
 }
 
 function ReadAloudView({ handout }: HandoutContentProps) {
@@ -30,12 +29,12 @@ function TextView({ handout }: HandoutContentProps) {
   )
 }
 
-function ImageView({ handout, campaignId, scenarioId, sceneId }: HandoutContentProps) {
-  return isFileHandout(handout) ? <HandoutImage campaignId={campaignId} scenarioId={scenarioId} sceneId={sceneId} handout={handout} /> : null
+function ImageView({ handout, owner }: HandoutContentProps) {
+  return isFileHandout(handout) ? <HandoutImage owner={owner} handout={handout} /> : null
 }
 
-function DocumentView({ handout, campaignId, scenarioId, sceneId }: HandoutContentProps) {
-  return isFileHandout(handout) ? <HandoutDocument campaignId={campaignId} scenarioId={scenarioId} sceneId={sceneId} handout={handout} /> : null
+function DocumentView({ handout, owner }: HandoutContentProps) {
+  return isFileHandout(handout) ? <HandoutDocument owner={owner} handout={handout} /> : null
 }
 
 // One view per kind (ux.md section 56); a Map is the Image view with the full content width.

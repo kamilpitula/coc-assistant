@@ -27,26 +27,26 @@ public class HandoutServiceTests : IDisposable
         Guid scenarioId, Guid sceneId, string title = "Arrival", string? content = Text, HandoutKind? kind = HandoutKind.ReadAloud, HandoutVisibility? visibility = HandoutVisibility.PlayerFacing, Guid? campaignId = null)
     {
         using var context = _builder.Fixture.CreateContext();
-        return await _builder.CreateHandoutService(context).CreateAsync(campaignId ?? _builder.CampaignId, Keeper, scenarioId, sceneId, kind, visibility, title, content, CancellationToken.None);
+        return await _builder.CreateHandoutService(context).CreateAsync(campaignId ?? _builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), kind, visibility, title, content, CancellationToken.None);
     }
 
     private async Task<HandoutWriteResult> EditAsync(
         Guid scenarioId, Guid sceneId, Guid handoutId, string title = "Renamed", string? content = Other, HandoutKind? kind = HandoutKind.Text, HandoutVisibility? visibility = HandoutVisibility.KeeperFacing, Guid? campaignId = null)
     {
         using var context = _builder.Fixture.CreateContext();
-        return await _builder.CreateHandoutService(context).EditAsync(campaignId ?? _builder.CampaignId, Keeper, scenarioId, sceneId, handoutId, kind, visibility, title, content, CancellationToken.None);
+        return await _builder.CreateHandoutService(context).EditAsync(campaignId ?? _builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), handoutId, kind, visibility, title, content, CancellationToken.None);
     }
 
     private async Task<HandoutRemoveOutcome> RemoveAsync(Guid scenarioId, Guid sceneId, Guid handoutId)
     {
         using var context = _builder.Fixture.CreateContext();
-        return await _builder.CreateHandoutService(context).RemoveAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, handoutId, CancellationToken.None);
+        return await _builder.CreateHandoutService(context).RemoveAsync(_builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), handoutId, CancellationToken.None);
     }
 
     private async Task<HandoutReorderResult> ReorderAsync(Guid scenarioId, Guid sceneId, params Guid[] handoutIds)
     {
         using var context = _builder.Fixture.CreateContext();
-        return await _builder.CreateHandoutService(context).ReorderAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, handoutIds, CancellationToken.None);
+        return await _builder.CreateHandoutService(context).ReorderAsync(_builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), handoutIds, CancellationToken.None);
     }
 
     private async Task<IReadOnlyList<HandoutSummaryView>> StoredHandoutsAsync(Guid scenarioId, Guid sceneId) =>
@@ -77,8 +77,8 @@ public class HandoutServiceTests : IDisposable
         using var context = _builder.Fixture.CreateContext();
         var service = _builder.CreateHandoutService(context);
 
-        var found = await service.GetAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, handout.Id, CancellationToken.None);
-        var unknown = await service.GetAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, Guid.NewGuid(), CancellationToken.None);
+        var found = await service.GetAsync(_builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), handout.Id, CancellationToken.None);
+        var unknown = await service.GetAsync(_builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), Guid.NewGuid(), CancellationToken.None);
 
         Assert.Equal(handout, found);
         Assert.Null(unknown);
@@ -102,11 +102,11 @@ public class HandoutServiceTests : IDisposable
         var recording = new RecordingSceneRepository(new EfSceneRepository(context));
         var service = _builder.CreateHandoutService(context, recording);
 
-        var got = await service.GetAsync(campaignId, accountId, scenarioId, sceneId, handout.Id, CancellationToken.None);
-        var created = await service.CreateAsync(campaignId, accountId, scenarioId, sceneId, HandoutKind.Text, HandoutVisibility.KeeperFacing, "X", Text, CancellationToken.None);
-        var edited = await service.EditAsync(campaignId, accountId, scenarioId, sceneId, handout.Id, HandoutKind.Text, HandoutVisibility.KeeperFacing, "X", Text, CancellationToken.None);
-        var removed = await service.RemoveAsync(campaignId, accountId, scenarioId, sceneId, handout.Id, CancellationToken.None);
-        var reordered = await service.ReorderAsync(campaignId, accountId, scenarioId, sceneId, [handout.Id], CancellationToken.None);
+        var got = await service.GetAsync(campaignId, accountId, new SceneHandoutOwnerReference(scenarioId, sceneId), handout.Id, CancellationToken.None);
+        var created = await service.CreateAsync(campaignId, accountId, new SceneHandoutOwnerReference(scenarioId, sceneId), HandoutKind.Text, HandoutVisibility.KeeperFacing, "X", Text, CancellationToken.None);
+        var edited = await service.EditAsync(campaignId, accountId, new SceneHandoutOwnerReference(scenarioId, sceneId), handout.Id, HandoutKind.Text, HandoutVisibility.KeeperFacing, "X", Text, CancellationToken.None);
+        var removed = await service.RemoveAsync(campaignId, accountId, new SceneHandoutOwnerReference(scenarioId, sceneId), handout.Id, CancellationToken.None);
+        var reordered = await service.ReorderAsync(campaignId, accountId, new SceneHandoutOwnerReference(scenarioId, sceneId), [handout.Id], CancellationToken.None);
 
         Assert.Null(got);
         Assert.Equal(HandoutWriteOutcome.NotFound, created.Outcome);

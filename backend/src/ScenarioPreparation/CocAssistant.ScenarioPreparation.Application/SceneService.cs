@@ -12,6 +12,7 @@ public class SceneService
     private readonly IScenarioRepository _scenarios;
     private readonly ISceneRepository _scenes;
     private readonly INonPlayerEntityDirectory _directory;
+    private readonly IItemDirectory _itemDirectory;
     private readonly IHandoutFileStore _fileStore;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<SceneService> _logger;
@@ -21,6 +22,7 @@ public class SceneService
         IScenarioRepository scenarios,
         ISceneRepository scenes,
         INonPlayerEntityDirectory directory,
+        IItemDirectory itemDirectory,
         IHandoutFileStore fileStore,
         TimeProvider timeProvider,
         ILogger<SceneService> logger)
@@ -29,6 +31,7 @@ public class SceneService
         _scenarios = scenarios;
         _scenes = scenes;
         _directory = directory;
+        _itemDirectory = itemDirectory;
         _fileStore = fileStore;
         _timeProvider = timeProvider;
         _logger = logger;
@@ -77,7 +80,7 @@ public class SceneService
 
         _scenes.Add(creation.Scene);
         await _scenes.SaveChangesAsync(cancellationToken);
-        return new SceneWriteResult(SceneWriteOutcome.Saved, ToDetail(creation.Scene, []));
+        return new SceneWriteResult(SceneWriteOutcome.Saved, ToDetail(creation.Scene, [], []));
     }
 
     /// <summary>Replaces a Scene's title, location, and Keeper notes; its place in the order is unchanged.</summary>
@@ -173,17 +176,20 @@ public class SceneService
 
     private static IReadOnlyList<SceneSummaryView> ToSummaries(IEnumerable<Scene> scenes) => scenes.Select(ToSummary).ToList();
 
-    // The Campaign's entity list is read only when the Scene has links to name.
+    // The Campaign's entity and Item lists are read only when the Scene has links to name.
     private async Task<SceneDetailView> ToDetailAsync(Scene scene, CancellationToken cancellationToken)
     {
         var entities = scene.NonPlayerEntityLinks.Count == 0
             ? []
             : await _directory.ListForCampaignAsync(scene.CampaignId, cancellationToken);
-        return ToDetail(scene, NonPlayerEntityLinkViews.Create(scene.NonPlayerEntityLinks, entities));
+        var items = scene.ItemLinks.Count == 0
+            ? []
+            : await _itemDirectory.ListForCampaignAsync(scene.CampaignId, cancellationToken);
+        return ToDetail(scene, NonPlayerEntityLinkViews.Create(scene.NonPlayerEntityLinks, entities), ItemLinkViews.Create(scene.ItemLinks, items));
     }
 
-    private static SceneDetailView ToDetail(Scene scene, IReadOnlyList<NonPlayerEntityLinkView> links) =>
-        new(scene.Id, scene.Title, scene.Location, scene.KeeperNotes, scene.Status, scene.StartedAt, scene.FinishedAt, links, scene.Handouts.Select(HandoutViews.ToSummary).ToList());
+    private static SceneDetailView ToDetail(Scene scene, IReadOnlyList<NonPlayerEntityLinkView> links, IReadOnlyList<ItemLinkView> itemLinks) =>
+        new(scene.Id, scene.Title, scene.Location, scene.KeeperNotes, scene.Status, scene.StartedAt, scene.FinishedAt, links, itemLinks, scene.Handouts.Select(HandoutViews.ToSummary).ToList());
 
     private static SceneWriteOutcome ToWriteOutcome(SceneFieldsOutcome outcome) => outcome switch
     {

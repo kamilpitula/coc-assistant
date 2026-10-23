@@ -1,4 +1,5 @@
 import type { HandoutSummary } from '@/scenario-preparation/types/Handout'
+import type { ItemLink } from '@/scenario-preparation/types/Item'
 import type { NonPlayerEntitySummary, NonPlayerEntityType } from '@/scenario-preparation/types/NonPlayerEntity'
 import type { RichTextDocument } from '@/shared/types/RichText'
 
@@ -27,13 +28,14 @@ export interface NonPlayerEntityLink {
 }
 
 /**
- * A Scene with its location ("" when empty), rich-text Keeper notes (null when none), its links in the order linked, and its
- * Handouts in stored order (without their text).
+ * A Scene with its location ("" when empty), rich-text Keeper notes (null when none), its Non-Player Entity links and Item links
+ * in the order linked, and its Handouts in stored order (without their text).
  */
 export interface Scene extends SceneSummary {
   location: string
   keeperNotes: RichTextDocument | null
   nonPlayerEntityLinks: NonPlayerEntityLink[]
+  itemLinks: ItemLink[]
   handouts: HandoutSummary[]
 }
 

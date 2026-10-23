@@ -13,9 +13,25 @@ public class ScenarioPreparationDbContext : DbContext
 
     public DbSet<NonPlayerEntityLink> NonPlayerEntityLinks => Set<NonPlayerEntityLink>();
 
+    public DbSet<Item> Items => Set<Item>();
+
+    public DbSet<ItemLink> ItemLinks => Set<ItemLink>();
+
     public DbSet<HumanNpc> HumanNpcs => Set<HumanNpc>();
 
     public DbSet<MythosCreature> MythosCreatures => Set<MythosCreature>();
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        DeleteOrphanedHandouts();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        DeleteOrphanedHandouts();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -96,12 +112,58 @@ public class ScenarioPreparationDbContext : DbContext
             builder.HasIndex("MythosCreatureId");
         });
 
-        // A Handout is a child of its Scene in one Handouts table (ADR 0020); removing a Prepared Scene removes its Handouts.
+        // An Item is its own aggregate and table, referencing its Campaign by id only (ADR 0013, ADR 0022). It has no holder column:
+        // who holds an Item is read through a port.
+        modelBuilder.Entity<Item>(builder =>
+        {
+            builder.HasKey(item => item.Id);
+            builder.Property(item => item.Id).ValueGeneratedNever();
+            builder.Property(item => item.CampaignId).IsRequired();
+            builder.Property(item => item.Name).IsRequired().HasMaxLength(Item.NameMaxLength);
+            builder.Property(item => item.PlayerFacingDescription).IsRequired();
+            builder.Property(item => item.KeeperNotes);
+            builder.Property(item => item.CreatedAt).IsRequired().HasConversion(
+                createdAt => createdAt.UtcDateTime,
+                stored => new DateTimeOffset(DateTime.SpecifyKind(stored, DateTimeKind.Utc)));
+
+            // Serves the Campaign list read.
+            builder.HasIndex(item => item.CampaignId);
+        });
+
+        // An Item link is a child of its Scene in its own table (ADR 0022). Its Scene and Item keys are in-context foreign keys that
+        // cascade, so removing a Prepared Scene or deleting an Item removes its links atomically.
+        modelBuilder.Entity<Scene>().HasMany(scene => scene.ItemLinks)
+            .WithOne()
+            .HasForeignKey(link => link.SceneId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Scene>().Navigation(scene => scene.ItemLinks).UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        modelBuilder.Entity<ItemLink>(builder =>
+        {
+            builder.HasKey(link => link.Id);
+            builder.Property(link => link.Id).ValueGeneratedNever();
+            builder.HasOne<Item>().WithMany().HasForeignKey(link => link.ItemId).OnDelete(DeleteBehavior.Cascade);
+            builder.Property(link => link.CreatedAt).IsRequired().HasConversion(
+                createdAt => createdAt.UtcDateTime,
+                stored => new DateTimeOffset(DateTime.SpecifyKind(stored, DateTimeKind.Utc)));
+
+            // A Scene links an Item at most once.
+            builder.HasIndex(link => new { link.SceneId, link.ItemId }).IsUnique();
+            builder.HasIndex(link => link.ItemId);
+        });
+
+        // A Handout is a child of its Scene or of its Item in one Handouts table (ADR 0020); removing a Prepared Scene or deleting an
+        // Item removes its Handouts.
         modelBuilder.Entity<Scene>().HasMany(scene => scene.Handouts)
             .WithOne()
             .HasForeignKey(handout => handout.SceneId)
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<Scene>().Navigation(scene => scene.Handouts).UsePropertyAccessMode(PropertyAccessMode.Field);
+        modelBuilder.Entity<Item>().HasMany(item => item.Handouts)
+            .WithOne()
+            .HasForeignKey(handout => handout.ItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Item>().Navigation(item => item.Handouts).UsePropertyAccessMode(PropertyAccessMode.Field);
 
         modelBuilder.Entity<Handout>(builder =>
         {
@@ -128,8 +190,14 @@ public class ScenarioPreparationDbContext : DbContext
                 "(Kind IN ('ReadAloud', 'Text') AND Content IS NOT NULL AND FileKey IS NULL AND FileName IS NULL AND FileMediaType IS NULL AND FileSizeBytes IS NULL) "
                 + "OR (Kind IN ('Image', 'Document', 'Map') AND Content IS NULL AND FileKey IS NOT NULL AND FileName IS NOT NULL AND FileMediaType IS NOT NULL AND FileSizeBytes IS NOT NULL)"));
 
-            // Serves the Scene's order read; deliberately not unique (ADR 0014).
+            // Every Handout has exactly one owner, a Scene or an Item (ADR 0020).
+            builder.ToTable(table => table.HasCheckConstraint(
+                "CK_Handouts_OneOwner",
+                "(SceneId IS NOT NULL AND ItemId IS NULL) OR (SceneId IS NULL AND ItemId IS NOT NULL)"));
+
+            // Serve the owner's order read; deliberately not unique (ADR 0014).
             builder.HasIndex(handout => new { handout.SceneId, handout.Position });
+            builder.HasIndex(handout => new { handout.ItemId, handout.Position });
         });
 
         // A Human NPC is its own aggregate and table (D6 of PBI-SP-003); the type is the table. The NPC Profile is a
@@ -181,6 +249,20 @@ public class ScenarioPreparationDbContext : DbContext
             // Serves the Campaign list read.
             builder.HasIndex(mythosCreature => mythosCreature.CampaignId);
         });
+    }
+
+    // A Handout has two optional owner keys (ADR 0020), so removing one from its owner's list would only null its owner key and
+    // break CK_Handouts_OneOwner. A Handout that lost its only owner is deleted instead, as a required relationship would do.
+    private void DeleteOrphanedHandouts()
+    {
+        ChangeTracker.DetectChanges();
+        var orphans = ChangeTracker.Entries<Handout>()
+            .Where(entry => entry.State == EntityState.Modified && entry.Entity.SceneId is null && entry.Entity.ItemId is null)
+            .ToList();
+        foreach (var orphan in orphans)
+        {
+            orphan.State = EntityState.Deleted;
+        }
     }
 
     private static readonly ValueConverter<DateTimeOffset?, DateTime?> NullableUtc = new(

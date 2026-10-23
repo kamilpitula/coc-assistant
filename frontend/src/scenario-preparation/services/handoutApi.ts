@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { authHeaders, bearerHeaders } from '@/campaign-play/services/authHeaders'
 import { handoutFileTooLargeMessage, type HandoutFileFamily } from '@/scenario-preparation/services/handoutFile'
+import { describeHandoutOwner, type HandoutOwner } from '@/scenario-preparation/services/handoutOwner'
 import { handoutSummarySchema, richTextSchema, SceneFinishedError } from '@/scenario-preparation/services/sceneApi'
 import { readValidationProblems } from '@/scenario-preparation/services/validationProblem'
 import {
@@ -50,14 +51,13 @@ const handoutSchema = z.union([richTextHandoutSchema, fileHandoutSchema])
 const handoutListSchema = z.strictObject({ handouts: z.array(handoutSummarySchema) })
 
 export const handoutQueryKeys = {
-  detail: (campaignId: string, scenarioId: string, sceneId: string, handoutId: string) =>
-    ['campaigns', campaignId, 'scenarios', scenarioId, 'scenes', sceneId, 'handouts', handoutId] as const,
+  /** One Handout, keyed under its owner so that reloading the owner reaches it. */
+  detail: (owner: HandoutOwner, handoutId: string) => [...describeHandoutOwner(owner).handoutsKey, handoutId] as const,
   /** The stored file of a file Handout, under the Handout so that a write to the Handout can invalidate it. */
-  file: (campaignId: string, scenarioId: string, sceneId: string, handoutId: string) =>
-    ['campaigns', campaignId, 'scenarios', scenarioId, 'scenes', sceneId, 'handouts', handoutId, 'file'] as const,
+  file: (owner: HandoutOwner, handoutId: string) => [...describeHandoutOwner(owner).handoutsKey, handoutId, 'file'] as const,
 }
 
-/** The API answered 404: the Handout, or its Scene, is outside the caller's visibility or gone. */
+/** The API answered 404: the Handout, or its owner, is outside the caller's visibility or gone. */
 export class HandoutNotFoundError extends Error {
   constructor() {
     super('The Handout was not found')
@@ -76,15 +76,15 @@ export class HandoutValidationError extends Error {
   }
 }
 
-/** The API answered 409 to a delete: only a Handout on a Prepared Scene can be deleted. */
+/** The API answered 409 to a delete: only a Handout on a Prepared Scene, or of an Item that is not in play, can be deleted. */
 export class HandoutNotDeletableError extends Error {
   constructor() {
-    super('The Scene is not Prepared')
+    super('The Handout can not be deleted now')
     this.name = 'HandoutNotDeletableError'
   }
 }
 
-/** The API answered 409 to a reorder: the requested order is not the Scene's current set of Handouts. */
+/** The API answered 409 to a reorder: the requested order is not the owner's current set of Handouts. */
 export class StaleHandoutOrderError extends Error {
   constructor() {
     super('The Handout order is stale')
@@ -100,8 +100,7 @@ const FIELDS: Record<string, HandoutField> = {
   file: 'file',
 }
 
-const handoutsUrl = (campaignId: string, scenarioId: string, sceneId: string): string =>
-  `/api/campaigns/${campaignId}/scenarios/${scenarioId}/scenes/${sceneId}/handouts`
+const handoutsUrl = (owner: HandoutOwner): string => describeHandoutOwner(owner).handoutsUrl
 
 async function readFieldErrors(response: Response): Promise<HandoutFieldErrors> {
   const errors: HandoutFieldErrors = {}
@@ -114,7 +113,7 @@ async function readFieldErrors(response: Response): Promise<HandoutFieldErrors> 
   return errors
 }
 
-// For Handout writes other than delete and reorder, a 409 only means the Scene is Finished.
+// For Handout writes other than delete and reorder, a 409 only means the Scene is Finished; an Item is never Finished.
 async function failWrite(response: Response, description: string): Promise<never> {
   if (response.status === 404) {
     throw new HandoutNotFoundError()
@@ -154,12 +153,10 @@ function toFormData(input: FileHandoutInput): FormData {
 /** Calls GET .../handouts/{handoutId}; null when the API answers 404. */
 export async function getHandout(
   accessToken: string,
-  campaignId: string,
-  scenarioId: string,
-  sceneId: string,
+  owner: HandoutOwner,
   handoutId: string,
 ): Promise<Handout | null> {
-  const response = await fetch(`${handoutsUrl(campaignId, scenarioId, sceneId)}/${handoutId}`, { headers: authHeaders(accessToken) })
+  const response = await fetch(`${handoutsUrl(owner)}/${handoutId}`, { headers: authHeaders(accessToken) })
 
   if (response.status === 404) {
     return null
@@ -171,27 +168,23 @@ export async function getHandout(
   return handoutSchema.parse(await response.json())
 }
 
-/** Calls POST .../handouts, which adds a Handout after the Scene's others: JSON for text, multipart for a file kind. */
+/** Calls POST .../handouts, which adds a Handout after the owner's others: JSON for text, multipart for a file kind. */
 export async function createHandout(
   accessToken: string,
-  campaignId: string,
-  scenarioId: string,
-  sceneId: string,
+  owner: HandoutOwner,
   input: HandoutInput,
 ): Promise<Handout> {
   return isFileInput(input)
-    ? createFileHandout(accessToken, campaignId, scenarioId, sceneId, input)
-    : createRichTextHandout(accessToken, campaignId, scenarioId, sceneId, input)
+    ? createFileHandout(accessToken, owner, input)
+    : createRichTextHandout(accessToken, owner, input)
 }
 
 async function createRichTextHandout(
   accessToken: string,
-  campaignId: string,
-  scenarioId: string,
-  sceneId: string,
+  owner: HandoutOwner,
   input: RichTextHandoutInput,
 ): Promise<Handout> {
-  const response = await fetch(handoutsUrl(campaignId, scenarioId, sceneId), {
+  const response = await fetch(handoutsUrl(owner), {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: toBody(input),
@@ -207,26 +200,22 @@ async function createRichTextHandout(
 /** Calls PUT .../handouts/{handoutId}, which replaces the kind, visibility, title, and content or file. */
 export async function editHandout(
   accessToken: string,
-  campaignId: string,
-  scenarioId: string,
-  sceneId: string,
+  owner: HandoutOwner,
   handoutId: string,
   input: HandoutInput,
 ): Promise<Handout> {
   return isFileInput(input)
-    ? editFileHandout(accessToken, campaignId, scenarioId, sceneId, handoutId, input)
-    : editRichTextHandout(accessToken, campaignId, scenarioId, sceneId, handoutId, input)
+    ? editFileHandout(accessToken, owner, handoutId, input)
+    : editRichTextHandout(accessToken, owner, handoutId, input)
 }
 
 async function editRichTextHandout(
   accessToken: string,
-  campaignId: string,
-  scenarioId: string,
-  sceneId: string,
+  owner: HandoutOwner,
   handoutId: string,
   input: RichTextHandoutInput,
 ): Promise<Handout> {
-  const response = await fetch(`${handoutsUrl(campaignId, scenarioId, sceneId)}/${handoutId}`, {
+  const response = await fetch(`${handoutsUrl(owner)}/${handoutId}`, {
     method: 'PUT',
     headers: authHeaders(accessToken),
     body: toBody(input),
@@ -242,12 +231,10 @@ async function editRichTextHandout(
 /** Calls POST .../handouts as a multipart form, which adds an Image, Document, or Map Handout. */
 export async function createFileHandout(
   accessToken: string,
-  campaignId: string,
-  scenarioId: string,
-  sceneId: string,
+  owner: HandoutOwner,
   input: FileHandoutInput,
 ): Promise<Handout> {
-  const response = await fetch(handoutsUrl(campaignId, scenarioId, sceneId), {
+  const response = await fetch(handoutsUrl(owner), {
     method: 'POST',
     headers: bearerHeaders(accessToken),
     body: toFormData(input),
@@ -263,13 +250,11 @@ export async function createFileHandout(
 /** Calls PUT .../handouts/{handoutId} as a multipart form; without a file part the stored file is kept. */
 export async function editFileHandout(
   accessToken: string,
-  campaignId: string,
-  scenarioId: string,
-  sceneId: string,
+  owner: HandoutOwner,
   handoutId: string,
   input: FileHandoutInput,
 ): Promise<Handout> {
-  const response = await fetch(`${handoutsUrl(campaignId, scenarioId, sceneId)}/${handoutId}`, {
+  const response = await fetch(`${handoutsUrl(owner)}/${handoutId}`, {
     method: 'PUT',
     headers: bearerHeaders(accessToken),
     body: toFormData(input),
@@ -285,12 +270,10 @@ export async function editFileHandout(
 /** Calls GET .../handouts/{handoutId}/file with the bearer token and returns the stored bytes; an img tag cannot send the header. */
 export async function getHandoutFile(
   accessToken: string,
-  campaignId: string,
-  scenarioId: string,
-  sceneId: string,
+  owner: HandoutOwner,
   handoutId: string,
 ): Promise<Blob> {
-  const response = await fetch(`${handoutsUrl(campaignId, scenarioId, sceneId)}/${handoutId}/file`, { headers: bearerHeaders(accessToken) })
+  const response = await fetch(`${handoutsUrl(owner)}/${handoutId}/file`, { headers: bearerHeaders(accessToken) })
 
   if (response.status === 404) {
     throw new HandoutNotFoundError()
@@ -305,12 +288,10 @@ export async function getHandoutFile(
 /** Calls DELETE .../handouts/{handoutId}. A Handout that is already gone (404) counts as deleted; a 409 is refused. */
 export async function deleteHandout(
   accessToken: string,
-  campaignId: string,
-  scenarioId: string,
-  sceneId: string,
+  owner: HandoutOwner,
   handoutId: string,
 ): Promise<void> {
-  const response = await fetch(`${handoutsUrl(campaignId, scenarioId, sceneId)}/${handoutId}`, {
+  const response = await fetch(`${handoutsUrl(owner)}/${handoutId}`, {
     method: 'DELETE',
     headers: authHeaders(accessToken),
   })
@@ -326,12 +307,10 @@ export async function deleteHandout(
 /** Calls PUT .../handouts/order with every Handout id; returns the Handouts in the new order. */
 export async function reorderHandouts(
   accessToken: string,
-  campaignId: string,
-  scenarioId: string,
-  sceneId: string,
+  owner: HandoutOwner,
   handoutIds: string[],
 ): Promise<HandoutSummary[]> {
-  const response = await fetch(`${handoutsUrl(campaignId, scenarioId, sceneId)}/order`, {
+  const response = await fetch(`${handoutsUrl(owner)}/order`, {
     method: 'PUT',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ handoutIds }),

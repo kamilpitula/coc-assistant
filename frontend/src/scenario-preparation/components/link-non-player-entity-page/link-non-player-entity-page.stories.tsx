@@ -23,6 +23,7 @@ const prepared: Scene = {
   startedAt: null,
   finishedAt: null,
   nonPlayerEntityLinks: [],
+  itemLinks: [],
   handouts: [],
 }
 const entities = [

@@ -1,10 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { userEvent, within } from 'storybook/test'
 
-import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
-import { keeperCampaign, playerCampaign, STORY_CAMPAIGN_ID } from '@/campaign-play/test-support/rosterFixtures'
+import { STORY_CAMPAIGN_ID } from '@/campaign-play/test-support/rosterFixtures'
 import { handoutQueryKeys } from '@/scenario-preparation/services/handoutApi'
-import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
+import { sceneHandoutContext } from '@/scenario-preparation/services/handoutOwnerContext'
 import type { Handout } from '@/scenario-preparation/types/Handout'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
@@ -40,32 +39,32 @@ const prepared: Scene = {
   startedAt: null,
   finishedAt: null,
   nonPlayerEntityLinks: [],
+  itemLinks: [],
   handouts: [{ id: HANDOUT_ID, kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door' }],
 }
 const active: Scene = { ...prepared, status: 'Active', startedAt: '2026-10-12T19:40:00Z' }
 const finished: Scene = { ...active, status: 'Finished', finishedAt: '2026-10-12T21:05:00Z' }
 
 interface StoryArgs {
-  role?: 'Keeper' | 'Player'
   scene?: Scene
   /** Omitted: the Handout is still loading. */
   handout?: Handout | null
   tokens?: 'pending' | 'failing' | 'granted'
 }
 
-function PageStory({ role = 'Keeper', scene = prepared, handout, tokens = 'pending' }: StoryArgs) {
+const OWNER = { type: 'scene', campaignId: STORY_CAMPAIGN_ID, scenarioId: SCENARIO_ID, sceneId: SCENE_ID } as const
+
+function PageStory({ scene = prepared, handout, tokens = 'pending' }: StoryArgs) {
   return (
     <StoryMsal tokens={tokens}>
       <StoryProviders
         seed={(client) => {
-          client.setQueryData(campaignQueryKeys.detail(STORY_CAMPAIGN_ID), role === 'Keeper' ? keeperCampaign : playerCampaign)
-          client.setQueryData(sceneQueryKeys.detail(STORY_CAMPAIGN_ID, SCENARIO_ID, SCENE_ID), scene)
           if (handout !== undefined) {
-            client.setQueryData(handoutQueryKeys.detail(STORY_CAMPAIGN_ID, SCENARIO_ID, SCENE_ID, HANDOUT_ID), handout)
+            client.setQueryData(handoutQueryKeys.detail(OWNER, HANDOUT_ID), handout)
           }
         }}
       >
-        <HandoutPage campaignId={STORY_CAMPAIGN_ID} scenarioId={SCENARIO_ID} sceneId={SCENE_ID} handoutId={HANDOUT_ID} />
+        <HandoutPage owner={OWNER} handoutId={HANDOUT_ID} context={sceneHandoutContext(scene, () => undefined)} />
       </StoryProviders>
     </StoryMsal>
   )
@@ -138,5 +137,3 @@ export const Loading: Story = { args: { handout: undefined } }
 export const LoadError: Story = { args: { handout: undefined, tokens: 'failing' } }
 
 export const HandoutNotFound: Story = { args: { handout: null } }
-
-export const PlayerSeesSceneNotFound: Story = { args: { role: 'Player' } }

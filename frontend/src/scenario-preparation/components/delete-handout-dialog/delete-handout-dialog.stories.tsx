@@ -11,6 +11,7 @@ const meta = {
     pending: false,
     failed: false,
     refused: false,
+    refusedMessage: "This Scene has been started, so this Handout can't be deleted.",
     onConfirm: () => undefined,
     onCancel: () => undefined,
     onCloseAutoFocus: () => undefined,
@@ -27,3 +28,7 @@ export const Deleting: Story = { args: { pending: true } }
 export const Failure: Story = { args: { failed: true } }
 
 export const Refused: Story = { args: { refused: true } }
+
+export const RefusedForAnItem: Story = {
+  args: { refused: true, refusedMessage: "This Item is now part of a Scene that has been played, so this Handout can't be deleted." },
+}

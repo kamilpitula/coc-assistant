@@ -137,7 +137,7 @@ public class SceneApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
             ["finishedAt", "id", "startedAt", "status", "title"],
             listDocument.RootElement.GetProperty("scenes")[0].EnumerateObject().Select(property => property.Name).Order());
         Assert.Equal(
-            ["finishedAt", "handouts", "id", "keeperNotes", "location", "nonPlayerEntityLinks", "startedAt", "status", "title"],
+            ["finishedAt", "handouts", "id", "itemLinks", "keeperNotes", "location", "nonPlayerEntityLinks", "startedAt", "status", "title"],
             detailDocument.RootElement.EnumerateObject().Select(property => property.Name).Order());
     }
 

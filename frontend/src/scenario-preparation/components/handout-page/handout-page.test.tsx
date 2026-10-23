@@ -8,20 +8,20 @@ import {
   HandoutValidationError,
 } from '@/scenario-preparation/services/handoutApi'
 import { SceneFinishedError } from '@/scenario-preparation/services/sceneApi'
+import { itemOwner, sceneContext, sceneOwner } from '@/scenario-preparation/test-support/handoutOwnerFixtures'
 import type { Handout } from '@/scenario-preparation/types/Handout'
-import type { Scene } from '@/scenario-preparation/types/Scene'
+import type { HandoutOwnerContext } from '@/scenario-preparation/types/HandoutOwnerContext'
 import { navigateSpy } from '@/shared/test-support/routerMock'
 import type { RichTextDocument } from '@/shared/types/RichText'
 
 import { HandoutPage } from './handout-page'
 
-// specs/scenario-preparation/ux.md sections 42 and 44; SP-UX-68 to SP-UX-76, SP-A11Y-37, SP-A11Y-38, SP-A11Y-40, SP-A11Y-41.
+// specs/scenario-preparation/ux.md sections 42, 44, and 65; SP-UX-68 to SP-UX-76, SP-UX-100, SP-A11Y-37, SP-A11Y-38, SP-A11Y-40,
+// SP-A11Y-41. The page takes its owner and what the owner allows as a context; the Scene gating is in scene-handout-route.
 
-const { mockUseHandoutFile, mockUseCampaign, mockUseScene, mockUseHandout, mockUseEdit, mockUseDelete, editMutate, deleteMutate, editReset, deleteReset, refetchScene, refetchHandout } =
+const { mockUseHandoutFile, mockUseHandout, mockUseEdit, mockUseDelete, editMutate, deleteMutate, editReset, deleteReset, refetchScene, refetchHandout } =
   vi.hoisted(() => ({
     mockUseHandoutFile: vi.fn(),
-    mockUseCampaign: vi.fn(),
-    mockUseScene: vi.fn(),
     mockUseHandout: vi.fn(),
     mockUseEdit: vi.fn(),
     mockUseDelete: vi.fn(),
@@ -34,8 +34,6 @@ const { mockUseHandoutFile, mockUseCampaign, mockUseScene, mockUseHandout, mockU
   }))
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
-vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
-vi.mock('@/scenario-preparation/hooks/useScenes', () => ({ useScene: mockUseScene }))
 vi.mock('@/scenario-preparation/hooks/useHandouts', () => ({
   useHandout: mockUseHandout,
   useHandoutFile: mockUseHandoutFile,
@@ -56,21 +54,10 @@ const content: RichTextDocument = {
 
 const readAloud: Handout = { id: 'h1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door', content }
 const textHandout: Handout = { ...readAloud, kind: 'Text', visibility: 'KeeperFacing', title: 'A letter' }
-const prepared: Scene = {
-  id: 'a1',
-  title: 'The Corbitt House',
-  location: '',
-  keeperNotes: null,
-  status: 'Prepared',
-  startedAt: null,
-  finishedAt: null,
-  nonPlayerEntityLinks: [],
-  handouts: [{ id: 'h1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door' }],
-}
-const active: Scene = { ...prepared, status: 'Active', startedAt: '2026-10-12T19:40:00Z' }
-const finished: Scene = { ...active, status: 'Finished', finishedAt: '2026-10-12T21:05:00Z' }
+const prepared = (): HandoutOwnerContext => sceneContext('Prepared', refetchScene)
+const active = (): HandoutOwnerContext => sceneContext('Active', refetchScene)
+const finished = (): HandoutOwnerContext => sceneContext('Finished', refetchScene)
 
-const sceneQuery = (data: Scene | null | undefined, overrides: Record<string, unknown> = {}) => ({ data, isError: false, refetch: refetchScene, ...overrides })
 const handoutQuery = (data: Handout | null | undefined, overrides: Record<string, unknown> = {}) => ({
   data,
   isError: false,
@@ -94,13 +81,24 @@ const deleting = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-const renderPage = () => render(<HandoutPage campaignId="c1" scenarioId="s1" sceneId="a1" handoutId="h1" />)
+// A Walter Corbitt's diary Item that is part of a Scene that has been played: it can be changed but its Handouts can not be deleted.
+const itemContext = (overrides: Partial<HandoutOwnerContext> = {}): HandoutOwnerContext => ({
+  ownerLabel: 'Item',
+  ownerName: "Walter Corbitt's diary",
+  backLabel: 'Back to the Item',
+  canChange: true,
+  canDelete: true,
+  lockedMessage: null,
+  deleteRefusedMessage: "This Item is now part of a Scene that has been played, so this Handout can't be deleted.",
+  refetchOwner: refetchScene,
+  ...overrides,
+})
+
+const renderPage = (context: HandoutOwnerContext = prepared()) => render(<HandoutPage owner={sceneOwner} handoutId="h1" context={context} />)
 
 describe('HandoutPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseCampaign.mockReturnValue({ data: { id: 'c1', role: 'Keeper' } })
-    mockUseScene.mockReturnValue(sceneQuery(prepared))
     mockUseHandout.mockReturnValue(handoutQuery(readAloud))
     mockUseEdit.mockReturnValue(editing())
     mockUseDelete.mockReturnValue(deleting())
@@ -141,10 +139,9 @@ describe('HandoutPage', () => {
     })
 
     it('keeps the image viewable but offers no Edit or Delete on a Finished Scene (SP-UX-73, SP-UX-89)', () => {
-      mockUseScene.mockReturnValue(sceneQuery(finished))
       mockUseHandout.mockReturnValue(handoutQuery(map))
 
-      renderPage()
+      renderPage(finished())
 
       expect(screen.getByRole('link', { name: 'Download corbitt-house.png' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
@@ -190,9 +187,7 @@ describe('HandoutPage', () => {
     })
 
     it('offers only Edit on an Active Scene and says why it can not be deleted (SP-UX-72)', () => {
-      mockUseScene.mockReturnValue(sceneQuery(active))
-
-      renderPage()
+      renderPage(active())
 
       expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Delete Handout' })).not.toBeInTheDocument()
@@ -200,9 +195,7 @@ describe('HandoutPage', () => {
     })
 
     it('offers no action on a Finished Scene and says it can not be changed (SP-UX-73)', () => {
-      mockUseScene.mockReturnValue(sceneQuery(finished))
-
-      renderPage()
+      renderPage(finished())
 
       expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Delete Handout' })).not.toBeInTheDocument()
@@ -210,19 +203,14 @@ describe('HandoutPage', () => {
       expect(screen.getByText('A cold draught greets you.')).toBeInTheDocument()
     })
 
-    it('shows a Skeleton while the Scene or the Handout loads, with aria-busy', () => {
-      mockUseScene.mockReturnValue(sceneQuery(undefined))
-      const { container, unmount } = renderPage()
-      expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
-      unmount()
-
-      mockUseScene.mockReturnValue(sceneQuery(prepared))
+    it('shows a Skeleton while the Handout loads, with aria-busy', () => {
       mockUseHandout.mockReturnValue(handoutQuery(undefined))
-      const second = renderPage()
-      expect(second.container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+      const { container } = renderPage()
+
+      expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
     })
 
-    it('says it could not load the Handout and offers Try again', async () => {
+    it('says it could not load the Handout and offers Try again, which reloads the Handout and its owner', async () => {
       mockUseHandout.mockReturnValue(handoutQuery(undefined, { isError: true }))
       renderPage()
 
@@ -230,28 +218,75 @@ describe('HandoutPage', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
       expect(refetchHandout).toHaveBeenCalled()
+      expect(refetchScene).toHaveBeenCalled()
+    })
+
+    it('asks the Handout for its owner and enables the query, because the caller has checked the Keeper', () => {
+      renderPage()
+
+      expect(mockUseHandout).toHaveBeenLastCalledWith(sceneOwner, 'h1', true)
+    })
+  })
+
+  describe('an Item as the owner (SP-UX-100)', () => {
+    const renderItem = (context: HandoutOwnerContext = itemContext()) =>
+      render(<HandoutPage owner={itemOwner} handoutId="h1" context={context} />)
+
+    it('says Item, names it, and links back to the Item', () => {
+      renderItem()
+
+      expect(screen.getByText("Item: Walter Corbitt's diary")).toBeInTheDocument()
+      expect(screen.queryByText(/^Scene:/)).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Back to the Item' })).toHaveAttribute('href', '/campaigns/c1/items/k1')
+    })
+
+    it('offers Edit and Delete Handout while the Item is not in play', () => {
+      renderItem()
+
+      expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Delete Handout' })).toBeInTheDocument()
+    })
+
+    it('offers Edit but not Delete Handout while the Item is part of a played Scene, and says why', () => {
+      renderItem(
+        itemContext({
+          canDelete: false,
+          lockedMessage: "This Item is part of a Scene that has been played, so its Handouts can't be deleted.",
+        }),
+      )
+
+      expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Delete Handout' })).not.toBeInTheDocument()
+      expect(screen.getByText("This Item is part of a Scene that has been played, so its Handouts can't be deleted.")).toBeInTheDocument()
+    })
+
+    it('shows the refusal that names the Item when the delete is refused, and closing reloads the Item', async () => {
+      mockUseDelete.mockReturnValue(deleting({ isError: true, error: new HandoutNotDeletableError() }))
+      renderItem()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Delete Handout' }))
+      expect(screen.getByRole('alert')).toHaveTextContent("This Item is now part of a Scene that has been played, so this Handout can't be deleted.")
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+      expect(refetchScene).toHaveBeenCalledTimes(1)
+    })
+
+    it('opens the Item after a delete with "{title} deleted." and focus on the Handouts heading', async () => {
+      deleteMutate.mockImplementation((_variables, options) => options.onSuccess())
+      renderItem()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Delete Handout' }))
+      await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete Handout' }))
+
+      expect(navigateSpy).toHaveBeenCalledWith({
+        to: '/campaigns/$campaignId/items/$itemId',
+        params: { campaignId: 'c1', itemId: 'k1' },
+        state: { statusMessage: 'The front door deleted.', focusHandoutsHeading: true },
+      })
     })
   })
 
   describe('not found (SP-UX-74)', () => {
-    it('shows the Scene not-found page to a Player and enables no query', () => {
-      mockUseCampaign.mockReturnValue({ data: { id: 'c1', role: 'Player' } })
-
-      renderPage()
-
-      expect(screen.getByRole('heading', { level: 1, name: "We couldn't find that Scene" })).toBeInTheDocument()
-      expect(mockUseScene).toHaveBeenLastCalledWith('c1', 's1', 'a1', false)
-      expect(mockUseHandout).toHaveBeenLastCalledWith('c1', 's1', 'a1', 'h1', false)
-    })
-
-    it('shows the Scene not-found page for an unknown Scene', () => {
-      mockUseScene.mockReturnValue(sceneQuery(null))
-
-      renderPage()
-
-      expect(screen.getByRole('heading', { level: 1, name: "We couldn't find that Scene" })).toBeInTheDocument()
-    })
-
     it('shows the Handout not-found page for an unknown Handout id', () => {
       mockUseHandout.mockReturnValue(handoutQuery(null))
 

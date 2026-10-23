@@ -26,7 +26,7 @@ public class HandoutsController : ScenarioPreparationControllerBase
             return Unauthorized();
         }
 
-        var handout = await _handoutService.GetAsync(campaignId, accountId.Value, scenarioId, sceneId, handoutId, cancellationToken);
+        var handout = await _handoutService.GetAsync(campaignId, accountId.Value, new SceneHandoutOwnerReference(scenarioId, sceneId), handoutId, cancellationToken);
         return handout is null ? NotFound() : Ok(ToResponse(handout));
     }
 
@@ -43,8 +43,7 @@ public class HandoutsController : ScenarioPreparationControllerBase
         var result = await _handoutService.CreateAsync(
             campaignId,
             accountId.Value,
-            scenarioId,
-            sceneId,
+            new SceneHandoutOwnerReference(scenarioId, sceneId),
             ParseKind(request.Kind),
             ParseVisibility(request.Visibility),
             request.Title ?? string.Empty,
@@ -52,7 +51,7 @@ public class HandoutsController : ScenarioPreparationControllerBase
             cancellationToken);
         return result.Outcome == HandoutWriteOutcome.Saved
             ? StatusCode(StatusCodes.Status201Created, ToResponse(result.Handout!))
-            : Failure(result.Outcome, request.Title);
+            : this.JsonWriteFailure(result.Outcome, request.Title);
     }
 
     /// <summary>Replaces the Handout's kind, visibility, title, and content. 409 when the Scene is Finished.</summary>
@@ -74,8 +73,7 @@ public class HandoutsController : ScenarioPreparationControllerBase
         var result = await _handoutService.EditAsync(
             campaignId,
             accountId.Value,
-            scenarioId,
-            sceneId,
+            new SceneHandoutOwnerReference(scenarioId, sceneId),
             handoutId,
             ParseKind(request.Kind),
             ParseVisibility(request.Visibility),
@@ -84,7 +82,7 @@ public class HandoutsController : ScenarioPreparationControllerBase
             cancellationToken);
         return result.Outcome == HandoutWriteOutcome.Saved
             ? Ok(ToResponse(result.Handout!))
-            : Failure(result.Outcome, request.Title);
+            : this.JsonWriteFailure(result.Outcome, request.Title);
     }
 
     /// <summary>Deletes the Handout. 409 unless the Scene is Prepared.</summary>
@@ -97,13 +95,7 @@ public class HandoutsController : ScenarioPreparationControllerBase
             return Unauthorized();
         }
 
-        var outcome = await _handoutService.RemoveAsync(campaignId, accountId.Value, scenarioId, sceneId, handoutId, cancellationToken);
-        return outcome switch
-        {
-            HandoutRemoveOutcome.Removed => NoContent(),
-            HandoutRemoveOutcome.NotPrepared => Problem(statusCode: StatusCodes.Status409Conflict, title: HandoutProblemMessages.NotPreparedTitle),
-            _ => NotFound(),
-        };
+        return this.RemoveResult(await _handoutService.RemoveAsync(campaignId, accountId.Value, new SceneHandoutOwnerReference(scenarioId, sceneId), handoutId, cancellationToken));
     }
 
     /// <summary>Replaces the order with the full list of the Scene's Handout ids; a stale or foreign list is a 409.</summary>
@@ -116,15 +108,7 @@ public class HandoutsController : ScenarioPreparationControllerBase
             return Unauthorized();
         }
 
-        var result = await _handoutService.ReorderAsync(campaignId, accountId.Value, scenarioId, sceneId, request.HandoutIds, cancellationToken);
-        return result.Outcome switch
-        {
-            HandoutReorderOutcome.Reordered => Ok(new HandoutListResponse(result.Handouts!.Select(ToSummaryResponse).ToList())),
-            HandoutReorderOutcome.DuplicateIds => Invalid(HandoutProblemMessages.HandoutIdsKey, HandoutProblemMessages.DuplicateIds),
-            HandoutReorderOutcome.DoesNotMatchHandouts => Problem(statusCode: StatusCodes.Status409Conflict, title: HandoutProblemMessages.StaleOrderTitle),
-            HandoutReorderOutcome.Finished => Problem(statusCode: StatusCodes.Status409Conflict, title: SceneProblemTitles.Finished),
-            _ => NotFound(),
-        };
+        return this.ReorderResult(await _handoutService.ReorderAsync(campaignId, accountId.Value, new SceneHandoutOwnerReference(scenarioId, sceneId), request.HandoutIds, cancellationToken));
     }
 
     internal static HandoutSummaryResponse ToSummaryResponse(HandoutSummaryView view) =>
@@ -156,23 +140,4 @@ public class HandoutsController : ScenarioPreparationControllerBase
         nameof(HandoutVisibility.KeeperFacing) => HandoutVisibility.KeeperFacing,
         _ => null,
     };
-
-    private ActionResult Failure(HandoutWriteOutcome outcome, string? submittedTitle) =>
-        outcome switch
-        {
-            HandoutWriteOutcome.InvalidTitle => Invalid(HandoutProblemMessages.TitleKey, HandoutProblemMessages.Title(submittedTitle)),
-            HandoutWriteOutcome.InvalidKind => Invalid(HandoutProblemMessages.KindKey, HandoutProblemMessages.Kind),
-            HandoutWriteOutcome.KindChangeNotAllowed => Invalid(HandoutProblemMessages.KindKey, HandoutProblemMessages.KindChangeNotAllowed),
-            HandoutWriteOutcome.InvalidVisibility => Invalid(HandoutProblemMessages.VisibilityKey, HandoutProblemMessages.Visibility),
-            HandoutWriteOutcome.MissingContent => Invalid(HandoutProblemMessages.ContentKey, HandoutProblemMessages.MissingContent),
-            HandoutWriteOutcome.InvalidContent => Invalid(HandoutProblemMessages.ContentKey, HandoutProblemMessages.InvalidContent),
-            HandoutWriteOutcome.Finished => Problem(statusCode: StatusCodes.Status409Conflict, title: SceneProblemTitles.Finished),
-            _ => NotFound(),
-        };
-
-    private ActionResult Invalid(string field, string message)
-    {
-        ModelState.AddModelError(field, message);
-        return ValidationProblem(ModelState);
-    }
 }

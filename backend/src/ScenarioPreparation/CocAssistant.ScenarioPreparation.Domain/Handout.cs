@@ -1,10 +1,11 @@
 namespace CocAssistant.ScenarioPreparation.Domain;
 
 /// <summary>
-/// A Handout of a Scene (CONTEXT.md, Handout): a Read-aloud or Text Handout holding validated Lexical JSON content, or an
+/// A Handout of a Scene or an Item (CONTEXT.md, Handout): a Read-aloud or Text Handout holding validated Lexical JSON content, or an
 /// Image, Document, or Map Handout holding one stored file, with an explicit visibility and a title. Exactly one of
-/// <see cref="Content"/> and <see cref="File"/> is set. A child of its Scene, created and changed only through Scene methods
-/// (ADR 0019, ADR 0020). Position is written only by the Scene when adding and reordering and is never exposed to clients (ADR 0014).
+/// <see cref="Content"/> and <see cref="File"/> is set, and exactly one of <see cref="SceneId"/> and <see cref="ItemId"/>. A child
+/// of its owner, created and changed only through the owner's methods (ADR 0019, ADR 0020). Position is written only by
+/// <see cref="HandoutCollection"/> and is never exposed to clients (ADR 0014).
 /// </summary>
 public class Handout
 {
@@ -14,7 +15,8 @@ public class Handout
     public const long FileMaxBytes = 20 * 1024 * 1024;
 
     public Guid Id { get; private set; }
-    public Guid SceneId { get; private set; }
+    public Guid? SceneId { get; private set; }
+    public Guid? ItemId { get; private set; }
     public HandoutKind Kind { get; private set; }
     public HandoutVisibility Visibility { get; private set; }
 
@@ -40,10 +42,11 @@ public class Handout
         Title = string.Empty;
     }
 
-    private Handout(Guid sceneId, HandoutKind kind, HandoutVisibility visibility, string title, string? content, HandoutFile? file, int position, DateTimeOffset createdAt)
+    private Handout(HandoutOwner owner, HandoutKind kind, HandoutVisibility visibility, string title, string? content, HandoutFile? file, int position, DateTimeOffset createdAt)
     {
         Id = Guid.NewGuid();
-        SceneId = sceneId;
+        SceneId = owner.SceneId;
+        ItemId = owner.ItemId;
         Kind = kind;
         Visibility = visibility;
         Title = title;
@@ -53,11 +56,11 @@ public class Handout
         CreatedAt = createdAt;
     }
 
-    internal static Handout Create(Guid sceneId, HandoutKind kind, HandoutVisibility visibility, string trimmedTitle, string content, int position, DateTimeOffset now) =>
-        new(sceneId, kind, visibility, trimmedTitle, content, null, position, now);
+    internal static Handout Create(HandoutOwner owner, HandoutKind kind, HandoutVisibility visibility, string trimmedTitle, string content, int position, DateTimeOffset now) =>
+        new(owner, kind, visibility, trimmedTitle, content, null, position, now);
 
-    internal static Handout CreateFile(Guid sceneId, HandoutKind kind, HandoutVisibility visibility, string trimmedTitle, HandoutFile file, int position, DateTimeOffset now) =>
-        new(sceneId, kind, visibility, trimmedTitle, null, file, position, now);
+    internal static Handout CreateFile(HandoutOwner owner, HandoutKind kind, HandoutVisibility visibility, string trimmedTitle, HandoutFile file, int position, DateTimeOffset now) =>
+        new(owner, kind, visibility, trimmedTitle, null, file, position, now);
 
     internal void Replace(HandoutKind kind, HandoutVisibility visibility, string trimmedTitle, string content)
     {
@@ -79,7 +82,7 @@ public class Handout
         }
     }
 
-    /// <summary>Sets the place in the Scene's order; only the Scene adds and reorders.</summary>
+    /// <summary>Sets the place in the owner's order; only <see cref="HandoutCollection"/> reorders.</summary>
     internal void MoveTo(int position) => Position = position;
 
     /// <summary>

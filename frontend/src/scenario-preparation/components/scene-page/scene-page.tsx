@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
 
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
-import { SceneHandoutSection } from '@/scenario-preparation/components/scene-handout-section/scene-handout-section'
+import { HandoutSection } from '@/scenario-preparation/components/handout-section/handout-section'
+import { SceneItemSection } from '@/scenario-preparation/components/scene-item-section/scene-item-section'
 import { SceneLinkSection } from '@/scenario-preparation/components/scene-link-section/scene-link-section'
 import { RemoveSceneDialog } from '@/scenario-preparation/components/remove-scene-dialog/remove-scene-dialog'
 import { SceneForm } from '@/scenario-preparation/components/scene-form/scene-form'
@@ -81,6 +82,7 @@ interface SceneDetailProps {
 function SceneDetail({ campaignId, scenarioId, scene, sceneUpdatedAt, onRefetch }: SceneDetailProps) {
   const navigationMessage = useRouterState({ select: (state) => state.location.state.statusMessage })
   const focusLinkId = useRouterState({ select: (state) => state.location.state.focusLinkId })
+  const focusItemLinkId = useRouterState({ select: (state) => state.location.state.focusItemLinkId })
   const focusHandoutId = useRouterState({ select: (state) => state.location.state.focusHandoutId })
   const focusHandoutsHeading = useRouterState({ select: (state) => state.location.state.focusHandoutsHeading })
   const edit = useEditScene(campaignId, scenarioId, scene.id)
@@ -149,6 +151,7 @@ function SceneDetail({ campaignId, scenarioId, scene, sceneUpdatedAt, onRefetch 
           editButtonRef={editButtonRef}
           headingRef={headingRef}
           focusLinkId={focusLinkId}
+          focusItemLinkId={focusItemLinkId}
           focusHandoutId={focusHandoutId}
           focusHandoutsHeading={focusHandoutsHeading}
           onEdit={startEditing}
@@ -205,6 +208,7 @@ interface SceneViewProps {
   editButtonRef: RefObject<HTMLButtonElement | null>
   headingRef: RefObject<HTMLHeadingElement | null>
   focusLinkId: string | undefined
+  focusItemLinkId: string | undefined
   focusHandoutId: string | undefined
   focusHandoutsHeading: boolean | undefined
   onEdit: () => void
@@ -220,6 +224,7 @@ function SceneView({
   editButtonRef,
   headingRef,
   focusLinkId,
+  focusItemLinkId,
   focusHandoutId,
   focusHandoutsHeading,
   onEdit,
@@ -242,13 +247,11 @@ function SceneView({
           <p className="text-sm text-muted-foreground">No Keeper notes yet.</p>
         )}
       </section>
-      <SceneHandoutSection
-        campaignId={campaignId}
-        scenarioId={scenarioId}
-        sceneId={scene.id}
-        status={scene.status}
+      <HandoutSection
+        owner={{ type: 'scene', campaignId, scenarioId, sceneId: scene.id }}
+        canChange={scene.status !== 'Finished'}
         handouts={scene.handouts}
-        sceneUpdatedAt={sceneUpdatedAt}
+        ownerUpdatedAt={sceneUpdatedAt}
         focusHandoutId={focusHandoutId}
         focusHeading={focusHandoutsHeading}
       />
@@ -259,6 +262,16 @@ function SceneView({
         status={scene.status}
         links={scene.nonPlayerEntityLinks}
         focusLinkId={focusLinkId}
+        onUnlinked={onUnlinked}
+        onRefetch={onRefetch}
+      />
+      <SceneItemSection
+        campaignId={campaignId}
+        scenarioId={scenarioId}
+        sceneId={scene.id}
+        status={scene.status}
+        links={scene.itemLinks}
+        focusLinkId={focusItemLinkId}
         onUnlinked={onUnlinked}
         onRefetch={onRefetch}
       />

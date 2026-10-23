@@ -1,14 +1,13 @@
 import { HandoutFileFailure, HandoutFileLoading } from '@/scenario-preparation/components/handout-file-status/handout-file-status'
 import { useHandoutFile } from '@/scenario-preparation/hooks/useHandouts'
 import { formatFileSize } from '@/scenario-preparation/services/handoutFile'
+import type { HandoutOwner } from '@/scenario-preparation/services/handoutOwner'
 import { HANDOUT_KIND_LABELS, type FileHandout } from '@/scenario-preparation/types/Handout'
 import { buttonVariants } from '@/shared/components/ui/button'
 import { useObjectUrl } from '@/shared/hooks/useObjectUrl'
 
 interface HandoutImageProps {
-  campaignId: string
-  scenarioId: string
-  sceneId: string
+  owner: HandoutOwner
   handout: FileHandout
 }
 
@@ -16,8 +15,8 @@ interface HandoutImageProps {
  * The content of an Image or Map Handout (specs/scenario-preparation/ux.md section 52): the image fetched with the bearer token,
  * its name and size, and "Open full size" and "Download". A Map spans the content width; an Image is capped at 70vh.
  */
-export function HandoutImage({ campaignId, scenarioId, sceneId, handout }: HandoutImageProps) {
-  const file = useHandoutFile(campaignId, scenarioId, sceneId, handout.id, true)
+export function HandoutImage({ owner, handout }: HandoutImageProps) {
+  const file = useHandoutFile(owner, handout.id, true)
   const url = useObjectUrl(file.data)
   const heading = HANDOUT_KIND_LABELS[handout.kind]
 

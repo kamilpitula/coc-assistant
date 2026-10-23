@@ -2,52 +2,43 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
-import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
 import { DeleteHandoutDialog } from '@/scenario-preparation/components/delete-handout-dialog/delete-handout-dialog'
 import { HandoutBadges } from '@/scenario-preparation/components/handout-badges/handout-badges'
 import { HandoutContent } from '@/scenario-preparation/components/handout-content/handout-content'
 import { HandoutForm } from '@/scenario-preparation/components/handout-form/handout-form'
 import { HandoutNotFound } from '@/scenario-preparation/components/handout-not-found/handout-not-found'
-import { SceneNotFound } from '@/scenario-preparation/components/scene-not-found/scene-not-found'
 import { useDeleteHandout, useEditHandout, useHandout } from '@/scenario-preparation/hooks/useHandouts'
-import { useScene } from '@/scenario-preparation/hooks/useScenes'
 import { HandoutNotDeletableError, HandoutNotFoundError, HandoutValidationError } from '@/scenario-preparation/services/handoutApi'
 import { HANDOUT_SCENE_FINISHED_MEANWHILE } from '@/scenario-preparation/services/handoutForm'
+import { describeHandoutOwner, type HandoutOwner } from '@/scenario-preparation/services/handoutOwner'
 import { SceneFinishedError } from '@/scenario-preparation/services/sceneApi'
 import { isFileHandout, type Handout } from '@/scenario-preparation/types/Handout'
-import type { Scene } from '@/scenario-preparation/types/Scene'
+import type { HandoutOwnerContext } from '@/scenario-preparation/types/HandoutOwnerContext'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 
 interface HandoutPageProps {
-  campaignId: string
-  scenarioId: string
-  sceneId: string
+  /** The Scene or Item whose Handout this is; the caller has already checked that the viewer is the Keeper. */
+  owner: HandoutOwner
   handoutId: string
+  context: HandoutOwnerContext
 }
 
 /**
- * One Handout for its Keeper: a view with "Edit" and "Delete Handout" while the Scene is Prepared, "Edit" while Active, and
- * neither once Finished (specs/scenario-preparation/ux.md section 42). A Player and an unknown Scene get the Scene not-found
- * page and make no request; an unknown Handout, or a 404 on save, gets the Handout not-found page.
+ * One Handout for its Keeper: a view with "Edit" and "Delete Handout" as far as the owner allows, and the sentence that says why
+ * not otherwise (specs/scenario-preparation/ux.md sections 42 and 65). An unknown Handout, or a 404 on save, gets the Handout
+ * not-found page.
  */
-export function HandoutPage({ campaignId, scenarioId, sceneId, handoutId }: HandoutPageProps) {
-  const campaign = useCampaign(campaignId)
-  const isKeeper = campaign.data?.role === 'Keeper'
-  const scene = useScene(campaignId, scenarioId, sceneId, isKeeper)
-  const handout = useHandout(campaignId, scenarioId, sceneId, handoutId, isKeeper)
-  const edit = useEditHandout(campaignId, scenarioId, sceneId, handoutId)
-
-  if (!isKeeper || scene.data === null) {
-    return <SceneNotFound campaignId={campaignId} />
-  }
+export function HandoutPage({ owner, handoutId, context }: HandoutPageProps) {
+  const handout = useHandout(owner, handoutId, true)
+  const edit = useEditHandout(owner, handoutId)
 
   if (handout.data === null || edit.error instanceof HandoutNotFoundError) {
-    return <HandoutNotFound campaignId={campaignId} scenarioId={scenarioId} sceneId={sceneId} />
+    return <HandoutNotFound owner={owner} backLabel={context.backLabel} />
   }
 
-  if (scene.isError || handout.isError) {
+  if (handout.isError) {
     return (
       <div className="flex flex-col items-start gap-3">
         <p className="text-sm">We couldn&apos;t load this Handout.</p>
@@ -55,7 +46,7 @@ export function HandoutPage({ campaignId, scenarioId, sceneId, handoutId }: Hand
           type="button"
           variant="outline"
           onClick={() => {
-            void scene.refetch()
+            context.refetchOwner()
             void handout.refetch()
           }}
         >
@@ -65,7 +56,7 @@ export function HandoutPage({ campaignId, scenarioId, sceneId, handoutId }: Hand
     )
   }
 
-  if (!scene.data || !handout.data) {
+  if (!handout.data) {
     return (
       <div aria-busy="true" className="flex max-w-2xl flex-col gap-3">
         <Skeleton className="h-8 w-64" />
@@ -74,30 +65,19 @@ export function HandoutPage({ campaignId, scenarioId, sceneId, handoutId }: Hand
     )
   }
 
-  return (
-    <HandoutDetail
-      campaignId={campaignId}
-      scenarioId={scenarioId}
-      scene={scene.data}
-      handout={handout.data}
-      edit={edit}
-      onRefetchScene={() => void scene.refetch()}
-    />
-  )
+  return <HandoutDetail owner={owner} context={context} handout={handout.data} edit={edit} />
 }
 
 type FocusTarget = 'edit' | 'heading'
 
 interface HandoutDetailProps {
-  campaignId: string
-  scenarioId: string
-  scene: Scene
+  owner: HandoutOwner
+  context: HandoutOwnerContext
   handout: Handout
   edit: ReturnType<typeof useEditHandout>
-  onRefetchScene: () => void
 }
 
-function HandoutDetail({ campaignId, scenarioId, scene, handout, edit, onRefetchScene }: HandoutDetailProps) {
+function HandoutDetail({ owner, context, handout, edit }: HandoutDetailProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
   const [returnFocusTo, setReturnFocusTo] = useState<FocusTarget | null>(null)
@@ -124,19 +104,15 @@ function HandoutDetail({ campaignId, scenarioId, scene, handout, edit, onRefetch
     setReturnFocusTo(refusedAsFinished ? 'heading' : 'edit')
     setIsEditing(false)
     if (refusedAsFinished) {
-      onRefetchScene()
+      context.refetchOwner()
     }
   }
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <Link
-        to="/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId"
-        params={{ campaignId, scenarioId, sceneId: scene.id }}
-        className={buttonVariants({ variant: 'link', className: 'self-start px-0' })}
-      >
+      <Link {...describeHandoutOwner(owner).ownerPage} className={buttonVariants({ variant: 'link', className: 'self-start px-0' })}>
         <ArrowLeft aria-hidden="true" />
-        Back to the Scene
+        {context.backLabel}
       </Link>
       <p role="status" className="text-sm empty:hidden">
         {justSaved ? 'Handout saved.' : null}
@@ -145,21 +121,21 @@ function HandoutDetail({ campaignId, scenarioId, scene, handout, edit, onRefetch
         <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold break-words outline-none">
           {handout.title}
         </h1>
-        <p className="text-sm break-words text-muted-foreground">Scene: {scene.title}</p>
+        <p className="text-sm break-words text-muted-foreground">
+          {context.ownerLabel}: {context.ownerName}
+        </p>
         <HandoutBadges kind={handout.kind} visibility={handout.visibility} />
       </div>
       {isEditing ? (
         <EditHandoutForm handout={handout} edit={edit} onDone={stopEditing} />
       ) : (
         <HandoutView
-          campaignId={campaignId}
-          scenarioId={scenarioId}
-          scene={scene}
+          owner={owner}
+          context={context}
           handout={handout}
           editButtonRef={editButtonRef}
           headingRef={headingRef}
           onEdit={startEditing}
-          onRefetchScene={onRefetchScene}
         />
       )}
     </div>
@@ -208,57 +184,46 @@ function EditHandoutForm({ handout, edit, onDone }: EditHandoutFormProps) {
 }
 
 interface HandoutViewProps {
-  campaignId: string
-  scenarioId: string
-  scene: Scene
+  owner: HandoutOwner
+  context: HandoutOwnerContext
   handout: Handout
   editButtonRef: RefObject<HTMLButtonElement | null>
   headingRef: RefObject<HTMLHeadingElement | null>
   onEdit: () => void
-  onRefetchScene: () => void
 }
 
-function HandoutView({ campaignId, scenarioId, scene, handout, editButtonRef, headingRef, onEdit, onRefetchScene }: HandoutViewProps) {
+function HandoutView({ owner, context, handout, editButtonRef, headingRef, onEdit }: HandoutViewProps) {
   return (
     <>
-      <HandoutContent handout={handout} campaignId={campaignId} scenarioId={scenarioId} sceneId={scene.id} />
-      {scene.status === 'Finished' ? (
-        <p className="text-sm text-muted-foreground">This Scene is finished and can&apos;t be changed.</p>
-      ) : (
+      <HandoutContent handout={handout} owner={owner} />
+      {context.canChange ? (
         <div className="flex flex-wrap items-center gap-3">
           <Button ref={editButtonRef} type="button" variant="outline" onClick={onEdit}>
             Edit
           </Button>
-          {scene.status === 'Prepared' ? (
-            <DeleteHandoutControl
-              campaignId={campaignId}
-              scenarioId={scenarioId}
-              sceneId={scene.id}
-              handout={handout}
-              headingRef={headingRef}
-              onRefetchScene={onRefetchScene}
-            />
+          {context.canDelete ? (
+            <DeleteHandoutControl owner={owner} context={context} handout={handout} headingRef={headingRef} />
           ) : (
-            <p className="text-sm text-muted-foreground">This Scene has been started, so its Handouts can&apos;t be deleted.</p>
+            <p className="text-sm text-muted-foreground">{context.lockedMessage}</p>
           )}
         </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">{context.lockedMessage}</p>
       )}
     </>
   )
 }
 
 interface DeleteHandoutControlProps {
-  campaignId: string
-  scenarioId: string
-  sceneId: string
+  owner: HandoutOwner
+  context: HandoutOwnerContext
   handout: Handout
   headingRef: RefObject<HTMLHeadingElement | null>
-  onRefetchScene: () => void
 }
 
-function DeleteHandoutControl({ campaignId, scenarioId, sceneId, handout, headingRef, onRefetchScene }: DeleteHandoutControlProps) {
+function DeleteHandoutControl({ owner, context, handout, headingRef }: DeleteHandoutControlProps) {
   const [open, setOpen] = useState(false)
-  const deletion = useDeleteHandout(campaignId, scenarioId, sceneId, handout.id)
+  const deletion = useDeleteHandout(owner, handout.id)
   const navigate = useNavigate()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const closedAfterRefusal = useRef(false)
@@ -268,7 +233,7 @@ function DeleteHandoutControl({ campaignId, scenarioId, sceneId, handout, headin
     closedAfterRefusal.current = refused
     setOpen(false)
     if (refused) {
-      onRefetchScene()
+      context.refetchOwner()
     }
     deletion.reset()
   }
@@ -293,12 +258,12 @@ function DeleteHandoutControl({ campaignId, scenarioId, sceneId, handout, headin
         pending={deletion.isPending}
         failed={deletion.isError && !refused}
         refused={refused}
+        refusedMessage={context.deleteRefusedMessage}
         onConfirm={() =>
           deletion.mutate(undefined, {
             onSuccess: () =>
               void navigate({
-                to: '/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId',
-                params: { campaignId, scenarioId, sceneId },
+                ...describeHandoutOwner(owner).ownerPage,
                 state: { statusMessage: `${handout.title} deleted.`, focusHandoutsHeading: true },
               }),
           })

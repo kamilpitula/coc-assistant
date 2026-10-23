@@ -7,7 +7,7 @@ import { StoryProviders } from '@/shared/storybook/storyProviders'
 
 import { HandoutImage } from './handout-image'
 
-const IDS = { campaignId: 'story-campaign', scenarioId: 'story-scenario', sceneId: 'story-scene' }
+const OWNER = { type: 'scene', campaignId: 'story-campaign', scenarioId: 'story-scenario', sceneId: 'story-scene' } as const
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
 
 const image: FileHandout = {
@@ -33,13 +33,13 @@ function ImageStory({ handout = image, state = 'loaded', tokens = 'pending' }: S
           if (state === 'loaded') {
             const bytes = Uint8Array.from(atob(PNG), (character) => character.charCodeAt(0))
             client.setQueryData(
-              handoutQueryKeys.file(IDS.campaignId, IDS.scenarioId, IDS.sceneId, handout.id),
+              handoutQueryKeys.file(OWNER, handout.id),
               new Blob([bytes], { type: 'image/png' }),
             )
           }
         }}
       >
-        <HandoutImage {...IDS} handout={handout} />
+        <HandoutImage owner={OWNER} handout={handout} />
       </StoryProviders>
     </StoryMsal>
   )

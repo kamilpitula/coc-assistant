@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { sceneOwner } from '@/scenario-preparation/test-support/handoutOwnerFixtures'
 import type { FileHandout } from '@/scenario-preparation/types/Handout'
 
 import { HandoutImage } from './handout-image'
@@ -28,7 +29,7 @@ const query = (overrides: Record<string, unknown> = {}) => ({
   refetch,
   ...overrides,
 })
-const renderImage = (handout: FileHandout) => render(<HandoutImage campaignId="c1" scenarioId="s1" sceneId="a1" handout={handout} />)
+const renderImage = (handout: FileHandout) => render(<HandoutImage owner={sceneOwner} handout={handout} />)
 
 describe('HandoutImage', () => {
   beforeEach(() => {
@@ -75,7 +76,7 @@ describe('HandoutImage', () => {
   it('fetches the file of this Handout for the Keeper', () => {
     renderImage(image)
 
-    expect(mockUseHandoutFile).toHaveBeenCalledWith('c1', 's1', 'a1', 'h2', true)
+    expect(mockUseHandoutFile).toHaveBeenCalledWith(sceneOwner, 'h2', true)
   })
 
   it('shows a busy Skeleton and no actions while loading (SP-UX-88, SP-A11Y-48)', () => {

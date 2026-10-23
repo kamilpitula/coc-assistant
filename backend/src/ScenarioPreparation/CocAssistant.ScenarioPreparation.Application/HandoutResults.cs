@@ -21,12 +21,13 @@ public enum HandoutWriteOutcome
 /// <summary>The Handout when <see cref="HandoutWriteOutcome.Saved"/>, otherwise null.</summary>
 public sealed record HandoutWriteResult(HandoutWriteOutcome Outcome, HandoutView? Handout);
 
-/// <summary>How removing a Handout ended; NotPrepared covers an Active or Finished Scene.</summary>
+/// <summary>How removing a Handout ended; NotPrepared covers an Active or Finished Scene and InPlay an Item that is in play.</summary>
 public enum HandoutRemoveOutcome
 {
     Removed,
     NotFound,
     NotPrepared,
+    InPlay,
 }
 
 /// <summary>How reordering a Scene's Handouts ended.</summary>
@@ -39,7 +40,7 @@ public enum HandoutReorderOutcome
     DoesNotMatchHandouts,
 }
 
-/// <summary>The Scene's Handouts in their new order when <see cref="HandoutReorderOutcome.Reordered"/>, otherwise null.</summary>
+/// <summary>The owner's Handouts in their new order when <see cref="HandoutReorderOutcome.Reordered"/>, otherwise null.</summary>
 public sealed record HandoutReorderResult(HandoutReorderOutcome Outcome, IReadOnlyList<HandoutSummaryView>? Handouts);
 
 /// <summary>Maps the domain's refusals of a Handout write to the application outcomes the controllers translate.</summary>

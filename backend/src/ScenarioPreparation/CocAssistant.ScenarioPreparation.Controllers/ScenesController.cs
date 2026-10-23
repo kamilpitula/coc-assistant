@@ -171,5 +171,6 @@ public class ScenesController : ScenarioPreparationControllerBase
             view.StartedAt,
             view.FinishedAt,
             view.NonPlayerEntityLinks.Select(NonPlayerEntityLinksController.ToResponse).ToList(),
+            view.ItemLinks.Select(ItemLinksController.ToResponse).ToList(),
             view.Handouts.Select(HandoutsController.ToSummaryResponse).ToList());
 }

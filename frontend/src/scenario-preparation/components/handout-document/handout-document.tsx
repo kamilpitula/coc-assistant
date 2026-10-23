@@ -1,14 +1,13 @@
 import { HandoutFileFailure, HandoutFileLoading } from '@/scenario-preparation/components/handout-file-status/handout-file-status'
 import { useHandoutFile } from '@/scenario-preparation/hooks/useHandouts'
 import { formatFileSize } from '@/scenario-preparation/services/handoutFile'
+import type { HandoutOwner } from '@/scenario-preparation/services/handoutOwner'
 import type { FileHandout } from '@/scenario-preparation/types/Handout'
 import { buttonVariants } from '@/shared/components/ui/button'
 import { useObjectUrl } from '@/shared/hooks/useObjectUrl'
 
 interface HandoutDocumentProps {
-  campaignId: string
-  scenarioId: string
-  sceneId: string
+  owner: HandoutOwner
   handout: FileHandout
 }
 
@@ -16,8 +15,8 @@ interface HandoutDocumentProps {
  * The content of a Document Handout (specs/scenario-preparation/ux.md section 53): its name, "PDF, {size}", and "Open" and
  * "Download". The PDF loads with the page so both are plain links on its object URL; there is no inline preview.
  */
-export function HandoutDocument({ campaignId, scenarioId, sceneId, handout }: HandoutDocumentProps) {
-  const file = useHandoutFile(campaignId, scenarioId, sceneId, handout.id, true)
+export function HandoutDocument({ owner, handout }: HandoutDocumentProps) {
+  const file = useHandoutFile(owner, handout.id, true)
   const url = useObjectUrl(file.data)
 
   let body

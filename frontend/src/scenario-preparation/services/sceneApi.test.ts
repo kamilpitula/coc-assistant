@@ -33,8 +33,9 @@ const link = {
   playerFacingName: 'A shape in the cellar',
   playerFacingDescription: notes,
 }
+const itemLink = { id: 'i1', item: { id: 'k1', name: "Walter Corbitt's diary" } }
 const handoutSummary = { id: 'h1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door' }
-const detail = { ...summary, location: 'Arkham', keeperNotes: notes, nonPlayerEntityLinks: [link], handouts: [handoutSummary] }
+const detail = { ...summary, location: 'Arkham', keeperNotes: notes, nonPlayerEntityLinks: [link], itemLinks: [itemLink], handouts: [handoutSummary] }
 
 describe('scene API', () => {
   const fetchMock = vi.fn<typeof fetch>()
@@ -107,6 +108,29 @@ describe('scene API', () => {
       await expect(getScene('token', 'c1', 's1', 'a1')).rejects.toThrow()
 
       fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...summary, location: 'Arkham', keeperNotes: notes }))
+      await expect(getScene('token', 'c1', 's1', 'a1')).rejects.toThrow()
+    })
+
+    it('returns the Item links in the order sent, each as the Item id and its live name', async () => {
+      const second = { id: 'i2', item: { id: 'k2', name: 'The cellar key' } }
+      fetchMock.mockResolvedValue(jsonResponse(200, { ...detail, itemLinks: [itemLink, second] }))
+
+      const scene = await getScene('token', 'c1', 's1', 'a1')
+
+      expect(scene?.itemLinks).toEqual([itemLink, second])
+    })
+
+    it('rejects an Item link with a field beyond the id and name, an Item without a name, and a Scene without Item links', async () => {
+      for (const link of [
+        { ...itemLink, playerFacingName: 'A diary' },
+        { ...itemLink, item: { ...itemLink.item, description: 'A leather diary' } },
+        { ...itemLink, item: { id: 'k1' } },
+      ]) {
+        fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...detail, itemLinks: [link] }))
+        await expect(getScene('token', 'c1', 's1', 'a1')).rejects.toThrow()
+      }
+
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...detail, itemLinks: undefined }))
       await expect(getScene('token', 'c1', 's1', 'a1')).rejects.toThrow()
     })
 

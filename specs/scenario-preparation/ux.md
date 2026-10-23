@@ -41,6 +41,19 @@ Image, Document, and Map Handouts (PBI-SP-007): **Option A, one Add Handout form
 
 They are specified in sections 50 to 58. Design record: [docs/scenario-preparation/issues/07-file-image-and-map-handouts.design.md](../../docs/scenario-preparation/issues/07-file-image-and-map-handouts.design.md).
 
+Items (PBI-SP-008): **Option A, a page per step**, chosen 2026-10-23. It adds:
+- an Overview "Items" section;
+- an Items list with search;
+- a create page;
+- an Item page with a view and an Edit toggle, its own Handouts, and a read-only Scenes section;
+- an "Items" section on the Scene page with a dedicated "Link an Item" page.
+
+An Item is linked to a Scene at most once, and the link has no fields of its own. The Item's name and Player-facing description are what Players see. Alternatives considered:
+- **Option B (link or create in one step from the Scene):** not selected. It adds a second way to create an Item and a two-mode form with two rich-text editors at 320px. It also has a partial-failure state (Item created, link failed).
+- **Option C (a link dialog that links several Items at once):** not selected. It is a second link interaction beside the Non-Player Entity link page, it needs a batch request or has partial failures, and a long list inside a dialog is hard to reflow at 320px.
+
+Items are specified in sections 59 to 70. Design record: [docs/scenario-preparation/issues/08-prepare-campaign-items.design.md](../../docs/scenario-preparation/issues/08-prepare-campaign-items.design.md).
+
 ## 1. Information architecture
 
 ```
@@ -1125,7 +1138,7 @@ Stories cover:
 
 - **Decided (U1, approved 2026-10-22):** the Kind radio has no default, so the Keeper always chooses deliberately. The alternative was preselecting "Text".
 - **Deferred:**
-  - Item Handouts (PBI-SP-008), which extend sections 41 to 44 (Image, Document, and Map Handouts are in sections 50 to 58);
+  - Item Handouts (PBI-SP-008), now specified in section 65 (Image, Document, and Map Handouts are in sections 50 to 58);
   - an image description for screen-reader users beside the title (flag for PBI-SPL-002, where Players see images), thumbnails in the list, drag and drop, and upload progress (PBI-SP-007);
   - revealing a Handout, and a "revealed" marker (PBI-SPL-002);
   - Active and Finished journeys end to end (PBI-SPL-001);
@@ -1285,3 +1298,379 @@ Stories cover:
 - **SP-A11Y-48** Load failures use `role=alert`, and the loading Skeleton region has `aria-busy="true"`. "Adding..." and "Saving..." stay as in SP-A11Y-41 (4.1.3).
 - **SP-A11Y-49** At 320px and 200% zoom, the image, the Map, the preview, long names, and the actions fit without horizontal scrolling, and images scale to the width (1.4.10).
 - **SP-A11Y-50** On edit, a Document's fixed kind is text inside the Kind fieldset, so the legend still names it (1.3.1).
+
+## 59. Items: information architecture
+
+```
+/campaigns/$campaignId                                                         Overview: Keeper-only "Items" section (section 60)
+/campaigns/$campaignId/items                                                   Items list (section 61)
+/campaigns/$campaignId/items/new                                               Create Item (section 62)
+/campaigns/$campaignId/items/$itemId                                           Item page (section 63)
+/campaigns/$campaignId/items/$itemId/handouts/new                              Add Handout to an Item (section 65)
+/campaigns/$campaignId/items/$itemId/handouts/$handoutId                       Item Handout page (section 65)
+/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId/item-links/new    Link an Item (section 64)
+```
+
+- Every page keeps the Campaign header with Overview as the current tab (extends SP-UX-25). No Campaign tab is added (section 21).
+- **Players** get no entry point:
+  - every `/items` URL shows them `item-not-found` without an API call;
+  - the link page shows them `scene-not-found`;
+  - an Item id of another Campaign also shows `item-not-found`.
+- **Naming:** an Item has one name, and Players see it when the Keeper reveals or gives the Item. There is no separate Player-facing name.
+- **Links:** an Item is linked to a Scene at most once. Links are made and removed only on the Scene page; the Item page lists them read-only.
+- **"Played":** an Item is "part of a Scene that has been played" while a Scene that links it is Active or Finished. From PBI-SPL-003, it is also "held by an Investigator" while someone holds it.
+- **Copy:** UI copy says "Item" and "Items". Never write "Gear", "loot", "inventory", "artifact", or "object" (root CONTEXT.md).
+
+## 60. Overview section (`item-summary-section`, Keeper only)
+
+```
+Items                                            (h2)   [Create]
+4 Items.
+View all Items                                   (link)
+```
+
+- **Placement:** a `section` labelled by its `h2`, after "Non-Player Entities" and before the Wall preview ([campaign-overview ux](../campaign-overview/ux.md) section 3).
+- **Count:** "1 Item." or "{n} Items.", taken from the list response.
+- **Actions:** as in section 22:
+  - "Create" is a link styled as a small button to `/items/new`, with the accessible name "Create Item";
+  - the link "View all Items" goes to the list page.
+- **Empty:** "No Items yet." and "Create", with no "View all" link.
+- **Loading:** one Skeleton line with `aria-busy="true"`.
+- **Error:** "We couldn't load the Items." with "Try again".
+- **Players:** the section is not rendered and its query is never sent.
+
+## 61. Items list page (`item-list-page`)
+
+```
+< Back to the Overview
+Items                                             (h1)  [Create]
+Search by name [______________]
+4 shown.                                          (polite live region)
++--------------------------------------------------------------+
+| Name                                  | Scenes               |
+| Walter Corbitt's diary       (link)   | 2                    |
+| The cellar key               (link)   | 0                    |
++--------------------------------------------------------------+
+```
+
+- **Search:** as in section 23, with no type filter. The search resets on every visit.
+- **List:**
+  - a `Table` with Name and Scenes (the number of Scenes that link the Item), sorted by name (`Intl.Collator`, viewer's locale);
+  - Name is a link to the Item page;
+  - below 640px it becomes a `ul`. Each entry shows the name link and a muted line: "Linked to 1 Scene", "Linked to {n} Scenes", or "Not linked to a Scene".
+- **Result count:** "{n} shown.", announced as in section 23 (debounced, never on first load).
+- **No match:** "No Items match this search." with "Clear search", which empties the search and moves focus to the search field.
+- **Empty Campaign:** "No Items yet." and "Create"; the search is not rendered.
+- **Loading:** three Skeleton rows with `aria-busy="true"`.
+- **Error:** "We couldn't load the Items." with "Try again".
+
+## 62. Create page (`create-item-page`, `item-form`)
+
+```
+Create Item                                       (h1)
+Name [________________]
+  Players see the name when you reveal or give this Item.
+Player-facing description                         <rich-text-editor>
+  What the Investigators may learn about it. Players see it only when you reveal or give the Item. You can format text and add links.
+Keeper notes (optional)                           <rich-text-editor>
+[Create]  Cancel
+```
+
+- **Fields:**
+  - Name is an `Input`;
+  - the two rich-text fields use `rich-text-editor` (section 15);
+  - hints are connected with `aria-describedby`;
+  - no field has a `maxLength` attribute.
+- **Validation on submit**, in field order:
+  - "Enter a name."
+  - "Name must be 200 characters or fewer."
+  - "Enter a Player-facing description." (when it is empty or has no visible text)
+  - "Player-facing description is too long. Shorten it and try again." (more than 204,800 bytes)
+  - "Keeper notes are too long. Shorten them and try again."
+- **How errors show:**
+  - inline (`aria-invalid`, `aria-describedby`; the editors use their `invalid` and `describedBy` props);
+  - focus moves to the first invalid field;
+  - a 400 maps each problem to its field by key (`name`, `playerFacingDescription`, `keeperNotes`).
+- **Actions:**
+  - "Create" ("Creating..." while busy, disabled);
+  - "Cancel", a link back to the list page.
+- **Success:**
+  - navigate to the Item page with the navigation status message "Item created.";
+  - the page opens in view;
+  - the list and the Overview count are invalidated.
+- **Failure:** an `Alert` (`role=alert`) "We couldn't create the Item. Try again."; the input is kept.
+- **Unsaved edits:** `useUnsavedChangesPrompt(isDirty)`.
+
+## 63. Item page (`item-page`)
+
+### 63.1 View
+
+```
+< Back to Items
+Item created.                                     (role=status)
+Walter Corbitt's diary                            (h1)
+Held by no one.                                   (muted)
+Player-facing description                         (h2)
+<rich-text-view>
+Keeper notes                                      (h2)
+<rich-text-view, or "No Keeper notes yet.">
+Handouts                                          (h2)  [Add Handout]   (section 65)
+Scenes                                            (h2)
+- The Corbitt House   (link)   Scenario: The Haunting . (o) Active
+[Edit] [Delete Item]
+```
+
+- **Header:**
+  - a link "Back to Items" with an `aria-hidden` ArrowLeft icon;
+  - the `role=status` paragraph;
+  - `h1` with the name (`break-words`, `tabIndex=-1`);
+  - the muted line "Held by no one.".
+- **Rich text:** the Player-facing description and Keeper notes use `rich-text-view` with `headingOffset` 0, so their headings render as `h3` and `h4`.
+- **Handouts:** the shared `handout-section` (section 65).
+- **Scenes (`item-scenes-section`):**
+  - a `ul` in Scenario order, then Scene order;
+  - each entry has the Scene title as a link to the Scene page, the muted "Scenario: {title}", and `scene-status-badge` with its text label;
+  - empty: "Not linked to any Scene yet. Link it from a Scene page.";
+  - there are no link or unlink controls here.
+- **Actions:** outline "Edit" and "Delete Item" (outline, destructive text). Both are always shown, as in section 25.3.
+- **Loading:** a Skeleton for the `h1` and the description, with `aria-busy`.
+- **Error:** "We couldn't load this Item." with "Try again".
+- **Not found (`item-not-found`):**
+  - shown for a 404, for a Player (role check on the client, no API call), and for an Item id of another Campaign;
+  - it has the `h1` "We couldn't find that Item" and the link "Back to your Campaign".
+
+### 63.2 Edit
+
+- "Edit" swaps the description, notes, Handouts, and Scenes for `item-form` (section 62), prefilled.
+  - The `h1` keeps the saved name, and focus moves to Name.
+  - The actions are "Save" ("Saving..." while busy, disabled) and "Cancel".
+- The Item can be edited whatever the status of the Scenes that link it.
+- **Save success:**
+  - back to the view, with the status "Item saved.";
+  - focus moves to "Edit";
+  - the list and the Scenes that link the Item are invalidated.
+- **Cancel:** discards the edits without confirmation; focus moves to "Edit".
+- **Save failure:** "We couldn't save the Item. Try again." (`role=alert`); the input is kept.
+- **Server problems (400, ADR 0018):** each message is shown at its field.
+- **Unsaved edits:** `useUnsavedChangesPrompt(isDirty)`.
+
+### 63.3 Delete (`delete-item-dialog`, `AlertDialog`)
+
+- **Dialog:**
+  - title "Delete {name}?";
+  - description "This can't be undone. Its Handouts are deleted, and it is removed from any Prepared Scene it is part of.";
+  - buttons "Cancel" and "Delete" ("Deleting..." while busy, both disabled).
+- **Refused (409):** the dialog shows the reason, and Delete becomes disabled. Cancel closes the dialog.
+  - Linked to an Active or Finished Scene: "{name} is part of a Scene that has been played, so it can't be deleted."
+  - Held: "{name} is held by an Investigator, so it can't be deleted."
+- **Failure:** "We couldn't delete {name}. Try again." (`role=alert`) in the dialog.
+- **Success:**
+  - navigate to the list page with the status "{name} deleted.";
+  - the list, the Overview count, and Scene pages are invalidated.
+- **Cancel:** returns focus to "Delete Item".
+
+## 64. Items on the Scene page
+
+### 64.1 Items section (`scene-item-section`)
+
+```
+Items                                             (h2)  [Link an Item]
+Players see an Item's name and description only when you reveal or give it.
+- Walter Corbitt's diary  (link)                  [Unlink]
+```
+
+- **Placement:** a `section` labelled by its `h2` (`tabIndex=-1`), after "Non-Player Entities" (section 32) and before the Scene actions, in view mode only. The muted hint sits under the heading.
+- **Action:** "Link an Item", a link styled as a small button to `/item-links/new`, right of the `h2` (it wraps below 640px). It is shown only on Prepared and Active Scenes.
+- **List:**
+  - a `ul` in the order the Items were linked;
+  - each entry has the Item name as a link to the Item page (`break-words`, with an `id` used as the focus target after linking);
+  - each entry has "Unlink" (outline, destructive text) with the accessible name "Unlink {name}", only on Prepared and Active Scenes.
+- **Empty:** "No Items linked yet." and, on Prepared and Active Scenes, the action.
+- **Finished:** the list without "Link an Item" or "Unlink".
+- **Loading and errors:** the section loads with the Scene and uses its states (section 14).
+- **Status:** the page's `role=status` paragraph shows "{name} linked." and "{name} unlinked.".
+
+### 64.2 Link an Item page (`link-item-page`, `item-picker`)
+
+```
+Link an Item                                      (h1)
+Scene: The Corbitt House                          (muted)
+Item                                              (fieldset legend)
+  Search by name [__________]
+  Selected: Walter Corbitt's diary                (muted, once one is chosen)
+  3 shown.                                        (polite live region)
+  ( ) The cellar key
+  ( ) Walter Corbitt's diary . Already in this Scene   (disabled)
+[Link]  Cancel
+```
+
+- **Picker (`item-picker`):**
+  - a `fieldset` with the legend "Item", holding the search (as in section 61) and a `RadioGroup` sorted by name (`Intl.Collator`);
+  - an Item this Scene already links is a disabled radio, described (`aria-describedby`) by " . Already in this Scene";
+  - only the Campaign's own Items are offered;
+  - a choice stays selected when the search hides it, and the "Selected:" line always names it.
+  - **No match:** "No Items match this search." with "Clear search".
+  - **Empty Campaign:** "No Items yet." and the link "Create Item" to `/items/new`; the search is not rendered.
+  - **Loading:** three Skeleton rows with `aria-busy="true"`.
+  - **Error:** "We couldn't load the Items." with "Try again".
+- **Validation on submit:**
+  - "Choose an Item.", connected to the fieldset;
+  - focus moves to the checked radio, else the first enabled radio, else the search field.
+- **Server problems (400, ADR 0018):** an `itemId` problem is shown at the picker, and the picker's list is refetched.
+- **Actions:**
+  - "Link" ("Linking..." while busy, disabled);
+  - "Cancel", a link back to the Scene page.
+- **Success:**
+  - navigate to the Scene page with the navigation status message "{name} linked.";
+  - focus moves to that Item's link;
+  - the Scene, the Item, and the list are invalidated;
+  - an Item that was already linked counts as success.
+- **Failure:** an `Alert` (`role=alert`) "We couldn't link the Item. Try again."
+- **Finished:**
+  - a link refused because the Scene is Finished (409) keeps the page with the alert "This Scene has been finished, so it can't be changed. Select Cancel to go back.";
+  - opening the page for a Finished Scene shows "This Scene is finished and can't be changed." and "Back to the Scene" instead of the form.
+- **Not found:** a Player or an unknown Scene gets `scene-not-found`.
+- **Unsaved edits:** `useUnsavedChangesPrompt(isDirty)`; choosing an Item counts as a change.
+
+### 64.3 Unlink (`unlink-item-dialog`, `AlertDialog`)
+
+- **Dialog:**
+  - title "Unlink {name}?";
+  - description "{name} stays in the Campaign with its Handouts.";
+  - buttons "Cancel" and "Unlink" ("Unlinking..." while busy, both disabled).
+- **Success:**
+  - the dialog closes and the status says "{name} unlinked.";
+  - focus moves to the section `h2`;
+  - the Scene, the Item, and the list are invalidated;
+  - a 404 counts as success.
+- **Failure:** "We couldn't unlink {name}. Try again." (`role=alert`) in the dialog.
+- **Refused (409):** "This Scene has been finished, so it can't be changed."; closing the dialog refetches the Scene.
+- **Cancel:** returns focus to "Unlink".
+
+## 65. Item Handouts
+
+Sections 41 to 44 and 50 to 58 apply, with the Item as the owner, except for these differences.
+
+- **Section on the Item page:**
+  - the shared `handout-section` sits after Keeper notes and before Scenes;
+  - "Add Handout" and the move controls are always shown, because an Item is never Finished;
+  - the hint is the same as in section 41.
+- **Handout page:**
+  - "Back to the Item" and the muted "Item: {name}" replace the Scene lines;
+  - "Edit" (including Replace) is always offered;
+  - "Delete Handout" is offered only while the Item is not part of a played Scene and not held. Otherwise the page shows one muted sentence:
+    - "This Item is part of a Scene that has been played, so its Handouts can't be deleted."
+    - "This Item is held by an Investigator, so its Handouts can't be deleted."
+  - there is no Finished state.
+- **Delete refused (409):** "This Item is now part of a Scene that has been played, so this Handout can't be deleted."; closing the dialog refetches the Item.
+- **Success:**
+  - "{title} added." returns to the Item page, with focus on the new Handout's link;
+  - "{title} deleted." returns to the Item page, with focus on the Handouts `h2`.
+- **Not found:**
+  - a Player or an unknown Item gets `item-not-found`;
+  - an unknown Handout id, or a 404 on save, shows `handout-not-found` with "Back to the Item".
+
+## 66. Item content
+
+| Key | Copy |
+|---|---|
+| Overview and list | Items / {n} Items. / 1 Item. / View all Items / No Items yet. / Search by name / {n} shown. / No Items match this search. / Clear search / Linked to {n} Scenes / Linked to 1 Scene / Not linked to a Scene |
+| Create and edit | Create Item / Name / Players see the name when you reveal or give this Item. / Player-facing description / What the Investigators may learn about it. Players see it only when you reveal or give the Item. You can format text and add links. / Keeper notes (optional) / Create / Save / Cancel / Item created. / Item saved. |
+| Item page | Back to Items / Held by no one. / Player-facing description / Keeper notes / No Keeper notes yet. / Scenes / Scenario: {title} / Not linked to any Scene yet. Link it from a Scene page. / Edit / Delete Item |
+| Scene page | Items / Players see an Item's name and description only when you reveal or give it. / Link an Item / Unlink / No Items linked yet. / Item / Already in this Scene / Choose an Item. / Create Item / Link |
+| Errors and refusals | As written in sections 62 to 65 |
+
+## 67. Item component mapping
+
+| Element | Component |
+|---|---|
+| Rich text | `rich-text-editor`, `rich-text-view` (section 15) |
+| Status labels | `scene-status-badge` |
+| Handouts on an Item | `handout-section` (renamed from `scene-handout-section`), `handout-page`, `add-handout-page`, `handout-form`, `delete-handout-dialog`, `handout-not-found`, each taking a Handout owner |
+| Moves | `move-controls`, `usePreparedOrderReordering` |
+| Announcements and prompts | `useFilterAnnouncement`, `useUnsavedChangesPrompt` |
+| Primitives | shadcn `Table`, `Input`, `RadioGroup`, `AlertDialog`, `Alert`, `Skeleton`, `Button` |
+| New, built from the above | `item-summary-section`, `item-list-page`, `create-item-page`, `item-form`, `item-page`, `item-scenes-section`, `delete-item-dialog`, `item-not-found`, `scene-item-section`, `link-item-page`, `item-picker`, `unlink-item-dialog` |
+
+No new primitives are needed.
+
+## 68. Item UX acceptance criteria
+
+- **SP-UX-90**
+  - A Keeper's Overview shows "Items" after "Non-Player Entities", with either the count sentence, "Create", and "View all Items", or "No Items yet." and "Create".
+  - A Player's Overview has no Items section and sends no Item request.
+- **SP-UX-91**
+  - The Items list is sorted by name and shows each Item's Scene count.
+  - Search filters on the client, case- and accent-insensitive, and announces "{n} shown.".
+  - The search resets on every visit, and no match shows "Clear search".
+- **SP-UX-92**
+  - Creating needs a name of 1-200 characters and a Player-facing description with visible text; Keeper notes are optional.
+  - Errors appear in field order and focus the first invalid field.
+  - Success opens the Item page with "Item created.".
+- **SP-UX-93** The Item page shows, in this order: the name, "Held by no one.", the Player-facing description, Keeper notes, Handouts, Scenes, then "Edit" and "Delete Item".
+- **SP-UX-94**
+  - Edit replaces the name, description, and Keeper notes in one form, whatever the status of the Scenes that link the Item.
+  - Save shows "Item saved.", and Cancel discards without confirmation.
+- **SP-UX-95**
+  - Delete is confirmed in a dialog.
+  - Success goes to the list with "{name} deleted.".
+  - A 409 shows the played or held message and disables Delete.
+- **SP-UX-96** The Scenes section lists each Scene that links the Item, with its Scenario title and a status label, in Scenario order then Scene order, each linked to its Scene page.
+- **SP-UX-97**
+  - The Scene page shows "Items" after "Non-Player Entities", in link order, with each name linked to its Item page.
+  - "Link an Item" and "Unlink" appear only on Prepared and Active Scenes.
+- **SP-UX-98**
+  - The link page offers only the Campaign's Items, sorted and searchable, and an Item already in the Scene cannot be chosen.
+  - Success returns to the Scene with "{name} linked." and focus on that Item.
+  - A Finished Scene shows the Finished message instead of the form.
+- **SP-UX-99**
+  - Unlink is confirmed in a dialog.
+  - Success shows "{name} unlinked." and moves focus to the Items heading.
+  - A 409 shows the Finished message.
+- **SP-UX-100**
+  - An Item's Handouts behave like a Scene's Handouts, with these differences: there is no Finished state, the pages say "Back to the Item" and "Item: {name}", and Delete is offered only while the Item is not part of a played Scene and not held.
+  - When Delete is not offered, the page shows the sentence that says why.
+- **SP-UX-101** Deleting an Item that is linked only to Prepared Scenes removes it from those Scene pages and deletes its Handouts.
+- **SP-UX-102**
+  - A Player gets `item-not-found` on every Item URL, without an API call.
+  - An Item id of another Campaign also gets `item-not-found`.
+  - Another Campaign's Items are never offered in the picker (extends SP-UX-51).
+- **SP-UX-103** No Item copy uses "Gear", "loot", "inventory", "artifact", or "object".
+
+## 69. Item accessibility acceptance criteria (WCAG 2.2 AA)
+
+- **SP-A11Y-51**
+  - The Item page has one `h1`, followed by `h2` sections, and its rich text renders `h3` and `h4` (`headingOffset` 0).
+  - On the Scene page, the Items section is an `h2` section (1.3.1).
+- **SP-A11Y-52**
+  - `item-picker` is a `fieldset` with the legend "Item" and a `RadioGroup`.
+  - A disabled option keeps its name and the description "Already in this Scene".
+  - The "Selected:" line names the choice while the search hides it (1.3.1, 4.1.2).
+- **SP-A11Y-53**
+  - List and picker counts are announced politely, never on first load.
+  - Status messages use the page's `role=status` paragraph.
+  - A background refetch never moves focus (4.1.3).
+- **SP-A11Y-54** Focus moves as follows (2.4.3):
+  - after linking, to the linked Item;
+  - after unlinking, to the Items `h2`;
+  - after Save or Cancel, to "Edit";
+  - after a create, the page opens in view;
+  - a cancelled dialog returns focus to its trigger;
+  - after a refusal, focus stays in the dialog.
+- **SP-A11Y-55** Every error is text at its field, connected with `aria-describedby` and `aria-invalid`, including the rich-text editors and the picker fieldset (3.3.1, 3.3.3).
+- **SP-A11Y-56**
+  - Repeated actions include the Item in their accessible names ("Unlink {name}"), and "Create" is named "Create Item".
+  - Every target is at least 24 by 24 CSS pixels (2.5.3, 2.5.8).
+- **SP-A11Y-57** At 320px and at 400% zoom, the list reflows to a `ul` and nothing scrolls sideways (1.4.10).
+- **SP-A11Y-58** A Scene's status in the Scenes section is a text label, never color alone (1.4.1).
+
+## 70. Item open decisions and research gaps
+
+- **Deferred:**
+  - giving and taking back Items, and showing the holder (PBI-SPL-003);
+  - revealing an Item or its Handouts (PBI-SPL-002);
+  - Active and Finished journeys end to end (PBI-SPL-001);
+  - returning to the Scene after "Create Item" from the picker (the convenience of rejected Option B);
+  - Item previews on the Scene page;
+  - live updates across the Keeper's own tabs.
+- **Research gap:** whether Keepers often link several Items to one Scene at once. If they do, revisit Option C's multi-select.

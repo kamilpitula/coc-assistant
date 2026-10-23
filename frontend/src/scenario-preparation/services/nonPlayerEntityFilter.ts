@@ -1,12 +1,8 @@
+import { nameMatches, sortByName } from '@/scenario-preparation/services/nameSearch'
 import type {
   NonPlayerEntitySummary,
   NonPlayerEntityTypeFilter,
 } from '@/scenario-preparation/types/NonPlayerEntity'
-
-/** Lower-cases and strips accents, so "kno" finds "Knott" and "cafe" finds "Cafe". */
-function fold(text: string): string {
-  return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
-}
 
 /**
  * The list page's view of the loaded list (specs/scenario-preparation/ux.md section 23): the entities whose name
@@ -18,12 +14,7 @@ export function filterNonPlayerEntities(
   search: string,
   type: NonPlayerEntityTypeFilter,
 ): NonPlayerEntitySummary[] {
-  const needle = fold(search.trim())
-  const collator = new Intl.Collator(undefined, { sensitivity: 'base' })
-
-  return items
-    .filter((item) => (type === 'All' || item.type === type) && fold(item.name).includes(needle))
-    .toSorted((left, right) => collator.compare(left.name, right.name) || left.id.localeCompare(right.id))
+  return sortByName(items.filter((item) => (type === 'All' || item.type === type) && nameMatches(item.name, search)))
 }
 
 /** "12 Human NPCs and 5 Mythos Creatures." with singular forms and a zero count left out (ux.md section 22); empty for no entities. */

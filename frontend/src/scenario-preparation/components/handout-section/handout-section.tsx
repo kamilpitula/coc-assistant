@@ -6,21 +6,21 @@ import { MoveControls } from '@/scenario-preparation/components/move-controls/mo
 import { useReorderHandouts } from '@/scenario-preparation/hooks/useHandouts'
 import { usePreparedOrderReordering } from '@/scenario-preparation/hooks/usePreparedOrderReordering'
 import { StaleHandoutOrderError } from '@/scenario-preparation/services/handoutApi'
+import { describeHandoutOwner, type HandoutOwner } from '@/scenario-preparation/services/handoutOwner'
 import type { HandoutSummary } from '@/scenario-preparation/types/Handout'
-import type { SceneStatus } from '@/scenario-preparation/types/Scene'
 import { Alert } from '@/shared/components/ui/alert'
 import { buttonVariants } from '@/shared/components/ui/button'
 import { Card } from '@/shared/components/ui/card'
 
-interface SceneHandoutSectionProps {
-  campaignId: string
-  scenarioId: string
-  sceneId: string
-  status: SceneStatus
-  /** The Scene's Handouts in stored order. */
+interface HandoutSectionProps {
+  /** The Scene or Item whose Handouts these are. */
+  owner: HandoutOwner
+  /** "Add Handout" and the move buttons are offered; false once the owner can not be changed. */
+  canChange: boolean
+  /** The owner's Handouts in stored order. */
   handouts: HandoutSummary[]
-  /** When the Scene last loaded, so a stale move can tell that the refetch has landed. */
-  sceneUpdatedAt: number
+  /** When the owner last loaded, so a stale move can tell that the refetch has landed. */
+  ownerUpdatedAt: number
   /** The Handout whose link takes focus once it is listed, for example right after it was added. */
   focusHandoutId?: string
   /** Put focus on the heading when the section appears, for example right after a Handout was deleted. */
@@ -28,28 +28,26 @@ interface SceneHandoutSectionProps {
 }
 
 /**
- * The Scene's "Handouts" section (specs/scenario-preparation/ux.md section 41): each Handout in stored order as a link to its
- * page with its kind and visibility, "Add Handout" and Move up / Move down while the Scene is Prepared or Active.
+ * The "Handouts" section of a Scene or an Item (specs/scenario-preparation/ux.md sections 41 and 65): each Handout in stored order
+ * as a link to its page with its kind and visibility, "Add Handout" and Move up / Move down while the owner can be changed.
  */
-export function SceneHandoutSection({
-  campaignId,
-  scenarioId,
-  sceneId,
-  status,
+export function HandoutSection({
+  owner,
+  canChange,
   handouts,
-  sceneUpdatedAt,
+  ownerUpdatedAt,
   focusHandoutId,
   focusHeading = false,
-}: SceneHandoutSectionProps) {
+}: HandoutSectionProps) {
+  const pages = describeHandoutOwner(owner)
   const headingId = useId()
   const headingRef = useRef<HTMLHeadingElement>(null)
   const sectionRef = useRef<HTMLElement>(null)
-  const canChange = status !== 'Finished'
   const reordering = usePreparedOrderReordering({
     items: handouts,
-    dataUpdatedAt: sceneUpdatedAt,
+    dataUpdatedAt: ownerUpdatedAt,
     headingRef,
-    reorder: useReorderHandouts(campaignId, scenarioId, sceneId),
+    reorder: useReorderHandouts(owner),
     isStale: (error) => error instanceof StaleHandoutOrderError,
     staleMessage: 'The Handouts changed in another window. Check the order and try again.',
     buttonIdPrefix: 'handout',
@@ -81,11 +79,7 @@ export function SceneHandoutSection({
           Handouts
         </h2>
         {canChange && (
-          <Link
-            to="/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId/handouts/new"
-            params={{ campaignId, scenarioId, sceneId }}
-            className={buttonVariants({ variant: 'outline', size: 'sm' })}
-          >
+          <Link {...pages.addHandoutPage} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
             Add Handout
           </Link>
         )}
@@ -112,8 +106,7 @@ export function SceneHandoutSection({
                   <div className="flex min-w-0 flex-1 flex-col gap-1 py-1">
                     <Link
                       id={handoutLinkId(handout.id)}
-                      to="/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId/handouts/$handoutId"
-                      params={{ campaignId, scenarioId, sceneId, handoutId: handout.id }}
+                      {...pages.handoutPage(handout.id)}
                       className="min-h-6 text-sm font-medium break-words hover:underline"
                     >
                       {handout.title}
