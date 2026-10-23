@@ -28,7 +28,7 @@ public class SceneLinkTests
     }
 
     private static NonPlayerEntityLink LinkOne(Scene scene) =>
-        scene.LinkNonPlayerEntity(NonPlayerEntityType.MythosCreature, EntityId, "A shape", Description, Now).Link!;
+        scene.LinkNonPlayerEntity(NonPlayerEntityType.MythosCreature, EntityId, true, "A shape", Description, Now).Link!;
 
     [Theory]
     [InlineData(SceneStatus.Prepared)]
@@ -37,7 +37,7 @@ public class SceneLinkTests
     {
         var scene = status == SceneStatus.Prepared ? PreparedScene() : ActiveScene();
 
-        var result = scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, "  The landlord \t", Description, Now);
+        var result = scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, true, "  The landlord \t", Description, Now);
 
         Assert.Equal(NonPlayerEntityLinkOutcome.Accepted, result.Outcome);
         var link = Assert.IsType<NonPlayerEntityLink>(result.Link);
@@ -53,7 +53,7 @@ public class SceneLinkTests
     [InlineData(NonPlayerEntityType.MythosCreature)]
     public void Given_each_entity_type_When_linking_Then_the_type_and_entity_id_are_read_back_from_the_one_key_that_is_set(NonPlayerEntityType type)
     {
-        var link = PreparedScene().LinkNonPlayerEntity(type, EntityId, "A shape", null, Now).Link!;
+        var link = PreparedScene().LinkNonPlayerEntity(type, EntityId, true, "A shape", null, Now).Link!;
 
         Assert.Equal((type, EntityId), (link.Type, link.NonPlayerEntityId));
     }
@@ -61,7 +61,7 @@ public class SceneLinkTests
     [Fact]
     public void Given_a_null_description_When_linking_Then_it_is_accepted_as_no_description()
     {
-        var result = PreparedScene().LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, "A shape", null, Now);
+        var result = PreparedScene().LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, true, "A shape", null, Now);
 
         Assert.Equal(NonPlayerEntityLinkOutcome.Accepted, result.Outcome);
         Assert.Null(result.Link!.PlayerFacingDescription);
@@ -83,8 +83,8 @@ public class SceneLinkTests
     public void Given_links_made_at_different_times_When_reading_them_Then_they_are_in_the_order_linked()
     {
         var scene = PreparedScene();
-        var later = scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, "Later", null, Now.AddMinutes(2)).Link!;
-        var earlier = scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, "Earlier", null, Now.AddMinutes(1)).Link!;
+        var later = scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, true, "Later", null, Now.AddMinutes(2)).Link!;
+        var earlier = scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, true, "Earlier", null, Now.AddMinutes(1)).Link!;
 
         Assert.Equal([earlier.Id, later.Id], scene.NonPlayerEntityLinks.Select(link => link.Id));
     }
@@ -96,7 +96,7 @@ public class SceneLinkTests
     {
         var scene = PreparedScene();
 
-        var result = scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, name, null, Now);
+        var result = scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, true, name, null, Now);
 
         Assert.Equal(NonPlayerEntityLinkOutcome.InvalidPlayerFacingName, result.Outcome);
         Assert.Null(result.Link);
@@ -108,8 +108,8 @@ public class SceneLinkTests
     {
         var scene = PreparedScene();
 
-        Assert.Equal(NonPlayerEntityLinkOutcome.Accepted, scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, new string('n', 200), null, Now).Outcome);
-        Assert.Equal(NonPlayerEntityLinkOutcome.InvalidPlayerFacingName, scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, new string('n', 201), null, Now).Outcome);
+        Assert.Equal(NonPlayerEntityLinkOutcome.Accepted, scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, true, new string('n', 200), null, Now).Outcome);
+        Assert.Equal(NonPlayerEntityLinkOutcome.InvalidPlayerFacingName, scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, true, new string('n', 201), null, Now).Outcome);
     }
 
     [Theory]
@@ -119,7 +119,7 @@ public class SceneLinkTests
     {
         var scene = PreparedScene();
 
-        var result = scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, "A shape", description, Now);
+        var result = scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, true, "A shape", description, Now);
 
         Assert.Equal(NonPlayerEntityLinkOutcome.InvalidPlayerFacingDescription, result.Outcome);
         Assert.Empty(scene.NonPlayerEntityLinks);
@@ -130,7 +130,7 @@ public class SceneLinkTests
     {
         var oversize = "{\"root\":{\"type\":\"root\",\"children\":[{\"type\":\"paragraph\",\"children\":[{\"type\":\"text\",\"text\":\"" + new string('x', RichTextDocument.MaxBytes) + "\"}]}]}}";
 
-        var result = PreparedScene().LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, "A shape", oversize, Now);
+        var result = PreparedScene().LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, true, "A shape", oversize, Now);
 
         Assert.Equal(NonPlayerEntityLinkOutcome.InvalidPlayerFacingDescription, result.Outcome);
     }
@@ -140,10 +140,43 @@ public class SceneLinkTests
     {
         var scene = FinishedScene();
 
-        var result = scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, string.Empty, Image, Now);
+        var result = scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, true, string.Empty, Image, Now);
 
         Assert.Equal(NonPlayerEntityLinkOutcome.SceneFinished, result.Outcome);
         Assert.Empty(scene.NonPlayerEntityLinks);
+    }
+
+    [Fact]
+    public void Given_a_finished_scene_and_an_entity_outside_the_campaign_When_linking_Then_the_scene_finished_outcome_wins()
+    {
+        var scene = FinishedScene();
+
+        var result = scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, entityInCampaign: false, string.Empty, Image, Now);
+
+        Assert.Equal(NonPlayerEntityLinkOutcome.SceneFinished, result.Outcome);
+        Assert.Empty(scene.NonPlayerEntityLinks);
+    }
+
+    [Theory]
+    [InlineData(SceneStatus.Prepared)]
+    [InlineData(SceneStatus.Active)]
+    public void Given_an_open_scene_and_an_entity_outside_the_campaign_When_linking_Then_it_is_refused_before_the_name_is_checked(SceneStatus status)
+    {
+        var scene = status == SceneStatus.Active ? ActiveScene() : PreparedScene();
+
+        var result = scene.LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, entityInCampaign: false, string.Empty, Image, Now);
+
+        Assert.Equal(NonPlayerEntityLinkOutcome.NonPlayerEntityNotInCampaign, result.Outcome);
+        Assert.Null(result.Link);
+        Assert.Empty(scene.NonPlayerEntityLinks);
+    }
+
+    [Fact]
+    public void Given_an_entity_in_the_campaign_and_an_invalid_name_When_linking_Then_the_name_outcome_is_returned()
+    {
+        var result = PreparedScene().LinkNonPlayerEntity(NonPlayerEntityType.HumanNpc, EntityId, entityInCampaign: true, " ", null, Now);
+
+        Assert.Equal(NonPlayerEntityLinkOutcome.InvalidPlayerFacingName, result.Outcome);
     }
 
     [Fact]

@@ -74,7 +74,7 @@ public class ScenarioServiceTests : IDisposable
         var second = await _builder.ListAsync(_builder.CampaignId, Keeper);
 
         Assert.Equal(["Third", "Older", "Newer"], first!.Select(view => view.Title));
-        Assert.Equal(first.Select(view => view.Id), second!.Select(view => view.Id));
+        Assert.Equal(first!.Select(view => view.Id), second!.Select(view => view.Id));
     }
 
     [Fact]

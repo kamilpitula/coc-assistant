@@ -45,4 +45,4 @@ If relationship cardinality or deletion behavior is unclear, clarify the Bluepri
 - Reorder a Scene's links (ux.md section 39, deferred; links are shown in the order linked).
 - Decide whether a radio list with search is enough for Campaigns with many Non-Player Entities or a combobox is needed (ux.md section 39 research gap).
 - Run the Storybook accessibility checks on the new Scene link stories (320px reflow, SP-A11Y-36): the stories were written and type-checked but Storybook was not run in this pass.
-- When a link write targets a Finished Scene with an entity outside the Campaign, the API answers 400 `nonPlayerEntity` rather than 409, because the entity check runs before the Scene's Finished check; swap the order if a stricter contract is wanted.
+- When a link write targets a Finished Scene with an entity outside the Campaign, the API answers 400 `nonPlayerEntity` rather than 409, because the entity check runs before the Scene's Finished check; swap the order if a stricter contract is wanted. -> PBI-SP-006

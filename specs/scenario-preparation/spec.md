@@ -21,11 +21,11 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
   - `PUT /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` replaces its title, location, and Keeper notes; 409 when the Scene is Finished.
   - `DELETE /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` removes a Prepared Scene; 409 when it is Active or Finished.
   - `PUT /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/order` replaces the prepared order with the complete list of the Scenario's Scene ids, as for Scenarios.
-  - `POST /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}/non-player-entity-links` links a Non-Player Entity of the same Campaign; `PUT` and `DELETE .../non-player-entity-links/{linkId}` replace its Player-facing name and description or unlink it; 409 when the Scene is Finished; 400 for a Non-Player Entity that is not in the Campaign (PBI-SP-004).
+  - `POST /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}/non-player-entity-links` links a Non-Player Entity of the same Campaign; `PUT` and `DELETE .../non-player-entity-links/{linkId}` replace its Player-facing name and description or unlink it; 409 when the Scene is Finished, before any 400; 400 for a Non-Player Entity that is not in the Campaign (PBI-SP-004, PBI-SP-006).
   - `POST /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}/item-links` with `{itemId}` links an Item of the same Campaign:
     - 201 with the new link;
     - 200 with the existing link when the Item is already linked;
-    - 409 when the Scene is Finished;
+    - 409 when the Scene is Finished, before any 400;
     - 400 keyed `itemId` for an Item that is not in the Campaign.
 
     `DELETE .../item-links/{linkId}` unlinks it, with 409 when the Scene is Finished (PBI-SP-008).
@@ -105,16 +105,16 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 ## Contract
 
 ### Definition of Done
-- [ ] The Keeper can create, edit, and reorder the Scenarios of a Campaign; new Scenarios are added at the end of the Campaign's order.
-- [ ] The Keeper can create, edit, reorder, and remove Scenes in a Scenario; new Scenes are added at the end of the prepared order, and only Prepared Scenes can be removed.
-- [ ] A Scene stores its title, location, Keeper notes, status, ordered Handouts, linked Non-Player Entities with their Player-facing name and description, and linked Items.
-- [ ] A Finished Scene and everything on it refuses every change with 409.
-- [ ] The Keeper can create, edit, delete, and duplicate both Human NPC and Mythos Creature profiles with their distinct required information, and sees their computed derived values.
-- [ ] The Keeper can create rich-text Handouts of kind Read-aloud and Text, and file Handouts of kind Image, Document, and Map, each with an explicit visibility.
-- [ ] File Handouts are stored durably in Azure Blob Storage and associated with a Scene or an Item.
-- [ ] The Keeper can create and edit Campaign Items and link them to Scenes.
-- [ ] Rich text outside the allowed Lexical nodes, links, or size is refused with 400.
-- [ ] Scenario material, Non-Player Entities, and Items remain scoped to their Campaign.
+- [x] The Keeper can create, edit, and reorder the Scenarios of a Campaign; new Scenarios are added at the end of the Campaign's order.
+- [x] The Keeper can create, edit, reorder, and remove Scenes in a Scenario; new Scenes are added at the end of the prepared order, and only Prepared Scenes can be removed.
+- [x] A Scene stores its title, location, Keeper notes, status, ordered Handouts, linked Non-Player Entities with their Player-facing name and description, and linked Items.
+- [x] A Finished Scene and everything on it refuses every change with 409.
+- [x] The Keeper can create, edit, delete, and duplicate both Human NPC and Mythos Creature profiles with their distinct required information, and sees their computed derived values.
+- [x] The Keeper can create rich-text Handouts of kind Read-aloud and Text, and file Handouts of kind Image, Document, and Map, each with an explicit visibility.
+- [x] File Handouts are stored durably in Azure Blob Storage and associated with a Scene or an Item.
+- [x] The Keeper can create and edit Campaign Items and link them to Scenes.
+- [x] Rich text outside the allowed Lexical nodes, links, or size is refused with 400.
+- [x] Scenario material, Non-Player Entities, and Items remain scoped to their Campaign.
 
 ### Regression Guardrails
 - Scene order is stable and unambiguous within a Scenario.
@@ -453,7 +453,15 @@ Scenario: Campaign boundaries isolate Scenario material
   Then the Human NPC and the Item are not available to link from Campaign B
 
 Scenario: Manual preparation works without extraction
+  # SP-UX-15, SP-UX-50, SP-UX-64, SP-UX-67, SP-UX-97
   Given no Scenario source document has been uploaded
-  When the Keeper enters Scenes and Non-Player Entities manually
+  When the Keeper enters Scenes, Non-Player Entities, Handouts of every kind, and Items manually
   Then the Scenario is usable for Campaign preparation
+
+Scenario: Prepared material stays hidden from Players
+  # SP-UX-9, SP-UX-26, SP-UX-28, SP-UX-39, SP-UX-74, SP-UX-90, SP-UX-102
+  Given a Keeper has prepared a Scenario with Scenes, Non-Player Entity links, Handouts, and Items
+  When a Player of the Campaign opens the Campaign and those pages
+  Then the Player sees none of it
+  And the Player receives no live update about it
 ```

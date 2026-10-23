@@ -561,6 +561,27 @@ public class HandoutFileApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
             PropertyNames(loaded).Order());
         Assert.DoesNotContain("plan.png", loaded.GetRawText());
     }
+
+    [Theory]
+    [InlineData("Image", "PlayerFacing")]
+    [InlineData("Image", "KeeperFacing")]
+    [InlineData("Document", "PlayerFacing")]
+    [InlineData("Document", "KeeperFacing")]
+    [InlineData("Map", "PlayerFacing")]
+    [InlineData("Map", "KeeperFacing")]
+    public async Task Given_a_file_kind_and_visibility_When_adding_to_a_Scene_Then_reading_it_back_returns_the_same_kind_and_visibility(string kind, string visibility)
+    {
+        var client = _factory.CreateClient();
+        var scene = await SceneAsync(client, "kinds-keeper-1");
+
+        var created = await client.SendAsync(Multipart(HttpMethod.Post, HandoutsUri(scene), "kinds-keeper-1", kind: kind, visibility: visibility, file: kind == "Document" ? Pdf : Png, fileName: kind == "Document" ? "a.pdf" : "a.png", fileContentType: kind == "Document" ? "application/pdf" : "image/png"));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var id = (await BodyAsync(created)).GetProperty("id").GetGuid();
+
+        var read = await BodyAsync(await client.SendAsync(BuildRequest(HttpMethod.Get, HandoutsUri(scene) + $"/{id}", "kinds-keeper-1")));
+
+        Assert.Equal((kind, visibility), (read.GetProperty("kind").GetString(), read.GetProperty("visibility").GetString()));
+    }
 }
 
 /// <summary>A store that is down: the failure contract of a storage outage on create (PBI-SP-007 D5).</summary>

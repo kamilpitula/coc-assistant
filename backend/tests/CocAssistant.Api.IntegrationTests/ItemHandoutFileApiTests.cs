@@ -313,4 +313,24 @@ public class ItemHandoutFileApiTests : IClassFixture<IdentityApiFactory>, IAsync
         Assert.Equal(blobsBefore, StoredBlobs());
         Assert.Equal(1, await CountAsync(_factory, "Handouts"));
     }
+
+    [Theory]
+    [InlineData("Image", "PlayerFacing")]
+    [InlineData("Image", "KeeperFacing")]
+    [InlineData("Document", "PlayerFacing")]
+    [InlineData("Document", "KeeperFacing")]
+    [InlineData("Map", "PlayerFacing")]
+    [InlineData("Map", "KeeperFacing")]
+    public async Task Given_a_file_kind_and_visibility_When_adding_to_an_Item_Then_reading_it_back_returns_the_same_kind_and_visibility(string kind, string visibility)
+    {
+        var (client, campaignId, itemId) = await ItemAsync("kinds-keeper-2");
+
+        var created = await client.SendAsync(Multipart(HttpMethod.Post, HandoutsUri(campaignId, itemId), "kinds-keeper-2", kind: kind, visibility: visibility, file: kind == "Document" ? Pdf : Png, fileName: kind == "Document" ? "a.pdf" : "a.png"));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var id = (await BodyAsync(created)).GetProperty("id").GetGuid();
+
+        var read = await BodyAsync(await client.SendAsync(BuildRequest(HttpMethod.Get, HandoutsUri(campaignId, itemId) + $"/{id}", "kinds-keeper-2")));
+
+        Assert.Equal((kind, visibility), (read.GetProperty("kind").GetString(), read.GetProperty("visibility").GetString()));
+    }
 }

@@ -347,6 +347,32 @@ public class NonPlayerEntityLinkApiTests : IClassFixture<IdentityApiFactory>, IA
     }
 
     [Fact]
+    public async Task Given_a_finished_scene_When_linking_an_entity_outside_the_Campaign_Then_it_is_409_not_400_and_nothing_changes()
+    {
+        var client = _factory.CreateClient();
+        var scene = await SceneAsync(client, "link-keeper-finished-outside");
+        var otherCampaignId = (await CreateCampaignAsync(client, "link-keeper-finished-outside")).Id;
+        var elsewhereId = await CreateHumanNpcAsync(client, otherCampaignId, "link-keeper-finished-outside", "Elsewhere");
+        await PlayAsync(scene.SceneId, SceneStatus.Finished);
+        var uri = LinksUri(scene.CampaignId, scene.ScenarioId, scene.SceneId);
+
+        var responses = new[]
+        {
+            await client.SendAsync(BuildRequest(HttpMethod.Post, uri, "link-keeper-finished-outside", LinkBody("HumanNpc", elsewhereId))),
+            await client.SendAsync(BuildRequest(HttpMethod.Post, uri, "link-keeper-finished-outside", LinkBody("HumanNpc", Guid.NewGuid()))),
+            await client.SendAsync(BuildRequest(HttpMethod.Post, uri, "link-keeper-finished-outside", LinkBody(null, null))),
+        };
+
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.Conflict, response.StatusCode));
+        foreach (var response in responses)
+        {
+            Assert.Equal(FinishedTitle, await ProblemTitleAsync(response));
+        }
+
+        Assert.Equal(0, await StoredLinkCountAsync());
+    }
+
+    [Fact]
     public async Task Given_a_player_or_another_keeper_or_other_ids_When_using_every_link_endpoint_Then_each_is_the_same_404()
     {
         var client = _factory.CreateClient();

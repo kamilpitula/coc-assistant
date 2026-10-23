@@ -6,6 +6,7 @@ public enum NonPlayerEntityLinkOutcome
     Accepted,
     SceneFinished,
     LinkNotFound,
+    NonPlayerEntityNotInCampaign,
     InvalidPlayerFacingName,
     InvalidPlayerFacingDescription,
 }

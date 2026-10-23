@@ -121,13 +121,20 @@ public class Scene
 
     /// <summary>
     /// Links a Non-Player Entity of this Scene's Campaign while the Scene is Prepared or Active. The same entity may be linked
-    /// again; each link has its own id. Status is checked before the fields; a refused link changes nothing.
+    /// again; each link has its own id. Status is checked first, then the entity fact, then the fields, so a Finished Scene
+    /// answers <see cref="NonPlayerEntityLinkOutcome.SceneFinished"/> even for an entity outside the Campaign (PBI-SP-006 D4).
+    /// A refused link changes nothing.
     /// </summary>
-    public NonPlayerEntityLinkResult LinkNonPlayerEntity(NonPlayerEntityType type, Guid nonPlayerEntityId, string playerFacingName, string? playerFacingDescription, DateTimeOffset now)
+    public NonPlayerEntityLinkResult LinkNonPlayerEntity(NonPlayerEntityType type, Guid nonPlayerEntityId, bool entityInCampaign, string playerFacingName, string? playerFacingDescription, DateTimeOffset now)
     {
         if (Status == SceneStatus.Finished)
         {
             return new NonPlayerEntityLinkResult(NonPlayerEntityLinkOutcome.SceneFinished, null);
+        }
+
+        if (!entityInCampaign)
+        {
+            return new NonPlayerEntityLinkResult(NonPlayerEntityLinkOutcome.NonPlayerEntityNotInCampaign, null);
         }
 
         var outcome = NonPlayerEntityLink.Validate(playerFacingName, playerFacingDescription, out var trimmedName);
