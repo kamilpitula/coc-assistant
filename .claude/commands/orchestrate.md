@@ -163,10 +163,15 @@ approved Developer plan), the original task, and the Explorer's report if
 there is one — it needs the reuse candidates to do its cross-check. For UI
 work, also point it at the selected UX specification in
 `specs/<feature>/ux.md`. When it stops with its findings, relay them to
-the human and wait for a merge decision. If the decision is "send it
-back," package the Verifier's specific blocking findings and return to the
-Developer (or to the Architect, for a finding about the design itself)
-rather than starting the whole pipeline over.
+the human and wait for a merge decision. The report carries a
+`### Code review` section and finding IDs (`B*` blocking, `N*`
+non-blocking). At the merge gate ask the human: "send back: default all
+`B*`; add or remove IDs?" If the decision is "send it back," relay the
+approved IDs to the Developer with each finding quoted verbatim, and any
+design-level IDs to the Architect, rather than starting the whole pipeline
+over. After the fixes, re-review with a fresh Verifier spawn (do not
+resume the earlier one), handed the previous Verifier report so it can
+confirm each returned ID is resolved.
 
 ## 7. Close out
 

@@ -234,7 +234,10 @@ Deferred items, and Follow-ups):
 
 Never edit the decision record; changes to it come from the Architect. If
 the Verifier sends the work back, put fixes and tick or deferral
-corrections in further commits on the same branch.
+corrections in further commits on the same branch. Answer every returned
+finding ID in `### Review findings`: fixed, or disputed with reasoning. A
+disputed finding goes back to the human through the Orchestrator; never
+drop one silently.
 
 ## 6. Report
 
@@ -272,6 +275,11 @@ Verifier, and the human read instead of the transcript.
 
 - <id>, branch <name>, closing commit <sha>: <ticked items>; <deferred items and their follow-ups>
   _(omit for a no-PBI task)_
+
+### Review findings
+
+- <ID (for example B1)>: fixed (<commit sha>) / disputed (<reasoning>)
+  _(omit unless the Verifier sent findings back)_
 
 ### Deviations
 
