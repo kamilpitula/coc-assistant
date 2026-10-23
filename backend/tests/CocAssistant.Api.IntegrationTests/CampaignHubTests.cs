@@ -388,6 +388,18 @@ public class CampaignHubTests : IClassFixture<IdentityApiFactory>, IAsyncLifetim
         await AssertNextAsync(table.Owner, table.CampaignId, "wallEntries");
     }
 
+    [Fact]
+    public async Task Given_connected_players_When_the_keeper_prepares_scenario_material_Then_the_players_hear_nothing_before_the_next_public_signal()
+    {
+        var table = await CreateLiveTableAsync("9");
+
+        await PreparedScenarioSeed.PrepareAsync(table.Http, table.CampaignId, table.KeeperOid);
+        await AddWallEntryAsync(table, "Public");
+
+        await AssertNextAsync(table.Owner, table.CampaignId, "wallEntries");
+        await AssertNextAsync(table.Bystander, table.CampaignId, "wallEntries");
+    }
+
     /// <summary>Compares CampaignDataChanged messages by value, including their topic lists.</summary>
     private sealed class CampaignDataChangedComparer : IEqualityComparer<object>
     {

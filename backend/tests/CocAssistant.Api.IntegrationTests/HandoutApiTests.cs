@@ -450,4 +450,23 @@ public class HandoutApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
             Assert.Equal(HttpStatusCode.Unauthorized, (await client.SendAsync(request)).StatusCode);
         }
     }
+
+    [Theory]
+    [InlineData("ReadAloud", "PlayerFacing")]
+    [InlineData("ReadAloud", "KeeperFacing")]
+    [InlineData("Text", "PlayerFacing")]
+    [InlineData("Text", "KeeperFacing")]
+    public async Task Given_a_rich_text_kind_and_visibility_When_adding_to_a_Scene_Then_reading_it_back_returns_the_same_kind_and_visibility(string kind, string visibility)
+    {
+        var client = _factory.CreateClient();
+        var scene = await SceneAsync(client, "kinds-keeper-3");
+
+        var created = await client.SendAsync(BuildRequest(HttpMethod.Post, HandoutsUri(scene), "kinds-keeper-3", HandoutBody(kind, visibility)));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var id = (await BodyAsync(created)).GetProperty("id").GetGuid();
+
+        var read = await BodyAsync(await client.SendAsync(BuildRequest(HttpMethod.Get, HandoutsUri(scene) + $"/{id}", "kinds-keeper-3")));
+
+        Assert.Equal((kind, visibility), (read.GetProperty("kind").GetString(), read.GetProperty("visibility").GetString()));
+    }
 }

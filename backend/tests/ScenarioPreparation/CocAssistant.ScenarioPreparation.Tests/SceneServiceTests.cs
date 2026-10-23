@@ -102,7 +102,7 @@ public class SceneServiceTests : IDisposable
         var two = await _builder.ListScenesAsync(_builder.CampaignId, scenarioId, Keeper);
 
         Assert.Equal(["First", "Older", "Newer"], one!.Select(view => view.Title));
-        Assert.Equal(one.Select(view => view.Id), two!.Select(view => view.Id));
+        Assert.Equal(one!.Select(view => view.Id), two!.Select(view => view.Id));
     }
 
     [Fact]

@@ -237,4 +237,24 @@ public class ItemHandoutApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
         Assert.Equal(HttpStatusCode.NotFound, itemAsksForSceneHandout.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, sceneAsksForItemHandout.StatusCode);
     }
+
+    [Theory]
+    [InlineData("ReadAloud", "PlayerFacing")]
+    [InlineData("ReadAloud", "KeeperFacing")]
+    [InlineData("Text", "PlayerFacing")]
+    [InlineData("Text", "KeeperFacing")]
+    public async Task Given_a_rich_text_kind_and_visibility_When_adding_to_an_Item_Then_reading_it_back_returns_the_same_kind_and_visibility(string kind, string visibility)
+    {
+        var client = _factory.CreateClient();
+        var campaignId = (await CreateCampaignAsync(client, "kinds-keeper-4")).Id;
+        var itemId = (await CreateItemAsync(client, campaignId, "kinds-keeper-4")).GetProperty("id").GetGuid();
+
+        var created = await client.SendAsync(BuildRequest(HttpMethod.Post, HandoutsUri(campaignId, itemId), "kinds-keeper-4", HandoutBody(kind: kind, visibility: visibility)));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var id = (await BodyAsync(created)).GetProperty("id").GetGuid();
+
+        var read = await BodyAsync(await client.SendAsync(BuildRequest(HttpMethod.Get, HandoutsUri(campaignId, itemId) + $"/{id}", "kinds-keeper-4")));
+
+        Assert.Equal((kind, visibility), (read.GetProperty("kind").GetString(), read.GetProperty("visibility").GetString()));
+    }
 }
