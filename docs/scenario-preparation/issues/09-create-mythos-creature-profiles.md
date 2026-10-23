@@ -42,4 +42,4 @@ If the Monster Profile needs another Call of Cthulhu 7th Edition field, add the 
 ## Follow-ups
 - Run the Storybook accessibility checks on the new Monster Profile stories (320px reflow, SP-A11Y-26); the stories were written but Storybook was not run in this pass.
 - Move the campaign-play hooks and fields reused by the editors into `src/shared/` (the PBI-SP-003 D7 follow-up, left out of scope).
-- Add `NonPlayerEntityRuleDataAdapterTests` (left out of scope).
+- Add `NonPlayerEntityRuleDataAdapterTests` (left out of scope). -> PBI-SP-006

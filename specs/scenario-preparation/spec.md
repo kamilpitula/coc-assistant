@@ -105,16 +105,16 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 ## Contract
 
 ### Definition of Done
-- [ ] The Keeper can create, edit, and reorder the Scenarios of a Campaign; new Scenarios are added at the end of the Campaign's order.
-- [ ] The Keeper can create, edit, reorder, and remove Scenes in a Scenario; new Scenes are added at the end of the prepared order, and only Prepared Scenes can be removed.
-- [ ] A Scene stores its title, location, Keeper notes, status, ordered Handouts, linked Non-Player Entities with their Player-facing name and description, and linked Items.
-- [ ] A Finished Scene and everything on it refuses every change with 409.
-- [ ] The Keeper can create, edit, delete, and duplicate both Human NPC and Mythos Creature profiles with their distinct required information, and sees their computed derived values.
-- [ ] The Keeper can create rich-text Handouts of kind Read-aloud and Text, and file Handouts of kind Image, Document, and Map, each with an explicit visibility.
-- [ ] File Handouts are stored durably in Azure Blob Storage and associated with a Scene or an Item.
-- [ ] The Keeper can create and edit Campaign Items and link them to Scenes.
-- [ ] Rich text outside the allowed Lexical nodes, links, or size is refused with 400.
-- [ ] Scenario material, Non-Player Entities, and Items remain scoped to their Campaign.
+- [x] The Keeper can create, edit, and reorder the Scenarios of a Campaign; new Scenarios are added at the end of the Campaign's order.
+- [x] The Keeper can create, edit, reorder, and remove Scenes in a Scenario; new Scenes are added at the end of the prepared order, and only Prepared Scenes can be removed.
+- [x] A Scene stores its title, location, Keeper notes, status, ordered Handouts, linked Non-Player Entities with their Player-facing name and description, and linked Items.
+- [x] A Finished Scene and everything on it refuses every change with 409.
+- [x] The Keeper can create, edit, delete, and duplicate both Human NPC and Mythos Creature profiles with their distinct required information, and sees their computed derived values.
+- [x] The Keeper can create rich-text Handouts of kind Read-aloud and Text, and file Handouts of kind Image, Document, and Map, each with an explicit visibility.
+- [x] File Handouts are stored durably in Azure Blob Storage and associated with a Scene or an Item.
+- [x] The Keeper can create and edit Campaign Items and link them to Scenes.
+- [x] Rich text outside the allowed Lexical nodes, links, or size is refused with 400.
+- [x] Scenario material, Non-Player Entities, and Items remain scoped to their Campaign.
 
 ### Regression Guardrails
 - Scene order is stable and unambiguous within a Scenario.

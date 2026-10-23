@@ -52,4 +52,4 @@ If the NPC Profile needs another Call of Cthulhu 7th Edition field, add the rule
 - Touch up `specs/scenario-preparation/ux.md`: the "LUCK isn't a characteristic." message in 25.4 and the "STR Strength" visible label. (The disabled Mythos Creature option and plain-text Mythos rows were never in sections 23 and 24.)
 - Touch up `specs/scenario-preparation/ux.md` section 27: list `remove-row-button` and `stat-table`. -> PBI-SP-009
 - The Create Non-Player Entity page maps any server `name` problem to "Enter a name."; it should show the server's message (ADR 0018). -> PBI-SP-009
-- Add a dedicated `NonPlayerEntityRuleDataAdapterTests` file (the adapter is covered in `NonPlayerEntityListApiTests` today).
+- Add a dedicated `NonPlayerEntityRuleDataAdapterTests` file (the adapter is covered in `NonPlayerEntityListApiTests` today). -> PBI-SP-006
