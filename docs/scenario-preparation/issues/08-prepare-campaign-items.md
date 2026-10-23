@@ -1,6 +1,6 @@
 ---
 id: PBI-SP-008
-status: todo
+status: done
 blocked_by: [PBI-SP-002, PBI-SP-005]
 ---
 
@@ -27,12 +27,17 @@ Read: `specs/scenario-preparation/spec.md`
 Read: `CONTEXT.md` (Item; Gear is a different concept).
 
 ## Verification
-- [ ] A Keeper can create, edit, and delete Items and link and unlink them on a Prepared or Active Scene.
-- [ ] Items of another Campaign are unavailable and rejected by the API.
-- [ ] Deleting an Item linked to an Active or Finished Scene is refused.
-- [ ] Unit, integration, and E2E tests cover validation, linking, and authorization.
+- [x] A Keeper can create, edit, and delete Items and link and unlink them on a Prepared or Active Scene.
+- [x] Items of another Campaign are unavailable and rejected by the API.
+- [x] Deleting an Item linked to an Active or Finished Scene is refused.
+- [x] Unit, integration, and E2E tests cover validation, linking, and authorization.
 
 ## Refinement Protocol
 If Item fields or holder rules change, update the spec Constraints and the Scene Play spec together.
 
 ## Follow-ups
+- PBI-SPL-003: register a Scene Play `IItemHolders` adapter in place of `NoItemHolders`, and make a give that races a delete of the same Item fail safely (ADR 0022). Until then "a held Item cannot be deleted" is covered only by `ItemService` unit tests with a fake holder port.
+- PBI-SPL-002: count "has a Reveal" as in play through a port before an Item or an Item's Handout can be revealed, because unlinking an Item from an Active Scene is allowed (ADR 0022).
+- PBI-SPL-001: re-check the race between a delete's usage check and a Scene start for Items (ADR 0019, ADR 0022), and add E2E coverage for the Active and Finished Item cases (delete refused, Finished link refused, Handout delete hidden), which integration and component tests cover today.
+- Two truly concurrent requests that link the same Item to the same Scene reach the unique `(SceneId, ItemId)` index and the loser answers 500 instead of 200 with the existing link; sequential duplicates are idempotent as designed.
+- E2E: `scene-links.spec.ts` "Other Campaigns' entities are not offered..." fails on the base commit too (the deep-linked page renders an empty outlet within 20 s on this workstation), and the equivalent Item boundary tests in `scene-item-links.spec.ts` and `item-handouts.spec.ts` are flaky the same way; investigate the slow deep-link render.
