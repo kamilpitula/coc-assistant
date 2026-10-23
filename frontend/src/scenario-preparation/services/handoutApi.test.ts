@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { sceneOwner } from '@/scenario-preparation/test-support/handoutOwnerFixtures'
+import { itemOwner, sceneOwner } from '@/scenario-preparation/test-support/handoutOwnerFixtures'
 import type { RichTextDocument } from '@/shared/types/RichText'
 
 import {
@@ -305,6 +305,60 @@ describe('Handout API', () => {
 
       fetchMock.mockResolvedValueOnce(jsonResponse(503))
       await expect(getHandoutFile('token', sceneOwner, 'h2')).rejects.toThrow('Failed to load the file (503)')
+    })
+  })
+
+  describe('an Item as the owner (design record PBI-SP-008, D3)', () => {
+    const itemUrl = '/api/campaigns/c1/items/k1/handouts'
+
+    it('keys a Handout under its Item, so invalidating the Item also reaches its Handouts', () => {
+      expect(handoutQueryKeys.detail(itemOwner, 'h1')).toEqual(['campaigns', 'c1', 'items', 'k1', 'handouts', 'h1'])
+      expect(handoutQueryKeys.file(itemOwner, 'h1')).toEqual(['campaigns', 'c1', 'items', 'k1', 'handouts', 'h1', 'file'])
+    })
+
+    it('reads, adds, edits, deletes, and reorders under the Item', async () => {
+      fetchMock.mockImplementation(() => Promise.resolve(jsonResponse(200, handout)))
+      await getHandout('token', itemOwner, 'h1')
+      await createHandout('token', itemOwner, input)
+      await editHandout('token', itemOwner, 'h1', input)
+      fetchMock.mockImplementation(() => Promise.resolve(jsonResponse(204)))
+      await deleteHandout('token', itemOwner, 'h1')
+      fetchMock.mockImplementation(() => Promise.resolve(jsonResponse(200, { handouts: [] })))
+      await reorderHandouts('token', itemOwner, ['h1'])
+
+      expect(fetchMock.mock.calls.map(([url, init]) => [init?.method ?? 'GET', url])).toEqual([
+        ['GET', `${itemUrl}/h1`],
+        ['POST', itemUrl],
+        ['PUT', `${itemUrl}/h1`],
+        ['DELETE', `${itemUrl}/h1`],
+        ['PUT', `${itemUrl}/order`],
+      ])
+    })
+
+    it('downloads the stored file under the Item', async () => {
+      fetchMock.mockResolvedValue(new Response(new Blob(['png']), { status: 200 }))
+
+      await getHandoutFile('token', itemOwner, 'h2')
+
+      expect(fetchMock.mock.calls[0][0]).toBe(`${itemUrl}/h2/file`)
+    })
+
+    it('sends a file Handout as a multipart form under the Item', async () => {
+      const png = new File(['png'], 'plan.png', { type: 'image/png' })
+      const created = { id: 'h2', kind: 'Image', visibility: 'PlayerFacing', title: 'A photograph', content: null, file: { name: 'plan.png', mediaType: 'image/png', sizeBytes: 3 } }
+      fetchMock.mockResolvedValue(jsonResponse(201, created))
+
+      await createFileHandout('token', itemOwner, { kind: 'Image', visibility: 'PlayerFacing', title: 'A photograph', file: png })
+
+      const [url, init] = fetchMock.mock.calls[0]
+      expect(url).toBe(itemUrl)
+      expect(init?.body).toBeInstanceOf(FormData)
+    })
+
+    it('reads a 409 on delete as a Handout that can not be deleted now', async () => {
+      fetchMock.mockResolvedValue(jsonResponse(409))
+
+      await expect(deleteHandout('token', itemOwner, 'h1')).rejects.toBeInstanceOf(HandoutNotDeletableError)
     })
   })
 })

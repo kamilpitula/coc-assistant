@@ -8,7 +8,7 @@ import {
   HandoutValidationError,
 } from '@/scenario-preparation/services/handoutApi'
 import { SceneFinishedError } from '@/scenario-preparation/services/sceneApi'
-import { sceneContext, sceneOwner } from '@/scenario-preparation/test-support/handoutOwnerFixtures'
+import { itemOwner, sceneContext, sceneOwner } from '@/scenario-preparation/test-support/handoutOwnerFixtures'
 import type { Handout } from '@/scenario-preparation/types/Handout'
 import type { HandoutOwnerContext } from '@/scenario-preparation/types/HandoutOwnerContext'
 import { navigateSpy } from '@/shared/test-support/routerMock'
@@ -78,6 +78,19 @@ const deleting = (overrides: Record<string, unknown> = {}) => ({
   isPending: false,
   isError: false,
   error: null,
+  ...overrides,
+})
+
+// A Walter Corbitt's diary Item that is part of a Scene that has been played: it can be changed but its Handouts can not be deleted.
+const itemContext = (overrides: Partial<HandoutOwnerContext> = {}): HandoutOwnerContext => ({
+  ownerLabel: 'Item',
+  ownerName: "Walter Corbitt's diary",
+  backLabel: 'Back to the Item',
+  canChange: true,
+  canDelete: true,
+  lockedMessage: null,
+  deleteRefusedMessage: "This Item is now part of a Scene that has been played, so this Handout can't be deleted.",
+  refetchOwner: refetchScene,
   ...overrides,
 })
 
@@ -212,6 +225,64 @@ describe('HandoutPage', () => {
       renderPage()
 
       expect(mockUseHandout).toHaveBeenLastCalledWith(sceneOwner, 'h1', true)
+    })
+  })
+
+  describe('an Item as the owner (SP-UX-100)', () => {
+    const renderItem = (context: HandoutOwnerContext = itemContext()) =>
+      render(<HandoutPage owner={itemOwner} handoutId="h1" context={context} />)
+
+    it('says Item, names it, and links back to the Item', () => {
+      renderItem()
+
+      expect(screen.getByText("Item: Walter Corbitt's diary")).toBeInTheDocument()
+      expect(screen.queryByText(/^Scene:/)).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Back to the Item' })).toHaveAttribute('href', '/campaigns/c1/items/k1')
+    })
+
+    it('offers Edit and Delete Handout while the Item is not in play', () => {
+      renderItem()
+
+      expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Delete Handout' })).toBeInTheDocument()
+    })
+
+    it('offers Edit but not Delete Handout while the Item is part of a played Scene, and says why', () => {
+      renderItem(
+        itemContext({
+          canDelete: false,
+          lockedMessage: "This Item is part of a Scene that has been played, so its Handouts can't be deleted.",
+        }),
+      )
+
+      expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Delete Handout' })).not.toBeInTheDocument()
+      expect(screen.getByText("This Item is part of a Scene that has been played, so its Handouts can't be deleted.")).toBeInTheDocument()
+    })
+
+    it('shows the refusal that names the Item when the delete is refused, and closing reloads the Item', async () => {
+      mockUseDelete.mockReturnValue(deleting({ isError: true, error: new HandoutNotDeletableError() }))
+      renderItem()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Delete Handout' }))
+      expect(screen.getByRole('alert')).toHaveTextContent("This Item is now part of a Scene that has been played, so this Handout can't be deleted.")
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+      expect(refetchScene).toHaveBeenCalledTimes(1)
+    })
+
+    it('opens the Item after a delete with "{title} deleted." and focus on the Handouts heading', async () => {
+      deleteMutate.mockImplementation((_variables, options) => options.onSuccess())
+      renderItem()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Delete Handout' }))
+      await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete Handout' }))
+
+      expect(navigateSpy).toHaveBeenCalledWith({
+        to: '/campaigns/$campaignId/items/$itemId',
+        params: { campaignId: 'c1', itemId: 'k1' },
+        state: { statusMessage: 'The front door deleted.', focusHandoutsHeading: true },
+      })
     })
   })
 

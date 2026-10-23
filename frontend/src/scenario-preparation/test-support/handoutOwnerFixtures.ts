@@ -6,6 +6,9 @@ import type { Scene, SceneStatus } from '@/scenario-preparation/types/Scene'
 /** The Scene that owns the Handouts in the Handout tests. */
 export const sceneOwner: HandoutOwner = { type: 'scene', campaignId: 'c1', scenarioId: 's1', sceneId: 'a1' }
 
+/** The Item that owns the Handouts in the Handout tests. */
+export const itemOwner: HandoutOwner = { type: 'item', campaignId: 'c1', itemId: 'k1' }
+
 /** "The Corbitt House" in the given status, as the Handout screens see it once it has loaded. */
 export function corbittHouse(status: SceneStatus): Scene {
   return {

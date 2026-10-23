@@ -11,7 +11,7 @@ import { ScenePage } from './scene-page'
 
 // specs/scenario-preparation/ux.md section 14; SP-UX-20 to SP-UX-23, SP-UX-26, SP-UX-27, SP-A11Y-15, SP-A11Y-16.
 
-const { mockUseCampaign, mockUseScene, mockUseEdit, mockUseRemove, editMutate, removeMutate, unlinkMutate, reset, removeReset, refetch } = vi.hoisted(
+const { mockUseCampaign, mockUseScene, mockUseEdit, mockUseRemove, editMutate, removeMutate, unlinkMutate, unlinkItemMutate, reset, removeReset, refetch } = vi.hoisted(
   () => ({
     mockUseCampaign: vi.fn(),
     mockUseScene: vi.fn(),
@@ -20,6 +20,7 @@ const { mockUseCampaign, mockUseScene, mockUseEdit, mockUseRemove, editMutate, r
     editMutate: vi.fn(),
     removeMutate: vi.fn(),
     unlinkMutate: vi.fn(),
+    unlinkItemMutate: vi.fn(),
     reset: vi.fn(),
     removeReset: vi.fn(),
     refetch: vi.fn(),
@@ -30,6 +31,9 @@ vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-suppo
 vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
 vi.mock('@/scenario-preparation/hooks/useNonPlayerEntityLinks', () => ({
   useUnlinkNonPlayerEntity: () => ({ mutate: unlinkMutate, reset: vi.fn(), isPending: false, isError: false, error: null }),
+}))
+vi.mock('@/scenario-preparation/hooks/useItemLinks', () => ({
+  useUnlinkItem: () => ({ mutate: unlinkItemMutate, reset: vi.fn(), isPending: false, isError: false, error: null }),
 }))
 vi.mock('@/scenario-preparation/hooks/useHandouts', () => ({ useReorderHandouts: () => ({ mutate: vi.fn(), isPending: false }) }))
 vi.mock('@/scenario-preparation/hooks/useScenes', () => ({
@@ -257,6 +261,76 @@ describe('ScenePage', () => {
 
       expect(pageStatus()).toHaveTextContent('A shape in the cellar linked.')
       expect(screen.getByRole('heading', { level: 3, name: 'A shape in the cellar' })).toHaveFocus()
+    })
+  })
+
+  describe('Items', () => {
+    const withItems: Scene = {
+      ...prepared,
+      itemLinks: [
+        { id: 'i1', item: { id: 'k1', name: "Walter Corbitt's diary" } },
+        { id: 'i2', item: { id: 'k2', name: 'The cellar key' } },
+      ],
+    }
+
+    it('shows the Items section after the Non-Player Entities and before the actions (SP-UX-97, SP-A11Y-51)', () => {
+      mockUseScene.mockReturnValue(query(withItems))
+
+      renderPage()
+
+      const entities = screen.getByRole('heading', { level: 2, name: 'Non-Player Entities' })
+      const items = screen.getByRole('heading', { level: 2, name: 'Items' })
+      const edit = screen.getByRole('button', { name: 'Edit' })
+      expect(entities.compareDocumentPosition(items) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(items.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(screen.getByRole('link', { name: "Walter Corbitt's diary" })).toHaveAttribute('href', '/campaigns/c1/items/k1')
+    })
+
+    it('says no Items are linked yet and offers Link an Item on a Scene without any (SP-UX-97)', () => {
+      renderPage()
+
+      expect(screen.getByText('No Items linked yet.')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Link an Item' })).toHaveAttribute('href', '/campaigns/c1/scenarios/s1/scenes/a1/item-links/new')
+    })
+
+    it('lists the Items of a Finished Scene without Link an Item or Unlink (SP-UX-97)', () => {
+      mockUseScene.mockReturnValue(query({ ...withItems, status: 'Finished', startedAt: '2026-10-12T19:40:00Z', finishedAt: '2026-10-12T21:05:00Z' }))
+
+      renderPage()
+
+      expect(screen.getByRole('link', { name: "Walter Corbitt's diary" })).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Link an Item' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /^Unlink / })).not.toBeInTheDocument()
+    })
+
+    it('does not show the section while the Scene is being edited', async () => {
+      mockUseScene.mockReturnValue(query(withItems))
+      renderPage()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+
+      expect(screen.queryByRole('heading', { level: 2, name: 'Items' })).not.toBeInTheDocument()
+    })
+
+    it('announces "{name} unlinked." after an unlink (SP-UX-99)', async () => {
+      unlinkItemMutate.mockImplementation((_variables: undefined, options: { onSuccess: () => void }) => options.onSuccess())
+      mockUseScene.mockReturnValue(query(withItems))
+      renderPage()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Unlink The cellar key' }))
+      await userEvent.click(within_dialog('Unlink'))
+
+      expect(pageStatus()).toHaveTextContent('The cellar key unlinked.')
+    })
+
+    it('announces the navigation message from linking and moves focus to that Item (SP-UX-98, SP-A11Y-54)', () => {
+      routerState.location.state = { statusMessage: 'The cellar key linked.', focusItemLinkId: 'i2' }
+      mockUseScene.mockReturnValue(query(withItems))
+
+      renderPage()
+
+      expect(pageStatus()).toHaveTextContent('The cellar key linked.')
+      expect(screen.getByRole('link', { name: 'The cellar key' })).toHaveFocus()
     })
   })
 

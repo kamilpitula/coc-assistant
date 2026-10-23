@@ -13,6 +13,7 @@ export const routerState = {
       statusMessage?: string
       focusHeading?: boolean
       focusLinkId?: string
+      focusItemLinkId?: string
       focusHandoutId?: string
       focusHandoutsHeading?: boolean
     },

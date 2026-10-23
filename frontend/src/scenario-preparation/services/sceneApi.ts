@@ -5,7 +5,7 @@ import { SCENE_FIELD_MESSAGES, type SceneFieldErrors } from '@/scenario-preparat
 import { readErrorKeys } from '@/scenario-preparation/services/validationProblem'
 import type { Scene, SceneInput, SceneSummary } from '@/scenario-preparation/types/Scene'
 
-const sceneStatusSchema = z.enum(['Prepared', 'Active', 'Finished'])
+export const sceneStatusSchema = z.enum(['Prepared', 'Active', 'Finished'])
 
 // Strict, so a field the contract does not name (such as a position) is rejected instead of silently passed on.
 const sceneSummarySchema = z.strictObject({
@@ -58,6 +58,8 @@ const sceneSchema = sceneSummarySchema.extend({
 const sceneListSchema = z.strictObject({ scenes: z.array(sceneSummarySchema) })
 
 export const sceneQueryKeys = {
+  /** Every Scenario and Scene query of the Campaign, for example after an Item that Scenes link is deleted. */
+  inCampaign: (campaignId: string) => ['campaigns', campaignId, 'scenarios'] as const,
   all: (campaignId: string, scenarioId: string) => ['campaigns', campaignId, 'scenarios', scenarioId, 'scenes'] as const,
   list: (campaignId: string, scenarioId: string) => ['campaigns', campaignId, 'scenarios', scenarioId, 'scenes', 'list'] as const,
   detail: (campaignId: string, scenarioId: string, sceneId: string) =>
