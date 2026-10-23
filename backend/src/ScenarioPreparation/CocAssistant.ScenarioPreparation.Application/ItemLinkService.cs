@@ -44,13 +44,42 @@ public class ItemLinkService
             return new ItemLinkWriteResult(ToWriteOutcome(result.Outcome), null);
         }
 
-        if (result.Outcome == ItemLinkOutcome.Linked)
+        if (result.Outcome == ItemLinkOutcome.Linked && !await TrySaveAsync(cancellationToken))
         {
-            await _scenes.SaveChangesAsync(cancellationToken);
+            return await ExistingLinkAsync(campaignId, scenarioId, sceneId, itemId!.Value, items, cancellationToken);
         }
 
         var view = ItemLinkViews.Create([result.Link], items).Single();
         return new ItemLinkWriteResult(ToWriteOutcome(result.Outcome), view);
+    }
+
+    // A second tab won the race on the (Scene, Item) index; linking again is a success (PBI-SP-008 D4).
+    private async Task<bool> TrySaveAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _scenes.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (ItemLinkConflictException)
+        {
+            return false;
+        }
+    }
+
+    private async Task<ItemLinkWriteResult> ExistingLinkAsync(
+        Guid campaignId,
+        Guid scenarioId,
+        Guid sceneId,
+        Guid itemId,
+        IReadOnlyList<ItemSummary> items,
+        CancellationToken cancellationToken)
+    {
+        var scene = await _scenes.FindByIdAsync(campaignId, scenarioId, sceneId, cancellationToken);
+        var existing = scene?.ItemLinks.SingleOrDefault(link => link.ItemId == itemId);
+        return existing is null
+            ? new ItemLinkWriteResult(ItemLinkWriteOutcome.NotFound, null)
+            : new ItemLinkWriteResult(ItemLinkWriteOutcome.AlreadyLinked, ItemLinkViews.Create([existing], items).Single());
     }
 
     /// <summary>Removes a link; the Item itself is untouched.</summary>

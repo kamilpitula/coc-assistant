@@ -64,6 +64,21 @@ public class ItemLinkApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetim
     }
 
     [Fact]
+    public async Task Given_two_tabs_linking_the_same_Item_at_once_When_both_post_Then_neither_is_a_500_and_one_row_is_stored()
+    {
+        var client = _factory.CreateClient();
+        var scene = await SceneAsync(client, "ilink-keeper-race");
+        var itemId = (await CreateItemAsync(client, scene.CampaignId, "ilink-keeper-race")).GetProperty("id").GetGuid();
+        var uri = ItemLinksUri(scene.CampaignId, scene.ScenarioId, scene.SceneId);
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, 6).Select(_ =>
+            client.SendAsync(BuildRequest(HttpMethod.Post, uri, "ilink-keeper-race", new { itemId }))));
+
+        Assert.All(responses, response => Assert.Contains(response.StatusCode, new[] { HttpStatusCode.Created, HttpStatusCode.OK }));
+        Assert.Equal(1, await CountAsync(_factory, "ItemLinks"));
+    }
+
+    [Fact]
     public async Task Given_an_Item_of_the_same_Campaign_linked_to_two_Scenes_When_getting_each_Scene_Then_both_list_it()
     {
         var client = _factory.CreateClient();

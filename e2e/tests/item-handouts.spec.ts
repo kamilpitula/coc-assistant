@@ -170,8 +170,7 @@ test.describe('Item Handouts', () => {
 
       await test.step('SP-UX-100: an unknown Handout id shows "We couldn\'t find that Handout" with "Back to the Item"', async () => {
         await page.goto(`${item.itemPath}/handouts/00000000-0000-0000-0000-000000000000`)
-        // The route loads after the page; a loaded dev server can take longer than the default 5 s.
-        await expect(page.getByRole('heading', { level: 1, name: "We couldn't find that Handout" })).toBeVisible({ timeout: 20_000 })
+        await expect(page.getByRole('heading', { level: 1, name: "We couldn't find that Handout" })).toBeVisible()
         await page.getByRole('link', { name: 'Back to the Item' }).click()
         await expect(page).toHaveURL(new RegExp(`${item.itemPath}$`))
       })

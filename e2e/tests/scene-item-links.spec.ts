@@ -188,7 +188,7 @@ test.describe('Scene Item links', () => {
       await test.step("SP-UX-51, SP-UX-102: the Campaign's own Item is offered and another Campaign's is not", async () => {
         await page.goto(newLinkPath)
         // The Item list loads after the page; a loaded dev server can take longer than the default 5 s.
-        await expect(itemPicker(page).getByRole('radio', { name: "Walter Corbitt's diary", exact: true })).toBeVisible({ timeout: 20_000 })
+        await expect(itemPicker(page).getByRole('radio', { name: "Walter Corbitt's diary", exact: true })).toBeVisible()
         await expect(itemPicker(page).getByRole('radio', { name: 'Elsewhere item' })).toHaveCount(0)
       })
 

@@ -12,6 +12,9 @@ public sealed class RecordingSceneRepository : ISceneRepository
     /// <summary>When set, <see cref="SaveChangesAsync"/> fails as a database outage would.</summary>
     public bool FailSave { get; set; }
 
+    /// <summary>When set, runs just before the inner save, so a test can play a second tab that wins the race.</summary>
+    public Func<Task>? BeforeSave { get; set; }
+
     public void Add(Scene scene)
     {
         Calls.Add(nameof(Add));
@@ -56,6 +59,16 @@ public sealed class RecordingSceneRepository : ISceneRepository
             throw new InvalidOperationException("The database is down.");
         }
 
-        return _inner.SaveChangesAsync(cancellationToken);
+        return SaveInnerAsync(cancellationToken);
+    }
+
+    private async Task SaveInnerAsync(CancellationToken cancellationToken)
+    {
+        if (BeforeSave is not null)
+        {
+            await BeforeSave();
+        }
+
+        await _inner.SaveChangesAsync(cancellationToken);
     }
 }

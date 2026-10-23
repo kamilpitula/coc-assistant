@@ -62,6 +62,23 @@ public class ItemLinkServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Given_a_second_tab_links_the_same_Item_first_When_saving_Then_the_existing_link_is_returned_as_already_linked()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var item = await _builder.CreateItemAsync(_builder.CampaignId);
+        using var context = _builder.Fixture.CreateContext();
+        var racing = new RecordingSceneRepository(new EfSceneRepository(context));
+        ItemLinkView? winner = null;
+        racing.BeforeSave = async () => winner = await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
+
+        var result = await LinkAsync(scenarioId, sceneId, item.Id, repository: racing);
+
+        Assert.Equal(ItemLinkWriteOutcome.AlreadyLinked, result.Outcome);
+        Assert.Equal(winner, result.Link);
+        Assert.Equal(1, await _builder.StoredItemLinkCountAsync());
+    }
+
+    [Fact]
     public async Task Given_an_Item_of_another_Campaign_a_missing_or_an_unknown_id_When_linking_Then_the_Item_is_not_in_the_Campaign()
     {
         var (scenarioId, sceneId) = await SceneAsync();
