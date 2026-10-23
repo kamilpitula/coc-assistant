@@ -111,11 +111,22 @@ public class ScenarioPreparationDbContext : DbContext
             builder.Property(handout => handout.Kind).IsRequired().HasConversion<string>().HasMaxLength(20);
             builder.Property(handout => handout.Visibility).IsRequired().HasConversion<string>().HasMaxLength(20);
             builder.Property(handout => handout.Title).IsRequired().HasMaxLength(Handout.TitleMaxLength);
-            builder.Property(handout => handout.Content).IsRequired();
+            builder.Property(handout => handout.Content);
+            builder.Property(handout => handout.FileKey).HasMaxLength(32);
+            builder.Property(handout => handout.FileName).HasMaxLength(255);
+            builder.Property(handout => handout.FileMediaType).HasMaxLength(50);
+            builder.Property(handout => handout.FileSizeBytes);
+            builder.Ignore(handout => handout.File);
             builder.Property(handout => handout.Position).IsRequired();
             builder.Property(handout => handout.CreatedAt).IsRequired().HasConversion(
                 createdAt => createdAt.UtcDateTime,
                 stored => new DateTimeOffset(DateTime.SpecifyKind(stored, DateTimeKind.Utc)));
+
+            // A rich-text Handout has content and no file; a file Handout has all four file columns and no content (ADR 0021).
+            builder.ToTable(table => table.HasCheckConstraint(
+                "CK_Handouts_Content",
+                "(Kind IN ('ReadAloud', 'Text') AND Content IS NOT NULL AND FileKey IS NULL AND FileName IS NULL AND FileMediaType IS NULL AND FileSizeBytes IS NULL) "
+                + "OR (Kind IN ('Image', 'Document', 'Map') AND Content IS NULL AND FileKey IS NOT NULL AND FileName IS NOT NULL AND FileMediaType IS NOT NULL AND FileSizeBytes IS NOT NULL)"));
 
             // Serves the Scene's order read; deliberately not unique (ADR 0014).
             builder.HasIndex(handout => new { handout.SceneId, handout.Position });

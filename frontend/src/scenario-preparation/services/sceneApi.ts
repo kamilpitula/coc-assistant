@@ -36,7 +36,7 @@ export const nonPlayerEntityLinkSchema = z.strictObject({
 // A Handout in a Scene's list: no content and no position (design record PBI-SP-005, D2).
 export const handoutSummarySchema = z.strictObject({
   id: z.string(),
-  kind: z.enum(['ReadAloud', 'Text']),
+  kind: z.enum(['ReadAloud', 'Text', 'Image', 'Document', 'Map']),
   visibility: z.enum(['PlayerFacing', 'KeeperFacing']),
   title: z.string(),
 })

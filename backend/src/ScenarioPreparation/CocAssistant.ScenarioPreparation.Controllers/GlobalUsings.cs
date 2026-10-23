@@ -8,3 +8,5 @@ global using Microsoft.AspNetCore.Mvc;
 global using System.Text.Json;
 global using CocAssistant.GameRules.Domain;
 global using System.Text.RegularExpressions;
+global using Microsoft.AspNetCore.Mvc.Filters;
+global using Microsoft.AspNetCore.Mvc.ModelBinding;

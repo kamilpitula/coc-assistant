@@ -12,15 +12,26 @@ public class SceneService
     private readonly IScenarioRepository _scenarios;
     private readonly ISceneRepository _scenes;
     private readonly INonPlayerEntityDirectory _directory;
+    private readonly IHandoutFileStore _fileStore;
     private readonly TimeProvider _timeProvider;
+    private readonly ILogger<SceneService> _logger;
 
-    public SceneService(ICampaignKeepers keepers, IScenarioRepository scenarios, ISceneRepository scenes, INonPlayerEntityDirectory directory, TimeProvider timeProvider)
+    public SceneService(
+        ICampaignKeepers keepers,
+        IScenarioRepository scenarios,
+        ISceneRepository scenes,
+        INonPlayerEntityDirectory directory,
+        IHandoutFileStore fileStore,
+        TimeProvider timeProvider,
+        ILogger<SceneService> logger)
     {
         _keepers = keepers;
         _scenarios = scenarios;
         _scenes = scenes;
         _directory = directory;
+        _fileStore = fileStore;
         _timeProvider = timeProvider;
+        _logger = logger;
     }
 
     /// <summary>The Scenario's Scenes in prepared order; null when the caller may not see the Scenario.</summary>
@@ -110,8 +121,14 @@ public class SceneService
             return SceneRemoveOutcome.NotPrepared;
         }
 
+        var fileKeys = scene.Handouts.Select(handout => handout.FileKey).OfType<string>().ToList();
         _scenes.Remove(scene);
         await _scenes.SaveChangesAsync(cancellationToken);
+        foreach (var fileKey in fileKeys)
+        {
+            await _fileStore.TryDeleteAsync(_logger, fileKey);
+        }
+
         return SceneRemoveOutcome.Removed;
     }
 

@@ -8,13 +8,14 @@ import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import type { RichTextDocument } from '@/shared/types/RichText'
 
-import { useCreateHandout, useDeleteHandout, useEditHandout, useHandout, useReorderHandouts } from './useHandouts'
+import { useCreateHandout, useDeleteHandout, useEditHandout, useHandout, useHandoutFile, useReorderHandouts } from './useHandouts'
 
 // Design record, frontend data: create and delete invalidate the Scene; edit sets the Handout and invalidates the Scene;
 // reorder sets the Scene's handouts from the response, like useScenes.
 
 const api = vi.hoisted(() => ({
   getHandout: vi.fn(),
+  getHandoutFile: vi.fn(),
   createHandout: vi.fn(),
   editHandout: vi.fn(),
   deleteHandout: vi.fn(),
@@ -83,6 +84,30 @@ describe('Handout hooks', () => {
     expect(api.editHandout).toHaveBeenCalledWith('token', 'c1', 's1', 'a1', 'h1', input)
     expect(client.getQueryData(handoutQueryKeys.detail('c1', 's1', 'a1', 'h1'))).toEqual({ ...handout, title: 'Renamed' })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: sceneQueryKeys.detail('c1', 's1', 'a1') })
+  })
+
+  it('invalidates the stored file of the Handout when a save succeeds, so a replaced image is fetched again (SP-UX-85)', async () => {
+    api.editHandout.mockResolvedValue(handout)
+    const { client, wrapper } = setup()
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
+
+    const { result } = renderHook(() => useEditHandout('c1', 's1', 'a1', 'h1'), { wrapper })
+    await act(() => result.current.mutateAsync(input))
+
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: handoutQueryKeys.file('c1', 's1', 'a1', 'h1') })
+  })
+
+  it('loads the stored file of a Handout as a Blob with the token and ids, only when enabled', async () => {
+    const blob = new Blob(['png'], { type: 'image/png' })
+    api.getHandoutFile.mockResolvedValue(blob)
+    const { wrapper } = setup()
+
+    const disabled = renderHook(() => useHandoutFile('c1', 's1', 'a1', 'h1', false), { wrapper })
+    const enabled = renderHook(() => useHandoutFile('c1', 's1', 'a1', 'h1', true), { wrapper })
+
+    await waitFor(() => expect(enabled.result.current.data).toBe(blob))
+    expect(disabled.result.current.fetchStatus).toBe('idle')
+    expect(api.getHandoutFile).toHaveBeenCalledWith('token', 'c1', 's1', 'a1', 'h1')
   })
 
   it('deletes a Handout, removes its cache entry, then invalidates the Scene', async () => {

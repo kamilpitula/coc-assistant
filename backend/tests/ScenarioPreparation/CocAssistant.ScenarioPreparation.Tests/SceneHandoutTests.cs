@@ -38,7 +38,7 @@ public class SceneHandoutTests
     private static Handout Add(Scene scene, string title = "The cellar", HandoutKind kind = HandoutKind.ReadAloud, HandoutVisibility visibility = HandoutVisibility.PlayerFacing, DateTimeOffset? at = null) =>
         scene.AddHandout(kind, visibility, title, Text, at ?? Now).Handout!;
 
-    private static (Guid Id, HandoutKind Kind, HandoutVisibility Visibility, string Title, string Content, int Position)[] Snapshot(Scene scene) =>
+    private static (Guid Id, HandoutKind Kind, HandoutVisibility Visibility, string Title, string? Content, int Position)[] Snapshot(Scene scene) =>
         scene.Handouts.Select(handout => (handout.Id, handout.Kind, handout.Visibility, handout.Title, handout.Content, handout.Position)).ToArray();
 
     [Theory]

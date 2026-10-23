@@ -135,6 +135,56 @@ public class HandoutPersistenceTests : IDisposable
         Assert.Equal(0, await verify.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM Handouts").SingleAsync());
     }
 
+    [Fact]
+    public async Task Given_a_file_handout_added_to_a_tracked_scene_When_saved_Then_the_file_columns_round_trip_and_content_is_null()
+    {
+        var (scenarioId, sceneId) = await CreateSceneAsync();
+        var file = new HandoutFile("0123456789abcdef0123456789abcdef", "plan.png", "image/png", 68);
+        using (var context = _builder.Fixture.CreateContext())
+        {
+            var scene = await new EfSceneRepository(context).FindByIdAsync(_builder.CampaignId, scenarioId, sceneId, CancellationToken.None);
+            scene!.AddFileHandout(HandoutKind.Map, HandoutVisibility.PlayerFacing, "Arkham", file, Now);
+            await context.SaveChangesAsync();
+        }
+
+        using var verify = _builder.Fixture.CreateContext();
+        var stored = await new EfSceneRepository(verify).FindByIdAsync(_builder.CampaignId, scenarioId, sceneId, CancellationToken.None);
+        var handout = Assert.Single(stored!.Handouts);
+        Assert.Equal((HandoutKind.Map, file), (handout.Kind, handout.File));
+        Assert.Null(handout.Content);
+    }
+
+    [Fact]
+    public async Task Given_a_row_that_mixes_content_and_a_file_When_inserting_Then_the_check_constraint_refuses_it()
+    {
+        var (_, sceneId) = await CreateSceneAsync();
+        using var context = _builder.Fixture.CreateContext();
+
+        var richTextWithFile = () => context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO Handouts (Id, SceneId, Kind, Visibility, Title, Content, FileKey, FileName, FileMediaType, FileSizeBytes, Position, CreatedAt) VALUES ({0}, {1}, 'Text', 'KeeperFacing', 'x', {2}, 'k', 'n', 'image/png', 1, 1, '2026-10-22 12:00:00')",
+            Guid.NewGuid(),
+            sceneId,
+            Text);
+        var fileWithoutFile = () => context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO Handouts (Id, SceneId, Kind, Visibility, Title, Content, Position, CreatedAt) VALUES ({0}, {1}, 'Image', 'KeeperFacing', 'x', NULL, 1, '2026-10-22 12:00:00')",
+            Guid.NewGuid(),
+            sceneId);
+        var fileWithContent = () => context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO Handouts (Id, SceneId, Kind, Visibility, Title, Content, FileKey, FileName, FileMediaType, FileSizeBytes, Position, CreatedAt) VALUES ({0}, {1}, 'Image', 'KeeperFacing', 'x', {2}, 'k', 'n', 'image/png', 1, 1, '2026-10-22 12:00:00')",
+            Guid.NewGuid(),
+            sceneId,
+            Text);
+        var partialFile = () => context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO Handouts (Id, SceneId, Kind, Visibility, Title, Content, FileKey, Position, CreatedAt) VALUES ({0}, {1}, 'Image', 'KeeperFacing', 'x', NULL, 'k', 1, '2026-10-22 12:00:00')",
+            Guid.NewGuid(),
+            sceneId);
+
+        await Assert.ThrowsAnyAsync<Exception>(richTextWithFile);
+        await Assert.ThrowsAnyAsync<Exception>(fileWithoutFile);
+        await Assert.ThrowsAnyAsync<Exception>(fileWithContent);
+        await Assert.ThrowsAnyAsync<Exception>(partialFile);
+    }
+
     private static Task InsertRawAsync(ScenarioPreparationDbContext context, Guid id, Guid sceneId, DateTimeOffset createdAt) =>
         context.Database.ExecuteSqlRawAsync(
             "INSERT INTO Handouts (Id, SceneId, Kind, Visibility, Title, Content, Position, CreatedAt) VALUES ({0}, {1}, 'Text', 'KeeperFacing', 'x', {2}, 1, {3})",

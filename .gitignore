@@ -37,3 +37,5 @@ e2e/.certs/
 frontend/test-results/
 e2e/e2e-out.txt
 e2e/*.log
+# Handout files stored locally in development
+backend/src/CocAssistant.Api/App_Data/

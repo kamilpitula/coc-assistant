@@ -130,7 +130,7 @@ describe('scene API', () => {
       for (const handout of [
         { ...handoutSummary, content: notes },
         { ...handoutSummary, position: 1 },
-        { ...handoutSummary, kind: 'Image' },
+        { ...handoutSummary, kind: 'Video' },
         { ...handoutSummary, visibility: 'Everyone' },
       ]) {
         fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...detail, handouts: [handout] }))
@@ -139,6 +139,13 @@ describe('scene API', () => {
 
       fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...detail, handouts: undefined }))
       await expect(getScene('token', 'c1', 's1', 'a1')).rejects.toThrow()
+    })
+
+    it('accepts the Image, Document, and Map kinds in the list', async () => {
+      const handouts = ['Image', 'Document', 'Map'].map((kind, index) => ({ ...handoutSummary, id: `f${index}`, kind }))
+      fetchMock.mockResolvedValue(jsonResponse(200, { ...detail, handouts }))
+
+      expect((await getScene('token', 'c1', 's1', 'a1'))?.handouts.map((handout) => handout.kind)).toEqual(['Image', 'Document', 'Map'])
     })
 
     it('accepts no notes', async () => {

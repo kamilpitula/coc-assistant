@@ -9,6 +9,9 @@ public sealed class RecordingSceneRepository : ISceneRepository
 
     public List<string> Calls { get; } = [];
 
+    /// <summary>When set, <see cref="SaveChangesAsync"/> fails as a database outage would.</summary>
+    public bool FailSave { get; set; }
+
     public void Add(Scene scene)
     {
         Calls.Add(nameof(Add));
@@ -48,6 +51,11 @@ public sealed class RecordingSceneRepository : ISceneRepository
     public Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         Calls.Add(nameof(SaveChangesAsync));
+        if (FailSave)
+        {
+            throw new InvalidOperationException("The database is down.");
+        }
+
         return _inner.SaveChangesAsync(cancellationToken);
     }
 }

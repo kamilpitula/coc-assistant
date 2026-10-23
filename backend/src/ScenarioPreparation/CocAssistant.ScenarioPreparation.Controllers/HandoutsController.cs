@@ -130,18 +130,27 @@ public class HandoutsController : ScenarioPreparationControllerBase
     internal static HandoutSummaryResponse ToSummaryResponse(HandoutSummaryView view) =>
         new(view.Id, view.Kind.ToString(), view.Visibility.ToString(), view.Title);
 
-    private static HandoutResponse ToResponse(HandoutView view) =>
-        new(view.Id, view.Kind.ToString(), view.Visibility.ToString(), view.Title, RichTextJson.Parse(view.Content));
+    internal static HandoutResponse ToResponse(HandoutView view) =>
+        new(
+            view.Id,
+            view.Kind.ToString(),
+            view.Visibility.ToString(),
+            view.Title,
+            RichTextJson.Parse(view.Content),
+            view.File is { } file ? new HandoutFileResponse(file.Name, file.MediaType, file.SizeBytes) : null);
 
     // Only the exact wire names are accepted, case-sensitively, so numbers and odd casings are not kinds.
-    private static HandoutKind? ParseKind(string? kind) => kind switch
+    internal static HandoutKind? ParseKind(string? kind) => kind switch
     {
         nameof(HandoutKind.ReadAloud) => HandoutKind.ReadAloud,
         nameof(HandoutKind.Text) => HandoutKind.Text,
+        nameof(HandoutKind.Image) => HandoutKind.Image,
+        nameof(HandoutKind.Document) => HandoutKind.Document,
+        nameof(HandoutKind.Map) => HandoutKind.Map,
         _ => null,
     };
 
-    private static HandoutVisibility? ParseVisibility(string? visibility) => visibility switch
+    internal static HandoutVisibility? ParseVisibility(string? visibility) => visibility switch
     {
         nameof(HandoutVisibility.PlayerFacing) => HandoutVisibility.PlayerFacing,
         nameof(HandoutVisibility.KeeperFacing) => HandoutVisibility.KeeperFacing,
@@ -153,6 +162,7 @@ public class HandoutsController : ScenarioPreparationControllerBase
         {
             HandoutWriteOutcome.InvalidTitle => Invalid(HandoutProblemMessages.TitleKey, HandoutProblemMessages.Title(submittedTitle)),
             HandoutWriteOutcome.InvalidKind => Invalid(HandoutProblemMessages.KindKey, HandoutProblemMessages.Kind),
+            HandoutWriteOutcome.KindChangeNotAllowed => Invalid(HandoutProblemMessages.KindKey, HandoutProblemMessages.KindChangeNotAllowed),
             HandoutWriteOutcome.InvalidVisibility => Invalid(HandoutProblemMessages.VisibilityKey, HandoutProblemMessages.Visibility),
             HandoutWriteOutcome.MissingContent => Invalid(HandoutProblemMessages.ContentKey, HandoutProblemMessages.MissingContent),
             HandoutWriteOutcome.InvalidContent => Invalid(HandoutProblemMessages.ContentKey, HandoutProblemMessages.InvalidContent),

@@ -66,3 +66,45 @@ export const ServerErrors: Story = {
 export const Busy: Story = { args: { initialValues: prefilled, pending: true } }
 
 export const Failure: Story = { args: { initialValues: prefilled, failureMessage: "We couldn't add the Handout. Try again." } }
+
+export const ImageKind: Story = {
+  args: { initialValues: { ...empty, kind: 'Image' } },
+}
+
+export const DocumentKind: Story = {
+  args: { initialValues: { ...empty, kind: 'Document' } },
+}
+
+export const MapKind: Story = {
+  args: { initialValues: { ...empty, kind: 'Map' } },
+}
+
+export const NoKindChosen: Story = {}
+
+export const EditImage: Story = {
+  args: {
+    initialValues: {
+      title: 'Corbitt House',
+      kind: 'Image',
+      visibility: 'PlayerFacing',
+      content: null,
+      storedFile: { name: 'corbitt-house.png', mediaType: 'image/png', sizeBytes: 1_258_291 },
+    },
+    submitLabel: 'Save',
+    busyLabel: 'Saving...',
+  },
+}
+
+export const EditDocument: Story = {
+  args: {
+    initialValues: {
+      title: 'Diary',
+      kind: 'Document',
+      visibility: 'KeeperFacing',
+      content: null,
+      storedFile: { name: 'diary-page.pdf', mediaType: 'application/pdf', sizeBytes: 870_400 },
+    },
+    submitLabel: 'Save',
+    busyLabel: 'Saving...',
+  },
+}

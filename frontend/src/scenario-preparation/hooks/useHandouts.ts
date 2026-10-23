@@ -5,6 +5,7 @@ import {
   deleteHandout,
   editHandout,
   getHandout,
+  getHandoutFile,
   handoutQueryKeys,
   reorderHandouts,
   StaleHandoutOrderError,
@@ -21,6 +22,17 @@ export function useHandout(campaignId: string, scenarioId: string, sceneId: stri
   return useQuery({
     queryKey: handoutQueryKeys.detail(campaignId, scenarioId, sceneId, handoutId),
     queryFn: async () => getHandout(await getAccessToken(), campaignId, scenarioId, sceneId, handoutId),
+    enabled,
+  })
+}
+
+/** The stored file of an Image, Document, or Map Handout as a Blob; enabled only for the Keeper of a file Handout. */
+export function useHandoutFile(campaignId: string, scenarioId: string, sceneId: string, handoutId: string, enabled: boolean) {
+  const getAccessToken = useAccessToken()
+
+  return useQuery({
+    queryKey: handoutQueryKeys.file(campaignId, scenarioId, sceneId, handoutId),
+    queryFn: async () => getHandoutFile(await getAccessToken(), campaignId, scenarioId, sceneId, handoutId),
     enabled,
   })
 }
@@ -52,6 +64,7 @@ export function useEditHandout(campaignId: string, scenarioId: string, sceneId: 
     mutationFn: async (input: HandoutInput) => editHandout(await getAccessToken(), campaignId, scenarioId, sceneId, handoutId, input),
     onSuccess: (handout) => {
       queryClient.setQueryData(handoutQueryKeys.detail(campaignId, scenarioId, sceneId, handoutId), handout)
+      void queryClient.invalidateQueries({ queryKey: handoutQueryKeys.file(campaignId, scenarioId, sceneId, handoutId) })
       return invalidateScene()
     },
   })

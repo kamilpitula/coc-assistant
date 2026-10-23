@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -19,6 +19,12 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The adapter contract is written once in the Scenario Preparation tests and also run here against Azurite. -->
+    <Compile Include="..\ScenarioPreparation\CocAssistant.ScenarioPreparation.Tests\HandoutFileStoreContract.cs" Link="Contracts\HandoutFileStoreContract.cs" />
+    <Compile Include="..\ScenarioPreparation\CocAssistant.ScenarioPreparation.Tests\HandoutFileSamples.cs" Link="Contracts\HandoutFileSamples.cs" />
   </ItemGroup>
 
   <ItemGroup>

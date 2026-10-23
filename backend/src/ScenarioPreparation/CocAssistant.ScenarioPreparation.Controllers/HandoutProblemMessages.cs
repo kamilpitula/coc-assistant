@@ -13,6 +13,7 @@ internal static class HandoutProblemMessages
     public const string HandoutIdsKey = "handoutIds";
 
     public const string Kind = "Choose Read-aloud or Text.";
+    public const string KindChangeNotAllowed = "A Handout's kind can change only between Read-aloud and Text, or between Image and Map.";
     public const string Visibility = "Choose who can see this Handout.";
     public const string MissingContent = "Enter the Handout text.";
     public const string InvalidContent = "This text can't be saved. Shorten it or remove unsupported content.";

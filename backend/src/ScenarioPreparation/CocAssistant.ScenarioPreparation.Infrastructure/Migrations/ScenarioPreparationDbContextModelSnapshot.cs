@@ -28,11 +28,25 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Content")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("FileKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("FileMediaType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<long?>("FileSizeBytes")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("Kind")
                         .IsRequired()
@@ -59,7 +73,10 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
 
                     b.HasIndex("SceneId", "Position");
 
-                    b.ToTable("Handouts", (string)null);
+                    b.ToTable("Handouts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Handouts_Content", "(Kind IN ('ReadAloud', 'Text') AND Content IS NOT NULL AND FileKey IS NULL AND FileName IS NULL AND FileMediaType IS NULL AND FileSizeBytes IS NULL) OR (Kind IN ('Image', 'Document', 'Map') AND Content IS NULL AND FileKey IS NOT NULL AND FileName IS NOT NULL AND FileMediaType IS NOT NULL AND FileSizeBytes IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.HumanNpc", b =>

@@ -95,7 +95,7 @@ describe('AddHandoutPage', () => {
     })
   })
 
-  it('shows the server message at its field (SP-UX-66)', () => {
+  it('shows the server message at its field once a text kind is chosen (SP-UX-66)', async () => {
     mockUseCreate.mockReturnValue(
       creating({
         isError: true,
@@ -104,6 +104,7 @@ describe('AddHandoutPage', () => {
     )
 
     renderPage()
+    await userEvent.click(screen.getByRole('radio', { name: 'Text' }))
 
     expect(screen.getByRole('textbox', { name: 'Text' })).toHaveAccessibleDescription(
       "You can format text and add links. This text can't be saved. Shorten it or remove unsupported content.",

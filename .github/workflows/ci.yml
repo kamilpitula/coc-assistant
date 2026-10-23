@@ -21,6 +21,8 @@ concurrency:
 env:
   MSSQL_SA_PASSWORD: CiOnly_Passw0rd!
   COC_SQLSERVER_CONNECTION: Server=localhost,1433;User Id=sa;Password=CiOnly_Passw0rd!;TrustServerCertificate=True
+  # The local Azurite blob emulator service container (the well-known development account, not a secret).
+  COC_AZURITE_CONNECTION: UseDevelopmentStorage=true
 
 jobs:
   changes:
@@ -115,8 +117,8 @@ jobs:
     permissions:
       contents: read
       checks: write
-    services: &sql-service
-      sql:
+    services:
+      sql: &sql-service
         image: mcr.microsoft.com/mssql/server:2022-latest
         env:
           ACCEPT_EULA: Y
@@ -131,6 +133,18 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-dotnet
+      # Blob emulator for the Handout file store contract tests (the Azure adapter). It runs from a step, not a service
+      # container, because a service cannot change the command: --skipApiVersionCheck is needed since the Azure SDK
+      # requests API versions newer than the emulator image supports.
+      - name: Start Azurite
+        run: |
+          docker run -d --name azurite -p 10000:10000 mcr.microsoft.com/azure-storage/azurite azurite-blob --blobHost 0.0.0.0 --skipApiVersionCheck
+          for _ in $(seq 1 30); do
+            if curl --silent --output /dev/null http://127.0.0.1:10000/; then exit 0; fi
+            sleep 2
+          done
+          docker logs azurite
+          exit 1
       - name: Integration tests
         run: >-
           dotnet test backend/tests/CocAssistant.Api.IntegrationTests --configuration Release
@@ -181,7 +195,8 @@ jobs:
     env:
       # Committed mock-only keystore password, see e2e/docker/mock-oauth2-config.json.
       COC_E2E_CERT_PASSWORD: CocE2eDevCertP@ss1!
-    services: *sql-service
+    services:
+      sql: *sql-service
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-dotnet

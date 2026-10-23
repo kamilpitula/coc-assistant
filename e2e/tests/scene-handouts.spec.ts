@@ -245,9 +245,9 @@ test.describe('Scene Handouts', () => {
     await test.step('SP-UX-66: submitting the empty form explains every field and focuses the title', async () => {
       await handoutSubmitButton(page, 'Add Handout').click()
       await expect(page.getByText('Enter a title.')).toBeVisible()
-      await expect(page.getByText('Choose Read-aloud or Text.')).toBeVisible()
+      await expect(page.getByText('Choose a kind.')).toBeVisible()
       await expect(page.getByText('Choose who can see this Handout.')).toBeVisible()
-      await expect(page.getByText('Enter the Handout text.')).toBeVisible()
+      await expect(page.getByText('Choose a kind to add its content.')).toBeVisible()
       await expect(handoutTitleField(page)).toBeFocused()
     })
 
@@ -261,7 +261,7 @@ test.describe('Scene Handouts', () => {
     await test.step('SP-UX-66, SP-UX-67: with a title but no kind, the kind is explained and its first radio is focused', async () => {
       await handoutTitleField(page).fill('The front door')
       await handoutSubmitButton(page, 'Add Handout').click()
-      await expect(page.getByText('Choose Read-aloud or Text.')).toBeVisible()
+      await expect(page.getByText('Choose a kind.')).toBeVisible()
       await expect(kindRadio(page, 'Read-aloud')).toBeFocused()
     })
 

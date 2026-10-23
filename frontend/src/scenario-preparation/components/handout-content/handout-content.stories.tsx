@@ -18,7 +18,12 @@ const content: RichTextDocument = {
 const meta = {
   title: 'ScenarioPreparation/HandoutContent',
   component: HandoutContent,
-  args: { kind: 'ReadAloud', content },
+  args: {
+    campaignId: 'c1',
+    scenarioId: 's1',
+    sceneId: 'a1',
+    handout: { id: 'h1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The letter', content },
+  },
 } satisfies Meta<typeof HandoutContent>
 
 export default meta
@@ -26,4 +31,4 @@ type Story = StoryObj<typeof meta>
 
 export const ReadAloud: Story = {}
 
-export const Text: Story = { args: { kind: 'Text' } }
+export const Text: Story = { args: { handout: { id: 'h1', kind: 'Text', visibility: 'PlayerFacing', title: 'The letter', content } } }

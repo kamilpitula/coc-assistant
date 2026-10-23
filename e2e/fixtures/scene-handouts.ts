@@ -23,8 +23,8 @@ export function handoutTitleField(page: Page): Locator {
   return page.getByLabel('Title', { exact: true })
 }
 
-/** The Kind radio of the given name ("Read-aloud" or "Text"). */
-export function kindRadio(page: Page, name: 'Read-aloud' | 'Text'): Locator {
+/** The Kind radio of the given name. */
+export function kindRadio(page: Page, name: 'Read-aloud' | 'Text' | 'Image' | 'Document' | 'Map'): Locator {
   return page.getByRole('radiogroup', { name: 'Kind' }).getByRole('radio', { name, exact: true })
 }
 
@@ -97,4 +97,33 @@ export async function addHandoutViaUi(
   await fillHandoutForm(page, handout)
   await handoutSubmitButton(page, 'Add Handout').click()
   await expect(page.getByRole('status').filter({ hasText: `${handout.title} added.` })).toBeVisible()
+}
+
+/** A valid 1x1 PNG, so no binary fixture is committed. */
+export const PNG_BYTES = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+  'base64',
+)
+
+/** A minimal PDF header, enough for the server to detect a PDF. */
+export const PDF_BYTES = Buffer.from(['%PDF-1.4', '1 0 obj', '<< >>', 'endobj', '%%EOF', ''].join(String.fromCharCode(10)))
+
+/** The bytes padded with zeros to the given length, so a file has a chosen size and keeps its signature. */
+export function padded(bytes: Buffer, length: number): Buffer {
+  return Buffer.concat([bytes, Buffer.alloc(Math.max(0, length - bytes.length))])
+}
+
+/** The native image or PDF input of the Handout form (there is only one on the page at a time). */
+export function fileField(page: Page): Locator {
+  return page.locator('input[type="file"]')
+}
+
+/** Chooses an image in the Handout form, as the browser would report it. */
+export async function chooseHandoutImage(page: Page, file: { name: string; buffer: Buffer; mimeType?: string }): Promise<void> {
+  await fileField(page).setInputFiles({ name: file.name, mimeType: file.mimeType ?? 'image/png', buffer: file.buffer })
+}
+
+/** Chooses a PDF in the Handout form, as the browser would report it. */
+export async function chooseHandoutPdf(page: Page, file: { name: string; buffer: Buffer; mimeType?: string }): Promise<void> {
+  await fileField(page).setInputFiles({ name: file.name, mimeType: file.mimeType ?? 'application/pdf', buffer: file.buffer })
 }
