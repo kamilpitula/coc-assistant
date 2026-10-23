@@ -36,6 +36,6 @@ If the hook, the isolation setting, or the global setup memory floor changes, up
 
 ## Follow-ups
 - The LocalDB memory raise was only run where `min server memory` was already 900 (a no-op); verify it on a LocalDB instance at the default value.
-- Agent definitions set `isolation: worktree`, which branches from the default branch; check that the Verifier switches to the PBI branch in practice.
 - `core.hooksPath` is an absolute path to the main checkout's `.githooks` on this machine, so linked worktrees run the main checkout's hooks; use the relative `.githooks` value to make each worktree run its own.
 - The pre-push hook was verified only under Git Bash on Windows; run it once on Linux.
+- Exercise the isolation scheme end to end once: Architect returns the main checkout to its prior branch, the Developer switches to the PBI branch in its worktree, and the Verifier runs `git checkout --detach`.
