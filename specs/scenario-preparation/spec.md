@@ -17,11 +17,18 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - **Scene API:** Keeper only, with the same 404 rule as the Scenario API, including for a Scene of another Scenario. Scenes follow the ordering contract of [ADR 0014](../../docs/adr/0014-order-preparation-records-by-stored-position-with-tie-break.md).
   - `GET /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes` lists the Scenario's Scenes in prepared order, each with `{id, title, status, startedAt, finishedAt}`.
   - `POST /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes` creates a Prepared Scene at the end of the prepared order.
-  - `GET /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` returns one Scene with its title, location, Keeper notes, status, and dates, and its Non-Player Entity links, each `{id, nonPlayerEntity: {id, type, name}, playerFacingName, playerFacingDescription}`, in the order they were linked, and its Handouts, each `{id, kind, visibility, title}`, in stored order ([ADR 0014](../../docs/adr/0014-order-preparation-records-by-stored-position-with-tie-break.md)), without their text.
+  - `GET /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` returns one Scene with its title, location, Keeper notes, status, and dates, and its Non-Player Entity links, each `{id, nonPlayerEntity: {id, type, name}, playerFacingName, playerFacingDescription}`, in the order they were linked, its Item links, each `{id, item: {id, name}}`, in the order they were linked, and its Handouts, each `{id, kind, visibility, title}`, in stored order ([ADR 0014](../../docs/adr/0014-order-preparation-records-by-stored-position-with-tie-break.md)), without their text.
   - `PUT /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` replaces its title, location, and Keeper notes; 409 when the Scene is Finished.
   - `DELETE /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` removes a Prepared Scene; 409 when it is Active or Finished.
   - `PUT /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/order` replaces the prepared order with the complete list of the Scenario's Scene ids, as for Scenarios.
   - `POST /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}/non-player-entity-links` links a Non-Player Entity of the same Campaign; `PUT` and `DELETE .../non-player-entity-links/{linkId}` replace its Player-facing name and description or unlink it; 409 when the Scene is Finished; 400 for a Non-Player Entity that is not in the Campaign (PBI-SP-004).
+  - `POST /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}/item-links` with `{itemId}` links an Item of the same Campaign:
+    - 201 with the new link;
+    - 200 with the existing link when the Item is already linked;
+    - 409 when the Scene is Finished;
+    - 400 keyed `itemId` for an Item that is not in the Campaign.
+
+    `DELETE .../item-links/{linkId}` unlinks it, with 409 when the Scene is Finished (PBI-SP-008).
   - `GET`, `PUT`, and `DELETE /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}/handouts/{handoutId}` and `POST .../scenes/{sceneId}/handouts` read one Handout with its text, replace its kind, visibility, title, and text, delete it, or add one at the end; `PUT .../scenes/{sceneId}/handouts/order` replaces the Scene's Handout order with the complete list of its Handout ids. Writes answer 409 when the Scene is Finished; `DELETE` answers 409 unless the Scene is Prepared; 400 for a missing or unknown kind or visibility, a title outside 1-200 characters, or missing, empty, or invalid text (PBI-SP-005). `POST` and `PUT` accept `multipart/form-data` with `kind`, `visibility`, `title`, and `file` for Image, Document, and Map (the file optional on `PUT`); `GET .../handouts/{handoutId}/file` streams the stored image or PDF to the Keeper; 400 for a missing, unsupported, or too large file or a kind change across Read-aloud/Text and Image/Map/Document; 413 for a body over the limit; 503 when storage fails, with no Handout added or changed (PBI-SP-007).
 - **Non-Player Entity API:** Keeper only, with the same 404 rule as the Scenario API, including for a profile of another Campaign or a profile addressed with the wrong type. Responses include the computed derived values; requests never carry them.
   - `GET /api/campaigns/{campaignId}/non-player-entities` lists the Campaign's Human NPCs and Mythos Creatures, each with `{id, type, name}`.
@@ -29,13 +36,23 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
   - `POST /api/campaigns/{campaignId}/mythos-creatures` creates a Mythos Creature; `GET`, `PUT`, and `DELETE /api/campaigns/{campaignId}/mythos-creatures/{mythosCreatureId}` read, replace, and delete its Monster Profile.
   - `POST .../human-npcs/{humanNpcId}/duplicate` and `POST .../mythos-creatures/{mythosCreatureId}/duplicate` create a copy (PBI-SP-010).
   - `DELETE` answers 409 when the profile is linked to an Active or Finished Scene (from PBI-SP-004).
+- **Item API:** Keeper only, with the same 404 rule as the Scenario API, including for an Item of another Campaign (PBI-SP-008). The 400 keys are `name`, `playerFacingDescription`, and `keeperNotes` ([ADR 0018](../../docs/adr/0018-scenario-preparation-validation-problems-keyed-by-request-path.md)).
+  - `GET /api/campaigns/{campaignId}/items` lists the Campaign's Items, each with `{id, name, sceneCount}`.
+  - `POST /api/campaigns/{campaignId}/items` creates an Item.
+  - `GET /api/campaigns/{campaignId}/items/{itemId}` returns `{id, name, playerFacingDescription, keeperNotes, holder, handouts, scenes}`:
+    - `holder` is null while no one holds the Item;
+    - `handouts` lists its Handouts as `{id, kind, visibility, title}` in stored order;
+    - `scenes` lists the Scenes that link it as `{scenarioId, scenarioTitle, id, title, status}`, in Scenario order then Scene order.
+  - `PUT .../items/{itemId}` replaces its name, Player-facing description, and Keeper notes.
+  - `DELETE .../items/{itemId}` deletes it; 409 while the Item is in play.
+  - `.../items/{itemId}/handouts` offers the same Handout operations as `.../scenes/{sceneId}/handouts`, with the same 400, 413, and 503 answers. There is no Finished refusal, and `DELETE` answers 409 while the Item is in play.
 - **Non-Player Entity profiles:** Human NPC and Mythos Creature are separate aggregates, each stored as a row with its Campaign id, type, and name beside a validated JSON document holding the rest of its profile, following the Character Sheet storage pattern. A profile's type is fixed at creation. Rule calculations shared with Campaign Play (derived values, difficulty levels, dice notation) live in a shared game-rules kernel ([ADR 0017](../../docs/adr/0017-shared-game-rules-kernel-for-derived-values-and-dice-notation.md)). Profile edits are not pushed over SignalR: profiles are Keeper-only and only the Keeper edits them, so there is no other viewer to update; the Player-facing parts reach Players through Scene links and Reveals, which carry their own real-time rules.
 - **Scene status:** A Scene is Prepared, Active, or Finished, and moves only Prepared -> Active -> Finished. The Scene aggregate owns the status and the editing rules that follow from it; Scene Play triggers the transitions. How Scene Play reaches the Scene aggregate, and where Reveals and their snapshots are stored, is decided in an architect decision record before PBI-SPL-001.
 - **Rich text:** Scene Keeper notes, rich-text Handouts, Item descriptions, and Player-facing descriptions of Non-Player Entities in a Scene are stored as Lexical serialized editor state (JSON). The frontend edits it with Lexical and renders it with a read-only Lexical renderer that registers the same nodes. Choosing Lexical is recorded in an ADR.
 - **Handout kinds:** Read-aloud and Text hold rich text (PBI-SP-005). Image, Document, and Map hold a file in Azure Blob Storage (PBI-SP-007). A Map is shown prominently in Scene Play; it is a static image.
-- **UX specification:** [ux.md](ux.md). The Keeper's Scenario page lists the Scenario's Scenes in prepared order with each Scene's status and, once played, its start and finish dates; the Scene layout is in [ux.md](ux.md) sections 11 to 20, the Non-Player Entity list, create page, and profile pages in sections 21 to 30, linking Non-Player Entities on the Scene page in sections 31 to 39, Handouts on the Scene page and their own pages in sections 40 to 49, and Image, Document, and Map Handouts in sections 50 to 58.
+- **UX specification:** [ux.md](ux.md). The Keeper's Scenario page lists the Scenario's Scenes in prepared order with each Scene's status and, once played, its start and finish dates; the Scene layout is in [ux.md](ux.md) sections 11 to 20, the Non-Player Entity list, create page, and profile pages in sections 21 to 30, linking Non-Player Entities on the Scene page in sections 31 to 39, Handouts on the Scene page and their own pages in sections 40 to 49, Image, Document, and Map Handouts in sections 50 to 58, and Items, their Handouts, and linking Items on the Scene page in sections 59 to 70.
 - **Manual preparation:** v1 provides Keeper-managed Scene, Handout, Human NPC, Mythos Creature, and Item records.
-- **File storage:** Azure Blob Storage stores file Handouts in v1 and uploaded Scenario source documents in the later extraction flow. Each upload is stored under a new key and never overwritten; Scenario Preparation deletes a stored file only while its Scene is Prepared, so a file that could have been revealed is never deleted ([ADR 0021](../../docs/adr/0021-handout-files-are-immutable-blobs-behind-a-storage-port.md)).
+- **File storage:** Azure Blob Storage stores file Handouts in v1 and uploaded Scenario source documents in the later extraction flow. Each upload is stored under a new key and never overwritten; Scenario Preparation deletes a Scene's stored file only while the Scene is Prepared, and an Item's stored file only while the Item is not in play. So a file that could have been revealed is never deleted ([ADR 0021](../../docs/adr/0021-handout-files-are-immutable-blobs-behind-a-storage-port.md), [ADR 0022](../../docs/adr/0022-items-are-guarded-by-play-usage-read-through-ports.md)).
 - **LLM extraction boundary:** The later extraction flow uses direct structured-output calls to a Microsoft Foundry model and maps results into the same Scenario, Scene, Human NPC, and Mythos Creature concepts used by manual preparation.
 - **Dependencies:** Depends on Campaign Play for Campaign ownership and Keeper authorization. Scene Play depends on this feature for Scenes, their status transitions, Handouts, Non-Player Entity links, and Items. Campaign Play depends on this feature for prepared Scene and Non-Player Entity context.
 
@@ -50,6 +67,11 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - A Scene can be removed only while it is Prepared.
 - The prepared order belongs to the Scenario: reordering may move Active and Finished Scenes, and a Scene's position is not part of its content.
 - A Non-Player Entity, Item, or Handout linked to an Active or Finished Scene cannot be deleted, and an Item that an Investigator holds cannot be deleted. Material linked only to Prepared Scenes can be deleted freely.
+- An Item is in play while a Scene that links it is Active or Finished, or while an Investigator holds it.
+  - An Item in play cannot be deleted, and neither can its Handouts.
+  - Replacing the file of one of its Handouts keeps the old stored file.
+  - Deleting an Item that is not in play removes its Scene links, its Handouts, and their files.
+  - Removing a Prepared Scene removes its Item links but not the Items ([ADR 0022](../../docs/adr/0022-items-are-guarded-by-play-usage-read-through-ports.md)).
 - Rich text uses only these Lexical nodes: paragraph, heading (two levels), quote, bulleted and numbered list, list item, line break, link, and text with bold, italic, underline, or strikethrough formatting. Links use `http` or `https` and open in a new tab with `rel="noopener noreferrer"`. The server refuses with 400 a document that contains any other node, a link with another scheme, or more than 200 KB of serialized JSON. Images are never embedded in rich text; an image is its own Handout.
 - Human NPCs and Mythos Creatures are distinct profiles. A Human NPC uses relevant human [characteristics](../../docs/game-rules/coc7_character_creation_and_development_rules.md#2-characteristics) and [skills](../../docs/game-rules/coc7_character_creation_and_development_rules.md#6-skills); a Mythos Creature may have attacks, armor, special abilities, and sanity loss.
 - **[DEPRECATED 2026-10-17]**
@@ -62,11 +84,21 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - Non-Player Entities and Items are scoped to one Campaign and are not reusable across Campaigns in v1.
 - A Non-Player Entity's link to a Scene carries a Player-facing name and a Player-facing rich-text description. These are the only parts of a Non-Player Entity a Player ever receives; the profile is Keeper-only.
 - A Non-Player Entity may be linked to a Scene more than once; each link has its own id, a required Player-facing name (1-200 characters), and an optional Player-facing description. A Reveal of a Non-Player Entity names the link. Deleting a Non-Player Entity linked only to Prepared Scenes removes those links, and removing a Prepared Scene removes its links.
-- An Item has a required name (1-200 characters), a Player-facing rich-text description, optional rich-text Keeper notes, and optional Handouts. It is held by at most one Investigator or by no one; Scene Play changes the holder.
+- **[DEPRECATED 2026-10-23]**
+  ~~An Item has a required name (1-200 characters), a Player-facing rich-text description, optional rich-text Keeper notes, and optional Handouts. It is held by at most one Investigator or by no one; Scene Play changes the holder.~~
+  Replaced by:
+  - An Item has:
+    - a required name (1-200 characters), which Players see;
+    - a required Player-facing rich-text description with visible text;
+    - optional rich-text Keeper notes;
+    - optional Handouts, ordered per [ADR 0014](../../docs/adr/0014-order-preparation-records-by-stored-position-with-tie-break.md).
+  - It is held by at most one Investigator or by no one. Scene Play changes the holder, and Scenario Preparation reads it through a port ([ADR 0022](../../docs/adr/0022-items-are-guarded-by-play-usage-read-through-ports.md)).
+  - A Scene links an Item at most once, and the link has no fields of its own.
+  - The Item and its Handouts stay editable whatever the status of the Scenes that link it.
 - **[DEPRECATED 2026-10-17]**
   ~~Handouts may be player-facing or Keeper-facing; Keeper-facing material must not be exposed to Players before the Keeper reveals it.~~
   Replaced by: every Handout has a visibility of Player-facing or Keeper-facing. A Player-facing Handout reaches a Player only through a Reveal in Scene Play; a Keeper-facing Handout is Keeper reference material and is never revealed.
-- A rich-text Handout has a kind, Read-aloud or Text, which may change between the two; a visibility, chosen explicitly with no default; a required title (1-200 characters); and required rich text with visible text. A Scene's Handouts are ordered per [ADR 0014](../../docs/adr/0014-order-preparation-records-by-stored-position-with-tie-break.md); reordering them changes the Scene's content, so a Finished Scene refuses it. A Handout can be deleted only while its Scene is Prepared, and removing a Prepared Scene removes its Handouts.
+- A rich-text Handout has a kind, Read-aloud or Text, which may change between the two; a visibility, chosen explicitly with no default; a required title (1-200 characters); and required rich text with visible text. A Scene's Handouts are ordered per [ADR 0014](../../docs/adr/0014-order-preparation-records-by-stored-position-with-tie-break.md); reordering them changes the Scene's content, so a Finished Scene refuses it. A Scene's Handout can be deleted only while its Scene is Prepared, and removing a Prepared Scene removes its Handouts.
 - An Image or Map Handout holds one PNG, JPEG, WebP, or GIF image and a Document Handout one PDF, each up to 20 MB (20,971,520 bytes), recognized by its content, never SVG. Image and Map may change into each other; no other kind change crosses between rich text and a file, and a Document stays a Document. A Reveal of a file Handout snapshots the stored file's key, name, media type, and size; it never copies the file.
 - Later model extraction uses structured output and direct model calls rather than an agentic orchestration layer.
 
@@ -370,6 +402,7 @@ Scenario: Rich text outside the allowed nodes is refused
   Then the save is refused with 400 and the Handout is unchanged
 
 Scenario: Keeper prepares an Item
+  # SP-UX-90, SP-UX-92, SP-UX-97, SP-UX-98
   Given a Keeper owns a Campaign
   When the Keeper creates the Item "Walter Corbitt's diary" and links it to the Scene "The Corbitt House"
   Then the Item belongs to the Campaign and is held by no one
@@ -389,12 +422,32 @@ Scenario: Deleting a profile linked only to Prepared Scenes removes its links
   And the Scene "Meeting Knott" no longer links it
 
 Scenario: A held Item cannot be deleted
+  # SP-UX-95
   Given an Investigator holds the Item "Walter Corbitt's diary"
   When the Keeper deletes the Item
   Then the deletion is refused and the Item is unchanged
 
+Scenario: Keeper gives an Item a Handout
+  # SP-UX-100
+  Given the Item "Walter Corbitt's diary" belongs to the Campaign
+  When the Keeper adds the Player-facing Text Handout "The last entry" to the Item
+  Then the Item lists the Handout
+
+Scenario: An Item in a played Scene cannot be deleted
+  # SP-UX-95
+  Given the Item "Walter Corbitt's diary" is linked to a Finished Scene
+  When the Keeper deletes the Item or one of its Handouts
+  Then the deletion is refused and nothing is deleted
+
+Scenario: Deleting an Item linked only to Prepared Scenes removes its links
+  # SP-UX-101
+  Given the Item "Walter Corbitt's diary" is linked only to the Prepared Scene "The Corbitt House"
+  When the Keeper deletes the Item
+  Then the Campaign no longer has the Item
+  And the Scene "The Corbitt House" no longer lists it
+
 Scenario: Campaign boundaries isolate Scenario material
-  # SP-UX-51
+  # SP-UX-51, SP-UX-102
   Given a Human NPC and an Item belong to Campaign A
   When a Keeper prepares Scenario material for Campaign B
   Then the Human NPC and the Item are not available to link from Campaign B

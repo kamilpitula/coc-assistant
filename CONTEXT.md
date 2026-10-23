@@ -123,7 +123,7 @@ A Handout holding a static image of a place, shown prominently when revealed.
 _Avoid_: Battle map, floor plan
 
 **Item**:
-A story object in a Campaign, such as a key, a diary, or an idol, that the Keeper creates and that may be needed to move the story forward. It is held by at most one Investigator or by no one, and only the Keeper changes its holder. Ordinary belongings are Gear, not Items.
+A story object in a Campaign, such as a key, a diary, or an idol, that the Keeper creates and that may be needed to move the story forward. Players see its name and Player-facing description only when it is revealed or given; its Keeper notes and Keeper-facing Handouts never reach them. It is held by at most one Investigator or by no one, and only the Keeper changes its holder. Ordinary belongings are Gear, not Items.
 _Avoid_: Gear, loot, inventory, artifact
 
 ## Scene Play

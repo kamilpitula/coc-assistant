@@ -1,6 +1,6 @@
 # Handout files are immutable blobs behind a Scenario Preparation storage port
 
-Status: Accepted
+Status: Accepted; amended for Items by [ADR 0022](0022-items-are-guarded-by-play-usage-read-through-ports.md)
 
 Image, Document, and Map Handouts hold one file, stored durably in Azure Blob Storage and served only to the Keeper ([specs/scenario-preparation/spec.md](../../specs/scenario-preparation/spec.md), Architecture and Constraints). Local development, integration tests, and E2E must run without Azure. A Reveal in Scene Play snapshots a Handout's Player-facing content ([specs/scene-play/spec.md](../../specs/scene-play/spec.md)), and the PBI-SPL-001 design record does not exist yet, so the file snapshot rule is fixed here. SQL Server and Blob Storage share no transaction. The design is recorded in the [PBI-SP-007 design record](../scenario-preparation/issues/07-file-image-and-map-handouts.design.md).
 
