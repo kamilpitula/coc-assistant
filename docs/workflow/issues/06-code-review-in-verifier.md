@@ -1,6 +1,6 @@
 ---
 id: PBI-WF-006
-status: todo
+status: done
 blocked_by: []
 ---
 
@@ -28,12 +28,14 @@ Read: `.claude/commands/code-review/SKILL.md`, `.claude/agents/verifier.md`, `.c
 - The skill is referenced by file path, never as `/code-review`, which collides with a built-in command name.
 
 ## Verification
-- [ ] `node tools/backlog/src/cli.ts --check` passes.
-- [ ] `node tools/ascii-check/src/cli.ts` passes.
-- [ ] Each changed file carries the Scope rules, confirmed by grep.
+- [x] `node tools/backlog/src/cli.ts --check` passes.
+- [x] `node tools/ascii-check/src/cli.ts` passes.
+- [x] Each changed file carries the Scope rules, confirmed by grep.
 - [ ] A Verifier pass on a real diff shows `### Code review` with `#### Standards` and `#### Spec` and IDs. Deferred: see Follow-ups.
 
 ## Refinement Protocol
 If the skill, `reviewer.md`, `verifier.md`, `developer.md`, or `orchestrate.md` changes how review findings are produced, identified, or routed, update all five together.
 
 ## Follow-ups
+- Run the Verifier code review once on a real PBI diff (this PBI's own Verifier pass can serve) and check `### Code review`, the IDs, and the re-review flow end to end.
+- `Agent(reviewer)` in the Verifier `tools` would be ignored for a subagent, so the `reviewer`-only limit is prose; add a `permissions.deny` rule for other agent types if stricter enforcement is wanted.
