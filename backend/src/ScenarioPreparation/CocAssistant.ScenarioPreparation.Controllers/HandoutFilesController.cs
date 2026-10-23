@@ -36,19 +36,18 @@ public class HandoutFilesController : ScenarioPreparationControllerBase
             return Unauthorized();
         }
 
-        var form = await ReadFormAsync(cancellationToken);
+        var form = await this.ReadHandoutFormAsync(cancellationToken);
         if (form is null)
         {
             return StatusCode(StatusCodes.Status413PayloadTooLarge);
         }
 
         var kind = HandoutsController.ParseKind(form["kind"]);
-        await using var upload = OpenUpload(form);
+        await using var upload = HandoutActionResults.OpenUpload(form);
         var result = await _handoutFileService.CreateAsync(
             campaignId,
             accountId.Value,
-            scenarioId,
-            sceneId,
+            new SceneHandoutOwnerReference(scenarioId, sceneId),
             kind,
             HandoutsController.ParseVisibility(form["visibility"]),
             form["title"].ToString(),
@@ -56,7 +55,7 @@ public class HandoutFilesController : ScenarioPreparationControllerBase
             cancellationToken);
         return result.Outcome == HandoutWriteOutcome.Saved
             ? StatusCode(StatusCodes.Status201Created, HandoutsController.ToResponse(result.Handout!))
-            : Failure(result.Outcome, form["title"], kind);
+            : this.FileWriteFailure(result.Outcome, form["title"], kind);
     }
 
     /// <summary>Replaces the Handout's kind, visibility, title, and, when a file is sent, its file. 409 when the Scene is Finished.</summary>
@@ -73,19 +72,18 @@ public class HandoutFilesController : ScenarioPreparationControllerBase
             return Unauthorized();
         }
 
-        var form = await ReadFormAsync(cancellationToken);
+        var form = await this.ReadHandoutFormAsync(cancellationToken);
         if (form is null)
         {
             return StatusCode(StatusCodes.Status413PayloadTooLarge);
         }
 
         var kind = HandoutsController.ParseKind(form["kind"]);
-        await using var upload = OpenUpload(form);
+        await using var upload = HandoutActionResults.OpenUpload(form);
         var result = await _handoutFileService.EditAsync(
             campaignId,
             accountId.Value,
-            scenarioId,
-            sceneId,
+            new SceneHandoutOwnerReference(scenarioId, sceneId),
             handoutId,
             kind,
             HandoutsController.ParseVisibility(form["visibility"]),
@@ -94,7 +92,7 @@ public class HandoutFilesController : ScenarioPreparationControllerBase
             cancellationToken);
         return result.Outcome == HandoutWriteOutcome.Saved
             ? Ok(HandoutsController.ToResponse(result.Handout!))
-            : Failure(result.Outcome, form["title"], kind);
+            : this.FileWriteFailure(result.Outcome, form["title"], kind);
     }
 
     /// <summary>The Handout's file as an attachment with its stored media type; 404 for a rich-text Handout; 503 when storage fails.</summary>
@@ -107,58 +105,6 @@ public class HandoutFilesController : ScenarioPreparationControllerBase
             return Unauthorized();
         }
 
-        var result = await _handoutFileService.OpenAsync(campaignId, accountId.Value, scenarioId, sceneId, handoutId, cancellationToken);
-        if (result.Outcome != HandoutFileOpenOutcome.Opened)
-        {
-            return result.Outcome == HandoutFileOpenOutcome.NotFound
-                ? NotFound()
-                : Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: HandoutFileProblemMessages.StorageFailedTitle);
-        }
-
-        Response.Headers.XContentTypeOptions = "nosniff";
-        Response.Headers.CacheControl = "private, no-store";
-        return File(result.Download!.Content, result.Download.File.MediaType, result.Download.File.Name);
-    }
-
-    // A form over the multipart limit is a 413 (Kestrel's request limit throws BadHttpRequestException, the form limit InvalidDataException).
-    private async Task<IFormCollection?> ReadFormAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await Request.ReadFormAsync(cancellationToken);
-        }
-        catch (Exception exception) when (exception is InvalidDataException or BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge })
-        {
-            return null;
-        }
-    }
-
-    private static OpenedUpload OpenUpload(IFormCollection form) =>
-        form.Files.GetFile("file") is { } file ? new OpenedUpload(new HandoutUpload(file.FileName, file.Length, file.OpenReadStream())) : new OpenedUpload(null);
-
-    private ActionResult Failure(HandoutWriteOutcome outcome, string? submittedTitle, HandoutKind? submittedKind)
-    {
-        var problem = HandoutFileProblemMessages.For(outcome, submittedTitle, submittedKind);
-        if (problem is not null)
-        {
-            ModelState.AddModelError(problem.Key, problem.Message);
-            return ValidationProblem(ModelState);
-        }
-
-        return outcome switch
-        {
-            HandoutWriteOutcome.Finished => Problem(statusCode: StatusCodes.Status409Conflict, title: SceneProblemTitles.Finished),
-            HandoutWriteOutcome.StorageFailed => Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: HandoutFileProblemMessages.StorageFailedTitle),
-            _ => NotFound(),
-        };
-    }
-
-    private readonly struct OpenedUpload : IAsyncDisposable
-    {
-        public OpenedUpload(HandoutUpload? upload) => Upload = upload;
-
-        public HandoutUpload? Upload { get; }
-
-        public ValueTask DisposeAsync() => Upload is null ? ValueTask.CompletedTask : Upload.Content.DisposeAsync();
+        return this.DownloadResult(await _handoutFileService.OpenAsync(campaignId, accountId.Value, new SceneHandoutOwnerReference(scenarioId, sceneId), handoutId, cancellationToken));
     }
 }

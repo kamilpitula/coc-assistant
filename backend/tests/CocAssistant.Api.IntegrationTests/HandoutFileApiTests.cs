@@ -557,7 +557,7 @@ public class HandoutFileApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
         var loaded = await GetSceneAsync(client, scene, "file-keeper-23");
 
         Assert.Equal(
-            ["finishedAt", "handouts", "id", "keeperNotes", "location", "nonPlayerEntityLinks", "startedAt", "status", "title"],
+            ["finishedAt", "handouts", "id", "itemLinks", "keeperNotes", "location", "nonPlayerEntityLinks", "startedAt", "status", "title"],
             PropertyNames(loaded).Order());
         Assert.DoesNotContain("plan.png", loaded.GetRawText());
     }

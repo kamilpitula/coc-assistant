@@ -48,6 +48,9 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                     b.Property<long?>("FileSizeBytes")
                         .HasColumnType("bigint");
 
+                    b.Property<Guid?>("ItemId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -56,7 +59,7 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                     b.Property<int>("Position")
                         .HasColumnType("int");
 
-                    b.Property<Guid>("SceneId")
+                    b.Property<Guid?>("SceneId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Title")
@@ -71,11 +74,15 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ItemId", "Position");
+
                     b.HasIndex("SceneId", "Position");
 
                     b.ToTable("Handouts", null, t =>
                         {
                             t.HasCheckConstraint("CK_Handouts_Content", "(Kind IN ('ReadAloud', 'Text') AND Content IS NOT NULL AND FileKey IS NULL AND FileName IS NULL AND FileMediaType IS NULL AND FileSizeBytes IS NULL) OR (Kind IN ('Image', 'Document', 'Map') AND Content IS NULL AND FileKey IS NOT NULL AND FileName IS NOT NULL AND FileMediaType IS NOT NULL AND FileSizeBytes IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_Handouts_OneOwner", "(SceneId IS NOT NULL AND ItemId IS NULL) OR (SceneId IS NULL AND ItemId IS NOT NULL)");
                         });
                 });
 
@@ -104,6 +111,60 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                     b.HasIndex("CampaignId");
 
                     b.ToTable("HumanNpcs");
+                });
+
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Item", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CampaignId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("KeeperNotes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("PlayerFacingDescription")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampaignId");
+
+                    b.ToTable("Items");
+                });
+
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.ItemLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SceneId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("SceneId", "ItemId")
+                        .IsUnique();
+
+                    b.ToTable("ItemLinks");
                 });
 
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.MythosCreature", b =>
@@ -253,8 +314,27 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
 
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Handout", b =>
                 {
+                    b.HasOne("CocAssistant.ScenarioPreparation.Domain.Item", null)
+                        .WithMany("Handouts")
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("CocAssistant.ScenarioPreparation.Domain.Scene", null)
                         .WithMany("Handouts")
+                        .HasForeignKey("SceneId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.ItemLink", b =>
+                {
+                    b.HasOne("CocAssistant.ScenarioPreparation.Domain.Item", null)
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CocAssistant.ScenarioPreparation.Domain.Scene", null)
+                        .WithMany("ItemLinks")
                         .HasForeignKey("SceneId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -288,9 +368,16 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Item", b =>
+                {
+                    b.Navigation("Handouts");
+                });
+
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Scene", b =>
                 {
                     b.Navigation("Handouts");
+
+                    b.Navigation("ItemLinks");
 
                     b.Navigation("NonPlayerEntityLinks");
                 });

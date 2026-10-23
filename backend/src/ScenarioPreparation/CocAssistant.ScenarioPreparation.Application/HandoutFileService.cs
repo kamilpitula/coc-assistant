@@ -1,57 +1,54 @@
 namespace CocAssistant.ScenarioPreparation.Application;
 
 /// <summary>
-/// Adds, replaces, and opens the file of an Image, Document, or Map Handout for its Campaign's Keeper (specs/scenario-preparation/spec.md,
-/// File storage). The Keeper check runs first, so anyone else ends as NotFound before any Scene or blob is read (ADR 0013, ADR 0016).
-/// A write validates in the domain first, uploads under a new never-reused key, and only then commits; a failed commit deletes
-/// the new blob, and the replaced blob is deleted only after the commit and only when the Scene is Prepared (PBI-SP-007 D5, D6; ADR 0021).
+/// Adds, replaces, and opens the file of an Image, Document, or Map Handout of a Scene or an Item for its Campaign's Keeper
+/// (specs/scenario-preparation/spec.md, File storage). The Keeper check runs first, so anyone else ends as NotFound before any
+/// owner or blob is read (ADR 0013, ADR 0016). A write validates in the domain first, uploads under a new never-reused key, and
+/// only then commits; a failed commit deletes the new blob, and the replaced blob is deleted only after the commit and only when
+/// its owner allows it: a Prepared Scene, or an Item that is not in play (PBI-SP-007 D5, D6; ADR 0021, ADR 0022).
 /// </summary>
 public class HandoutFileService
 {
-    private readonly ICampaignKeepers _keepers;
-    private readonly ISceneRepository _scenes;
+    private readonly HandoutOwnerLocator _owners;
     private readonly IHandoutFileStore _store;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<HandoutFileService> _logger;
 
-    public HandoutFileService(ICampaignKeepers keepers, ISceneRepository scenes, IHandoutFileStore store, TimeProvider timeProvider, ILogger<HandoutFileService> logger)
+    public HandoutFileService(HandoutOwnerLocator owners, IHandoutFileStore store, TimeProvider timeProvider, ILogger<HandoutFileService> logger)
     {
-        _keepers = keepers;
-        _scenes = scenes;
+        _owners = owners;
         _store = store;
         _timeProvider = timeProvider;
         _logger = logger;
     }
 
-    /// <summary>Adds an Image, Document, or Map Handout after the Scene's others.</summary>
+    /// <summary>Adds an Image, Document, or Map Handout after the owner's others.</summary>
     public async Task<HandoutWriteResult> CreateAsync(
         Guid campaignId,
         Guid callerAccountId,
-        Guid scenarioId,
-        Guid sceneId,
+        HandoutOwnerReference ownerReference,
         HandoutKind? kind,
         HandoutVisibility? visibility,
         string title,
         HandoutUpload? upload,
         CancellationToken cancellationToken)
     {
-        var scene = await FindSceneAsync(campaignId, callerAccountId, scenarioId, sceneId, cancellationToken);
-        if (scene is null)
+        var owner = await _owners.FindAsync(campaignId, callerAccountId, ownerReference, cancellationToken);
+        if (owner is null)
         {
             return new HandoutWriteResult(HandoutWriteOutcome.NotFound, null);
         }
 
         var file = await DescribeAsync(upload, kind, cancellationToken);
-        var result = scene.AddFileHandout(kind, visibility, title, file, _timeProvider.GetUtcNow());
-        return await StoreAndSaveAsync(result.Outcome, result.Handout, upload, file, null, cancellationToken);
+        var result = owner.AddFileHandout(kind, visibility, title, file, _timeProvider.GetUtcNow());
+        return await StoreAndSaveAsync(owner, result.Outcome, result.Handout, upload, file, null, cancellationToken);
     }
 
     /// <summary>Replaces a file Handout's kind, visibility, title, and, when given, its file; its place in the order is unchanged.</summary>
     public async Task<HandoutWriteResult> EditAsync(
         Guid campaignId,
         Guid callerAccountId,
-        Guid scenarioId,
-        Guid sceneId,
+        HandoutOwnerReference ownerReference,
         Guid handoutId,
         HandoutKind? kind,
         HandoutVisibility? visibility,
@@ -59,22 +56,22 @@ public class HandoutFileService
         HandoutUpload? upload,
         CancellationToken cancellationToken)
     {
-        var scene = await FindSceneAsync(campaignId, callerAccountId, scenarioId, sceneId, cancellationToken);
-        if (scene is null)
+        var owner = await _owners.FindAsync(campaignId, callerAccountId, ownerReference, cancellationToken);
+        if (owner is null)
         {
             return new HandoutWriteResult(HandoutWriteOutcome.NotFound, null);
         }
 
         var file = await DescribeAsync(upload, kind, cancellationToken);
-        var result = scene.EditFileHandout(handoutId, kind, visibility, title, file);
-        return await StoreAndSaveAsync(result.Outcome, result.Handout, upload, file, result.ReplacedKey, cancellationToken);
+        var result = owner.EditFileHandout(handoutId, kind, visibility, title, file);
+        return await StoreAndSaveAsync(owner, result.Outcome, result.Handout, upload, file, result.ReplacedKey, cancellationToken);
     }
 
     /// <summary>The Handout's stored bytes and details; NotFound for a non-Keeper, an unknown id, and a rich-text Handout.</summary>
-    public async Task<HandoutFileOpenResult> OpenAsync(Guid campaignId, Guid callerAccountId, Guid scenarioId, Guid sceneId, Guid handoutId, CancellationToken cancellationToken)
+    public async Task<HandoutFileOpenResult> OpenAsync(Guid campaignId, Guid callerAccountId, HandoutOwnerReference ownerReference, Guid handoutId, CancellationToken cancellationToken)
     {
-        var scene = await FindSceneAsync(campaignId, callerAccountId, scenarioId, sceneId, cancellationToken);
-        var file = scene?.Handouts.FirstOrDefault(candidate => candidate.Id == handoutId)?.File;
+        var owner = await _owners.FindAsync(campaignId, callerAccountId, ownerReference, cancellationToken);
+        var file = owner?.Handouts.FirstOrDefault(candidate => candidate.Id == handoutId)?.File;
         if (file is null)
         {
             return new HandoutFileOpenResult(HandoutFileOpenOutcome.NotFound, null);
@@ -92,6 +89,7 @@ public class HandoutFileService
     }
 
     private async Task<HandoutWriteResult> StoreAndSaveAsync(
+        IHandoutOwner owner,
         HandoutOutcome outcome,
         Handout? handout,
         HandoutUpload? upload,
@@ -109,7 +107,7 @@ public class HandoutFileService
             return new HandoutWriteResult(HandoutWriteOutcome.StorageFailed, null);
         }
 
-        await CommitAsync(file?.Key, cancellationToken);
+        await CommitAsync(owner, file?.Key, cancellationToken);
         if (replacedKey is not null)
         {
             await _store.TryDeleteAsync(_logger, replacedKey);
@@ -133,11 +131,11 @@ public class HandoutFileService
     }
 
     // A failed commit leaves no row, so the blob uploaded for it is deleted (best effort) and the failure propagates.
-    private async Task CommitAsync(string? newKey, CancellationToken cancellationToken)
+    private async Task CommitAsync(IHandoutOwner owner, string? newKey, CancellationToken cancellationToken)
     {
         try
         {
-            await _scenes.SaveChangesAsync(cancellationToken);
+            await owner.SaveChangesAsync(cancellationToken);
         }
         catch
         {
@@ -164,9 +162,4 @@ public class HandoutFileService
         var mediaType = HandoutMediaTypes.Detect(header.AsSpan(0, read)) ?? string.Empty;
         return new HandoutFile(Guid.NewGuid().ToString("N"), HandoutFileNames.Clean(upload.FileName, kind.Value), mediaType, upload.Length);
     }
-
-    private async Task<Scene?> FindSceneAsync(Guid campaignId, Guid callerAccountId, Guid scenarioId, Guid sceneId, CancellationToken cancellationToken) =>
-        await _keepers.IsKeeperAsync(campaignId, callerAccountId, cancellationToken)
-            ? await _scenes.FindByIdAsync(campaignId, scenarioId, sceneId, cancellationToken)
-            : null;
 }
