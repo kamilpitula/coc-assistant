@@ -22,7 +22,14 @@ public class ItemPersistenceTests : IDisposable
     private async Task<int> CountAsync(string table)
     {
         using var context = _builder.Fixture.CreateContext();
-        return await context.Database.SqlQueryRaw<int>($"SELECT COUNT(*) AS Value FROM {table}").SingleAsync();
+        return table switch
+        {
+            "Handouts" => await context.Set<Handout>().CountAsync(),
+            "ItemLinks" => await context.ItemLinks.CountAsync(),
+            "Items" => await context.Items.CountAsync(),
+            "Scenes" => await context.Scenes.CountAsync(),
+            _ => throw new ArgumentOutOfRangeException(nameof(table), table, "Unsupported table."),
+        };
     }
 
     [Fact]

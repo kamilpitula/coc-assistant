@@ -115,6 +115,13 @@ public static class ItemApiRequests
     {
         using var scope = factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ScenarioPreparationDbContext>();
-        return await dbContext.Database.SqlQueryRaw<int>($"SELECT COUNT(*) AS Value FROM {table}").SingleAsync();
+        return table switch
+        {
+            "Handouts" => await dbContext.Set<Handout>().CountAsync(),
+            "ItemLinks" => await dbContext.ItemLinks.CountAsync(),
+            "Items" => await dbContext.Items.CountAsync(),
+            "Scenes" => await dbContext.Scenes.CountAsync(),
+            _ => throw new ArgumentOutOfRangeException(nameof(table), table, "Unsupported table."),
+        };
     }
 }
