@@ -289,7 +289,7 @@ Non-Player Entities                               (h2)  [Link a Non-Player Entit
   - `h2` "Keeper notes" with `rich-text-view`, or "No Keeper notes yet." in muted text when there are none.
   - The "Handouts" section (section 41), in view mode only.
   - The "Non-Player Entities" section (section 32), in view mode only; in Edit mode it is not shown.
-- **Actions by status:** Prepared: outline "Edit" and "Remove Scene" (outline, destructive text). Active: "Edit" only. Finished: no actions, and the muted sentence "This Scene is finished and can't be changed."
+- **Actions by status:** Prepared: "Start Scene" (a link styled as a primary button to the start page), outline "Edit", and "Remove Scene" (outline, destructive text). Active: the link "Open Active Scene" and "Edit". Finished: no actions, and the muted sentence "This Scene is finished and can't be changed." The start page and the Active Scene page are specified in [scene-play ux](../scene-play/ux.md) sections 2 and 3 (PBI-SPL-001).
 - **Edit:** "Edit" swaps the view for `scene-form`, prefilled; the `h1` keeps the saved title. Actions "Save" ("Saving..." while busy, disabled) and "Cancel". Focus moves to the Title field.
 - **Save success:** back to the view, the status says "Scene saved.", focus moves to "Edit".
 - **Cancel:** discards the edits without confirmation; focus moves to "Edit".
