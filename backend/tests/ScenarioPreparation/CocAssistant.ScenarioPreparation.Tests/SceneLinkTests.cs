@@ -16,7 +16,7 @@ public class SceneLinkTests
     private static Scene ActiveScene()
     {
         var scene = PreparedScene();
-        scene.Start(Now);
+        scene.StartWithOneInvestigator(Now);
         return scene;
     }
 

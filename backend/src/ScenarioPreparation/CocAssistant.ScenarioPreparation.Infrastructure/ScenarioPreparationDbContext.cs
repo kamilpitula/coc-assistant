@@ -2,6 +2,8 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure;
 
 public class ScenarioPreparationDbContext : DbContext
 {
+    public const string ActiveSceneIndexName = "IX_Scenes_CampaignId_Active";
+
     public ScenarioPreparationDbContext(DbContextOptions<ScenarioPreparationDbContext> options)
         : base(options)
     {
@@ -77,6 +79,29 @@ public class ScenarioPreparationDbContext : DbContext
 
             // Serves the prepared-order read; deliberately not unique (ADR 0014).
             builder.HasIndex(scene => new { scene.ScenarioId, scene.Position });
+
+            // At most one Active Scene per Campaign, even under concurrent starts (ADR 0025, ADR 0016).
+            builder.HasIndex(scene => scene.CampaignId, ActiveSceneIndexName)
+                .IsUnique()
+                .HasFilter($"[Status] = '{nameof(SceneStatus.Active)}'");
+
+            // The optimistic token that stops two starts of the same Scene, and a stale finish-then-start (ADR 0025).
+            builder.Property(scene => scene.Version).IsConcurrencyToken();
+        });
+
+        // The Investigators present are a child collection of the Scene, kept after it finishes (ADR 0024). The Investigator id has
+        // no foreign key, because Investigators live in another database (ADR 0013).
+        modelBuilder.Entity<Scene>().HasMany<InvestigatorPresence>("_investigatorsPresent")
+            .WithOne()
+            .HasForeignKey(presence => presence.SceneId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Scene>().Navigation("_investigatorsPresent").UsePropertyAccessMode(PropertyAccessMode.Field);
+        modelBuilder.Entity<Scene>().Ignore(scene => scene.InvestigatorsPresent);
+
+        modelBuilder.Entity<InvestigatorPresence>(builder =>
+        {
+            builder.ToTable("SceneInvestigatorsPresent");
+            builder.HasKey(presence => new { presence.SceneId, presence.InvestigatorId });
         });
 
         // A link is a child of its Scene, reached through the Scene's backing field. Its Human NPC and Mythos Creature keys are

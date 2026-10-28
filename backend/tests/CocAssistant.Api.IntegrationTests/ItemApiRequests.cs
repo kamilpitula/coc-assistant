@@ -101,14 +101,7 @@ public static class ItemApiRequests
     {
         using var scope = factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ScenarioPreparationDbContext>();
-        var scene = await dbContext.Scenes.SingleAsync(candidate => candidate.Id == sceneId);
-        scene.Start(DateTimeOffset.UtcNow);
-        if (status == SceneStatus.Finished)
-        {
-            scene.Finish(DateTimeOffset.UtcNow.AddMinutes(30));
-        }
-
-        await dbContext.SaveChangesAsync();
+        await ScenePlaySeed.PlayAsync(dbContext, sceneId, status);
     }
 
     public static async Task<int> CountAsync(IdentityApiFactory factory, string table)

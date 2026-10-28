@@ -107,7 +107,15 @@ public class HandoutFileService
             return new HandoutWriteResult(HandoutWriteOutcome.StorageFailed, null);
         }
 
-        await CommitAsync(owner, file?.Key, cancellationToken);
+        try
+        {
+            await CommitAsync(owner, file?.Key, cancellationToken);
+        }
+        catch (SceneConcurrencyException) when (replacedKey is not null)
+        {
+            return new HandoutWriteResult(HandoutWriteOutcome.InPlay, null);
+        }
+
         if (replacedKey is not null)
         {
             await _store.TryDeleteAsync(_logger, replacedKey);

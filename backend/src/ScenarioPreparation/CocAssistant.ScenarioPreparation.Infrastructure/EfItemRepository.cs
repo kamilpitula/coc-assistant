@@ -18,5 +18,5 @@ public class EfItemRepository : IItemRepository
             item => item.CampaignId == campaignId && item.Id == itemId,
             cancellationToken);
 
-    public Task SaveChangesAsync(CancellationToken cancellationToken) => _dbContext.SaveChangesAsync(cancellationToken);
+    public Task SaveChangesAsync(CancellationToken cancellationToken) => SceneSaveChanges.SaveAsync(_dbContext, cancellationToken);
 }

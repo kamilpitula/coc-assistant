@@ -10,14 +10,22 @@ public class HumanNpcService
     private readonly ICampaignKeepers _keepers;
     private readonly IHumanNpcRepository _humanNpcs;
     private readonly INonPlayerEntityUsage _usage;
+    private readonly LinkedSceneGuard _linkedSceneGuard;
     private readonly INonPlayerEntityRuleData _ruleData;
     private readonly TimeProvider _timeProvider;
 
-    public HumanNpcService(ICampaignKeepers keepers, IHumanNpcRepository humanNpcs, INonPlayerEntityUsage usage, INonPlayerEntityRuleData ruleData, TimeProvider timeProvider)
+    public HumanNpcService(
+        ICampaignKeepers keepers,
+        IHumanNpcRepository humanNpcs,
+        INonPlayerEntityUsage usage,
+        LinkedSceneGuard linkedSceneGuard,
+        INonPlayerEntityRuleData ruleData,
+        TimeProvider timeProvider)
     {
         _keepers = keepers;
         _humanNpcs = humanNpcs;
         _usage = usage;
+        _linkedSceneGuard = linkedSceneGuard;
         _ruleData = ruleData;
         _timeProvider = timeProvider;
     }
@@ -110,8 +118,18 @@ public class HumanNpcService
             return HumanNpcDeleteOutcome.LinkedToPlayedScene;
         }
 
+        // A start of a Scene that links this profile loses to the delete, or the delete loses to the start (ADR 0025).
+        await _linkedSceneGuard.GuardNonPlayerEntityAsync(campaignId, NonPlayerEntityType.HumanNpc, humanNpcId, cancellationToken);
         _humanNpcs.Remove(humanNpc);
-        await _humanNpcs.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _humanNpcs.SaveChangesAsync(cancellationToken);
+        }
+        catch (SceneConcurrencyException)
+        {
+            return HumanNpcDeleteOutcome.LinkedToPlayedScene;
+        }
+
         return HumanNpcDeleteOutcome.Deleted;
     }
 

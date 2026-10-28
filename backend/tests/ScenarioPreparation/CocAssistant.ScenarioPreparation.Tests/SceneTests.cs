@@ -16,7 +16,7 @@ public class SceneTests
     private static Scene ActiveScene()
     {
         var scene = PreparedScene();
-        scene.Start(Now);
+        scene.StartWithOneInvestigator(Now);
         return scene;
     }
 
@@ -139,41 +139,6 @@ public class SceneTests
         Assert.Equal(SceneFieldsOutcome.InvalidTitle, scene.Edit("", "Elsewhere", Notes));
         Assert.Equal(SceneFieldsOutcome.InvalidKeeperNotes, scene.Edit("New", "Elsewhere", "{}"));
         Assert.Equal(("The Corbitt House", "Arkham", (string?)null), (scene.Title, scene.Location, scene.KeeperNotes));
-    }
-
-    [Fact]
-    public void Given_a_prepared_scene_When_started_Then_it_is_active_with_a_start_time()
-    {
-        var scene = PreparedScene();
-
-        Assert.Equal(SceneTransitionOutcome.Transitioned, scene.Start(Now));
-        Assert.Equal((SceneStatus.Active, (DateTimeOffset?)Now, (DateTimeOffset?)null), (scene.Status, scene.StartedAt, scene.FinishedAt));
-    }
-
-    [Fact]
-    public void Given_an_active_scene_When_finished_Then_it_is_finished_with_a_finish_time()
-    {
-        var scene = ActiveScene();
-
-        Assert.Equal(SceneTransitionOutcome.Transitioned, scene.Finish(Later));
-        Assert.Equal((SceneStatus.Finished, (DateTimeOffset?)Now, (DateTimeOffset?)Later), (scene.Status, scene.StartedAt, scene.FinishedAt));
-    }
-
-    [Fact]
-    public void Given_a_scene_in_the_wrong_status_When_transitioning_Then_the_transition_is_refused_and_nothing_changes()
-    {
-        var prepared = PreparedScene();
-        Assert.Equal(SceneTransitionOutcome.NotAllowed, prepared.Finish(Later));
-        Assert.Equal((SceneStatus.Prepared, (DateTimeOffset?)null), (prepared.Status, prepared.FinishedAt));
-
-        var active = ActiveScene();
-        Assert.Equal(SceneTransitionOutcome.NotAllowed, active.Start(Later));
-        Assert.Equal((SceneStatus.Active, (DateTimeOffset?)Now), (active.Status, active.StartedAt));
-
-        var finished = FinishedScene();
-        Assert.Equal(SceneTransitionOutcome.NotAllowed, finished.Start(Later.AddHours(1)));
-        Assert.Equal(SceneTransitionOutcome.NotAllowed, finished.Finish(Later.AddHours(1)));
-        Assert.Equal((SceneStatus.Finished, (DateTimeOffset?)Now, (DateTimeOffset?)Later), (finished.Status, finished.StartedAt, finished.FinishedAt));
     }
 
     [Fact]

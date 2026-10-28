@@ -16,6 +16,9 @@ public enum HandoutWriteOutcome
     UnsupportedFileType,
     FileTooLarge,
     StorageFailed,
+
+    /// <summary>An Item's file was not replaced because the Item came into play at the same time (ADR 0025).</summary>
+    InPlay,
 }
 
 /// <summary>The Handout when <see cref="HandoutWriteOutcome.Saved"/>, otherwise null.</summary>

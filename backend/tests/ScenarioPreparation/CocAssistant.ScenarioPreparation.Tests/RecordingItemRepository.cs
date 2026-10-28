@@ -30,7 +30,10 @@ public sealed class RecordingItemRepository : IItemRepository
         return _inner.FindByIdAsync(campaignId, itemId, cancellationToken);
     }
 
-    public Task SaveChangesAsync(CancellationToken cancellationToken)
+    /// <summary>When set, runs just before the inner save, so a test can play a Scene start that wins the race.</summary>
+    public Func<Task>? BeforeSave { get; set; }
+
+    public async Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         Calls.Add(nameof(SaveChangesAsync));
         if (FailSave)
@@ -38,7 +41,12 @@ public sealed class RecordingItemRepository : IItemRepository
             throw new InvalidOperationException("The database is down.");
         }
 
-        return _inner.SaveChangesAsync(cancellationToken);
+        if (BeforeSave is not null)
+        {
+            await BeforeSave();
+        }
+
+        await _inner.SaveChangesAsync(cancellationToken);
     }
 }
 

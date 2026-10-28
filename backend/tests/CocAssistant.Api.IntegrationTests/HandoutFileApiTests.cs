@@ -128,14 +128,7 @@ public class HandoutFileApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
     {
         using var scope = _factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ScenarioPreparationDbContext>();
-        var scene = await dbContext.Scenes.Include(candidate => candidate.Handouts).SingleAsync(candidate => candidate.Id == sceneId);
-        scene.Start(DateTimeOffset.UtcNow);
-        if (status == SceneStatus.Finished)
-        {
-            scene.Finish(DateTimeOffset.UtcNow.AddMinutes(30));
-        }
-
-        await dbContext.SaveChangesAsync();
+        await ScenePlaySeed.PlayAsync(dbContext, sceneId, status);
     }
 
     [Fact]

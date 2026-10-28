@@ -17,7 +17,7 @@ public class SceneHandoutTests
     private static Scene ActiveScene()
     {
         var scene = PreparedScene();
-        scene.Start(Now);
+        scene.StartWithOneInvestigator(Now);
         return scene;
     }
 
@@ -221,7 +221,7 @@ public class SceneHandoutTests
     {
         var scene = PreparedScene();
         var handout = Add(scene);
-        scene.Start(Now);
+        scene.StartWithOneInvestigator(Now);
         if (status == SceneStatus.Finished)
         {
             scene.Finish(Now.AddHours(1));
@@ -243,7 +243,7 @@ public class SceneHandoutTests
         var third = Add(scene, "Third", at: Now.AddMinutes(2));
         if (status == SceneStatus.Active)
         {
-            scene.Start(Now);
+            scene.StartWithOneInvestigator(Now);
         }
 
         var outcome = scene.ReorderHandouts([third.Id, first.Id, second.Id]);
@@ -259,7 +259,7 @@ public class SceneHandoutTests
         var scene = PreparedScene();
         var first = Add(scene, "First");
         var second = Add(scene, "Second", at: Now.AddMinutes(1));
-        scene.Start(Now);
+        scene.StartWithOneInvestigator(Now);
         scene.Finish(Now.AddHours(1));
 
         Assert.Equal(HandoutOrderOutcome.SceneFinished, scene.ReorderHandouts([second.Id, second.Id]));
