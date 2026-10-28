@@ -1,6 +1,8 @@
 import type { QueryKey } from '@tanstack/react-query'
 
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
+import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
+import { activeSceneQueryKeys } from '@/scene-play/services/activeSceneApi'
 
 /**
  * The queries each CampaignDataChanged topic invalidates (specs/campaign-play/spec.md, Live connection contract;
@@ -13,6 +15,8 @@ const queryKeysByTopic: Record<string, (campaignId: string) => QueryKey[]> = {
   wallEntries: (campaignId) => [campaignQueryKeys.wall(campaignId), campaignQueryKeys.wallPreview(campaignId)],
   investigators: (campaignId) => [campaignQueryKeys.investigators(campaignId), campaignQueryKeys.members(campaignId)],
   myInvestigator: (campaignId) => [campaignQueryKeys.myInvestigator(campaignId), campaignQueryKeys.members(campaignId)],
+  // The Keeper's Scene pages show the status change too (specs/scene-play/spec.md, Live updates).
+  activeScene: (campaignId) => [activeSceneQueryKeys.detail(campaignId), sceneQueryKeys.inCampaign(campaignId)],
 }
 
 /** The query keys to refetch for the topics; unknown topics are ignored and each key appears once. */

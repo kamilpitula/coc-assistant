@@ -548,6 +548,45 @@ describe('ScenePage', () => {
   })
 })
 
+// specs/scene-play/ux.md section 1; SPL-UX-1: the run link sits before Edit.
+describe('ScenePage run links', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    routerState.location.state = {}
+    mockUseCampaign.mockReturnValue({ data: { id: 'c1', role: 'Keeper' } })
+    mockUseEdit.mockReturnValue(editing())
+    mockUseRemove.mockReturnValue(removing())
+  })
+
+  it('offers "Start Scene" on a Prepared Scene, to the nested start page, before Edit', () => {
+    mockUseScene.mockReturnValue(query(prepared))
+    renderPage()
+
+    const start = screen.getByRole('link', { name: 'Start Scene' })
+    expect(start).toHaveAttribute('href', '/campaigns/c1/scenarios/s1/scenes/a1/start')
+    expect(start.compareDocumentPosition(screen.getByRole('button', { name: 'Edit' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'Open Active Scene' })).not.toBeInTheDocument()
+  })
+
+  it('offers "Open Active Scene" on an Active Scene before Edit', () => {
+    mockUseScene.mockReturnValue(query(active))
+    renderPage()
+
+    const open = screen.getByRole('link', { name: 'Open Active Scene' })
+    expect(open).toHaveAttribute('href', '/campaigns/c1/active-scene')
+    expect(open.compareDocumentPosition(screen.getByRole('button', { name: 'Edit' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'Start Scene' })).not.toBeInTheDocument()
+  })
+
+  it('offers neither on a Finished Scene', () => {
+    mockUseScene.mockReturnValue(query(finished))
+    renderPage()
+
+    expect(screen.queryByRole('link', { name: 'Start Scene' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Open Active Scene' })).not.toBeInTheDocument()
+  })
+})
+
 function within_dialog(name: string): HTMLElement {
   const dialog = screen.getByRole('alertdialog')
   const button = Array.from(dialog.querySelectorAll('button')).find((candidate) => candidate.textContent === name)
