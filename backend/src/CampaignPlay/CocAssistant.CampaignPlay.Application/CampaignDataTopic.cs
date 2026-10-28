@@ -10,4 +10,5 @@ public enum CampaignDataTopic
     WallEntries,
     Investigators,
     MyInvestigator,
+    ActiveScene,
 }

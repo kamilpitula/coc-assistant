@@ -23,6 +23,11 @@
     <Project Path="src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Infrastructure/CocAssistant.ScenarioPreparation.Infrastructure.csproj" />
     <Project Path="src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Controllers/CocAssistant.ScenarioPreparation.Controllers.csproj" />
   </Folder>
+  <Folder Name="/src/ScenePlay/">
+    <Project Path="src/ScenePlay/CocAssistant.ScenePlay.Application/CocAssistant.ScenePlay.Application.csproj" />
+    <Project Path="src/ScenePlay/CocAssistant.ScenePlay.Infrastructure/CocAssistant.ScenePlay.Infrastructure.csproj" />
+    <Project Path="src/ScenePlay/CocAssistant.ScenePlay.Controllers/CocAssistant.ScenePlay.Controllers.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CocAssistant.Api.Tests/CocAssistant.Api.Tests.csproj" />
     <Project Path="tests/CocAssistant.Api.IntegrationTests/CocAssistant.Api.IntegrationTests.csproj" />
@@ -38,5 +43,8 @@
   </Folder>
   <Folder Name="/tests/ScenarioPreparation/">
     <Project Path="tests/ScenarioPreparation/CocAssistant.ScenarioPreparation.Tests/CocAssistant.ScenarioPreparation.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/ScenePlay/">
+    <Project Path="tests/ScenePlay/CocAssistant.ScenePlay.Tests/CocAssistant.ScenePlay.Tests.csproj" />
   </Folder>
 </Solution>
