@@ -18,7 +18,7 @@ Scene Play lets the Keeper start a Prepared Scene with chosen Investigators pres
   - Scenario Preparation exposes a provider application service, `SceneLifecycleService`, which finds, starts, finishes, and re-staffs Scenes.
   - The adapter in ScenePlay.Infrastructure calls that service.
   - The provider service performs no authorization. Only Scene Play calls it, after checking the Keeper through its own port onto Campaign Play.
-  - Finishing, starting, and recording who is present are one `SaveChanges`.
+  - Finishing, starting, and recording who is present are committed atomically: one `SaveChanges` for a plain start, and one database transaction with two ordered saves for finish-then-start ([ADR 0025](0025-one-active-scene-per-campaign-through-a-filtered-index-and-a-scene-version.md)).
 - **Reveal snapshots:**
   - A `Reveals` child table with typed snapshot columns that mirror the `Handouts` table ([ADR 0020](0020-handouts-are-child-entities-of-their-owner-in-one-table.md), [ADR 0021](0021-handout-files-are-immutable-blobs-behind-a-storage-port.md)):
     - subject type and subject id, with no foreign key;

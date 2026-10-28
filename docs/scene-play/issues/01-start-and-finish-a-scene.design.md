@@ -60,7 +60,7 @@
 | Testability | - unit tests need two contexts on one SQLite connection | - failure-between-commits cases need fault injection | + aggregate unit tests and one SQLite context |
 | Simplicity | - a 4th `DbContext`, migrations, Respawn, E2E setup, and `Program.cs` migration (the human is editing that block) | - a 4th `DbContext` plus compensation | + no new `DbContext`; one migration in the existing context |
 | Reversibility | - a shared-database constraint is hard to undo | 0 | 0 moving the tables out later means a data move, but no API change |
-| Security and correctness | + atomic | - an Active Scene with no Investigators present after a partial failure; concurrent starts of one Scene can pair the winner's status with the loser's present list | + finish, start, and present are written in one `SaveChanges` |
+| Security and correctness | + atomic | - an Active Scene with no Investigators present after a partial failure; concurrent starts of one Scene can pair the winner's status with the loser's present list | + finish, start, and present are committed atomically: one `SaveChanges` for a plain start, one transaction for finish-then-start (D2) |
 
 - **Chosen:** C.
   - Deciding metrics: Correctness (one atomic write for finish, start, and present), Simplicity, and Modifiability (the aggregate already owns status and its editing rules; ADR 0019).
@@ -113,6 +113,19 @@
 - **No retry:**
   - Both exceptions map to 409.
   - A retry of finish-then-start could finish a Scene the Keeper never saw.
+- **Finish-then-start ordering (revision 2026-10-28):** the index is checked per statement and EF orders the two Scene updates by key, so they cannot share one `SaveChanges`.
+  - `SceneLifecycleService` first validates the start without changing anything: the status checks, then `Scene.CheckStart(presentIds, approvedIds)`, a pure method that `Scene.Start` also calls. Any 409 or 400 is returned before a write.
+  - It then calls `active.Finish(now)` and `ISceneRepository.SaveFinishThenStartAsync(startScene, ct)`.
+  - That method:
+    - opens one database transaction at the default isolation level;
+    - saves the finish;
+    - invokes `startScene`, which calls `scene.Start(...)`; anything other than `Transitioned` throws `InvalidOperationException`;
+    - saves the start with its present rows;
+    - commits.
+  - On any failure it rolls back, clears the change tracker, and throws the mapped exception: `ActiveSceneConflictException` or `SceneConcurrencyException`, both 409.
+  - A plain start stays one `SaveChanges`.
+  - This is the only place in the codebase that opens a transaction. No generic unit-of-work or transaction seam is added.
+- **Present-row conflicts (revision 2026-10-28):** a same-Scene race can fail on the present rows' primary key before the concurrency check, because EF does not order a modified parent's update before child inserts. So `EfSceneRepository` also maps a `PK_SceneInvestigatorsPresent` violation to `SceneConcurrencyException`: on SQL Server by the constraint name, on SQLite by the column text `SceneInvestigatorsPresent.SceneId, SceneInvestigatorsPresent.InvestigatorId`.
 - **`Version`:**
   - An `int` with `.IsConcurrencyToken()`.
   - It is incremented by `Scene.Start`, `Scene.Finish`, `Scene.ReplaceInvestigatorsPresent`, `Scene.RemoveHandout`, and the new guard in D6. It is incremented in one private method.
@@ -262,7 +275,7 @@
 - `SceneLifecycleService` performs no authorization. It is called only by the Scene Play adapter, after `ActiveSceneService` has checked the Keeper. No Scenario Preparation controller calls it, and no Scenario Preparation endpoint exposes present Investigators.
 - A Player response never contains another Player's Investigator id, any Prepared Scene data, or (when not present) anything beyond `{title, isPresent: false}`.
 - `activeScene` is sent only to `campaign:{campaignId}` and carries no data.
-- Finish, then start, and the present list are written in one `SaveChanges`. Nothing retries a finish-then-start.
+- A finish-then-start is atomic. The finish and the start with its present rows are committed in one database transaction at default isolation, as two ordered saves (finish first) inside `EfSceneRepository.SaveFinishThenStartAsync`. Every other transition is one `SaveChanges`. Nothing retries a finish-then-start, and no other code opens a transaction.
 - Wall Entry and live-update failures never fail or undo a committed transition. They are logged.
 - A guarded delete (D6) never removes material of a Scene that is not Prepared at commit time.
 - No new CA1502 or ESLint complexity suppression.
@@ -301,8 +314,9 @@
 8. **Integration tests:** `ActiveSceneApiTests`, covering:
    - the lifecycle;
    - every 400/409 case and the error order;
-   - concurrent starts of two Scenes, and of the same Scene;
+   - concurrent starts of two Scenes, and of the same Scene, including the same Scene with identical present lists;
    - concurrent finish-then-start;
+   - finish-then-start on SQL Server with the Active Scene's id sorting both before and after the new Scene's id;
    - Wall Entries;
    - the hub `activeScene` signal through `CampaignHubTestClient`;
    - Campaign isolation.
@@ -347,6 +361,11 @@
   - Finish-then-start in one save.
   - `finishActiveScene` true with none Active.
   - The index violation and a concurrency loss each map to the conflict outcome.
+- **`SceneLifecycleService` and `EfSceneRepository` (SQLite):**
+  - Finish-then-start succeeds whether the Active Scene's id sorts before or after the new Scene's id. Build both orders explicitly by creating Scenes until each order is present.
+  - A failure on the second save leaves the first Scene Active and the new Scene Prepared, with no present rows.
+  - A refused present list with `finishActiveScene: true` finishes nothing.
+  - A `PK_SceneInvestigatorsPresent` violation maps to `SceneConcurrencyException`.
 - **`ActiveSceneService`:**
   - A Player or non-member gets NotFound on every write.
   - The error order.
@@ -425,6 +444,25 @@
 ## Follow-ups (to add to the PBI on close)
 - Any future PBI that adds un-approving an Investigator or removing a Player must define the effect on Investigators present (spec: "An unapproved Investigator is never present").
 - Residual race: a Scene child write allowed on an Active Scene (link, edit link, add or edit Handout) that races a Finish can land on a Finished Scene. Decide whether those writes touch `Version`.
-- PBI-SPL-002: build Reveals on D3, and extend the D6 guards so that a blob or link a Reveal references is never deleted (ADR 0021/0022).
+- PBI-SPL-002: build Reveals on D3, and extend the D6 guards so that a blob or link a Reveal references is never deleted (ADR 0021/0022). This includes a Scene file-Handout replace on a Prepared Scene, which does not touch `Version` in PBI-SPL-001: a Reveal that snapshots the old file key between a start and the replace's commit would lose its file.
 
 ## Revisions
+- **2026-10-28, Developer escalation (Phase 2):**
+  - **Problem:** finish-then-start in one `SaveChanges` violates `IX_Scenes_CampaignId_Active` whenever EF's key order puts the start first.
+  - **Changed:**
+    - D2 gains "Finish-then-start ordering" (one transaction, two ordered saves in `EfSceneRepository.SaveFinishThenStartAsync`, after pure validation by `Scene.CheckStart`) and "Present-row conflicts".
+    - The D1 option C Correctness cell and the invariant now say "one transaction" for finish-then-start.
+    - TDD units and integration tests are added, and the PBI-SPL-002 follow-up is extended.
+    - ADR 0024 and ADR 0025 are updated to match.
+  - **Rejected:**
+    - A nullable `ActiveCampaignId` column with a not-null-filtered unique index: it is a second record of the Active fact and depends on unverified EF ordering.
+    - Two independent saves: a failed start after a committed finish breaks the spec's "in one transaction".
+    - D2's rejected option C (a serializable transaction used as a lock) stays rejected. This transaction runs at default isolation and only makes two ordered writes atomic.
+  - **Confirmed:** a `Version` bump on Start and Finish is enough for the same-Scene race, given the present-row primary key mapping above.
+  - **Tactical rulings (clarifications, no change to the design):**
+    - `LinkedSceneGuard` in the three delete services, and two repository list methods instead of one, are accepted.
+    - `IHandoutOwner.RemoveRefusedAfterConcurrentChange` is accepted.
+    - The Item-owner guard is accepted as built: every successful Item Handout removal is guarded, and a file edit is guarded only when it replaces a stored file.
+    - An Item file replace that loses the race returns `HandoutWriteOutcome.InPlay` as the 409 `HandoutsKeptTitle`. The UI shows the generic save failure for it, and the newly uploaded blob is deleted when that save fails.
+    - A Scene file-Handout replace does not touch `Version`. This is deferred to PBI-SPL-002 through the follow-up.
+  - **Status:** approved by the human 2026-10-28.
