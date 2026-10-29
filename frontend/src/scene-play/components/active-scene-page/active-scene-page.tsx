@@ -33,7 +33,7 @@ export function ActiveScenePage({ campaignId }: ActiveScenePageProps) {
 
   // The h1 of the next state is mounted after the state change, so focus moves in an effect (SPL-A11Y-3).
   useEffect(() => {
-    if (focusHeadingPending.current && active.data !== undefined) {
+    if (focusHeadingPending.current && active.data === null) {
       headingRef.current?.focus()
       focusHeadingPending.current = false
     }

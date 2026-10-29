@@ -16,15 +16,17 @@ import {
   openAddHandoutPage,
   visibilityRadio,
 } from '../fixtures/scene-handouts'
+import { preparePlayedScenarioViaApi } from '../fixtures/scene-play'
 
 /**
  * Traces to specs/scenario-preparation/spec.md Scenario "Keeper gives an Item a Handout" and to specs/scenario-preparation/ux.md
  * SP-UX-100 (with sections 41 to 44 and 50 to 58, which it reuses), SP-UX-102, and SP-A11Y-54.
  *
- * Exceptions: Active and Finished Scenes cannot be seeded end to end until PBI-SPL-001 (ux.md section 70), so "An Item in a
- * played Scene cannot be deleted" for a Handout (the sentence that replaces Delete Handout, and the 409 refusal) and "Replace
- * keeps the old file" are covered by the seeded integration tests (ItemHandoutApiTests, ItemHandoutFileApiTests) and by
- * component tests. A held Item cannot exist before PBI-SPL-003.
+ * "An Item in a played Scene cannot be deleted" for a Handout (the sentence that replaces Delete Handout) is reached through the
+ * Scene Play API (PBI-SPL-001) in "Item Handouts of played Scenes"; the 409 refusal and "Replace keeps the old file" are covered
+ * by the integration tests (ItemHandoutApiTests, ItemHandoutFileApiTests) and by component tests.
+ *
+ * Exceptions: A held Item cannot exist before PBI-SPL-003.
  */
 
 interface ItemSetup {
@@ -192,5 +194,23 @@ test.describe('Item Handouts', () => {
       await player.context.close()
       await otherKeeper.context.close()
     }
+  })
+})
+
+test.describe('Item Handouts of played Scenes', () => {
+  // Each journey signs in a Keeper and joins Players in isolated contexts before it checks anything, which takes longer than the default.
+  test.describe.configure({ timeout: 240_000 })
+  test("An Item Handout's delete is replaced by a sentence while the Item is in play", async ({ page, browser }) => {
+    const prepared = await preparePlayedScenarioViaApi(page, browser, 'Played Item Handout', 'Active')
+
+    await page.goto(`/campaigns/${prepared.campaignId}/items/${prepared.itemId}`)
+    await page.getByRole('region', { name: 'Handouts' }).getByRole('link', { name: 'The last entry' }).click()
+
+    await test.step('SP-UX-100: Edit stays, Delete Handout is hidden, and the sentence says why', async () => {
+      await expect(page.getByRole('heading', { level: 1, name: 'The last entry' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Delete Handout' })).toHaveCount(0)
+      await expect(page.getByText("This Item is part of a Scene that has been played, so its Handouts can't be deleted.")).toBeVisible()
+    })
   })
 })

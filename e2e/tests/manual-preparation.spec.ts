@@ -3,6 +3,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { newAccount, signIn } from '../fixtures/auth'
 import { createCampaignViaUi, issueInviteViaUi } from '../fixtures/campaigns'
 import { joinAsNewPlayer, openAndCaptureBearer } from '../fixtures/investigators'
+import { createApprovedInvestigatorViaApi, finishActiveSceneViaApi, startSceneViaApi } from '../fixtures/scene-play'
 import { itemsSection, sceneItemNames } from '../fixtures/items'
 import { nonPlayerEntitiesSection } from '../fixtures/non-player-entities'
 import { PREPARED, prepareScenarioViaApi, type PreparedScenario } from '../fixtures/prepared-scenario'
@@ -21,7 +22,9 @@ import { sceneLinks, scenesSection } from '../fixtures/scenes'
  * before the UI is checked (e2e/CLAUDE.md section 2); each preparation step has its own UI test in the per-feature specs.
  *
  * Exceptions: the "no live update" clause cannot be observed from the UI; it is covered by the CampaignHubTests integration test.
- * Active and Finished Scenes cannot be reached before PBI-SPL-001, so only Prepared Scenes are checked here.
+ *
+ * PBI-SPL-001 extends the walk-through: the Keeper starts and finishes the Scene, and a present Player sees only its title, location,
+ * and who is present, never the prepared material (specs/scene-play/spec.md "Starting a Scene reveals nothing", SPL-UX-12).
  */
 
 async function prepare(page: Page, label: string): Promise<PreparedScenario> {
@@ -127,6 +130,35 @@ test.describe('Manual Scenario preparation', () => {
           await expectNoPreparedText()
         })
       }
+    } finally {
+      await player.context.close()
+    }
+  })
+
+  test('Starting the prepared Scene shows a present Player nothing of the prepared Scenario, and finishing ends it', async ({ page, browser }) => {
+    const prepared = await prepare(page, 'Played')
+    const keeperBearer = await openAndCaptureBearer(page, `/campaigns/${prepared.campaignId}`)
+    const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, prepared.campaignId))
+    const playerBearer = await openAndCaptureBearer(player.page, `/campaigns/${prepared.campaignId}`)
+    const investigatorId = await createApprovedInvestigatorViaApi(page.request, keeperBearer, playerBearer, prepared.campaignId, 'Harvey Walters')
+    const activePath = `/campaigns/${prepared.campaignId}/active-scene`
+
+    try {
+      await test.step('SPL-UX-12: a present Player sees the Scene title and who is present, but no prepared Handout, Item, or Non-Player Entity', async () => {
+        await startSceneViaApi(page.request, keeperBearer, prepared.campaignId, prepared.sceneId, [investigatorId])
+        await player.page.goto(activePath)
+        await expect(player.page.getByRole('heading', { level: 1, name: PREPARED.firstSceneTitle })).toBeVisible()
+        await expect(player.page.getByText('Harvey Walters (your Investigator)')).toBeVisible()
+        const body = await player.page.locator('body').innerText()
+        for (const text of [PREPARED.itemName, PREPARED.humanNpcName, PREPARED.creatureName, PREPARED.humanNpcLinkName, PREPARED.handouts[0].title, `Scene notes ${prepared.secret}`]) {
+          expect(body, `the Active Scene page must not show "${text}"`).not.toContain(text)
+        }
+      })
+
+      await test.step('SPL-UX-11: after the Keeper finishes the Scene, the Player sees No Active Scene', async () => {
+        await finishActiveSceneViaApi(page.request, keeperBearer, prepared.campaignId)
+        await expect(player.page.getByRole('heading', { level: 1, name: 'No Active Scene' })).toBeVisible()
+      })
     } finally {
       await player.context.close()
     }

@@ -19,16 +19,15 @@ import {
   sceneTitleField,
   submitSceneForm,
 } from '../fixtures/scenes'
+import { preparePlayedScenarioViaApi } from '../fixtures/scene-play'
 
 /**
  * Traces to specs/scenario-preparation/spec.md Scenarios "Keeper prepares a Scene", "Keeper reorders the Scenes",
  * "Keeper removes a Prepared Scene", "Scenes are the Keeper's alone", and "Scene Keeper notes outside the allowed nodes
  * are refused", and to specs/scenario-preparation/ux.md SP-UX-15 to SP-UX-27.
  *
- * Exception: "A played Scene cannot be removed", "A Finished Scene is read-only", "The Keeper edits an Active Scene's
- * Keeper notes", and the Active and Finished parts of SP-UX-21 to SP-UX-23 cannot be reached end to end, because no
- * endpoint starts or finishes a Scene until PBI-SPL-001 and the harness has no database seeding. Domain, service,
- * integration (seeded), and component tests cover them; PBI-SPL-001 adds them here.
+ * "A played Scene cannot be removed", "A Finished Scene is read-only", "The Keeper edits an Active Scene's Keeper notes", and the
+ * Active and Finished parts of SP-UX-21 to SP-UX-23 are reached through the Scene Play API (PBI-SPL-001) in "Played Scenes".
  */
 test.describe('Scenes', () => {
   test('Keeper prepares, reorders, edits, and removes Scenes', async ({ page }) => {
@@ -294,3 +293,46 @@ async function expectAllNotFound(page: Page, bearer: string, campaignId: string,
     reorder: 404,
   })
 }
+
+test.describe('Played Scenes', () => {
+  // Each journey signs in a Keeper and joins Players in isolated contexts before it checks anything, which takes longer than the default.
+  test.describe.configure({ timeout: 240_000 })
+  test("An Active Scene shows its status and start time, keeps Edit, and has no Remove Scene", async ({ page, browser }) => {
+    const prepared = await preparePlayedScenarioViaApi(page, browser, 'Active Scene', 'Active')
+
+    await test.step('SP-UX-21, SP-UX-23: the Scene page shows Active with its start time, Edit, and no Remove Scene', async () => {
+      await page.goto(prepared.scenePath)
+      await expect(page.getByText('Active', { exact: true })).toBeVisible()
+      await expect(page.getByText('Started')).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Remove Scene' })).toHaveCount(0)
+    })
+
+    await test.step("SP-UX-20: the Keeper edits an Active Scene's title and saves it", async () => {
+      await page.getByRole('button', { name: 'Edit', exact: true }).click()
+      await sceneTitleField(page).fill('The Corbitt Cellar')
+      await page.getByRole('button', { name: 'Save', exact: true }).click()
+      await expect(page.getByRole('status').filter({ hasText: 'Scene saved.' })).toBeVisible()
+      await expect(page.getByRole('heading', { level: 1, name: 'The Corbitt Cellar' })).toBeVisible()
+    })
+
+    await test.step('SP-UX-21: the Scenario page lists the Scene as Active', async () => {
+      await page.goto(prepared.scenarioPath)
+      await expect(scenesSection(page).getByRole('listitem').filter({ hasText: 'The Corbitt Cellar' })).toContainText('Active')
+    })
+  })
+
+  test('A Finished Scene is read-only and shows when it started and finished', async ({ page, browser }) => {
+    const prepared = await preparePlayedScenarioViaApi(page, browser, 'Finished Scene', 'Finished')
+
+    await page.goto(prepared.scenePath)
+
+    await test.step('SP-UX-21, SP-UX-22: Finished with both times, the sentence, and neither Edit nor Remove Scene', async () => {
+      await expect(page.getByText('Finished', { exact: true })).toBeVisible()
+      await expect(page.locator('time')).toHaveCount(2)
+      await expect(page.getByText("This Scene is finished and can't be changed.")).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Remove Scene' })).toHaveCount(0)
+    })
+  })
+})

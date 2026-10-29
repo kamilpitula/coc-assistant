@@ -54,9 +54,10 @@ export function useFinishActiveScene(campaignId: string) {
 
   return useMutation({
     mutationFn: async () => finishActiveScene(await getAccessToken(), campaignId),
+    // The Keeper view unmounts once the Active Scene is gone, and a component that unmounted before the mutation settled
+    // never gets its mutate callbacks. So the refetch is not awaited, and the page's "finished" message is set first.
     onSuccess: () => {
-      queryClient.setQueryData(activeSceneQueryKeys.detail(campaignId), null)
-      return refetchAfterTransition(queryClient, campaignId)
+      void refetchAfterTransition(queryClient, campaignId)
     },
   })
 }

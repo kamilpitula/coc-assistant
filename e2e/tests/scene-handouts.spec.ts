@@ -20,6 +20,7 @@ import {
   visibilityRadio,
 } from '../fixtures/scene-handouts'
 import { createSceneViaUi, formattingButton } from '../fixtures/scenes'
+import { preparePlayedScenarioViaApi } from '../fixtures/scene-play'
 
 /**
  * Traces to specs/scenario-preparation/spec.md Scenarios "Read-aloud passages are separate Handouts", "Keeper edits,
@@ -27,10 +28,11 @@ import { createSceneViaUi, formattingButton } from '../fixtures/scenes'
  * refused" (the link dialog's part), and "Handouts are the Keeper's alone", and to specs/scenario-preparation/ux.md
  * SP-UX-64 to SP-UX-71, SP-UX-74 to SP-UX-76 and SP-A11Y-37 to SP-A11Y-41.
  *
- * Exceptions: Active and Finished Scenes cannot be reached end to end until PBI-SPL-001 (ux.md section 49) and the harness
- * has no database seeding, so SP-UX-72, SP-UX-73, "The Keeper edits an Active Scene" (adding a Text Handout), the Handout
- * part of "A Finished Scene is read-only", and "A Handout on an Active Scene cannot be deleted" are covered by the seeded
- * integration tests (HandoutApiTests) and by component tests. The 400 for an image node or a javascript: link is an
+ * SP-UX-72, SP-UX-73, the Handout part of "A Finished Scene is read-only", and "A Handout on an Active Scene cannot be deleted"
+ * are reached through the Scene Play API (PBI-SPL-001) in "Handouts of played Scenes".
+ *
+ * Exceptions: "The Keeper edits an Active Scene" (adding a Text Handout) is covered by the integration tests (HandoutApiTests)
+ * and by component tests. The 400 for an image node or a javascript: link is an
  * integration test, because the editor cannot produce either; here the link dialog's refusal is checked instead. The
  * over-204,800-byte text and the double activation of SP-UX-75 are covered by component tests, where an end-to-end run
  * would only repeat them slowly.
@@ -357,3 +359,33 @@ async function expectAllNotFound(page: Page, bearer: string, scene: SceneSetup, 
   ]
   expect(responses.map((response) => response.status())).toEqual([404, 404, 404, 404, 404])
 }
+
+test.describe('Handouts of played Scenes', () => {
+  // Each journey signs in a Keeper and joins Players in isolated contexts before it checks anything, which takes longer than the default.
+  test.describe.configure({ timeout: 240_000 })
+  test('A Handout on an Active Scene can be edited but not deleted', async ({ page, browser }) => {
+    const prepared = await preparePlayedScenarioViaApi(page, browser, 'Active Handout', 'Active')
+
+    await page.goto(`${prepared.scenePath}/handouts/${prepared.sceneHandoutIds['The front door']}`)
+
+    await test.step("SP-UX-72: the page keeps Edit and replaces Delete Handout with the sentence", async () => {
+      await expect(page.getByRole('heading', { level: 1, name: 'The front door' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Delete Handout' })).toHaveCount(0)
+      await expect(page.getByText("This Scene has been started, so its Handouts can't be deleted.")).toBeVisible()
+    })
+  })
+
+  test('A Handout on a Finished Scene is read-only', async ({ page, browser }) => {
+    const prepared = await preparePlayedScenarioViaApi(page, browser, 'Finished Handout', 'Finished')
+
+    await page.goto(`${prepared.scenePath}/handouts/${prepared.sceneHandoutIds['The front door']}`)
+
+    await test.step('SP-UX-73: the page shows the Handout with the Finished sentence and neither Edit nor Delete Handout', async () => {
+      await expect(page.getByRole('heading', { level: 1, name: 'The front door' })).toBeVisible()
+      await expect(page.getByText("This Scene is finished and can't be changed.")).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Delete Handout' })).toHaveCount(0)
+    })
+  })
+})
