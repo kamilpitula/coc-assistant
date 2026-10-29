@@ -48,6 +48,10 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                     b.Property<long?>("FileSizeBytes")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("ImageDescription")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<Guid?>("ItemId")
                         .HasColumnType("uniqueidentifier");
 
@@ -81,6 +85,8 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                     b.ToTable("Handouts", null, t =>
                         {
                             t.HasCheckConstraint("CK_Handouts_Content", "(Kind IN ('ReadAloud', 'Text') AND Content IS NOT NULL AND FileKey IS NULL AND FileName IS NULL AND FileMediaType IS NULL AND FileSizeBytes IS NULL) OR (Kind IN ('Image', 'Document', 'Map') AND Content IS NULL AND FileKey IS NOT NULL AND FileName IS NOT NULL AND FileMediaType IS NOT NULL AND FileSizeBytes IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_Handouts_ImageDescription", "ImageDescription IS NULL OR Kind IN ('Image', 'Map')");
 
                             t.HasCheckConstraint("CK_Handouts_OneOwner", "(SceneId IS NOT NULL AND ItemId IS NULL) OR (SceneId IS NULL AND ItemId IS NOT NULL)");
                         });
@@ -246,6 +252,83 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Reveal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FileKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("FileMediaType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<long?>("FileSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("HandoutKind")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ImageDescription")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("RevealedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("SceneId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SubjectType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SceneId", "RevealedAt");
+
+                    b.ToTable("Reveals", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Reveals_File", "(FileKey IS NULL AND FileName IS NULL AND FileMediaType IS NULL AND FileSizeBytes IS NULL) OR (FileKey IS NOT NULL AND FileName IS NOT NULL AND FileMediaType IS NOT NULL AND FileSizeBytes IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_Reveals_Subject", "(SubjectType = 'Handout' AND HandoutKind IS NOT NULL AND ((Content IS NOT NULL AND FileKey IS NULL) OR (Content IS NULL AND FileKey IS NOT NULL))) OR (SubjectType = 'NonPlayerEntity' AND HandoutKind IS NULL AND FileKey IS NULL AND ImageDescription IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.RevealRecipient", b =>
+                {
+                    b.Property<Guid>("RevealId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("InvestigatorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("RevealId", "InvestigatorId");
+
+                    b.HasIndex("InvestigatorId");
+
+                    b.ToTable("RevealRecipients", (string)null);
+                });
+
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Scenario", b =>
                 {
                     b.Property<Guid>("Id")
@@ -389,6 +472,24 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Reveal", b =>
+                {
+                    b.HasOne("CocAssistant.ScenarioPreparation.Domain.Scene", null)
+                        .WithMany("_reveals")
+                        .HasForeignKey("SceneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.RevealRecipient", b =>
+                {
+                    b.HasOne("CocAssistant.ScenarioPreparation.Domain.Reveal", null)
+                        .WithMany("_recipients")
+                        .HasForeignKey("RevealId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Scene", b =>
                 {
                     b.HasOne("CocAssistant.ScenarioPreparation.Domain.Scenario", null)
@@ -403,6 +504,11 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                     b.Navigation("Handouts");
                 });
 
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Reveal", b =>
+                {
+                    b.Navigation("_recipients");
+                });
+
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Scene", b =>
                 {
                     b.Navigation("Handouts");
@@ -412,6 +518,8 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                     b.Navigation("NonPlayerEntityLinks");
 
                     b.Navigation("_investigatorsPresent");
+
+                    b.Navigation("_reveals");
                 });
 #pragma warning restore 612, 618
         }

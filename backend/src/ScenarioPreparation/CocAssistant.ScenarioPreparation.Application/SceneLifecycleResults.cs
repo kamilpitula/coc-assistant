@@ -1,8 +1,8 @@
 namespace CocAssistant.ScenarioPreparation.Application;
 
 /// <summary>
-/// A Scene as Scene Play sees it: the fields it shows and the ids of the Investigators present. It carries no Keeper notes,
-/// links, or Handouts, because Scene Play reveals none of them in this version (ADR 0024).
+/// A Scene as Scene Play sees it: the fields it shows, the ids of the Investigators present, and its Reveals newest first. It
+/// carries no Keeper notes, links, or Handouts; Scene Play reaches only what was revealed (ADR 0024, PBI-SPL-002 D5).
 /// </summary>
 public sealed record PlayableSceneView(
     Guid SceneId,
@@ -13,7 +13,8 @@ public sealed record PlayableSceneView(
     SceneStatus Status,
     DateTimeOffset? StartedAt,
     DateTimeOffset? FinishedAt,
-    IReadOnlyList<Guid> InvestigatorsPresent);
+    IReadOnlyList<Guid> InvestigatorsPresent,
+    IReadOnlyList<RevealView> Reveals);
 
 /// <summary>How starting a Scene ended. The first four refusals are state; the next three are the present list; Conflict is a lost race.</summary>
 public enum SceneStartOutcome

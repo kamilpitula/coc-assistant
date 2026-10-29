@@ -11,6 +11,7 @@ internal static class HandoutFileProblemMessages
 {
     public const string KindKey = "kind";
     public const string FileKey = "file";
+    public const string ImageDescriptionKey = "imageDescription";
 
     public const string Kind = "Choose Image, Document, or Map.";
 
@@ -25,6 +26,7 @@ internal static class HandoutFileProblemMessages
         [HandoutWriteOutcome.InvalidVisibility] = _ => new(HandoutProblemMessages.VisibilityKey, HandoutProblemMessages.Visibility),
         [HandoutWriteOutcome.MissingFile] = submission => new(FileKey, submission.IsDocument ? "Choose a PDF." : "Choose an image."),
         [HandoutWriteOutcome.UnsupportedFileType] = submission => new(FileKey, submission.IsDocument ? "This isn't a PDF. Choose a PDF." : "Choose a PNG, JPEG, WebP, or GIF image."),
+        [HandoutWriteOutcome.InvalidImageDescription] = _ => new(ImageDescriptionKey, "Image description must be 1,000 characters or fewer."),
         [HandoutWriteOutcome.FileTooLarge] = submission => new(FileKey, submission.IsDocument ? "The PDF is larger than 20 MB. Choose a smaller one." : "The image is larger than 20 MB. Choose a smaller one."),
     };
 

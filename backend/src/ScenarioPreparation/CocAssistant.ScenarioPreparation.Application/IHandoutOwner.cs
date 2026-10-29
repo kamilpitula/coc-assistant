@@ -12,12 +12,12 @@ public interface IHandoutOwner
 
     HandoutResult AddHandout(HandoutKind? kind, HandoutVisibility? visibility, string title, string? content, DateTimeOffset now);
 
-    HandoutResult AddFileHandout(HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, DateTimeOffset now);
+    HandoutResult AddFileHandout(HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, string? imageDescription, DateTimeOffset now);
 
     HandoutResult EditHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, string? content);
 
     /// <summary>The replaced key is returned only when the owner allows deleting the old file.</summary>
-    HandoutFileEditResult EditFileHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file);
+    HandoutFileEditResult EditFileHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, string? imageDescription);
 
     HandoutRemovalOutcome RemoveHandout(Guid handoutId);
 

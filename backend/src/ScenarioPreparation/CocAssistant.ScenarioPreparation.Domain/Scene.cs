@@ -14,6 +14,7 @@ public class Scene
     private readonly List<ItemLink> _itemLinks = [];
     private readonly List<Handout> _handouts = [];
     private readonly List<InvestigatorPresence> _investigatorsPresent = [];
+    private readonly List<Reveal> _reveals = [];
 
     public Guid Id { get; private set; }
     public Guid CampaignId { get; private set; }
@@ -35,6 +36,9 @@ public class Scene
 
     /// <summary>The ids of the Investigators present, kept after the Scene finishes (ADR 0024). Empty while the Scene is Prepared.</summary>
     public IReadOnlyList<Guid> InvestigatorsPresent => _investigatorsPresent.Select(presence => presence.InvestigatorId).Order().ToList();
+
+    /// <summary>The Reveals made on this Scene, newest first: RevealedAt descending, then Id (PBI-SPL-002 D5).</summary>
+    public IReadOnlyList<Reveal> Reveals => _reveals.OrderByDescending(reveal => reveal.RevealedAt).ThenBy(reveal => reveal.Id).ToList();
 
     /// <summary>The Non-Player Entity links in the order linked: CreatedAt, then Id (spec.md, Scene API).</summary>
     public IReadOnlyList<NonPlayerEntityLink> NonPlayerEntityLinks =>
@@ -159,6 +163,34 @@ public class Scene
         SetInvestigatorsPresent(presentInvestigatorIds);
         IncrementVersion();
         return SceneTransitionOutcome.Transitioned;
+    }
+
+    /// <summary>
+    /// Reveals a Player-facing Handout or a Non-Player Entity link of this Active Scene to the given Investigators present, or to
+    /// all of them when <paramref name="recipientIds"/> is null. Checks run in this order: Active, revealable subject type, subject
+    /// on this Scene, subject Player-facing, then the recipients under the present-list rules. The Reveal adds rows only and never
+    /// touches <see cref="Version"/> (PBI-SPL-002 D2). A refused Reveal changes nothing.
+    /// </summary>
+    public RevealResult Reveal(RevealSubject subject, IReadOnlyCollection<Guid>? recipientIds, DateTimeOffset now)
+    {
+        var refusal = CheckRevealSubject(subject, out var handout, out var link);
+        if (refusal != RevealOutcome.Revealed)
+        {
+            return new RevealResult(refusal, null);
+        }
+
+        var recipients = recipientIds ?? InvestigatorsPresent;
+        var recipientOutcome = CheckRecipients(recipients);
+        if (recipientOutcome != RevealOutcome.Revealed)
+        {
+            return new RevealResult(recipientOutcome, null);
+        }
+
+        var reveal = handout is not null
+            ? Domain.Reveal.FromHandout(Id, handout, recipients, now)
+            : Domain.Reveal.FromNonPlayerEntityLink(Id, link!, recipients, now);
+        _reveals.Add(reveal);
+        return new RevealResult(RevealOutcome.Revealed, reveal);
     }
 
     /// <summary>
@@ -306,20 +338,32 @@ public class Scene
     /// Adds an Image, Document, or Map Handout after the others while the Scene is Prepared or Active. Status is checked
     /// before the fields; a refused add changes nothing. The caller has detected the file's media type from its bytes.
     /// </summary>
-    public HandoutResult AddFileHandout(HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, DateTimeOffset now) =>
+    public HandoutResult AddFileHandout(HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, DateTimeOffset now, string? imageDescription = null) =>
         Status == SceneStatus.Finished
             ? new HandoutResult(HandoutOutcome.SceneFinished, null)
-            : HandoutCollection.AddFile(_handouts, HandoutOwner.ForScene(Id), kind, visibility, title, file, now);
+            : HandoutCollection.AddFile(_handouts, HandoutOwner.ForScene(Id), kind, visibility, title, file, imageDescription, now);
 
     /// <summary>
     /// Replaces a file Handout's kind (within its family), visibility, and title, and its file when one is given, while the
-    /// Scene is Prepared or Active; Position is kept. The replaced key is returned only on a Prepared Scene, where the old
-    /// blob can never have been revealed and may be deleted (ADR 0021).
+    /// Scene is Prepared or Active; Position is kept. The image description is replaced as a whole. The replaced key is returned
+    /// only on a Prepared Scene, where the old blob can never have been revealed and may be deleted (ADR 0021); that replace also
+    /// increments the version, so a start racing it makes one of the two saves fail (ADR 0025, PBI-SPL-002 D2).
     /// </summary>
-    public HandoutFileEditResult EditFileHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file) =>
-        Status == SceneStatus.Finished
-            ? new HandoutFileEditResult(HandoutOutcome.SceneFinished, null, null)
-            : HandoutCollection.EditFile(_handouts, handoutId, kind, visibility, title, file, Status == SceneStatus.Prepared);
+    public HandoutFileEditResult EditFileHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, string? imageDescription = null)
+    {
+        if (Status == SceneStatus.Finished)
+        {
+            return new HandoutFileEditResult(HandoutOutcome.SceneFinished, null, null);
+        }
+
+        var result = HandoutCollection.EditFile(_handouts, handoutId, kind, visibility, title, file, imageDescription, Status == SceneStatus.Prepared);
+        if (result.ReplacedKey is not null)
+        {
+            IncrementVersion();
+        }
+
+        return result;
+    }
 
     /// <summary>Replaces a Handout's fields, including its kind, while the Scene is Prepared or Active. Status, then the Handout, then the fields are checked; Position is kept.</summary>
     public HandoutResult EditHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, string? content) =>
@@ -369,6 +413,44 @@ public class Scene
             ? SceneTransitionOutcome.Transitioned
             : SceneTransitionOutcome.InvestigatorNotApproved;
     }
+
+    private RevealOutcome CheckRevealSubject(RevealSubject subject, out Handout? handout, out NonPlayerEntityLink? link)
+    {
+        handout = null;
+        link = null;
+        if (Status != SceneStatus.Active)
+        {
+            return RevealOutcome.NotActive;
+        }
+
+        if (subject.Type is not (RevealSubjectType.Handout or RevealSubjectType.NonPlayerEntity))
+        {
+            return RevealOutcome.SubjectNotRevealable;
+        }
+
+        if (subject.Type == RevealSubjectType.NonPlayerEntity)
+        {
+            link = _nonPlayerEntityLinks.Find(candidate => candidate.Id == subject.Id);
+            return link is null ? RevealOutcome.SubjectNotFound : RevealOutcome.Revealed;
+        }
+
+        handout = _handouts.Find(candidate => candidate.Id == subject.Id);
+        if (handout is null)
+        {
+            return RevealOutcome.SubjectNotFound;
+        }
+
+        return handout.Visibility == HandoutVisibility.PlayerFacing ? RevealOutcome.Revealed : RevealOutcome.SubjectKeeperFacing;
+    }
+
+    // The recipients follow the start rules: not empty, no duplicate, all present (ValidatePresent).
+    private RevealOutcome CheckRecipients(IReadOnlyCollection<Guid> recipients) => ValidatePresent(recipients, InvestigatorsPresent) switch
+    {
+        SceneTransitionOutcome.NoInvestigatorPresent => RevealOutcome.NoRecipient,
+        SceneTransitionOutcome.DuplicateInvestigator => RevealOutcome.DuplicateRecipient,
+        SceneTransitionOutcome.InvestigatorNotApproved => RevealOutcome.RecipientNotPresent,
+        _ => RevealOutcome.Revealed,
+    };
 
     private void SetInvestigatorsPresent(IReadOnlyCollection<Guid> presentInvestigatorIds)
     {

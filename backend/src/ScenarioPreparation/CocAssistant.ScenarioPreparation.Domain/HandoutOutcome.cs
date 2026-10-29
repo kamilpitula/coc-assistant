@@ -15,4 +15,5 @@ public enum HandoutOutcome
     MissingFile,
     UnsupportedFileType,
     FileTooLarge,
+    InvalidImageDescription,
 }

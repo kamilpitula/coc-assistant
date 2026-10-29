@@ -17,14 +17,14 @@ public sealed class SceneHandoutOwner : IHandoutOwner
     public HandoutResult AddHandout(HandoutKind? kind, HandoutVisibility? visibility, string title, string? content, DateTimeOffset now) =>
         _scene.AddHandout(kind, visibility, title, content, now);
 
-    public HandoutResult AddFileHandout(HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, DateTimeOffset now) =>
-        _scene.AddFileHandout(kind, visibility, title, file, now);
+    public HandoutResult AddFileHandout(HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, string? imageDescription, DateTimeOffset now) =>
+        _scene.AddFileHandout(kind, visibility, title, file, now, imageDescription);
 
     public HandoutResult EditHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, string? content) =>
         _scene.EditHandout(handoutId, kind, visibility, title, content);
 
-    public HandoutFileEditResult EditFileHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file) =>
-        _scene.EditFileHandout(handoutId, kind, visibility, title, file);
+    public HandoutFileEditResult EditFileHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, string? imageDescription) =>
+        _scene.EditFileHandout(handoutId, kind, visibility, title, file, imageDescription);
 
     public HandoutRemovalOutcome RemoveHandout(Guid handoutId) => _scene.RemoveHandout(handoutId);
 

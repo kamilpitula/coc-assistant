@@ -69,6 +69,18 @@ public sealed class RecordingSceneRepository : ISceneRepository
         return _inner.ListTrackedPreparedLinkingItemAsync(campaignId, itemId, cancellationToken);
     }
 
+    public Task<IReadOnlyList<SceneReveal>> ListRevealsForInvestigatorAsync(Guid campaignId, Guid investigatorId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(ListRevealsForInvestigatorAsync));
+        return _inner.ListRevealsForInvestigatorAsync(campaignId, investigatorId, cancellationToken);
+    }
+
+    public Task<Reveal?> FindRevealAsync(Guid campaignId, Guid revealId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(FindRevealAsync));
+        return _inner.FindRevealAsync(campaignId, revealId, cancellationToken);
+    }
+
     public Task<int> MaxPositionAsync(Guid scenarioId, CancellationToken cancellationToken)
     {
         Calls.Add(nameof(MaxPositionAsync));

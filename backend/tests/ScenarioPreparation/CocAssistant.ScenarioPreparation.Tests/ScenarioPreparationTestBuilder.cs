@@ -203,7 +203,7 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
         using var context = Fixture.CreateContext();
         var result = await CreateHandoutFileService(context).CreateAsync(
             campaignId, KeeperAccountId, new ItemHandoutOwnerReference(itemId), HandoutKind.Image, HandoutVisibility.PlayerFacing, title,
-            new HandoutUpload("photo.png", png.Length, new MemoryStream(png)), CancellationToken.None);
+            new HandoutUpload("photo.png", png.Length, new MemoryStream(png)), null, CancellationToken.None);
         Assert.Equal(HandoutWriteOutcome.Saved, result.Outcome);
         return (result.Handout!, FileStore.StoredKeys.Single(key => !knownKeys.Contains(key)));
     }

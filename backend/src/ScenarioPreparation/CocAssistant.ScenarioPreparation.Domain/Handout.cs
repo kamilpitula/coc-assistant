@@ -14,6 +14,8 @@ public class Handout
     /// <summary>The largest file a Handout may hold, in bytes (20 MB).</summary>
     public const long FileMaxBytes = 20 * 1024 * 1024;
 
+    public const int ImageDescriptionMaxLength = 1000;
+
     public Guid Id { get; private set; }
     public Guid? SceneId { get; private set; }
     public Guid? ItemId { get; private set; }
@@ -31,6 +33,9 @@ public class Handout
     public string? FileMediaType { get; private set; }
     public long? FileSizeBytes { get; private set; }
 
+    /// <summary>The trimmed alternative text of an Image or Map Handout; null when absent and always null for any other kind (PBI-SPL-002 D7).</summary>
+    public string? ImageDescription { get; private set; }
+
     public int Position { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
@@ -42,7 +47,7 @@ public class Handout
         Title = string.Empty;
     }
 
-    private Handout(HandoutOwner owner, HandoutKind kind, HandoutVisibility visibility, string title, string? content, HandoutFile? file, int position, DateTimeOffset createdAt)
+    private Handout(HandoutOwner owner, HandoutKind kind, HandoutVisibility visibility, string title, string? content, HandoutFile? file, string? imageDescription, int position, DateTimeOffset createdAt)
     {
         Id = Guid.NewGuid();
         SceneId = owner.SceneId;
@@ -52,15 +57,16 @@ public class Handout
         Title = title;
         Content = content;
         SetFile(file);
+        ImageDescription = imageDescription;
         Position = position;
         CreatedAt = createdAt;
     }
 
     internal static Handout Create(HandoutOwner owner, HandoutKind kind, HandoutVisibility visibility, string trimmedTitle, string content, int position, DateTimeOffset now) =>
-        new(owner, kind, visibility, trimmedTitle, content, null, position, now);
+        new(owner, kind, visibility, trimmedTitle, content, null, null, position, now);
 
-    internal static Handout CreateFile(HandoutOwner owner, HandoutKind kind, HandoutVisibility visibility, string trimmedTitle, HandoutFile file, int position, DateTimeOffset now) =>
-        new(owner, kind, visibility, trimmedTitle, null, file, position, now);
+    internal static Handout CreateFile(HandoutOwner owner, HandoutKind kind, HandoutVisibility visibility, string trimmedTitle, HandoutFile file, string? imageDescription, int position, DateTimeOffset now) =>
+        new(owner, kind, visibility, trimmedTitle, null, file, imageDescription, position, now);
 
     internal void Replace(HandoutKind kind, HandoutVisibility visibility, string trimmedTitle, string content)
     {
@@ -70,12 +76,13 @@ public class Handout
         Content = content;
     }
 
-    /// <summary>Replaces the fields of a file Handout; a null file keeps the current one.</summary>
-    internal void ReplaceFile(HandoutKind kind, HandoutVisibility visibility, string trimmedTitle, HandoutFile? file)
+    /// <summary>Replaces the fields of a file Handout, including its image description; a null file keeps the current one.</summary>
+    internal void ReplaceFile(HandoutKind kind, HandoutVisibility visibility, string trimmedTitle, HandoutFile? file, string? imageDescription)
     {
         Kind = kind;
         Visibility = visibility;
         Title = trimmedTitle;
+        ImageDescription = imageDescription;
         if (file is not null)
         {
             SetFile(file);
@@ -96,18 +103,35 @@ public class Handout
     }
 
     /// <summary>
-    /// Checks title, kind, kind change, visibility, then the file, in that order. The kind must be a file kind; a null
-    /// <paramref name="file"/> is a missing file for a new Handout and "keep the current file" for an existing one.
+    /// Checks title, kind, kind change, visibility, the file, then the image description, in that order. The kind must be a
+    /// file kind; a null <paramref name="file"/> is a missing file for a new Handout and "keep the current file" for an existing one.
+    /// The description is trimmed, empty becomes null, and it is dropped for a Document (PBI-SPL-002 D7).
     /// </summary>
-    internal static HandoutOutcome ValidateFile(HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, HandoutKind? currentKind, out string trimmedTitle)
+    internal static HandoutOutcome ValidateFile(
+        HandoutKind? kind,
+        HandoutVisibility? visibility,
+        string title,
+        HandoutFile? file,
+        HandoutKind? currentKind,
+        string? imageDescription,
+        out string trimmedTitle,
+        out string? normalizedImageDescription)
     {
+        normalizedImageDescription = null;
         var outcome = ValidateFields(true, kind, visibility, title, currentKind, out trimmedTitle);
-        if (outcome != HandoutOutcome.Accepted)
+        if (outcome == HandoutOutcome.Accepted && (file is not null || currentKind is null))
         {
-            return outcome;
+            outcome = ValidateFileDetails(kind!.Value, file);
         }
 
-        return file is null && currentKind is not null ? HandoutOutcome.Accepted : ValidateFileDetails(kind!.Value, file);
+        return outcome == HandoutOutcome.Accepted ? NormalizeImageDescription(kind!.Value, imageDescription, out normalizedImageDescription) : outcome;
+    }
+
+    private static HandoutOutcome NormalizeImageDescription(HandoutKind kind, string? imageDescription, out string? normalized)
+    {
+        var trimmed = kind is HandoutKind.Image or HandoutKind.Map ? imageDescription?.Trim() : null;
+        normalized = string.IsNullOrEmpty(trimmed) ? null : trimmed;
+        return normalized?.Length > ImageDescriptionMaxLength ? HandoutOutcome.InvalidImageDescription : HandoutOutcome.Accepted;
     }
 
     private static HandoutOutcome ValidateFields(bool fileKinds, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutKind? currentKind, out string trimmedTitle)

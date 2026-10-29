@@ -33,7 +33,7 @@ public class HandoutFileServiceTests : IDisposable
     {
         using var context = _builder.Fixture.CreateContext();
         return await _builder.CreateHandoutFileService(context, repository)
-            .CreateAsync(_builder.CampaignId, caller ?? Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), kind, visibility, title, upload, CancellationToken.None);
+            .CreateAsync(_builder.CampaignId, caller ?? Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), kind, visibility, title, upload, null, CancellationToken.None);
     }
 
     private async Task<HandoutWriteResult> EditAsync(
@@ -49,7 +49,7 @@ public class HandoutFileServiceTests : IDisposable
     {
         using var context = _builder.Fixture.CreateContext();
         return await _builder.CreateHandoutFileService(context, repository)
-            .EditAsync(_builder.CampaignId, caller ?? Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), handoutId, kind, visibility, title, upload, CancellationToken.None);
+            .EditAsync(_builder.CampaignId, caller ?? Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), handoutId, kind, visibility, title, upload, null, CancellationToken.None);
     }
 
     private async Task<HandoutFileOpenResult> OpenAsync(Guid scenarioId, Guid sceneId, Guid handoutId, Guid? caller = null)
@@ -184,7 +184,7 @@ public class HandoutFileServiceTests : IDisposable
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _builder.CreateHandoutFileService(context, repository).CreateAsync(
-                _builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), HandoutKind.Image, HandoutVisibility.PlayerFacing, "Floor plan", Upload(HandoutFileSamples.Png()), CancellationToken.None));
+                _builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), HandoutKind.Image, HandoutVisibility.PlayerFacing, "Floor plan", Upload(HandoutFileSamples.Png()), null, CancellationToken.None));
 
         Assert.Equal(_builder.FileStore.SavedKeys, _builder.FileStore.DeletedKeys);
         Assert.Empty(_builder.FileStore.StoredKeys);
@@ -200,7 +200,7 @@ public class HandoutFileServiceTests : IDisposable
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _builder.CreateHandoutFileService(context, repository).CreateAsync(
-                _builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), HandoutKind.Image, HandoutVisibility.PlayerFacing, "Floor plan", Upload(HandoutFileSamples.Png()), CancellationToken.None));
+                _builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), HandoutKind.Image, HandoutVisibility.PlayerFacing, "Floor plan", Upload(HandoutFileSamples.Png()), null, CancellationToken.None));
 
         var key = Assert.Single(_builder.FileStore.SavedKeys);
         var entry = Assert.Single(_builder.HandoutFileLogger.Entries);
@@ -259,7 +259,7 @@ public class HandoutFileServiceTests : IDisposable
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _builder.CreateHandoutFileService(context, repository).EditAsync(
-                _builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), handout.Id, HandoutKind.Image, HandoutVisibility.KeeperFacing, "Renamed", Upload(HandoutFileSamples.Png()), CancellationToken.None));
+                _builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), handout.Id, HandoutKind.Image, HandoutVisibility.KeeperFacing, "Renamed", Upload(HandoutFileSamples.Png()), null, CancellationToken.None));
 
         Assert.Equal([oldKey], _builder.FileStore.StoredKeys);
         Assert.Single(_builder.FileStore.DeletedKeys);
@@ -534,5 +534,32 @@ public class HandoutFileServiceTests : IDisposable
         Assert.Equal(handout, view);
         Assert.Null(view!.Content);
         Assert.NotNull(view.File);
+    }
+
+    [Fact]
+    public async Task Given_an_image_description_When_adding_an_image_Then_the_view_carries_it_trimmed()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        using var context = _builder.Fixture.CreateContext();
+        var upload = Upload(HandoutFileSamples.Png());
+
+        var result = await _builder.CreateHandoutFileService(context).CreateAsync(
+            _builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), HandoutKind.Image, HandoutVisibility.PlayerFacing, "Floor plan", upload, "  A plan  ", CancellationToken.None);
+
+        Assert.Equal((HandoutWriteOutcome.Saved, "A plan"), (result.Outcome, result.Handout!.ImageDescription));
+    }
+
+    [Fact]
+    public async Task Given_a_too_long_image_description_When_adding_an_image_Then_it_is_refused_and_no_blob_is_stored()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        using var context = _builder.Fixture.CreateContext();
+        var upload = Upload(HandoutFileSamples.Png());
+
+        var result = await _builder.CreateHandoutFileService(context).CreateAsync(
+            _builder.CampaignId, Keeper, new SceneHandoutOwnerReference(scenarioId, sceneId), HandoutKind.Image, HandoutVisibility.PlayerFacing, "Floor plan", upload, new string('a', 1001), CancellationToken.None);
+
+        Assert.Equal(HandoutWriteOutcome.InvalidImageDescription, result.Outcome);
+        Assert.Empty(_builder.FileStore.StoredKeys);
     }
 }

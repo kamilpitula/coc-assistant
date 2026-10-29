@@ -49,6 +49,7 @@ public class ItemHandoutFilesController : ScenarioPreparationControllerBase
             HandoutsController.ParseVisibility(form["visibility"]),
             form["title"].ToString(),
             upload.Upload,
+            form["imageDescription"].ToString(),
             cancellationToken);
         return result.Outcome == HandoutWriteOutcome.Saved
             ? StatusCode(StatusCodes.Status201Created, HandoutsController.ToResponse(result.Handout!))
@@ -86,6 +87,7 @@ public class ItemHandoutFilesController : ScenarioPreparationControllerBase
             HandoutsController.ParseVisibility(form["visibility"]),
             form["title"].ToString(),
             upload.Upload,
+            form["imageDescription"].ToString(),
             cancellationToken);
         return result.Outcome == HandoutWriteOutcome.Saved
             ? Ok(HandoutsController.ToResponse(result.Handout!))

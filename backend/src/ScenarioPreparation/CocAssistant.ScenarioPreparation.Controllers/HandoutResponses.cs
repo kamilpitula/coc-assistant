@@ -7,7 +7,7 @@ public sealed record HandoutSummaryResponse(Guid Id, string Kind, string Visibil
 public sealed record HandoutFileResponse(string Name, string MediaType, long SizeBytes);
 
 /// <summary>A Handout with its content (the stored Lexical document) or its file; exactly one is not null.</summary>
-public sealed record HandoutResponse(Guid Id, string Kind, string Visibility, string Title, JsonElement? Content, HandoutFileResponse? File);
+public sealed record HandoutResponse(Guid Id, string Kind, string Visibility, string Title, JsonElement? Content, HandoutFileResponse? File, string? ImageDescription);
 
 /// <summary>A Scene's Handouts in their stored order.</summary>
 public sealed record HandoutListResponse(IReadOnlyList<HandoutSummaryResponse> Handouts);
