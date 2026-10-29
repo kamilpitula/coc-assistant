@@ -21,6 +21,9 @@ public interface IHandoutOwner
 
     HandoutRemovalOutcome RemoveHandout(Guid handoutId);
 
+    /// <summary>What removing a Handout answers when the owner changed concurrently and the save lost the race (ADR 0025, D6).</summary>
+    HandoutRemoveOutcome RemoveRefusedAfterConcurrentChange { get; }
+
     HandoutOrderOutcome ReorderHandouts(IReadOnlyList<Guid> handoutIds);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);

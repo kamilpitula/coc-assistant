@@ -13,6 +13,7 @@ public class Scene
     private readonly List<NonPlayerEntityLink> _nonPlayerEntityLinks = [];
     private readonly List<ItemLink> _itemLinks = [];
     private readonly List<Handout> _handouts = [];
+    private readonly List<InvestigatorPresence> _investigatorsPresent = [];
 
     public Guid Id { get; private set; }
     public Guid CampaignId { get; private set; }
@@ -28,6 +29,12 @@ public class Scene
     public DateTimeOffset? StartedAt { get; private set; }
     public DateTimeOffset? FinishedAt { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
+
+    /// <summary>The optimistic concurrency token (ADR 0025). Every status change and every change that must lose to one increments it.</summary>
+    public int Version { get; private set; }
+
+    /// <summary>The ids of the Investigators present, kept after the Scene finishes (ADR 0024). Empty while the Scene is Prepared.</summary>
+    public IReadOnlyList<Guid> InvestigatorsPresent => _investigatorsPresent.Select(presence => presence.InvestigatorId).Order().ToList();
 
     /// <summary>The Non-Player Entity links in the order linked: CreatedAt, then Id (spec.md, Scene API).</summary>
     public IReadOnlyList<NonPlayerEntityLink> NonPlayerEntityLinks =>
@@ -93,30 +100,80 @@ public class Scene
         return outcome;
     }
 
-    /// <summary>Starts a Prepared Scene; any other status refuses.</summary>
-    public SceneTransitionOutcome Start(DateTimeOffset now)
+    /// <summary>
+    /// Starts a Prepared Scene with the given Investigators present. Status is checked before the list, then the list: not
+    /// empty, no duplicate, every id in the approved set. A refused start changes nothing.
+    /// </summary>
+    public SceneTransitionOutcome Start(DateTimeOffset now, IReadOnlyCollection<Guid> presentInvestigatorIds, IReadOnlyCollection<Guid> approvedInvestigatorIds)
     {
-        if (Status != SceneStatus.Prepared)
+        var outcome = CheckStart(presentInvestigatorIds, approvedInvestigatorIds);
+        if (outcome != SceneTransitionOutcome.Transitioned)
         {
-            return SceneTransitionOutcome.NotAllowed;
+            return outcome;
         }
 
         Status = SceneStatus.Active;
         StartedAt = now;
+        SetInvestigatorsPresent(presentInvestigatorIds);
+        IncrementVersion();
         return SceneTransitionOutcome.Transitioned;
     }
 
-    /// <summary>Finishes an Active Scene; any other status refuses.</summary>
+    /// <summary>
+    /// Whether <see cref="Start"/> would succeed, without changing anything: status first, then the present list. Scene Play checks
+    /// a finish-then-start with it before the first write (ADR 0025).
+    /// </summary>
+    public SceneTransitionOutcome CheckStart(IReadOnlyCollection<Guid> presentInvestigatorIds, IReadOnlyCollection<Guid> approvedInvestigatorIds) =>
+        Status == SceneStatus.Prepared
+            ? ValidatePresent(presentInvestigatorIds, approvedInvestigatorIds)
+            : SceneTransitionOutcome.NotPrepared;
+
+    /// <summary>Finishes an Active Scene and keeps its Investigators present; any other status refuses.</summary>
     public SceneTransitionOutcome Finish(DateTimeOffset now)
     {
         if (Status != SceneStatus.Active)
         {
-            return SceneTransitionOutcome.NotAllowed;
+            return SceneTransitionOutcome.NotActive;
         }
 
         Status = SceneStatus.Finished;
         FinishedAt = now;
+        IncrementVersion();
         return SceneTransitionOutcome.Transitioned;
+    }
+
+    /// <summary>Replaces the Investigators present of an Active Scene under the start rules; a refused change changes nothing.</summary>
+    public SceneTransitionOutcome ReplaceInvestigatorsPresent(IReadOnlyCollection<Guid> presentInvestigatorIds, IReadOnlyCollection<Guid> approvedInvestigatorIds)
+    {
+        if (Status != SceneStatus.Active)
+        {
+            return SceneTransitionOutcome.NotActive;
+        }
+
+        var outcome = ValidatePresent(presentInvestigatorIds, approvedInvestigatorIds);
+        if (outcome != SceneTransitionOutcome.Transitioned)
+        {
+            return outcome;
+        }
+
+        SetInvestigatorsPresent(presentInvestigatorIds);
+        IncrementVersion();
+        return SceneTransitionOutcome.Transitioned;
+    }
+
+    /// <summary>
+    /// Called when a delete removes material this Scene links (ADR 0025). Returns false unless the Scene is Prepared; otherwise
+    /// increments the version, so a start racing the delete makes one of the two saves fail.
+    /// </summary>
+    public bool GuardLinkedMaterialRemoval()
+    {
+        if (Status != SceneStatus.Prepared)
+        {
+            return false;
+        }
+
+        IncrementVersion();
+        return true;
     }
 
     /// <summary>
@@ -271,8 +328,21 @@ public class Scene
             : HandoutCollection.Edit(_handouts, handoutId, kind, visibility, title, content);
 
     /// <summary>Removes a Handout only while the Scene is Prepared; status is checked before the Handout, so an unknown id on an Active Scene is still refused.</summary>
-    public HandoutRemovalOutcome RemoveHandout(Guid handoutId) =>
-        IsRemovable ? HandoutCollection.Remove(_handouts, handoutId) : HandoutRemovalOutcome.SceneNotPrepared;
+    public HandoutRemovalOutcome RemoveHandout(Guid handoutId)
+    {
+        if (!IsRemovable)
+        {
+            return HandoutRemovalOutcome.SceneNotPrepared;
+        }
+
+        var outcome = HandoutCollection.Remove(_handouts, handoutId);
+        if (outcome == HandoutRemovalOutcome.Removed)
+        {
+            IncrementVersion();
+        }
+
+        return outcome;
+    }
 
     /// <summary>Renumbers the Handouts 1..n to the requested order while the Scene is Prepared or Active (ADR 0014). All or nothing.</summary>
     public HandoutOrderOutcome ReorderHandouts(IReadOnlyList<Guid> handoutIds) =>
@@ -280,6 +350,32 @@ public class Scene
 
     /// <summary>Sets the place in the prepared order; only <see cref="SceneOrder"/> reorders.</summary>
     internal void MoveTo(int position) => Position = position;
+
+    private void IncrementVersion() => Version++;
+
+    private static SceneTransitionOutcome ValidatePresent(IReadOnlyCollection<Guid> presentInvestigatorIds, IReadOnlyCollection<Guid> approvedInvestigatorIds)
+    {
+        if (presentInvestigatorIds.Count == 0)
+        {
+            return SceneTransitionOutcome.NoInvestigatorPresent;
+        }
+
+        if (presentInvestigatorIds.Distinct().Count() != presentInvestigatorIds.Count)
+        {
+            return SceneTransitionOutcome.DuplicateInvestigator;
+        }
+
+        return presentInvestigatorIds.All(approvedInvestigatorIds.Contains)
+            ? SceneTransitionOutcome.Transitioned
+            : SceneTransitionOutcome.InvestigatorNotApproved;
+    }
+
+    private void SetInvestigatorsPresent(IReadOnlyCollection<Guid> presentInvestigatorIds)
+    {
+        _investigatorsPresent.RemoveAll(presence => !presentInvestigatorIds.Contains(presence.InvestigatorId));
+        var kept = _investigatorsPresent.Select(presence => presence.InvestigatorId).ToHashSet();
+        _investigatorsPresent.AddRange(presentInvestigatorIds.Where(id => !kept.Contains(id)).Select(id => InvestigatorPresence.Create(Id, id)));
+    }
 
     private static SceneFieldsOutcome Validate(string title, string? location, string? keeperNotes, out string trimmedTitle, out string trimmedLocation)
     {

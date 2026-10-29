@@ -106,6 +106,41 @@ public class SceneService
             return new SceneWriteResult(ToWriteOutcome(outcome), null);
         }
 
+        try
+        {
+            await _scenes.SaveChangesAsync(cancellationToken);
+        }
+        catch (SceneConcurrencyException)
+        {
+            return await EditAfterConcurrentChangeAsync(campaignId, callerAccountId, scenarioId, sceneId, title, location, keeperNotes, cancellationToken);
+        }
+
+        return new SceneWriteResult(SceneWriteOutcome.Saved, await ToDetailAsync(scene, cancellationToken));
+    }
+
+    // A start or finish won the race on the Scene row (ADR 0025): reload once. A Finished Scene refuses; otherwise reapply the edit once.
+    private async Task<SceneWriteResult> EditAfterConcurrentChangeAsync(
+        Guid campaignId,
+        Guid callerAccountId,
+        Guid scenarioId,
+        Guid sceneId,
+        string title,
+        string? location,
+        string? keeperNotes,
+        CancellationToken cancellationToken)
+    {
+        var scene = await FindSceneAsync(campaignId, callerAccountId, scenarioId, sceneId, cancellationToken);
+        if (scene is null)
+        {
+            return new SceneWriteResult(SceneWriteOutcome.NotFound, null);
+        }
+
+        var outcome = scene.Edit(title, location, keeperNotes);
+        if (outcome != SceneFieldsOutcome.Accepted)
+        {
+            return new SceneWriteResult(ToWriteOutcome(outcome), null);
+        }
+
         await _scenes.SaveChangesAsync(cancellationToken);
         return new SceneWriteResult(SceneWriteOutcome.Saved, await ToDetailAsync(scene, cancellationToken));
     }
@@ -126,7 +161,15 @@ public class SceneService
 
         var fileKeys = scene.Handouts.Select(handout => handout.FileKey).OfType<string>().ToList();
         _scenes.Remove(scene);
-        await _scenes.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _scenes.SaveChangesAsync(cancellationToken);
+        }
+        catch (SceneConcurrencyException)
+        {
+            return SceneRemoveOutcome.NotPrepared;
+        }
+
         foreach (var fileKey in fileKeys)
         {
             await _fileStore.TryDeleteAsync(_logger, fileKey);

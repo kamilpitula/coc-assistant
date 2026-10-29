@@ -17,7 +17,7 @@ public class SceneFileHandoutTests
         var scene = PreparedScene();
         if (status >= SceneStatus.Active)
         {
-            scene.Start(Now);
+            scene.StartWithOneInvestigator(Now);
         }
 
         if (status == SceneStatus.Finished)
@@ -136,7 +136,7 @@ public class SceneFileHandoutTests
     {
         var scene = PreparedScene();
         var handout = AddImage(scene);
-        scene.Start(Now);
+        scene.StartWithOneInvestigator(Now);
 
         var result = scene.EditFileHandout(handout.Id, HandoutKind.Image, HandoutVisibility.PlayerFacing, "Floor plan", PngFile("key2"));
 
@@ -151,7 +151,7 @@ public class SceneFileHandoutTests
         var scene = PreparedScene();
         var handout = AddImage(scene);
         Assert.Equal(HandoutOutcome.HandoutNotFound, scene.EditFileHandout(Guid.NewGuid(), null, null, "", null).Outcome);
-        scene.Start(Now);
+        scene.StartWithOneInvestigator(Now);
         scene.Finish(Now);
 
         Assert.Equal(HandoutOutcome.SceneFinished, scene.EditFileHandout(handout.Id, null, null, "", null).Outcome);

@@ -79,7 +79,15 @@ public class HandoutService
             return ToRemoveOutcome(outcome);
         }
 
-        await owner.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await owner.SaveChangesAsync(cancellationToken);
+        }
+        catch (SceneConcurrencyException)
+        {
+            return owner.RemoveRefusedAfterConcurrentChange;
+        }
+
         if (fileKey is not null)
         {
             await _fileStore.TryDeleteAsync(_logger, fileKey);

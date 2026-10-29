@@ -1,6 +1,6 @@
 # Items are guarded by play usage read through ports
 
-Status: Accepted
+Status: Accepted; delete-versus-start race resolved by [ADR 0025](0025-one-active-scene-per-campaign-through-a-filtered-index-and-a-scene-version.md)
 
 An Item belongs to its Campaign, may be linked to the Scenes where it matters, and may have its own Handouts ([specs/scenario-preparation/spec.md](../../specs/scenario-preparation/spec.md), Architecture and Constraints). Unlike a Scene, an Item has no status, and later Scenes may still use it after an earlier Scene is Finished. Scene Play owns who holds an Item ([specs/scene-play/spec.md](../../specs/scene-play/spec.md), Ownership), and PBI-SPL-003 depends on PBI-SP-008, so Scenario Preparation cannot call Scene Play code. A Reveal of an Item names the Item, not a link (Scene Play spec, Active Scene API). [ADR 0019](0019-scene-links-are-child-entities-with-in-context-foreign-keys.md) expected Item links to widen the link table. [ADR 0021](0021-handout-files-are-immutable-blobs-behind-a-storage-port.md) deletes stored files only while their Scene is Prepared, a rule that cannot apply to an Item. The design is recorded in the [PBI-SP-008 design record](../scenario-preparation/issues/08-prepare-campaign-items.design.md).
 

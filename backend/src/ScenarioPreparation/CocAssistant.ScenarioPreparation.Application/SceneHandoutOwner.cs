@@ -28,6 +28,8 @@ public sealed class SceneHandoutOwner : IHandoutOwner
 
     public HandoutRemovalOutcome RemoveHandout(Guid handoutId) => _scene.RemoveHandout(handoutId);
 
+    public HandoutRemoveOutcome RemoveRefusedAfterConcurrentChange => HandoutRemoveOutcome.NotPrepared;
+
     public HandoutOrderOutcome ReorderHandouts(IReadOnlyList<Guid> handoutIds) => _scene.ReorderHandouts(handoutIds);
 
     public Task SaveChangesAsync(CancellationToken cancellationToken) => _scenes.SaveChangesAsync(cancellationToken);

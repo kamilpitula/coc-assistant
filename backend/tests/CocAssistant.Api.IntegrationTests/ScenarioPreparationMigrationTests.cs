@@ -43,7 +43,7 @@ public class ScenarioPreparationMigrationTests : IAsyncLifetime
         var scenario = Scenario.Create(Guid.NewGuid(), "The Haunting", null, 1, DateTimeOffset.UtcNow).Scenario!;
         var now = new DateTimeOffset(2026, 10, 17, 12, 0, 0, TimeSpan.Zero);
         var scene = Scene.Create(scenario, "The Corbitt House", "Arkham", "{\"root\":{\"type\":\"root\",\"children\":[]}}", 1, now).Scene!;
-        scene.Start(now.AddHours(1));
+        scene.StartWithOneInvestigator(now.AddHours(1));
         _dbContext.Scenarios.Add(scenario);
         _dbContext.Scenes.Add(scene);
         await _dbContext.SaveChangesAsync();

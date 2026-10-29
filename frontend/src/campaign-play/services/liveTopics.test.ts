@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
+import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
+import { activeSceneQueryKeys } from '@/scene-play/services/activeSceneApi'
+
 import { campaignQueryKeys } from './campaignApi'
 import { queryKeysForTopics } from './liveTopics'
 
@@ -28,6 +31,10 @@ describe('queryKeysForTopics', () => {
       campaignQueryKeys.myInvestigator('c1'),
       campaignQueryKeys.members('c1'),
     ])
+  })
+
+  it('refetches the Active Scene and the Scene queries for the activeScene topic', () => {
+    expect(queryKeysForTopics('c1', ['activeScene'])).toEqual([activeSceneQueryKeys.detail('c1'), sceneQueryKeys.inCampaign('c1')])
   })
 
   it('ignores topics this client does not know yet, so a newer server never breaks it', () => {

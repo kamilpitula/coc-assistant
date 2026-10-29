@@ -5,6 +5,7 @@ import { CampaignTable } from '@/campaign-play/components/campaign-table/campaig
 import { WallPreview } from '@/campaign-play/components/wall-preview/wall-preview'
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
+import { ActiveSceneCard } from '@/scene-play/components/active-scene-card/active-scene-card'
 import { ItemSummarySection } from '@/scenario-preparation/components/item-summary-section/item-summary-section'
 import { NonPlayerEntitySummarySection } from '@/scenario-preparation/components/non-player-entity-summary-section/non-player-entity-summary-section'
 import { ScenarioListSection } from '@/scenario-preparation/components/scenario-list-section/scenario-list-section'
@@ -34,6 +35,7 @@ export function CampaignPage({ campaignId }: CampaignPageProps) {
           {statusMessage}
         </p>
         <AttentionList campaign={campaign.data} />
+        <ActiveSceneCard campaignId={campaignId} isKeeper={campaign.data.role === 'Keeper'} />
         <CampaignTable campaignId={campaignId} />
         {campaign.data.role === 'Keeper' && (
           <>

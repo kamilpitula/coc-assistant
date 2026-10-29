@@ -113,26 +113,27 @@ async function readFieldErrors(response: Response): Promise<HandoutFieldErrors> 
   return errors
 }
 
-// For Handout writes other than delete and reorder, a 409 only means the Scene is Finished; an Item is never Finished.
-async function failWrite(response: Response, description: string): Promise<never> {
+// For Handout writes other than delete and reorder, a 409 on a Scene means it is Finished. An Item is never Finished: its only 409
+// is a file replace that lost a race with the Item coming into play, which the screens show as the generic save failure.
+async function failWrite(response: Response, description: string, owner: HandoutOwner): Promise<never> {
   if (response.status === 404) {
     throw new HandoutNotFoundError()
   }
   if (response.status === 400) {
     throw new HandoutValidationError(await readFieldErrors(response))
   }
-  if (response.status === 409) {
+  if (response.status === 409 && owner.type === 'scene') {
     throw new SceneFinishedError()
   }
   throw new Error(`Failed to ${description} (${response.status})`)
 }
 
 // A 413 is a body over the server's limit: the file is too large, shown at the file field like the server's own message.
-async function failFileWrite(response: Response, description: string, kind: FileHandoutKind): Promise<never> {
+async function failFileWrite(response: Response, description: string, kind: FileHandoutKind, owner: HandoutOwner): Promise<never> {
   if (response.status === 413) {
     throw new HandoutValidationError({ file: handoutFileTooLargeMessage(HANDOUT_KIND_FAMILIES[kind] as HandoutFileFamily) })
   }
-  return failWrite(response, description)
+  return failWrite(response, description, owner)
 }
 
 const toBody = (input: RichTextHandoutInput): string =>
@@ -191,7 +192,7 @@ async function createRichTextHandout(
   })
 
   if (!response.ok) {
-    return failWrite(response, 'create the Handout')
+    return failWrite(response, 'create the Handout', owner)
   }
 
   return handoutSchema.parse(await response.json())
@@ -222,7 +223,7 @@ async function editRichTextHandout(
   })
 
   if (!response.ok) {
-    return failWrite(response, 'save the Handout')
+    return failWrite(response, 'save the Handout', owner)
   }
 
   return handoutSchema.parse(await response.json())
@@ -241,7 +242,7 @@ export async function createFileHandout(
   })
 
   if (!response.ok) {
-    return failFileWrite(response, 'create the Handout', input.kind)
+    return failFileWrite(response, 'create the Handout', input.kind, owner)
   }
 
   return handoutSchema.parse(await response.json())
@@ -261,7 +262,7 @@ export async function editFileHandout(
   })
 
   if (!response.ok) {
-    return failFileWrite(response, 'save the Handout', input.kind)
+    return failFileWrite(response, 'save the Handout', input.kind, owner)
   }
 
   return handoutSchema.parse(await response.json())

@@ -17,6 +17,7 @@ import {
 } from '../fixtures/items'
 import { createScenarioViaUi } from '../fixtures/scenarios'
 import { createSceneViaUi } from '../fixtures/scenes'
+import { preparePlayedScenarioViaApi } from '../fixtures/scene-play'
 
 /**
  * Traces to specs/scenario-preparation/spec.md Scenarios "Keeper prepares an Item" (the creating part; the linking part is in
@@ -24,9 +25,10 @@ import { createSceneViaUi } from '../fixtures/scenes'
  * isolate Scenario material" (the Player and API parts), and to specs/scenario-preparation/ux.md SP-UX-90 to SP-UX-95,
  * SP-UX-101, SP-UX-102, SP-UX-103, SP-A11Y-51, SP-A11Y-54, and SP-A11Y-55.
  *
- * Exceptions: Active and Finished Scenes cannot be seeded end to end until PBI-SPL-001 (ux.md section 70), so "An Item in a
- * played Scene cannot be deleted" and the played refusal of SP-UX-95 are covered by the seeded integration tests (ItemApiTests)
- * and by component tests. A held Item cannot exist before PBI-SPL-003, so "A held Item cannot be deleted" is covered by the
+ * "An Item in a played Scene cannot be deleted" and the played refusal of SP-UX-95 are reached through the Scene Play API
+ * (PBI-SPL-001) in "Items of played Scenes".
+ *
+ * Exceptions: A held Item cannot exist before PBI-SPL-003, so "A held Item cannot be deleted" is covered by the
  * ItemService unit tests with a fake holder port. The size limits of SP-UX-92 and the 400 responses are covered by the form
  * service, component, and integration tests, where an end-to-end run would only repeat them slowly.
  */
@@ -253,6 +255,24 @@ test.describe('Items', () => {
         const text = (await page.locator('main').innerText()).replace(/The cellar key|A rusty iron key\./g, '')
         expect(text, `copy of ${path}`).not.toMatch(/\b(gear|loot|inventory|artifact|object)\b/i)
       }
+    })
+  })
+})
+
+test.describe('Items of played Scenes', () => {
+  // Each journey signs in a Keeper and joins Players in isolated contexts before it checks anything, which takes longer than the default.
+  test.describe.configure({ timeout: 240_000 })
+  test('An Item linked to an Active Scene cannot be deleted', async ({ page, browser }) => {
+    const prepared = await preparePlayedScenarioViaApi(page, browser, 'Played Item', 'Active')
+
+    await page.goto(`/campaigns/${prepared.campaignId}/items/${prepared.itemId}`)
+    await page.getByRole('button', { name: 'Delete Item', exact: true }).click()
+    const dialog = page.getByRole('alertdialog')
+    await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
+
+    await test.step('SP-UX-95: the dialog says the Item is part of a played Scene, and Delete is disabled', async () => {
+      await expect(dialog.getByRole('alert')).toHaveText("Walter Corbitt's diary is part of a Scene that has been played, so it can't be deleted.")
+      await expect(dialog.getByRole('button', { name: 'Delete', exact: true })).toBeDisabled()
     })
   })
 })

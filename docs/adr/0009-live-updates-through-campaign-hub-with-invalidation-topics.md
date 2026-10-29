@@ -16,7 +16,7 @@ Campaign Play hosts one authenticated, strongly typed SignalR hub, `Hub<ICampaig
   The hub resolves the Account id once on connect, because `IUserIdProvider` is synchronous and cannot run the Account lookup.
 - **Events:**
   - `PresenceChanged` carries the member's state, because Presence is ephemeral and has no REST read model.
-  - Persisted data uses one invalidation event, `CampaignDataChanged {campaignId, topics}`, with a closed set of topics (`members`, `wallEntries`, `investigators`, `myInvestigator`). The client refetches the affected queries through REST.
+  - Persisted data uses one invalidation event, `CampaignDataChanged {campaignId, topics}`, with a closed set of topics (`members`, `wallEntries`, `investigators`, `myInvestigator`, and `activeScene` from PBI-SPL-001, [ADR 0024](0024-scene-play-runs-the-scene-aggregate-through-a-provider-command-service.md)). The client refetches the affected queries through REST.
 - **Audience:** one publication policy in `CocAssistant.CampaignPlay.Application` maps each event to its group. A Keeper-only change never produces a signal to `campaign:{id}`, because even an invalidation would reveal that a secret entry exists and when it was written.
 - **Delivery:** best-effort. Events come from domain events dispatched after commit ([ADR 0011](0011-dispatch-domain-events-after-commit.md)), and a failed publish never fails the request. After a reconnect, the client subscribes again and refetches every query of the Campaign.
 - **Token lifetime:** connections close when the access token expires (`CloseOnAuthenticationExpiration`). The client reconnects with a fresh token and subscribes again, which re-checks membership.

@@ -108,14 +108,7 @@ public class NonPlayerEntityLinkApiTests : IClassFixture<IdentityApiFactory>, IA
     {
         using var scope = _factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ScenarioPreparationDbContext>();
-        var scene = await dbContext.Scenes.SingleAsync(candidate => candidate.Id == sceneId);
-        scene.Start(DateTimeOffset.UtcNow);
-        if (status == SceneStatus.Finished)
-        {
-            scene.Finish(DateTimeOffset.UtcNow.AddMinutes(30));
-        }
-
-        await dbContext.SaveChangesAsync();
+        await ScenePlaySeed.PlayAsync(dbContext, sceneId, status);
     }
 
     private async Task<int> StoredLinkCountAsync()
@@ -429,8 +422,8 @@ public class NonPlayerEntityLinkApiTests : IClassFixture<IdentityApiFactory>, IA
 
         var whileActive = await client.SendAsync(BuildRequest(HttpMethod.Delete, uri, oid));
         await LinkAsync(client, finished, oid, type, id);
-        await PlayAsync(finished.SceneId, SceneStatus.Finished);
         var unlink = await client.SendAsync(BuildRequest(HttpMethod.Delete, LinksUri(active.CampaignId, active.ScenarioId, active.SceneId, $"/{(await GetSceneAsync(client, active, oid)).GetProperty("nonPlayerEntityLinks")[0].GetProperty("id").GetGuid()}"), oid));
+        await PlayAsync(finished.SceneId, SceneStatus.Finished);
         var whileFinished = await client.SendAsync(BuildRequest(HttpMethod.Delete, uri, oid));
         var get = await client.SendAsync(BuildRequest(HttpMethod.Get, uri, oid));
 

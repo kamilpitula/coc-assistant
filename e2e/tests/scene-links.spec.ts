@@ -17,6 +17,7 @@ import {
   submitButton,
 } from '../fixtures/scene-links'
 import { createSceneViaUi, formattingButton } from '../fixtures/scenes'
+import { preparePlayedScenarioViaApi } from '../fixtures/scene-play'
 
 /**
  * Traces to specs/scenario-preparation/spec.md Scenarios "Keeper links a Mythos Creature to a Scene", "Keeper edits and
@@ -26,10 +27,10 @@ import { createSceneViaUi, formattingButton } from '../fixtures/scenes'
  * specs/scenario-preparation/ux.md SP-UX-50 to SP-UX-56, SP-UX-58 (Prepared part), SP-UX-59, SP-UX-60, SP-UX-62, SP-UX-63
  * and SP-A11Y-33.
  *
- * Exceptions: Active and Finished Scenes cannot be seeded end to end until PBI-SPL-001 (ux.md section 20), so "Material a
- * played Scene refers to cannot be deleted", the link part of "A Finished Scene is read-only", SP-UX-57, and the
- * refused-dialog part of SP-UX-58 are covered by the seeded integration tests (NonPlayerEntityLinkApiTests) and by
- * component tests. The over-204,800-byte description of SP-UX-53 and the double activation of SP-UX-61 are covered by
+ * "Material a played Scene refers to cannot be deleted", the link part of "A Finished Scene is read-only", SP-UX-57, and the
+ * refused-dialog part of SP-UX-58 are reached through the Scene Play API (PBI-SPL-001) in "Links of played Scenes".
+ *
+ * Exceptions: the over-204,800-byte description of SP-UX-53 and the double activation of SP-UX-61 are covered by
  * component tests, where an end-to-end run would only repeat them slowly.
  */
 
@@ -385,6 +386,36 @@ test.describe('Scene links', () => {
       await expect(linkHeadings(page)).toHaveText(['A shape in the cellar'])
       await expect(linkSection(page).getByRole('link', { name: 'Ghoul', exact: true })).toBeVisible()
       await expect(linkSection(page).getByText('Ghoul (copy)')).toHaveCount(0)
+    })
+  })
+})
+
+test.describe('Links of played Scenes', () => {
+  // Each journey signs in a Keeper and joins Players in isolated contexts before it checks anything, which takes longer than the default.
+  test.describe.configure({ timeout: 240_000 })
+  test("A Finished Scene's links have no actions", async ({ page, browser }) => {
+    const prepared = await preparePlayedScenarioViaApi(page, browser, 'Finished links', 'Finished')
+
+    await page.goto(prepared.scenePath)
+
+    await test.step('SP-UX-57: both links are listed, without Link, Edit, or Unlink', async () => {
+      await expect(linkHeadings(page)).toHaveText(['The landlord', 'A shape in the cellar'])
+      await expect(linkSection(page).getByRole('button')).toHaveCount(0)
+      await expect(linkSection(page).getByRole('link', { name: /^(Link a Non-Player Entity|Edit)/ })).toHaveCount(0)
+    })
+  })
+
+  test('A profile linked to an Active Scene cannot be deleted', async ({ page, browser }) => {
+    const prepared = await preparePlayedScenarioViaApi(page, browser, 'Played profile', 'Active')
+
+    await page.goto(prepared.humanNpcPath)
+    await page.getByRole('button', { name: 'Delete', exact: true }).click()
+    const dialog = page.getByRole('alertdialog')
+    await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
+
+    await test.step("SP-UX-58: the dialog says the profile is part of a played Scene, and Delete is disabled", async () => {
+      await expect(dialog.getByRole('alert')).toHaveText("Mr. Knott is part of a Scene that has been played, so it can't be deleted.")
+      await expect(dialog.getByRole('button', { name: 'Delete', exact: true })).toBeDisabled()
     })
   })
 })

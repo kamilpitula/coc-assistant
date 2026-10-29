@@ -14,6 +14,9 @@ vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampai
 vi.mock('@/campaign-play/components/attention-list/attention-list', () => ({
   AttentionList: ({ campaign }: { campaign: { role: string } }) => <h2>Needs your attention ({campaign.role})</h2>,
 }))
+vi.mock('@/scene-play/components/active-scene-card/active-scene-card', () => ({
+  ActiveSceneCard: ({ isKeeper }: { isKeeper: boolean }) => <h2>Active Scene ({isKeeper ? 'Keeper' : 'Player'})</h2>,
+}))
 vi.mock('@/campaign-play/components/campaign-table/campaign-table', () => ({
   CampaignTable: () => <h2>At the table</h2>,
 }))
@@ -49,26 +52,28 @@ describe('CampaignPage (the overview)', () => {
     routerState.location.state = {}
   })
 
-  it('shows the Player what needs them, then who is at the table, then the Wall, and no Scenarios, Non-Player Entities, Items, Invite or Rules options (CO-UX-3, CO-UX-14, SP-UX-9, SP-UX-28, SP-UX-90)', () => {
+  it('shows the Player what needs them, then the Active Scene, then who is at the table, then the Wall, and no Scenarios, Non-Player Entities, Items, Invite or Rules options (CO-UX-3, CO-UX-14, SPL-UX-14, SP-UX-9, SP-UX-28, SP-UX-90)', () => {
     mockUseCampaign.mockReturnValue({ data: playerCampaign })
 
     render(<CampaignPage campaignId="c1" />)
 
     expect(screen.getAllByRole('heading').map((heading) => heading.textContent)).toEqual([
       'Needs your attention (Player)',
+      'Active Scene (Player)',
       'At the table',
       'Wall',
     ])
   })
 
   // specs/campaign-overview/ux.md section 3 and specs/scenario-preparation/ux.md section 2: the Keeper's Scenarios follow "At the table".
-  it('shows the Keeper what needs them, then who is at the table, then the Scenarios, then the Non-Player Entities, then the Items, then the Wall (CO-UX-3, SP-UX-1, SP-UX-28, SP-UX-90)', () => {
+  it('shows the Keeper what needs them, then the Active Scene, then who is at the table, then the Scenarios, then the Non-Player Entities, then the Items, then the Wall (CO-UX-3, SPL-UX-14, SP-UX-1, SP-UX-28, SP-UX-90)', () => {
     mockUseCampaign.mockReturnValue({ data: keeperCampaign })
 
     render(<CampaignPage campaignId="c1" />)
 
     expect(screen.getAllByRole('heading').map((heading) => heading.textContent)).toEqual([
       'Needs your attention (Keeper)',
+      'Active Scene (Keeper)',
       'At the table',
       'Scenarios',
       'Non-Player Entities',

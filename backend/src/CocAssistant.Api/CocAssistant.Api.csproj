@@ -23,6 +23,8 @@
     <ProjectReference Include="..\CampaignPlay\CocAssistant.CampaignPlay.Infrastructure\CocAssistant.CampaignPlay.Infrastructure.csproj" />
     <ProjectReference Include="..\ScenarioPreparation\CocAssistant.ScenarioPreparation.Controllers\CocAssistant.ScenarioPreparation.Controllers.csproj" />
     <ProjectReference Include="..\ScenarioPreparation\CocAssistant.ScenarioPreparation.Infrastructure\CocAssistant.ScenarioPreparation.Infrastructure.csproj" />
+    <ProjectReference Include="..\ScenePlay\CocAssistant.ScenePlay.Controllers\CocAssistant.ScenePlay.Controllers.csproj" />
+    <ProjectReference Include="..\ScenePlay\CocAssistant.ScenePlay.Infrastructure\CocAssistant.ScenePlay.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
