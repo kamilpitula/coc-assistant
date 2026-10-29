@@ -38,7 +38,8 @@ Material that an Active or Finished Scene refers to must never be deleted. The d
 - Tests and seed helpers can no longer leave two Active Scenes in one Campaign.
 - Each guarded delete loads the Prepared Scenes that link its target.
 - Scene child writes allowed on an Active Scene (link, edit link, add or edit Handout) do not touch the version. One that races a Finish can still land on a Finished Scene. This is a recorded residual.
+- **PBI-SPL-002 closes the residual** with no code change. A child write, or a Reveal, that read an Active Scene and commits after a Finish is equivalent to having happened just before it, because a Finish never reads them. Reveals add rows and never touch the version ([PBI-SPL-002 design record](../scene-play/issues/02-reveal-to-investigators-and-clues.design.md), D2).
 - **ADR 0019 and ADR 0022 are amended:** their "PBI-SPL-001 must re-check" consequences are resolved by the removal guard.
-- PBI-SPL-002 extends the guard so that material and files a Reveal references are never deleted.
+- **PBI-SPL-002 extends the guard:** replacing a Scene Handout's file on a Prepared Scene touches the version, so a replace that loses to a start answers 409 and keeps the old blob (ADR 0021 item 3). Every deletion of a Scene Handout's blob now happens on a Prepared Scene behind the version.
 - One repository method opens a transaction. A new need for a transaction must justify itself, not reuse this method.
 - **Given up:** one column on `Scenes` and a concurrency outcome on a few Scenario Preparation writes.
