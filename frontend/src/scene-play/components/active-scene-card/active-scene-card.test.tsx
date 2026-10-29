@@ -26,6 +26,7 @@ const keeper: ActiveScene = {
 }
 const present: ActiveScene = {
   kind: 'present-player',
+  reveals: [],
   title: 'The Corbitt House',
   location: '',
   investigatorsPresent: [{ name: 'Harvey Walters', isYours: true }, { name: 'Lucy Ward', isYours: false }],

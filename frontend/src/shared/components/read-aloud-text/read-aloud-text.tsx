@@ -6,6 +6,11 @@ import type { RichTextDocument } from '@/shared/types/RichText'
 
 interface ReadAloudTextProps {
   document: RichTextDocument
+  /**
+   * False inside a Reveal, whose own h3 and meta line name it (specs/scene-play/ux.md section 14): the panel has no heading and
+   * the text's headings start at h4. Default true.
+   */
+  showHeading?: boolean
 }
 
 /**
@@ -13,8 +18,16 @@ interface ReadAloudTextProps {
  * h2 "Read-aloud", with a left rule and a muted background. The heading, not the colour, says what it is (SP-A11Y-38). The
  * text's own headings stay h3 and h4 under the h2.
  */
-export function ReadAloudText({ document }: ReadAloudTextProps) {
+export function ReadAloudText({ document, showHeading = true }: ReadAloudTextProps) {
   const headingId = useId()
+
+  if (!showHeading) {
+    return (
+      <div className="flex flex-col gap-2 border-l-4 border-primary bg-muted p-4">
+        <RichTextView document={document} headingOffset={1} />
+      </div>
+    )
+  }
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2 border-l-4 border-primary bg-muted p-4">

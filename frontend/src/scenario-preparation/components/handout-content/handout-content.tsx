@@ -2,9 +2,11 @@ import type { ComponentType } from 'react'
 
 import { HandoutDocument } from '@/scenario-preparation/components/handout-document/handout-document'
 import { HandoutImage } from '@/scenario-preparation/components/handout-image/handout-image'
-import { ReadAloudText } from '@/scenario-preparation/components/read-aloud-text/read-aloud-text'
+import { useHandoutFile } from '@/scenario-preparation/hooks/useHandouts'
 import type { HandoutOwner } from '@/scenario-preparation/services/handoutOwner'
+import type { FileHandout } from '@/scenario-preparation/types/Handout'
 import { isFileHandout, type Handout, type HandoutKind } from '@/scenario-preparation/types/Handout'
+import { ReadAloudText } from '@/shared/components/read-aloud-text/read-aloud-text'
 import { RichTextView } from '@/shared/components/rich-text-view/rich-text-view'
 
 interface HandoutContentProps {
@@ -29,12 +31,23 @@ function TextView({ handout }: HandoutContentProps) {
   )
 }
 
+// The Keeper's views read the current file of the Handout (D8 of PBI-SPL-002).
+function KeeperImage({ handout, owner }: { handout: FileHandout; owner: HandoutOwner }) {
+  const file = useHandoutFile(owner, handout.id, true)
+  return <HandoutImage handout={handout} fileQuery={file} alt={handout.imageDescription ?? handout.title} showDescription />
+}
+
+function KeeperDocument({ handout, owner }: { handout: FileHandout; owner: HandoutOwner }) {
+  const file = useHandoutFile(owner, handout.id, true)
+  return <HandoutDocument handout={handout} fileQuery={file} />
+}
+
 function ImageView({ handout, owner }: HandoutContentProps) {
-  return isFileHandout(handout) ? <HandoutImage owner={owner} handout={handout} /> : null
+  return isFileHandout(handout) ? <KeeperImage owner={owner} handout={handout} /> : null
 }
 
 function DocumentView({ handout, owner }: HandoutContentProps) {
-  return isFileHandout(handout) ? <HandoutDocument owner={owner} handout={handout} /> : null
+  return isFileHandout(handout) ? <KeeperDocument owner={owner} handout={handout} /> : null
 }
 
 // One view per kind (ux.md section 56); a Map is the Image view with the full content width.

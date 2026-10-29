@@ -338,6 +338,18 @@ describe('InvestigatorWizard', () => {
     expect(screen.getByLabelText('Weapon 1 name')).toHaveAttribute('aria-invalid', 'true')
   })
 
+  it('links an Approved Investigator to its Clues, and a Submitted one to none (SPL-UX-31)', () => {
+    withSheet(myCharacterSheet({ status: 'Approved' }))
+    const { unmount } = render(<InvestigatorWizard campaignId="c1" step="identity" />)
+
+    expect(screen.getByRole('link', { name: "Harvey Walters's Clues" })).toHaveAttribute('href', '/campaigns/c1/investigator/clues')
+    unmount()
+
+    withSheet(myCharacterSheet({ status: 'Submitted' }))
+    render(<InvestigatorWizard campaignId="c1" step="identity" />)
+    expect(screen.queryByRole('link', { name: /Clues/ })).not.toBeInTheDocument()
+  })
+
   it('UX-12: opens a Submitted Investigator read-only, with no edit controls', () => {
     withSheet(myCharacterSheet({ status: 'Submitted' }))
 

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
+import { useHandoutFile } from '@/scenario-preparation/hooks/useHandouts'
 import { handoutQueryKeys } from '@/scenario-preparation/services/handoutApi'
 import type { FileHandout } from '@/scenario-preparation/types/Handout'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
@@ -16,6 +17,7 @@ const image: FileHandout = {
   visibility: 'PlayerFacing',
   title: 'Corbitt House',
   file: { name: 'corbitt-house.png', mediaType: 'image/png', sizeBytes: 1_258_291 },
+  imageDescription: null,
 }
 
 interface StoryArgs {
@@ -23,6 +25,11 @@ interface StoryArgs {
   /** Omitted: the image is still loading. */
   state?: 'loaded' | 'loading' | 'error'
   tokens?: 'pending' | 'failing' | 'granted'
+}
+
+function KeeperImage({ handout }: { handout: FileHandout }) {
+  const file = useHandoutFile(OWNER, handout.id, true)
+  return <HandoutImage handout={handout} fileQuery={file} alt={handout.imageDescription ?? handout.title} showDescription />
 }
 
 function ImageStory({ handout = image, state = 'loaded', tokens = 'pending' }: StoryArgs) {
@@ -39,7 +46,7 @@ function ImageStory({ handout = image, state = 'loaded', tokens = 'pending' }: S
           }
         }}
       >
-        <HandoutImage owner={OWNER} handout={handout} />
+        <KeeperImage handout={handout} />
       </StoryProviders>
     </StoryMsal>
   )
@@ -61,6 +68,8 @@ export const TallMapAt320px: Story = {
   args: { handout: { ...image, kind: 'Map', title: 'A very long street map of the whole of Arkham and its surroundings' } },
   decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
 }
+
+export const WithDescription: Story = { args: { handout: { ...image, imageDescription: 'A plan of the cellar with the furnace in the north-east corner' } } }
 
 export const Loading: Story = { args: { state: 'loading' } }
 

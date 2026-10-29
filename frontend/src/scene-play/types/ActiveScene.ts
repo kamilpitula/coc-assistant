@@ -1,3 +1,5 @@
+import type { KeeperReveal, PlayerReveal } from '@/scene-play/types/Reveal'
+
 /** An Investigator present as the Keeper sees it; the name comes from the Character Sheet and may be missing. */
 export interface InvestigatorPresent {
   id: string
@@ -10,7 +12,7 @@ export interface PlayerInvestigatorPresent {
   isYours: boolean
 }
 
-/** The Keeper's Active Scene (specs/scene-play/spec.md, API Contracts). Reveals are always empty until PBI-SPL-002. */
+/** The Keeper's Active Scene (specs/scene-play/spec.md, API Contracts), with every Reveal newest first. */
 export interface KeeperActiveScene {
   kind: 'keeper'
   sceneId: string
@@ -21,7 +23,7 @@ export interface KeeperActiveScene {
   location: string
   startedAt: string | null
   investigatorsPresent: InvestigatorPresent[]
-  reveals: unknown[]
+  reveals: KeeperReveal[]
 }
 
 /** What a Player whose Investigator is present sees. */
@@ -30,6 +32,8 @@ export interface PresentPlayerActiveScene {
   title: string
   location: string
   investigatorsPresent: PlayerInvestigatorPresent[]
+  /** Only the Reveals that reached the Player's own Investigator, newest first. */
+  reveals: PlayerReveal[]
 }
 
 /** What any other Player sees: only that the Scene is in progress. */

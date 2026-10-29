@@ -3,6 +3,7 @@ import type { QueryKey } from '@tanstack/react-query'
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
 import { activeSceneQueryKeys } from '@/scene-play/services/activeSceneApi'
+import { cluesQueryKeys } from '@/scene-play/services/cluesApi'
 
 /**
  * The queries each CampaignDataChanged topic invalidates (specs/campaign-play/spec.md, Live connection contract;
@@ -17,6 +18,9 @@ const queryKeysByTopic: Record<string, (campaignId: string) => QueryKey[]> = {
   myInvestigator: (campaignId) => [campaignQueryKeys.myInvestigator(campaignId), campaignQueryKeys.members(campaignId)],
   // The Keeper's Scene pages show the status change too (specs/scene-play/spec.md, Live updates).
   activeScene: (campaignId) => [activeSceneQueryKeys.detail(campaignId), sceneQueryKeys.inCampaign(campaignId)],
+  // A Reveal reaches only its recipients' accounts (myClues) and the Keeper (sceneReveals), never the Campaign (PBI-SPL-002 D6).
+  myClues: (campaignId) => [activeSceneQueryKeys.detail(campaignId), cluesQueryKeys.mine(campaignId)],
+  sceneReveals: (campaignId) => [activeSceneQueryKeys.detail(campaignId), cluesQueryKeys.investigators(campaignId)],
 }
 
 /** The query keys to refetch for the topics; unknown topics are ignored and each key appears once. */

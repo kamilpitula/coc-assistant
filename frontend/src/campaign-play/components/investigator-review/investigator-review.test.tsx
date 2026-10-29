@@ -138,4 +138,16 @@ describe('InvestigatorReview', () => {
 
     expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
   })
+
+  it('offers a "Clues" link for an Approved Investigator only (SPL-UX-33)', () => {
+    withInvestigator(keeperInvestigator({ status: 'Approved' }))
+    const { unmount } = render(<InvestigatorReview campaignId="c1" investigatorId="i1" />)
+
+    expect(screen.getByRole('link', { name: "Harvey Walters's Clues" })).toHaveAttribute('href', '/campaigns/c1/investigators/i1/clues')
+    unmount()
+
+    withInvestigator(keeperInvestigator({ status: 'Submitted' }))
+    render(<InvestigatorReview campaignId="c1" investigatorId="i1" />)
+    expect(screen.queryByRole('link', { name: /Clues/ })).not.toBeInTheDocument()
+  })
 })

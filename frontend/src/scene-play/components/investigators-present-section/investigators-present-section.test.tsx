@@ -16,6 +16,7 @@ const { mockUseMembers, mockUseChange, changeMutate, changeReset } = vi.hoisted(
   changeReset: vi.fn(),
 }))
 
+vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/campaign-play/hooks/useCampaignMembers', () => ({ useCampaignMembers: mockUseMembers }))
 vi.mock('@/scene-play/hooks/useActiveScene', () => ({ useChangeInvestigatorsPresent: mockUseChange }))
 
@@ -43,6 +44,14 @@ describe('InvestigatorsPresentSection', () => {
     vi.clearAllMocks()
     mockUseMembers.mockReturnValue({ data: keeperRosterAllApproved })
     mockUseChange.mockReturnValue(changing())
+  })
+
+  it('follows each present Investigator with a "Clues" link to their Clues (SPL-UX-33)', () => {
+    renderSection()
+
+    expect(screen.getByRole('link', { name: "Dr. Ames's Clues" })).toHaveAttribute('href', '/campaigns/c1/investigators/i-a/clues')
+    expect(screen.getByRole('link', { name: "Unnamed Investigator's Clues" })).toHaveAttribute('href', '/campaigns/c1/investigators/unknown/clues')
+    expect(screen.getAllByRole('link', { name: /Clues/ })[0]).toHaveTextContent('Clues')
   })
 
   it('lists who is present under a labelled section with a Change button', () => {

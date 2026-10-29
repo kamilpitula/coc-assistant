@@ -58,7 +58,7 @@ export const Keeper: Story = {}
 export const PlayerPresent: Story = {
   args: {
     role: 'Player',
-    scene: { kind: 'present-player', title: 'The Corbitt House', location: 'Arkham, Boston Road', investigatorsPresent: [{ name: 'Dr. Ames', isYours: true }] },
+    scene: { kind: 'present-player', reveals: [], title: 'The Corbitt House', location: 'Arkham, Boston Road', investigatorsPresent: [{ name: 'Dr. Ames', isYours: true }] },
   },
 }
 

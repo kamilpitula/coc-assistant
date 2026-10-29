@@ -241,7 +241,7 @@ describe('HandoutForm', () => {
       await userEvent.upload(fileInput(), png)
       await userEvent.click(submitButton('Add Handout'))
 
-      expect(onSubmit).toHaveBeenCalledWith({ kind: 'Image', visibility: 'PlayerFacing', title: 'Plan', file: png })
+      expect(onSubmit).toHaveBeenCalledWith({ kind: 'Image', visibility: 'PlayerFacing', title: 'Plan', file: png, imageDescription: '' })
     })
 
     it('previews the chosen image and shows its name and size (SP-UX-77)', async () => {
@@ -308,7 +308,7 @@ describe('HandoutForm', () => {
 
       await userEvent.click(submitButton('Save'))
 
-      expect(onSubmit).toHaveBeenCalledWith({ kind: 'Image', visibility: 'KeeperFacing', title: 'Plan', file: null })
+      expect(onSubmit).toHaveBeenCalledWith({ kind: 'Image', visibility: 'KeeperFacing', title: 'Plan', file: null, imageDescription: '' })
     })
 
     it('on an edit of a Document shows no kind radios, only the fixed sentence (SP-UX-86, SP-A11Y-50)', () => {
@@ -329,7 +329,74 @@ describe('HandoutForm', () => {
       await userEvent.upload(fileInput(), pdf)
       await userEvent.click(submitButton('Add Handout'))
 
-      expect(onSubmit).toHaveBeenCalledWith({ kind: 'Document', visibility: 'KeeperFacing', title: 'Letter', file: pdf })
+      expect(onSubmit).toHaveBeenCalledWith({ kind: 'Document', visibility: 'KeeperFacing', title: 'Letter', file: pdf, imageDescription: '' })
     })
+  })
+})
+
+describe('HandoutForm image description', () => {
+  // specs/scenario-preparation/ux.md section 71; SP-UX-104, SP-UX-106, SP-A11Y-59.
+  const png = new File(['x'], 'plan.png', { type: 'image/png' })
+  const imageProps = { ...baseProps, initialValues: { ...emptyValues, title: 'Plan', kind: 'Image' as const, visibility: 'PlayerFacing' as const } }
+  const field = () => screen.queryByRole('textbox', { name: 'Image description (optional)' })
+
+  it('offers the field for Image and Map, after the image field, and not for Document, Read-aloud, or Text (SP-UX-104)', async () => {
+    render(<HandoutForm {...baseProps} initialValues={{ ...emptyValues, title: 'Plan', visibility: 'PlayerFacing' }} onSubmit={vi.fn()} />)
+    await userEvent.click(screen.getByRole('radio', { name: 'Image' }))
+    expect(field()).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Map' }))
+    expect(field()).toBeInTheDocument()
+    expect(field()).not.toHaveAttribute('maxlength')
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Document' }))
+    expect(field()).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Text' }))
+    expect(field()).not.toBeInTheDocument()
+  })
+
+  it('keeps the typed description when the kind switches between Image and Map, and sends it', async () => {
+    const onSubmit = vi.fn()
+    render(<HandoutForm {...imageProps} onSubmit={onSubmit} />)
+
+    await userEvent.type(field()!, 'A plan of the cellar')
+    await userEvent.click(screen.getByRole('radio', { name: 'Map' }))
+    await userEvent.upload(document.querySelector('input[type="file"]') as HTMLElement, png)
+    await userEvent.click(submitButton('Add Handout'))
+
+    expect(onSubmit).toHaveBeenCalledWith({ kind: 'Map', visibility: 'PlayerFacing', title: 'Plan', file: png, imageDescription: 'A plan of the cellar' })
+  })
+
+  it('shows the hint, and on a description over 1,000 characters shows the message at the field, focuses it, and sends nothing (SP-UX-106, SP-A11Y-59)', async () => {
+    const onSubmit = vi.fn()
+    render(<HandoutForm {...imageProps} onSubmit={onSubmit} />)
+    await userEvent.upload(document.querySelector('input[type="file"]') as HTMLElement, png)
+    await userEvent.click(field()!)
+    await userEvent.paste('a'.repeat(1001))
+
+    await userEvent.click(submitButton('Add Handout'))
+
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(field()).toHaveFocus()
+    expect(field()).toHaveAttribute('aria-invalid', 'true')
+    expect(field()).toHaveAccessibleDescription(/Players receive it when you reveal the Handout\..*Image description must be 1,000 characters or fewer\./)
+  })
+
+  it('prefills the stored description on an edit and sends an emptied one so the server clears it (SP-UX-105)', async () => {
+    const onSubmit = vi.fn()
+    render(
+      <HandoutForm
+        {...imageProps}
+        initialValues={{ ...imageProps.initialValues, imageDescription: 'Old', storedFile: { name: 'plan.png', mediaType: 'image/png', sizeBytes: 3 }, hasStoredFile: true }}
+        onSubmit={onSubmit}
+      />,
+    )
+    expect(field()).toHaveValue('Old')
+
+    await userEvent.clear(field()!)
+    await userEvent.click(submitButton('Add Handout'))
+
+    expect(onSubmit).toHaveBeenCalledWith({ kind: 'Image', visibility: 'PlayerFacing', title: 'Plan', file: null, imageDescription: '' })
   })
 })

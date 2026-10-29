@@ -191,10 +191,10 @@ describe('Handout API', () => {
 
   describe('file Handouts', () => {
     const file = { name: 'plan.png', mediaType: 'image/png', sizeBytes: 68 }
-    const fileHandout = { id: 'h2', kind: 'Map', visibility: 'PlayerFacing', title: 'Arkham', content: null, file }
-    const parsedFileHandout = { id: 'h2', kind: 'Map', visibility: 'PlayerFacing', title: 'Arkham', file }
+    const fileHandout = { id: 'h2', kind: 'Map', visibility: 'PlayerFacing', title: 'Arkham', content: null, file, imageDescription: 'A plan' }
+    const parsedFileHandout = { id: 'h2', kind: 'Map', visibility: 'PlayerFacing', title: 'Arkham', file, imageDescription: 'A plan' }
     const png = new File(['png'], 'plan.png', { type: 'image/png' })
-    const fileInput = { kind: 'Map' as const, visibility: 'PlayerFacing' as const, title: 'Arkham', file: png }
+    const fileInput = { kind: 'Map' as const, visibility: 'PlayerFacing' as const, title: 'Arkham', file: png, imageDescription: 'A plan' }
 
     it('reads a file Handout without its null content, and a rich-text Handout without its null file', async () => {
       fetchMock.mockResolvedValueOnce(jsonResponse(200, fileHandout))
@@ -232,7 +232,7 @@ describe('Handout API', () => {
       expect(init?.headers).toEqual({ Authorization: 'Bearer token' })
       const form = init?.body as FormData
       expect(form).toBeInstanceOf(FormData)
-      expect([form.get('kind'), form.get('visibility'), form.get('title')]).toEqual(['Map', 'PlayerFacing', 'Arkham'])
+      expect([form.get('kind'), form.get('visibility'), form.get('title'), form.get('imageDescription')]).toEqual(['Map', 'PlayerFacing', 'Arkham', 'A plan'])
       expect((form.get('file') as File).name).toBe('plan.png')
     })
 
@@ -351,10 +351,10 @@ describe('Handout API', () => {
 
     it('sends a file Handout as a multipart form under the Item', async () => {
       const png = new File(['png'], 'plan.png', { type: 'image/png' })
-      const created = { id: 'h2', kind: 'Image', visibility: 'PlayerFacing', title: 'A photograph', content: null, file: { name: 'plan.png', mediaType: 'image/png', sizeBytes: 3 } }
+      const created = { id: 'h2', kind: 'Image', visibility: 'PlayerFacing', title: 'A photograph', content: null, file: { name: 'plan.png', mediaType: 'image/png', sizeBytes: 3 }, imageDescription: null }
       fetchMock.mockResolvedValue(jsonResponse(201, created))
 
-      await createFileHandout('token', itemOwner, { kind: 'Image', visibility: 'PlayerFacing', title: 'A photograph', file: png })
+      await createFileHandout('token', itemOwner, { kind: 'Image', visibility: 'PlayerFacing', title: 'A photograph', file: png, imageDescription: '' })
 
       const [url, init] = fetchMock.mock.calls[0]
       expect(url).toBe(itemUrl)

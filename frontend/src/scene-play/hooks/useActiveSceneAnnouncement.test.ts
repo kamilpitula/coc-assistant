@@ -7,7 +7,7 @@ import { useActiveSceneAnnouncement } from './useActiveSceneAnnouncement'
 
 // specs/scene-play/ux.md section 4.4 and SPL-A11Y-5: nothing is announced on the first load.
 const absent: ActiveScene = { kind: 'absent-player', title: 'The Corbitt House' }
-const present: ActiveScene = { kind: 'present-player', title: 'The Corbitt House', location: '', investigatorsPresent: [] }
+const present: ActiveScene = { kind: 'present-player', reveals: [], title: 'The Corbitt House', location: '', investigatorsPresent: [] }
 
 describe('useActiveSceneAnnouncement', () => {
   it('announces nothing for the first fetched value, whatever it is', () => {

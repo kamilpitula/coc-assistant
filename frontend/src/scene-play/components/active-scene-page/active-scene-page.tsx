@@ -8,6 +8,7 @@ import { ActiveScenePlayerView } from '@/scene-play/components/active-scene-play
 import { NoActiveScene } from '@/scene-play/components/no-active-scene/no-active-scene'
 import { useActiveScene } from '@/scene-play/hooks/useActiveScene'
 import { useActiveSceneAnnouncement } from '@/scene-play/hooks/useActiveSceneAnnouncement'
+import { usePlayerRevealAnnouncement } from '@/scene-play/hooks/usePlayerRevealAnnouncement'
 import type { ActiveScene } from '@/scene-play/types/ActiveScene'
 import { Button } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
@@ -27,6 +28,7 @@ export function ActiveScenePage({ campaignId }: ActiveScenePageProps) {
   const active = useActiveScene(campaignId)
   const navigationMessage = useRouterState({ select: (state) => state.location.state.statusMessage })
   const announcement = useActiveSceneAnnouncement(isKeeper ? undefined : active.data, active.isFetchedAfterMount)
+  const revealAnnouncement = usePlayerRevealAnnouncement(active.data, isKeeper, active.isFetchedAfterMount)
   const [message, setMessage] = useState<string | null>(null)
   const focusHeadingPending = useRef(false)
   const headingRef = useRef<HTMLHeadingElement>(null)
@@ -52,6 +54,9 @@ export function ActiveScenePage({ campaignId }: ActiveScenePageProps) {
       <p role="status" className="text-sm empty:hidden">
         {message ?? (announcement.sequence > 0 ? announcement.message : navigationMessage)}
       </p>
+      <p aria-live="polite" className="sr-only">
+        {revealAnnouncement.message}
+      </p>
       <ActiveSceneBody
         campaignId={campaignId}
         isKeeper={isKeeper}
@@ -67,6 +72,12 @@ export function ActiveScenePage({ campaignId }: ActiveScenePageProps) {
           void active.refetch()
         }}
         onPresentSaved={() => setMessage('Investigators present saved.')}
+        onRevealed={setMessage}
+        onSceneFinished={() => {
+          focusHeadingPending.current = true
+          setMessage(null)
+          void active.refetch()
+        }}
         onRefetch={() => void active.refetch()}
       />
     </div>
@@ -102,10 +113,12 @@ interface ActiveSceneBodyProps {
   onFinished: (title: string) => void
   onAlreadyFinished: () => void
   onPresentSaved: () => void
+  onRevealed: (message: string) => void
+  onSceneFinished: () => void
   onRefetch: () => void
 }
 
-function ActiveSceneBody({ campaignId, isKeeper, scene, headingRef, onFinished, onAlreadyFinished, onPresentSaved, onRefetch }: ActiveSceneBodyProps) {
+function ActiveSceneBody({ campaignId, isKeeper, scene, headingRef, onFinished, onAlreadyFinished, onPresentSaved, onRevealed, onSceneFinished, onRefetch }: ActiveSceneBodyProps) {
   if (scene === null) {
     return <NoActiveScene campaignId={campaignId} isKeeper={isKeeper} headingRef={headingRef} />
   }
@@ -119,10 +132,12 @@ function ActiveSceneBody({ campaignId, isKeeper, scene, headingRef, onFinished, 
         onFinished={onFinished}
         onAlreadyFinished={onAlreadyFinished}
         onPresentSaved={onPresentSaved}
+        onRevealed={onRevealed}
+        onSceneFinished={onSceneFinished}
         onRefetch={onRefetch}
       />
     )
   }
 
-  return <ActiveScenePlayerView scene={scene} />
+  return <ActiveScenePlayerView campaignId={campaignId} scene={scene} />
 }

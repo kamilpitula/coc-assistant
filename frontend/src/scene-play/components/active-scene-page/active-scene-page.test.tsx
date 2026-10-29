@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -28,7 +28,7 @@ vi.mock('@/scene-play/components/active-scene-keeper-view/active-scene-keeper-vi
 }))
 
 const keeperScene: ActiveScene = { kind: 'keeper', sceneId: 's', scenarioId: 'p', scenarioTitle: 'T', title: 'The Corbitt House', location: '', startedAt: null, investigatorsPresent: [], reveals: [] }
-const present: ActiveScene = { kind: 'present-player', title: 'The Corbitt House', location: '', investigatorsPresent: [{ name: 'Harvey', isYours: true }] }
+const present: ActiveScene = { kind: 'present-player', reveals: [], title: 'The Corbitt House', location: '', investigatorsPresent: [{ name: 'Harvey', isYours: true }] }
 const absent: ActiveScene = { kind: 'absent-player', title: 'The Corbitt House' }
 
 const query = (data: unknown, overrides: Record<string, unknown> = {}) => ({ data, isError: false, isFetchedAfterMount: true, refetch, ...overrides })
@@ -95,6 +95,51 @@ describe('ActiveScenePage', () => {
 
     expect(await screen.findByRole('status')).toHaveTextContent('The Corbitt House finished.')
     expect(screen.getByRole('heading', { level: 1, name: 'No Active Scene' })).toHaveFocus()
+  })
+
+  it('shows "{title} revealed to {names}." in the status region after the Keeper reveals (SPL-UX-22)', () => {
+    render(<ActiveScenePage campaignId="c1" />)
+
+    act(() => keeperProps.current!.onRevealed('The front door revealed to Harvey Walters.'))
+
+    expect(screen.getByRole('status')).toHaveTextContent('The front door revealed to Harvey Walters.')
+  })
+
+  it('refetches and focuses the heading when the Scene was finished while the reveal dialog was open (SPL-UX-24)', async () => {
+    const { rerender } = render(<ActiveScenePage campaignId="c1" />)
+
+    act(() => keeperProps.current!.onSceneFinished())
+    mockUseActive.mockReturnValue(query(null))
+    rerender(<ActiveScenePage campaignId="c1" />)
+
+    expect(refetch).toHaveBeenCalled()
+    expect(await screen.findByRole('heading', { level: 1, name: 'No Active Scene' })).toHaveFocus()
+  })
+
+  it('announces a Reveal that arrives after the first load politely to the Player, and nothing on the first load (SPL-UX-28)', () => {
+    mockUseCampaign.mockReturnValue({ data: { id: 'c1', role: 'Player' } })
+    const withReveals = (titles: string[]): ActiveScene => ({
+      ...present,
+      kind: 'present-player',
+      reveals: titles.map((title, index) => ({
+        revealId: `r${index}`,
+        revealedAt: '2026-10-28T19:52:00Z',
+        subjectType: 'Handout',
+        title,
+        handoutKind: 'Text',
+        content: null,
+        file: null,
+        imageDescription: null,
+      })),
+    } as ActiveScene)
+    mockUseActive.mockReturnValue(query(withReveals([])))
+    const { container, rerender } = render(<ActiveScenePage campaignId="c1" />)
+    expect(container.querySelector('[aria-live="polite"]')).toBeEmptyDOMElement()
+
+    mockUseActive.mockReturnValue(query(withReveals(['The front door'])))
+    rerender(<ActiveScenePage campaignId="c1" />)
+
+    expect(container.querySelector('[aria-live="polite"]')).toHaveTextContent('New for Harvey: The front door.')
   })
 
   it('says the Scene was already finished and refetches when the finish found none Active', async () => {

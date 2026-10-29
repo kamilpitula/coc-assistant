@@ -3,6 +3,8 @@ import { userEvent, within } from 'storybook/test'
 
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import { keeperRosterAllApproved, STORY_CAMPAIGN_ID } from '@/campaign-play/test-support/rosterFixtures'
+import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
+import type { Scene } from '@/scenario-preparation/types/Scene'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
@@ -21,10 +23,31 @@ const scene: KeeperActiveScene = {
   reveals: [],
 }
 
+const material: Scene = {
+  id: 'story-scene',
+  title: 'The Corbitt House',
+  status: 'Active',
+  startedAt: '2026-10-28T19:40:00Z',
+  finishedAt: null,
+  location: 'Arkham, Boston Road',
+  keeperNotes: null,
+  nonPlayerEntityLinks: [],
+  itemLinks: [],
+  handouts: [
+    { id: 'h1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door' },
+    { id: 'h2', kind: 'Text', visibility: 'KeeperFacing', title: "Corbitt's true nature" },
+  ],
+}
+
 function ViewStory({ withLocation = true, tokens = 'pending' as 'pending' | 'granted' }) {
   return (
     <StoryMsal tokens={tokens}>
-      <StoryProviders seed={(client) => client.setQueryData(campaignQueryKeys.members(STORY_CAMPAIGN_ID), keeperRosterAllApproved)}>
+      <StoryProviders
+        seed={(client) => {
+          client.setQueryData(campaignQueryKeys.members(STORY_CAMPAIGN_ID), keeperRosterAllApproved)
+          client.setQueryData(sceneQueryKeys.detail(STORY_CAMPAIGN_ID, scene.scenarioId, scene.sceneId), material)
+        }}
+      >
         <ActiveSceneKeeperView
           campaignId={STORY_CAMPAIGN_ID}
           scene={withLocation ? scene : { ...scene, location: '' }}
@@ -32,6 +55,8 @@ function ViewStory({ withLocation = true, tokens = 'pending' as 'pending' | 'gra
           onFinished={() => undefined}
           onAlreadyFinished={() => undefined}
           onPresentSaved={() => undefined}
+          onRevealed={() => undefined}
+          onSceneFinished={() => undefined}
           onRefetch={() => undefined}
         />
       </StoryProviders>
