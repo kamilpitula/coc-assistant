@@ -136,6 +136,58 @@ test.describe('Scene file Handouts', () => {
     })
   })
 
+  test('Keeper describes an Image for screen-reader users, sees the description, and clears it', async ({ page }) => {
+    const scene = await prepareScene(page, 'Image description')
+    await openScene(page, scene)
+    await openAddHandoutPage(page)
+    const description = page.getByRole('textbox', { name: 'Image description (optional)' })
+
+    await test.step('SP-UX-104: the field is offered for Image and Map, and not for Document, Read-aloud, or Text', async () => {
+      await kindRadio(page, 'Image').click()
+      await expect(description).toBeVisible()
+      await kindRadio(page, 'Map').click()
+      await expect(description).toBeVisible()
+      await kindRadio(page, 'Document').click()
+      await expect(description).toHaveCount(0)
+      await kindRadio(page, 'Read-aloud').click()
+      await expect(description).toHaveCount(0)
+      await kindRadio(page, 'Text').click()
+      await expect(description).toHaveCount(0)
+    })
+
+    await test.step('SP-UX-106: a description over 1,000 characters is refused at the field, which is focused, and nothing is saved', async () => {
+      await kindRadio(page, 'Image').click()
+      await handoutTitleField(page).fill('Cellar plan')
+      await visibilityRadio(page, 'Player-facing').click()
+      await chooseHandoutImage(page, { name: 'cellar.png', buffer: PNG_BYTES })
+      await description.fill('a'.repeat(1001))
+      await handoutSubmitButton(page, 'Add Handout').click()
+      await expect(page.getByText('Image description must be 1,000 characters or fewer.')).toBeVisible()
+      await expect(description).toBeFocused()
+      await expect(description).toHaveAttribute('aria-invalid', 'true')
+    })
+
+    await test.step('SP-UX-105: a valid description is saved and shown on the Handout page as the alt and as text, and survives a reload', async () => {
+      await description.fill('A plan of the cellar')
+      await handoutSubmitButton(page, 'Add Handout').click()
+      await expect(page.getByRole('status').filter({ hasText: 'Cellar plan added.' })).toBeVisible()
+      await handoutLinks(page).filter({ hasText: 'Cellar plan' }).click()
+      await page.reload()
+      await expect(page.getByRole('img', { name: 'A plan of the cellar' })).toBeVisible()
+      await expect(page.getByText('Image description: A plan of the cellar')).toBeVisible()
+    })
+
+    await test.step('SP-UX-105: emptying the description on edit and saving removes it, and the alt is the title again', async () => {
+      await page.getByRole('button', { name: 'Edit' }).click()
+      await expect(description).toHaveValue('A plan of the cellar')
+      await description.fill('')
+      await page.getByRole('button', { name: 'Save' }).click()
+      await expect(page.getByRole('status').filter({ hasText: 'Handout saved.' })).toBeVisible()
+      await expect(page.getByText(/Image description:/)).toHaveCount(0)
+      await expect(page.getByRole('img', { name: 'Cellar plan' })).toBeVisible()
+    })
+  })
+
   test('Keeper opens and downloads an Image under its original name', async ({ page }) => {
     const scene = await prepareScene(page, 'Image download')
     const bearer = await openAndCaptureBearer(page, `/campaigns/${scene.campaignId}`)

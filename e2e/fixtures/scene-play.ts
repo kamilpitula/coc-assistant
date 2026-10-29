@@ -2,8 +2,9 @@ import { expect, type APIRequestContext, type Browser, type Locator, type Page }
 
 import { newAccount, signIn } from './auth'
 import { createCampaignViaUi, issueInviteViaUi } from './campaigns'
-import { API_ORIGIN, joinAsNewPlayer, openAndCaptureBearer } from './investigators'
-import { prepareScenarioViaApi, type PreparedScenario } from './prepared-scenario'
+import { API_ORIGIN, joinAsNewPlayer, openAndCaptureBearer, type PlayerSession } from './investigators'
+import { prepareScenarioViaApi, PREPARED, type PreparedScenario } from './prepared-scenario'
+import { handoutsApiUrl, PNG_BYTES } from './scene-handouts'
 import { scenesApiUrl } from './scenes'
 
 /**
@@ -170,4 +171,113 @@ export async function preparePlayedScenarioViaApi(page: Page, browser: Browser, 
   const prepared = await prepareScenarioViaApi(page.request, bearer, campaignId, `secret-${keeper.oid.slice(0, 8)}`)
   await playSceneViaApi(page, browser, bearer, campaignId, prepared.sceneId, status)
   return prepared
+}
+
+export const HARVEY = 'Harvey Walters'
+export const LUCY = 'Lucy Ward'
+
+/** A Campaign with a prepared Scenario, a Keeper (the `page`), and two Players with Approved Investigators. */
+export interface Table {
+  prepared: PreparedScenario
+  keeperBearer: string
+  harvey: PlayerSession
+  lucy: PlayerSession
+  harveyId: string
+  lucyId: string
+  meetingKnottId: string
+  /** The Invite token the Players joined with, for a Player who joins later. */
+  inviteToken: string
+}
+
+/** Signs the Keeper in, prepares the Scenario through the API, and joins Harvey and Lucy with Approved Investigators. */
+export async function setUpTable(page: Page, browser: Browser, label: string): Promise<Table> {
+  const keeper = newAccount('Keeper')
+  await signIn(page, keeper)
+  const campaignId = await createCampaignViaUi(page, `${label} ${keeper.oid.slice(0, 6)}`)
+  const keeperBearer = await openAndCaptureBearer(page, `/campaigns/${campaignId}`)
+  const prepared = await prepareScenarioViaApi(page.request, keeperBearer, campaignId, `secret-${keeper.oid.slice(0, 8)}`)
+  const token = await issueInviteViaUi(page, campaignId)
+  const harvey = await joinAsNewPlayer(browser, token, 'Harvey')
+  const lucy = await joinAsNewPlayer(browser, token, 'Lucy')
+  const harveyBearer = await openAndCaptureBearer(harvey.page, `/campaigns/${campaignId}`)
+  const lucyBearer = await openAndCaptureBearer(lucy.page, `/campaigns/${campaignId}`)
+  const harveyId = await createApprovedInvestigatorViaApi(page.request, keeperBearer, harveyBearer, campaignId, HARVEY)
+  const lucyId = await createApprovedInvestigatorViaApi(page.request, keeperBearer, lucyBearer, campaignId, LUCY)
+  const meetingKnottId = await sceneIdByTitle(page.request, keeperBearer, campaignId, prepared.scenarioId, PREPARED.secondSceneTitle)
+  return { prepared, keeperBearer, harvey, lucy, harveyId, lucyId, meetingKnottId, inviteToken: token }
+}
+
+export async function closeTable(table: Table): Promise<void> {
+  await table.harvey.context.close()
+  await table.lucy.context.close()
+}
+
+/** The Keeper's Active Scene page of the Campaign. */
+export const activeScenePath = (campaignId: string): string => `/campaigns/${campaignId}/active-scene`
+
+/** Adds a Player-facing Image or Map Handout with an optional image description to the Scene as the Keeper, and returns its id. */
+export async function addPlayerFacingImageViaApi(
+  request: APIRequestContext,
+  keeperBearer: string,
+  prepared: PreparedScenario,
+  file: { title: string; kind: 'Image' | 'Map'; imageDescription: string | null },
+): Promise<string> {
+  const response = await request.post(handoutsApiUrl(API_ORIGIN, prepared.campaignId, prepared.scenarioId, prepared.sceneId), {
+    headers: { Authorization: keeperBearer },
+    multipart: {
+      kind: file.kind,
+      visibility: 'PlayerFacing',
+      title: file.title,
+      ...(file.imageDescription === null ? {} : { imageDescription: file.imageDescription }),
+      file: { name: `${file.title.toLowerCase().replaceAll(' ', '-')}.png`, mimeType: 'image/png', buffer: PNG_BYTES },
+    },
+  })
+  await ok(response, `add the ${file.kind} Handout`, 201)
+  return ((await response.json()) as { id: string }).id
+}
+
+/** Reveals a Handout of the Active Scene to the Investigators as the Keeper through the API and returns the Reveal id. */
+export async function revealHandoutViaApi(
+  request: APIRequestContext,
+  keeperBearer: string,
+  campaignId: string,
+  handoutId: string,
+  investigatorIds: string[],
+): Promise<string> {
+  const response = await request.post(`${API_ORIGIN}/api/campaigns/${campaignId}/active-scene/reveals`, {
+    headers: { Authorization: keeperBearer },
+    data: { subject: { type: 'Handout', id: handoutId }, investigatorIds },
+  })
+  await ok(response, 'reveal the Handout')
+  const reveals = ((await response.json()) as { reveals: Array<{ revealId: string; subjectId: string }> }).reveals
+  const reveal = reveals.find((candidate) => candidate.subjectId === handoutId)
+  if (!reveal) {
+    throw new Error('The Reveal is not in the Active Scene')
+  }
+  return reveal.revealId
+}
+
+/** The "Reveal..." button of a Handout or Non-Player Entity on the Keeper's Active Scene page. */
+export function revealButton(page: Page, title: string): Locator {
+  return page.getByRole('button', { name: `Reveal ${title}`, exact: true })
+}
+
+/** The reveal dialog, named "Reveal {title}". */
+export function revealDialog(page: Page, title: string): Locator {
+  return page.getByRole('dialog', { name: `Reveal ${title}`, exact: true })
+}
+
+/** The Player's "Revealed to {name}" section of the Active Scene page. */
+export function revealedToSection(page: Page, name: string): Locator {
+  return page.getByRole('region', { name: `Revealed to ${name}`, exact: true })
+}
+
+/** The Keeper's "Revealed in this Scene" section. */
+export function revealedInScene(page: Page): Locator {
+  return page.getByRole('region', { name: 'Revealed in this Scene', exact: true })
+}
+
+/** The polite live region that announces a Reveal arriving. */
+export function revealAnnouncement(page: Page): Locator {
+  return page.locator('[aria-live="polite"]')
 }
