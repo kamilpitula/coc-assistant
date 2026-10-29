@@ -10,6 +10,7 @@ public class MythosCreatureService
     private readonly ICampaignKeepers _keepers;
     private readonly IMythosCreatureRepository _mythosCreatures;
     private readonly INonPlayerEntityUsage _usage;
+    private readonly LinkedSceneGuard _linkedSceneGuard;
     private readonly INonPlayerEntityRuleData _ruleData;
     private readonly TimeProvider _timeProvider;
 
@@ -17,12 +18,14 @@ public class MythosCreatureService
         ICampaignKeepers keepers,
         IMythosCreatureRepository mythosCreatures,
         INonPlayerEntityUsage usage,
+        LinkedSceneGuard linkedSceneGuard,
         INonPlayerEntityRuleData ruleData,
         TimeProvider timeProvider)
     {
         _keepers = keepers;
         _mythosCreatures = mythosCreatures;
         _usage = usage;
+        _linkedSceneGuard = linkedSceneGuard;
         _ruleData = ruleData;
         _timeProvider = timeProvider;
     }
@@ -110,8 +113,18 @@ public class MythosCreatureService
             return MythosCreatureDeleteOutcome.LinkedToPlayedScene;
         }
 
+        // A start of a Scene that links this profile loses to the delete, or the delete loses to the start (ADR 0025).
+        await _linkedSceneGuard.GuardNonPlayerEntityAsync(campaignId, NonPlayerEntityType.MythosCreature, mythosCreatureId, cancellationToken);
         _mythosCreatures.Remove(mythosCreature);
-        await _mythosCreatures.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _mythosCreatures.SaveChangesAsync(cancellationToken);
+        }
+        catch (SceneConcurrencyException)
+        {
+            return MythosCreatureDeleteOutcome.LinkedToPlayedScene;
+        }
+
         return MythosCreatureDeleteOutcome.Deleted;
     }
 

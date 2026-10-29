@@ -1,6 +1,6 @@
 # Scene links are child entities of the Scene aggregate with in-context foreign keys
 
-Status: Accepted; amended for Items by [ADR 0022](0022-items-are-guarded-by-play-usage-read-through-ports.md)
+Status: Accepted; amended for Items by [ADR 0022](0022-items-are-guarded-by-play-usage-read-through-ports.md); delete-versus-start race resolved by [ADR 0025](0025-one-active-scene-per-campaign-through-a-filtered-index-and-a-scene-version.md)
 
 A Scene links the Non-Player Entities present or relevant there, and later the Items that matter there ([specs/scenario-preparation/spec.md](../../specs/scenario-preparation/spec.md), Architecture and Constraints). The Scene aggregate owns its status and the editing rules that follow from it, so a Finished Scene's links never change ([ADR 0016](0016-scene-stores-its-campaign-id-beside-its-scenario-id.md)). Material that an Active or Finished Scene refers to must never be deleted, while material linked only to Prepared Scenes can be deleted freely. Human NPCs and Mythos Creatures are separate aggregates in separate tables, and a Non-Player Entity may be linked to the same Scene more than once. A Reveal in Scene Play names a link and snapshots its Player-facing content ([specs/scene-play/spec.md](../../specs/scene-play/spec.md)). The first link kind, Non-Player Entity links, is designed in the [PBI-SP-004 design record](../scenario-preparation/issues/04-link-entities-to-scenes.design.md).
 

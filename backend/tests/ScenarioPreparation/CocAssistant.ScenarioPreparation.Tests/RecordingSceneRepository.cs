@@ -45,10 +45,54 @@ public sealed class RecordingSceneRepository : ISceneRepository
         return _inner.FindByIdAsync(campaignId, scenarioId, sceneId, cancellationToken);
     }
 
+    public Task<Scene?> FindForPlayAsync(Guid campaignId, Guid sceneId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(FindForPlayAsync));
+        return _inner.FindForPlayAsync(campaignId, sceneId, cancellationToken);
+    }
+
+    public Task<Scene?> FindActiveAsync(Guid campaignId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(FindActiveAsync));
+        return _inner.FindActiveAsync(campaignId, cancellationToken);
+    }
+
+    public Task<IReadOnlyList<Scene>> ListTrackedPreparedLinkingNonPlayerEntityAsync(Guid campaignId, NonPlayerEntityType type, Guid nonPlayerEntityId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(ListTrackedPreparedLinkingNonPlayerEntityAsync));
+        return _inner.ListTrackedPreparedLinkingNonPlayerEntityAsync(campaignId, type, nonPlayerEntityId, cancellationToken);
+    }
+
+    public Task<IReadOnlyList<Scene>> ListTrackedPreparedLinkingItemAsync(Guid campaignId, Guid itemId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(ListTrackedPreparedLinkingItemAsync));
+        return _inner.ListTrackedPreparedLinkingItemAsync(campaignId, itemId, cancellationToken);
+    }
+
     public Task<int> MaxPositionAsync(Guid scenarioId, CancellationToken cancellationToken)
     {
         Calls.Add(nameof(MaxPositionAsync));
         return _inner.MaxPositionAsync(scenarioId, cancellationToken);
+    }
+
+    /// <summary>When set, runs inside a finish-then-start, after the finish is saved and before the start is applied.</summary>
+    public Func<Task>? BetweenSaves { get; set; }
+
+    public async Task SaveFinishThenStartAsync(Func<SceneTransitionOutcome> startScene, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(SaveFinishThenStartAsync));
+        if (BeforeSave is not null)
+        {
+            await BeforeSave();
+        }
+
+        await _inner.SaveFinishThenStartAsync(
+            () =>
+            {
+                BetweenSaves?.Invoke().GetAwaiter().GetResult();
+                return startScene();
+            },
+            cancellationToken);
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken)

@@ -26,6 +26,8 @@ public static class ScenarioPreparationInfrastructureServiceCollectionExtensions
         services.AddSingleton(provider => HandoutFileStoreRegistration.Create(provider.GetRequiredService<IConfiguration>()));
         services.AddScoped<ScenarioService>();
         services.AddScoped<SceneService>();
+        services.AddScoped<SceneLifecycleService>();
+        services.AddScoped<LinkedSceneGuard>();
         services.AddScoped<NonPlayerEntityLinkService>();
         services.AddScoped<ItemService>();
         services.AddScoped<ItemLinkService>();

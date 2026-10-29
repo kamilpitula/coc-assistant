@@ -5,13 +5,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers()
     .AddApplicationPart(typeof(AccountController).Assembly)
     .AddApplicationPart(typeof(CampaignController).Assembly)
-    .AddApplicationPart(typeof(ScenariosController).Assembly);
+    .AddApplicationPart(typeof(ScenariosController).Assembly)
+    .AddApplicationPart(typeof(ActiveSceneController).Assembly);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 builder.Services.AddIdentityInfrastructure(builder.Configuration);
 builder.Services.AddCampaignPlayInfrastructure(builder.Configuration);
 builder.Services.AddScenarioPreparationInfrastructure(builder.Configuration);
+builder.Services.AddScenePlayInfrastructure();
 builder.Services.AddCampaignPlayLiveUpdates();
 builder.Services.AddLiveTransport(builder.Configuration);
 

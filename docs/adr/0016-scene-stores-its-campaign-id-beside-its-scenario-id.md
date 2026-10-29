@@ -11,7 +11,7 @@ Each Scene stores both `CampaignId` and `ScenarioId`. `CampaignId` is copied fro
 - Store `CampaignId` and `ScenarioId` (chosen).
 
 ## Consequences
-- PBI-SPL-001 can resolve a Scene by Campaign and id in one table, and can enforce one Active Scene per Campaign with a filtered unique index on `CampaignId` where the status is Active, following [ADR 0003](0003-single-active-campaign-invite-via-filtered-unique-index.md). That index is not added before PBI-SPL-001 decides it.
+- PBI-SPL-001 can resolve a Scene by Campaign and id in one table, and can enforce one Active Scene per Campaign with a filtered unique index on `CampaignId` where the status is Active, following [ADR 0003](0003-single-active-campaign-invite-via-filtered-unique-index.md). That index is not added before PBI-SPL-001 decides it. PBI-SPL-001 added it as `IX_Scenes_CampaignId_Active`, together with a Scene version token ([ADR 0025](0025-one-active-scene-per-campaign-through-a-filtered-index-and-a-scene-version.md)).
 - The Campaign id is stored twice for a Scene. The Scene aggregate keeps them consistent by taking the Campaign id only from its Scenario at creation.
 - Moving a Scene to another Scenario is not specified; if it is added, it must stay within the Campaign.
 - Scenarios cannot be deleted while they have Scenes; removing a Scenario is deferred and must remove its Scenes first.

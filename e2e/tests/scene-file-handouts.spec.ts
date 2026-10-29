@@ -20,14 +20,16 @@ import {
   visibilityRadio,
 } from '../fixtures/scene-handouts'
 import { createSceneViaUi } from '../fixtures/scenes'
+import { preparePlayedScenarioViaApi } from '../fixtures/scene-play'
 
 /**
  * Traces to specs/scenario-preparation/spec.md Scenario "Keeper attaches a file Handout" and File storage, and to
  * specs/scenario-preparation/ux.md SP-UX-77 to SP-UX-89 and SP-A11Y-44 to SP-A11Y-50.
  *
- * Exceptions: Active and Finished Scenes cannot be reached end to end until PBI-SPL-001 (ux.md section 49), so the Active
- * (Replace keeps the old file, no Delete) and Finished parts of SP-UX-89 are covered by the seeded integration tests
- * (HandoutFileApiTests) and by component tests. Another Campaign's Keeper is covered at integration level, as for rich-text
+ * The Active (no Delete) and Finished parts of SP-UX-89 are reached through the Scene Play API (PBI-SPL-001) in "File Handouts of
+ * played Scenes"; "Replace keeps the old file" is covered by the integration tests (HandoutFileApiTests).
+ *
+ * Exceptions: Another Campaign's Keeper is covered at integration level, as for rich-text
  * Handouts. The real server-side storage failure is proven by the failing-store integration test; here the add request is
  * fulfilled with a 503.
  */
@@ -367,6 +369,36 @@ test.describe('Scene file Handouts', () => {
       await page.getByRole('button', { name: 'Try again' }).click()
       await expect(page.getByRole('img', { name: 'Corbitt House' })).toBeVisible()
       await expect(page.getByRole('link', { name: 'Download corbitt-house.png' })).toBeVisible()
+    })
+  })
+})
+
+test.describe('File Handouts of played Scenes', () => {
+  // Each journey signs in a Keeper and joins Players in isolated contexts before it checks anything, which takes longer than the default.
+  test.describe.configure({ timeout: 240_000 })
+  test('A file Handout of an Active Scene keeps Edit and cannot be deleted', async ({ page, browser }) => {
+    const prepared = await preparePlayedScenarioViaApi(page, browser, 'Active file', 'Active')
+
+    await page.goto(`${prepared.scenePath}/handouts/${prepared.sceneHandoutIds['Corbitt House plan']}`)
+
+    await test.step('SP-UX-89: Edit stays, and Delete Handout is replaced by the sentence', async () => {
+      await expect(page.getByRole('heading', { level: 1, name: 'Corbitt House plan' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Delete Handout' })).toHaveCount(0)
+      await expect(page.getByText("This Scene has been started, so its Handouts can't be deleted.")).toBeVisible()
+    })
+  })
+
+  test('A file Handout of a Finished Scene is read-only', async ({ page, browser }) => {
+    const prepared = await preparePlayedScenarioViaApi(page, browser, 'Finished file', 'Finished')
+
+    await page.goto(`${prepared.scenePath}/handouts/${prepared.sceneHandoutIds['Corbitt House plan']}`)
+
+    await test.step('SP-UX-89: the file is shown with the Finished sentence and neither Edit nor Delete Handout', async () => {
+      await expect(page.getByRole('img', { name: 'Corbitt House plan' })).toBeVisible()
+      await expect(page.getByText("This Scene is finished and can't be changed.")).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Delete Handout' })).toHaveCount(0)
     })
   })
 })

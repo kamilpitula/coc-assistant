@@ -22,8 +22,9 @@ UX specification: [ux.md](ux.md).
   - **Sub-pages:** the Character Sheet, wizard, and review pages belong to Overview.
 - **Overview:** one layout for both roles:
   1. **Needs your attention:** items that call for the viewer's action. Shown only when there is at least one.
-  2. **At the table:** one row per Campaign Member with Presence, the Investigator visible to the viewer, its status, and an action. It replaces the separate Presence roster and the Keeper's Investigators list on the page.
-  3. **Wall preview** (PBI-CP-004): the 5 latest Wall Entries visible to the viewer, read-only.
+  2. **Active Scene** (PBI-SPL-001): shown only while a Scene is Active; its title, and for the Keeper and a Player whose Investigator is present, the location and Investigators present ([scene-play ux](../scene-play/ux.md) section 5). Data comes from the Scene Play Active Scene read.
+  3. **At the table:** one row per Campaign Member with Presence, the Investigator visible to the viewer, its status, and an action. It replaces the separate Presence roster and the Keeper's Investigators list on the page.
+  4. **Wall preview** (PBI-CP-004): the 5 latest Wall Entries visible to the viewer, read-only.
 - **Attention items:**
   - **Keeper:**
     - one item per Submitted Investigator (Review);

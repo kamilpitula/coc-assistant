@@ -53,6 +53,7 @@ public class HandoutOwnerLocator
 
         var isInPlay = await _itemUsage.IsLinkedToPlayedSceneAsync(campaignId, item.Id, cancellationToken)
             || await _itemHolders.FindHolderAsync(campaignId, item.Id, cancellationToken) is not null;
-        return new ItemHandoutOwner(item, isInPlay, _items);
+        var linkingPreparedScenes = isInPlay ? [] : await _scenes.ListTrackedPreparedLinkingItemAsync(campaignId, item.Id, cancellationToken);
+        return new ItemHandoutOwner(item, isInPlay, linkingPreparedScenes, _items);
     }
 }

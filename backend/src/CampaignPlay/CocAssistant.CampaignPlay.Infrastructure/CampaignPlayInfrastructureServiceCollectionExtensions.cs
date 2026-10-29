@@ -33,6 +33,8 @@ public static class CampaignPlayInfrastructureServiceCollectionExtensions
         services.AddScoped<IInvestigatorRepository, EfInvestigatorRepository>();
         services.AddScoped<IWallEntryRepository, EfWallEntryRepository>();
         services.AddScoped<WallEntryService>();
+        services.AddScoped<ApprovedInvestigatorQuery>();
+        services.AddScoped<PublishActiveSceneChanged>();
         services.AddScoped<PlayerInvestigatorService>();
         services.AddScoped<KeeperInvestigatorService>();
         services.AddSingleton<CreationRuleSets>();

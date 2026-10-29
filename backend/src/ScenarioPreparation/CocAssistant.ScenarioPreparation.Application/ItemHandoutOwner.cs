@@ -8,14 +8,18 @@ public sealed class ItemHandoutOwner : IHandoutOwner
 {
     private readonly Item _item;
     private readonly bool _isInPlay;
+    private readonly IReadOnlyList<Scene> _linkingPreparedScenes;
     private readonly IItemRepository _items;
 
-    public ItemHandoutOwner(Item item, bool isInPlay, IItemRepository items)
+    public ItemHandoutOwner(Item item, bool isInPlay, IReadOnlyList<Scene> linkingPreparedScenes, IItemRepository items)
     {
         _item = item;
         _isInPlay = isInPlay;
+        _linkingPreparedScenes = linkingPreparedScenes;
         _items = items;
     }
+
+    public HandoutRemoveOutcome RemoveRefusedAfterConcurrentChange => HandoutRemoveOutcome.InPlay;
 
     public IReadOnlyList<Handout> Handouts => _item.Handouts;
 
@@ -28,10 +32,28 @@ public sealed class ItemHandoutOwner : IHandoutOwner
     public HandoutResult EditHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, string? content) =>
         _item.EditHandout(handoutId, kind, visibility, title, content);
 
-    public HandoutFileEditResult EditFileHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file) =>
-        _item.EditFileHandout(handoutId, kind, visibility, title, file, _isInPlay);
+    // A blob is deleted only when the Item is not in play, so the Prepared Scenes that link it are guarded against a start (ADR 0025).
+    public HandoutFileEditResult EditFileHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file)
+    {
+        var result = _item.EditFileHandout(handoutId, kind, visibility, title, file, _isInPlay);
+        if (result.ReplacedKey is not null)
+        {
+            LinkedSceneGuard.Guard(_linkingPreparedScenes);
+        }
 
-    public HandoutRemovalOutcome RemoveHandout(Guid handoutId) => _item.RemoveHandout(handoutId, _isInPlay);
+        return result;
+    }
+
+    public HandoutRemovalOutcome RemoveHandout(Guid handoutId)
+    {
+        var outcome = _item.RemoveHandout(handoutId, _isInPlay);
+        if (outcome == HandoutRemovalOutcome.Removed)
+        {
+            LinkedSceneGuard.Guard(_linkingPreparedScenes);
+        }
+
+        return outcome;
+    }
 
     public HandoutOrderOutcome ReorderHandouts(IReadOnlyList<Guid> handoutIds) => _item.ReorderHandouts(handoutIds);
 

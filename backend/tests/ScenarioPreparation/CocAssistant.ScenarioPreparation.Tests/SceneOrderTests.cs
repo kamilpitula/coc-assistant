@@ -39,9 +39,9 @@ public class SceneOrderTests
     {
         var prepared = SceneAt("Prepared", 1);
         var active = SceneAt("Active", 2);
-        active.Start(Now);
+        active.StartWithOneInvestigator(Now);
         var finished = SceneAt("Finished", 3);
-        finished.Start(Now);
+        finished.StartWithOneInvestigator(Now);
         finished.Finish(Now);
 
         var outcome = SceneOrder.Apply([prepared, active, finished], [finished.Id, active.Id, prepared.Id]);

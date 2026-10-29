@@ -279,6 +279,7 @@ function SceneView({
         <p className="text-sm text-muted-foreground">This Scene is finished and can&apos;t be changed.</p>
       ) : (
         <div className="flex flex-wrap items-center gap-3">
+          <SceneRunLink campaignId={campaignId} scenarioId={scenarioId} sceneId={scene.id} status={scene.status} />
           <Button ref={editButtonRef} type="button" variant="outline" onClick={onEdit}>
             Edit
           </Button>
@@ -294,6 +295,34 @@ function SceneView({
         </div>
       )}
     </>
+  )
+}
+
+interface SceneRunLinkProps {
+  campaignId: string
+  scenarioId: string
+  sceneId: string
+  status: Scene['status']
+}
+
+/** "Start Scene" for a Prepared Scene and "Open Active Scene" for an Active one, before "Edit" (specs/scene-play/ux.md section 1; SPL-UX-1). */
+function SceneRunLink({ campaignId, scenarioId, sceneId, status }: SceneRunLinkProps) {
+  if (status === 'Prepared') {
+    return (
+      <Link
+        to="/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId/start"
+        params={{ campaignId, scenarioId, sceneId }}
+        className={buttonVariants()}
+      >
+        Start Scene
+      </Link>
+    )
+  }
+
+  return (
+    <Link to="/campaigns/$campaignId/active-scene" params={{ campaignId }} className={buttonVariants({ variant: 'outline' })}>
+      Open Active Scene
+    </Link>
   )
 }
 

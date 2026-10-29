@@ -14,6 +14,7 @@ import {
 } from '../fixtures/items'
 import { createScenarioViaUi } from '../fixtures/scenarios'
 import { createSceneViaUi } from '../fixtures/scenes'
+import { preparePlayedScenarioViaApi } from '../fixtures/scene-play'
 
 /**
  * Traces to specs/scenario-preparation/spec.md Scenarios "Keeper prepares an Item" (the linking part: the Scene lists the Item
@@ -22,9 +23,10 @@ import { createSceneViaUi } from '../fixtures/scenes'
  * specs/scenario-preparation/ux.md SP-UX-51 (extended by SP-UX-102), SP-UX-96 to SP-UX-99, SP-A11Y-52, SP-A11Y-54, and
  * SP-A11Y-55.
  *
- * Exceptions: Active and Finished Scenes cannot be seeded end to end until PBI-SPL-001 (ux.md section 70), so the Finished part
- * of SP-UX-97 to SP-UX-99 ("Link an Item" and "Unlink" hidden, the Finished page and the 409 messages) is covered by the seeded
- * integration tests (ItemLinkApiTests) and by component tests. The double activation of a button is covered by component tests,
+ * The Finished part of SP-UX-97 to SP-UX-99 ("Link an Item" and "Unlink" hidden) is reached through the Scene Play API
+ * (PBI-SPL-001) in "Item links of a Finished Scene"; the 409 messages are covered by the integration tests (ItemLinkApiTests).
+ *
+ * Exceptions: The double activation of a button is covered by component tests,
  * where an end-to-end run would only repeat it slowly.
  */
 
@@ -237,6 +239,22 @@ test.describe('Scene Item links', () => {
       await expect(itemPicker(page).getByLabel('Search by name')).toHaveCount(0)
       await itemPicker(page).getByRole('link', { name: 'Create Item' }).click()
       await expect(page.getByRole('heading', { level: 1, name: 'Create Item' })).toBeVisible()
+    })
+  })
+})
+
+test.describe('Item links of a Finished Scene', () => {
+  // Each journey signs in a Keeper and joins Players in isolated contexts before it checks anything, which takes longer than the default.
+  test.describe.configure({ timeout: 240_000 })
+  test('A Finished Scene lists its Item and offers neither Link an Item nor Unlink', async ({ page, browser }) => {
+    const prepared = await preparePlayedScenarioViaApi(page, browser, 'Finished Item', 'Finished')
+
+    await page.goto(prepared.scenePath)
+
+    await test.step('SP-UX-97 to SP-UX-99: the Item is listed and the section has no actions', async () => {
+      await expect(sceneItemNames(page)).toHaveText(["Walter Corbitt's diary"])
+      await expect(sceneItemSection(page).getByRole('button')).toHaveCount(0)
+      await expect(sceneItemSection(page).getByRole('link', { name: 'Link an Item' })).toHaveCount(0)
     })
   })
 })

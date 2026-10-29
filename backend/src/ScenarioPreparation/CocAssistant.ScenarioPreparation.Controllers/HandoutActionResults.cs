@@ -32,6 +32,7 @@ internal static class HandoutActionResults
         {
             HandoutWriteOutcome.Finished => controller.Problem(statusCode: StatusCodes.Status409Conflict, title: SceneProblemTitles.Finished),
             HandoutWriteOutcome.StorageFailed => controller.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: HandoutFileProblemMessages.StorageFailedTitle),
+            HandoutWriteOutcome.InPlay => controller.Problem(statusCode: StatusCodes.Status409Conflict, title: ItemProblemMessages.HandoutsKeptTitle),
             _ => controller.NotFound(),
         };
     }

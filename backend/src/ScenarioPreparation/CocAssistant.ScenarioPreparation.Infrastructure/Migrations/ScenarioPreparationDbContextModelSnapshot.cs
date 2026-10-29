@@ -113,6 +113,19 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                     b.ToTable("HumanNpcs");
                 });
 
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.InvestigatorPresence", b =>
+                {
+                    b.Property<Guid>("SceneId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("InvestigatorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("SceneId", "InvestigatorId");
+
+                    b.ToTable("SceneInvestigatorsPresent", (string)null);
+                });
+
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Item", b =>
                 {
                     b.Property<Guid>("Id")
@@ -305,9 +318,17 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ScenarioId", "Position");
+
+                    b.HasIndex(new[] { "CampaignId" }, "IX_Scenes_CampaignId_Active")
+                        .IsUnique()
+                        .HasFilter("[Status] = 'Active'");
 
                     b.ToTable("Scenes");
                 });
@@ -323,6 +344,15 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                         .WithMany("Handouts")
                         .HasForeignKey("SceneId")
                         .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.InvestigatorPresence", b =>
+                {
+                    b.HasOne("CocAssistant.ScenarioPreparation.Domain.Scene", null)
+                        .WithMany("_investigatorsPresent")
+                        .HasForeignKey("SceneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.ItemLink", b =>
@@ -380,6 +410,8 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                     b.Navigation("ItemLinks");
 
                     b.Navigation("NonPlayerEntityLinks");
+
+                    b.Navigation("_investigatorsPresent");
                 });
 #pragma warning restore 612, 618
         }

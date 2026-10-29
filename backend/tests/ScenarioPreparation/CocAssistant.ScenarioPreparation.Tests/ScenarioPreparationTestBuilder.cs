@@ -49,6 +49,12 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
     public SceneService CreateSceneService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
         new(Keepers, new EfScenarioRepository(context), repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), new EfItemDirectory(context), FileStore, TimeProvider, SceneLogger);
 
+    public static LinkedSceneGuard CreateLinkedSceneGuard(ScenarioPreparationDbContext context, ISceneRepository? scenes = null) =>
+        new(scenes ?? new EfSceneRepository(context));
+
+    public SceneLifecycleService CreateLifecycleService(ScenarioPreparationDbContext context, ISceneRepository? scenes = null) =>
+        new(scenes ?? new EfSceneRepository(context), new EfScenarioRepository(context), TimeProvider);
+
     public NonPlayerEntityLinkService CreateLinkService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
         new(Keepers, repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), TimeProvider);
 
@@ -56,7 +62,7 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
         new(Keepers, repository ?? new EfSceneRepository(context), new EfItemDirectory(context), TimeProvider);
 
     public ItemService CreateItemService(ScenarioPreparationDbContext context, IItemRepository? repository = null, IItemUsage? usage = null, IItemHolders? holders = null) =>
-        new(Keepers, repository ?? new EfItemRepository(context), new EfItemDirectory(context), usage ?? new EfItemUsage(context), holders ?? ItemHolders, FileStore, TimeProvider, ItemLogger);
+        new(Keepers, repository ?? new EfItemRepository(context), new EfItemDirectory(context), usage ?? new EfItemUsage(context), holders ?? ItemHolders, CreateLinkedSceneGuard(context), FileStore, TimeProvider, ItemLogger);
 
     public HandoutOwnerLocator CreateHandoutOwnerLocator(ScenarioPreparationDbContext context, ISceneRepository? scenes = null, IItemRepository? items = null) =>
         new(Keepers, scenes ?? new EfSceneRepository(context), items ?? new EfItemRepository(context), new EfItemUsage(context), ItemHolders);
@@ -68,10 +74,10 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
         new(CreateHandoutOwnerLocator(context, repository, items), FileStore, TimeProvider, HandoutFileLogger);
 
     public HumanNpcService CreateHumanNpcService(ScenarioPreparationDbContext context, IHumanNpcRepository? repository = null, INonPlayerEntityUsage? usage = null) =>
-        new(Keepers, repository ?? new EfHumanNpcRepository(context), usage ?? new EfNonPlayerEntityUsage(context), new FakeNonPlayerEntityRuleData(), TimeProvider);
+        new(Keepers, repository ?? new EfHumanNpcRepository(context), usage ?? new EfNonPlayerEntityUsage(context), CreateLinkedSceneGuard(context), new FakeNonPlayerEntityRuleData(), TimeProvider);
 
     public MythosCreatureService CreateMythosCreatureService(ScenarioPreparationDbContext context, IMythosCreatureRepository? repository = null, INonPlayerEntityUsage? usage = null) =>
-        new(Keepers, repository ?? new EfMythosCreatureRepository(context), usage ?? new EfNonPlayerEntityUsage(context), new FakeNonPlayerEntityRuleData(), TimeProvider);
+        new(Keepers, repository ?? new EfMythosCreatureRepository(context), usage ?? new EfNonPlayerEntityUsage(context), CreateLinkedSceneGuard(context), new FakeNonPlayerEntityRuleData(), TimeProvider);
 
     public NonPlayerEntityService CreateNonPlayerEntityService(ScenarioPreparationDbContext context, INonPlayerEntityDirectory? directory = null) =>
         new(Keepers, directory ?? new EfNonPlayerEntityDirectory(context));
@@ -249,7 +255,7 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
         var scene = await context.Scenes.SingleAsync(candidate => candidate.Id == sceneId);
         if (status >= SceneStatus.Active)
         {
-            scene.Start(TimeProvider.GetUtcNow());
+            scene.StartWithOneInvestigator(TimeProvider.GetUtcNow());
         }
 
         if (status == SceneStatus.Finished)

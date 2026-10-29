@@ -18,5 +18,5 @@ public class EfHumanNpcRepository : IHumanNpcRepository
             humanNpc => humanNpc.CampaignId == campaignId && humanNpc.Id == humanNpcId,
             cancellationToken);
 
-    public Task SaveChangesAsync(CancellationToken cancellationToken) => _dbContext.SaveChangesAsync(cancellationToken);
+    public Task SaveChangesAsync(CancellationToken cancellationToken) => SceneSaveChanges.SaveAsync(_dbContext, cancellationToken);
 }

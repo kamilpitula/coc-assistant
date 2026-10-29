@@ -281,6 +281,12 @@ describe('Handout API', () => {
       expect((pdf as HandoutValidationError).fieldErrors).toEqual({ file: 'The PDF is larger than 20 MB. Choose a smaller one.' })
     })
 
+    it('treats a 409 on an Item as a plain failure, not a Finished Scene (a file replace that lost a race with the Item coming into play)', async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(409))
+
+      await expect(editFileHandout('token', itemOwner, 'h2', fileInput)).rejects.toThrow('Failed to save the Handout (409)')
+    })
+
     it('maps 404 to a missing Handout, 409 to a Finished Scene, and anything else to a plain failure', async () => {
       fetchMock.mockResolvedValueOnce(jsonResponse(404))
       await expect(createFileHandout('token', sceneOwner, fileInput)).rejects.toBeInstanceOf(HandoutNotFoundError)

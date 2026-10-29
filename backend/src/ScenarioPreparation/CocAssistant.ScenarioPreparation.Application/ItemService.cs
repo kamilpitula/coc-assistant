@@ -12,6 +12,7 @@ public class ItemService
     private readonly IItemDirectory _directory;
     private readonly IItemUsage _usage;
     private readonly IItemHolders _holders;
+    private readonly LinkedSceneGuard _linkedSceneGuard;
     private readonly IHandoutFileStore _fileStore;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<ItemService> _logger;
@@ -22,6 +23,7 @@ public class ItemService
         IItemDirectory directory,
         IItemUsage usage,
         IItemHolders holders,
+        LinkedSceneGuard linkedSceneGuard,
         IHandoutFileStore fileStore,
         TimeProvider timeProvider,
         ILogger<ItemService> logger)
@@ -31,6 +33,7 @@ public class ItemService
         _directory = directory;
         _usage = usage;
         _holders = holders;
+        _linkedSceneGuard = linkedSceneGuard;
         _fileStore = fileStore;
         _timeProvider = timeProvider;
         _logger = logger;
@@ -123,8 +126,19 @@ public class ItemService
         }
 
         var fileKeys = item.Handouts.Select(handout => handout.FileKey).OfType<string>().ToList();
+
+        // A start of a Scene that links this Item loses to the delete, or the delete loses to the start (ADR 0025).
+        await _linkedSceneGuard.GuardItemAsync(campaignId, itemId, cancellationToken);
         _items.Remove(item);
-        await _items.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _items.SaveChangesAsync(cancellationToken);
+        }
+        catch (SceneConcurrencyException)
+        {
+            return ItemDeleteOutcome.LinkedToPlayedScene;
+        }
+
         foreach (var fileKey in fileKeys)
         {
             await _fileStore.TryDeleteAsync(_logger, fileKey);
