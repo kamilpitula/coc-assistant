@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -25,6 +27,15 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    using(var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        await db.Database.MigrateAsync();
+        var compaignDb = scope.ServiceProvider.GetRequiredService<CampaignPlayDbContext>();
+        await compaignDb.Database.MigrateAsync();
+        var scenarioPreparationDb = scope.ServiceProvider.GetRequiredService<ScenarioPreparationDbContext>();
+        await scenarioPreparationDb.Database.MigrateAsync();
+    }
 }
 
 app.UseHttpsRedirection();
