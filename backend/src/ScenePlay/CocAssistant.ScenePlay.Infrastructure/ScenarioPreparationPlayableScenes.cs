@@ -50,5 +50,5 @@ public sealed class ScenarioPreparationPlayableScenes : IPlayableScenes
     private static PlayableScene? ToScene(CocAssistant.ScenarioPreparation.Application.PlayableSceneView? view) =>
         view is null
             ? null
-            : new PlayableScene(view.SceneId, view.ScenarioId, view.ScenarioTitle, view.Title, view.Location, view.StartedAt, view.InvestigatorsPresent);
+            : new PlayableScene(view.SceneId, view.ScenarioId, view.ScenarioTitle, view.Title, view.Location, view.StartedAt, view.InvestigatorsPresent, view.Reveals.Select(ScenarioPreparationSceneReveals.ToRecord).ToList());
 }

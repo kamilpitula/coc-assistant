@@ -36,6 +36,16 @@ public static class CampaignLivePublicationPolicy
         new LivePublication(LiveAudience.Account(playerAccountId), [CampaignDataTopic.MyInvestigator]),
     ];
 
+    /// <summary>
+    /// A Reveal tells the Keeper (sceneReveals) and, one by one, the account of each distinct recipient Player (myClues). The Campaign is
+    /// never told, so an untargeted Player hears nothing (specs/scene-play/spec.md, Live updates; PBI-SPL-002 D6).
+    /// </summary>
+    public static IReadOnlyList<LivePublication> ForRevealMade(Guid campaignId, IReadOnlyCollection<Guid> recipientAccountIds) =>
+    [
+        new LivePublication(LiveAudience.CampaignKeeper(campaignId), [CampaignDataTopic.SceneReveals]),
+        .. recipientAccountIds.Distinct().Select(accountId => new LivePublication(LiveAudience.Account(accountId), [CampaignDataTopic.MyClues])),
+    ];
+
     /// <summary>Approval also changes what every member sees in the roster, so the Campaign hears "members".</summary>
     public static IReadOnlyList<LivePublication> ForInvestigatorApproved(Guid campaignId, Guid playerAccountId) =>
     [

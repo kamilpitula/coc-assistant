@@ -120,7 +120,7 @@ public class HandoutApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
         var second = await AddAsync(client, scene, "handout-keeper-1", "Secret door", "ReadAloud", "KeeperFacing");
         var loaded = await GetSceneAsync(client, scene, "handout-keeper-1");
 
-        Assert.Equal(["id", "kind", "visibility", "title", "content", "file"], PropertyNames(first));
+        Assert.Equal(["id", "kind", "visibility", "title", "content", "file", "imageDescription"], PropertyNames(first));
         Assert.Equal(("ReadAloud", "PlayerFacing", "Arrival"), (first.GetProperty("kind").GetString(), first.GetProperty("visibility").GetString(), first.GetProperty("title").GetString()));
         Assert.Equal(Json(Text).GetRawText(), first.GetProperty("content").GetRawText());
         var handouts = loaded.GetProperty("handouts").EnumerateArray().ToList();

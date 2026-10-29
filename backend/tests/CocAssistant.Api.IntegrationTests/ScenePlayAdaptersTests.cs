@@ -82,4 +82,21 @@ public class ScenePlayAdaptersTests : IClassFixture<IdentityApiFactory>, IAsyncL
         Assert.Empty(Enum.GetNames<SceneFinishOutcome>().Except(Enum.GetNames<FinishSceneOutcome>()));
         Assert.Empty(Enum.GetNames<InvestigatorsPresentOutcome>().Except(Enum.GetNames<ChangePresentOutcome>()));
     }
+
+    [Fact]
+    public void Given_the_Reveal_names_When_mapping_by_name_Then_every_member_has_a_counterpart_on_the_other_side()
+    {
+        Assert.Empty(Enum.GetNames<SceneRevealOutcome>().Except(Enum.GetNames<CocAssistant.ScenePlay.Application.RevealOutcome>()));
+        Assert.Empty(Enum.GetNames<CocAssistant.ScenarioPreparation.Domain.RevealSubjectType>().Except(Enum.GetNames<RevealSubjectKind>()));
+        Assert.Empty(Enum.GetNames<RevealSubjectKind>().Except(Enum.GetNames<CocAssistant.ScenarioPreparation.Domain.RevealSubjectType>()).Except([nameof(RevealSubjectKind.Unknown)]));
+    }
+
+    [Fact]
+    public async Task Given_a_key_that_is_not_stored_When_opening_a_revealed_file_Then_the_adapter_reports_a_storage_failure()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var files = scope.ServiceProvider.GetRequiredService<IRevealedFiles>();
+
+        await Assert.ThrowsAsync<RevealedFileStorageException>(() => files.OpenReadAsync("0123456789abcdef0123456789abcdef", CancellationToken.None));
+    }
 }

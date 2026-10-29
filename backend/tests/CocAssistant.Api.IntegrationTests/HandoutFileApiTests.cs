@@ -58,12 +58,14 @@ public class HandoutFileApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
         string? title = "Floor plan",
         byte[]? file = null,
         string fileName = "plan.png",
-        string fileContentType = "image/png")
+        string fileContentType = "image/png",
+        string? imageDescription = null)
     {
         var content = new MultipartFormDataContent();
         AddField(content, "kind", kind);
         AddField(content, "visibility", visibility);
         AddField(content, "title", title);
+        AddField(content, "imageDescription", imageDescription);
         if (file is not null)
         {
             var part = new ByteArrayContent(file);
@@ -141,7 +143,7 @@ public class HandoutFileApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var body = await BodyAsync(response);
-        Assert.Equal(["id", "kind", "visibility", "title", "content", "file"], PropertyNames(body));
+        Assert.Equal(["id", "kind", "visibility", "title", "content", "file", "imageDescription"], PropertyNames(body));
         Assert.Equal(("Map", "PlayerFacing", "Arkham"), (body.GetProperty("kind").GetString(), body.GetProperty("visibility").GetString(), body.GetProperty("title").GetString()));
         Assert.Equal(JsonValueKind.Null, body.GetProperty("content").ValueKind);
         var file = body.GetProperty("file");
@@ -150,6 +152,39 @@ public class HandoutFileApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
         var summary = (await GetSceneAsync(client, scene, "file-keeper-1")).GetProperty("handouts").EnumerateArray().Single();
         Assert.Equal(["id", "kind", "visibility", "title"], PropertyNames(summary));
         Assert.Equal("Map", summary.GetProperty("kind").GetString());
+        Assert.Single(StoredBlobs());
+    }
+
+    [Fact]
+    public async Task Given_an_image_description_When_adding_editing_and_clearing_Then_it_is_trimmed_replaced_whole_and_cleared_when_absent()
+    {
+        var client = _factory.CreateClient();
+        var scene = await SceneAsync(client, "file-keeper-desc");
+
+        var created = await client.SendAsync(Multipart(HttpMethod.Post, HandoutsUri(scene), "file-keeper-desc", kind: "Map", file: Png, imageDescription: "  A plan of the cellar  "));
+        var handoutId = (await BodyAsync(created)).GetProperty("id").GetGuid();
+        var edited = await client.SendAsync(Multipart(HttpMethod.Put, HandoutsUri(scene, $"/{handoutId}"), "file-keeper-desc", kind: "Map", imageDescription: "Rewritten"));
+        var cleared = await client.SendAsync(Multipart(HttpMethod.Put, HandoutsUri(scene, $"/{handoutId}"), "file-keeper-desc", kind: "Map"));
+
+        Assert.Equal("A plan of the cellar", (await BodyAsync(created)).GetProperty("imageDescription").GetString());
+        Assert.Equal("Rewritten", (await BodyAsync(edited)).GetProperty("imageDescription").GetString());
+        Assert.Equal(JsonValueKind.Null, (await BodyAsync(cleared)).GetProperty("imageDescription").ValueKind);
+    }
+
+    [Fact]
+    public async Task Given_a_document_or_a_too_long_description_When_adding_Then_a_document_stores_none_and_the_long_one_is_a_400_at_imageDescription()
+    {
+        var client = _factory.CreateClient();
+        var scene = await SceneAsync(client, "file-keeper-desc2");
+
+        var document = await client.SendAsync(Multipart(HttpMethod.Post, HandoutsUri(scene), "file-keeper-desc2", kind: "Document", file: Pdf, fileName: "letter.pdf", fileContentType: "application/pdf", imageDescription: "Ignored"));
+        var tooLong = await client.SendAsync(Multipart(HttpMethod.Post, HandoutsUri(scene), "file-keeper-desc2", kind: "Image", file: Png, imageDescription: new string('a', 1001)));
+
+        Assert.Equal(HttpStatusCode.Created, document.StatusCode);
+        Assert.Equal(JsonValueKind.Null, (await BodyAsync(document)).GetProperty("imageDescription").ValueKind);
+        var problems = await ProblemsAsync(tooLong);
+        Assert.Equal(["imageDescription"], problems.Keys.ToArray());
+        Assert.Equal(["Image description must be 1,000 characters or fewer."], problems["imageDescription"]);
         Assert.Single(StoredBlobs());
     }
 

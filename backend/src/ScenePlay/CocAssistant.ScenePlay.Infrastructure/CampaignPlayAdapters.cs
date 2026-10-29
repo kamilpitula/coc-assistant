@@ -53,6 +53,20 @@ public sealed class CampaignPlaySceneWallEntries : ISceneWallEntries
     }
 }
 
+/// <summary>Publishes sceneReveals to the Keeper and myClues to each recipient account, never to the Campaign (ADR 0009, PBI-SPL-002 D6).</summary>
+public sealed class CampaignPlayRevealSignals : IRevealSignals
+{
+    private readonly CocAssistant.CampaignPlay.Application.PublishRevealMade _publisher;
+
+    public CampaignPlayRevealSignals(CocAssistant.CampaignPlay.Application.PublishRevealMade publisher)
+    {
+        _publisher = publisher;
+    }
+
+    public Task RevealMadeAsync(Guid campaignId, IReadOnlyCollection<Guid> recipientAccountIds, CancellationToken cancellationToken) =>
+        _publisher.PublishAsync(campaignId, recipientAccountIds, cancellationToken);
+}
+
 /// <summary>Publishes the activeScene topic through Campaign Play's publisher, which uses the publication policy (ADR 0009, ADR 0024).</summary>
 public sealed class CampaignPlayActiveSceneSignals : IActiveSceneSignals
 {

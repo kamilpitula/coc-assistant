@@ -114,7 +114,7 @@ public class ActiveSceneController : ScenePlayControllerBase
         return ValidationProblem(ModelState);
     }
 
-    private static KeeperActiveSceneResponse ToResponse(KeeperActiveSceneView view) =>
+    internal static KeeperActiveSceneResponse ToResponse(KeeperActiveSceneView view) =>
         new(
             view.SceneId,
             view.ScenarioId,
@@ -123,7 +123,7 @@ public class ActiveSceneController : ScenePlayControllerBase
             view.Location,
             view.StartedAt,
             view.InvestigatorsPresent.Select(investigator => new InvestigatorPresentResponse(investigator.Id, investigator.Name)).ToList(),
-            []);
+            view.Reveals.Select(RevealMapping.ToResponse).ToList());
 
     private static PresentPlayerActiveSceneResponse ToResponse(PresentPlayerActiveSceneView view) =>
         new(
@@ -131,5 +131,5 @@ public class ActiveSceneController : ScenePlayControllerBase
             view.Title,
             view.Location,
             view.InvestigatorsPresent.Select(investigator => new PlayerInvestigatorPresentResponse(investigator.Name, investigator.IsYours)).ToList(),
-            []);
+            view.Reveals.Select(RevealMapping.ToResponse).ToList());
 }

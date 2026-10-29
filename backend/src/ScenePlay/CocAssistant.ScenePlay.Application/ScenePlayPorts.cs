@@ -22,7 +22,7 @@ public interface IApprovedInvestigators
     Task<IReadOnlyList<ApprovedInvestigatorRef>> ListAsync(Guid campaignId, CancellationToken cancellationToken);
 }
 
-/// <summary>A Scene as Scene Play shows it, with the ids of the Investigators present.</summary>
+/// <summary>A Scene as Scene Play shows it, with the ids of the Investigators present and its Reveals.</summary>
 public sealed record PlayableScene(
     Guid SceneId,
     Guid ScenarioId,
@@ -30,7 +30,8 @@ public sealed record PlayableScene(
     string Title,
     string Location,
     DateTimeOffset? StartedAt,
-    IReadOnlyList<Guid> InvestigatorsPresent);
+    IReadOnlyList<Guid> InvestigatorsPresent,
+    IReadOnlyList<SceneRevealRecord> Reveals);
 
 /// <summary>How starting a Scene ended. The checks run in this order; Conflict is a lost race, never retried (ADR 0025).</summary>
 public enum StartSceneOutcome
