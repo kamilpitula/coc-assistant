@@ -386,6 +386,7 @@ Players see it as it is now. A Reveal can't be undone.   (hint)
   - The dialog closes.
   - The page's `role=status` paragraph says "{title} revealed to {names}.".
   - Focus returns to that item's "Reveal...".
+  - The Active Scene is refetched. If the Scene was finished meanwhile, the page shows section 4.3 and keeps the status message, and focus moves to the `h1` because the trigger is gone. The Reveal was made.
 - **Refusals** (`role=alert` inside the dialog):
   - **409:** "This Scene has been finished, so nothing more can be revealed." Closing the dialog shows the refetched no-Active-Scene state, with focus on the `h1`.
   - **400 at `subject`:** "This can't be revealed any more. It may have been changed or removed." The Scene is refetched.
@@ -492,7 +493,7 @@ Stories cover:
 
 - **SPL-UX-20** The Keeper's Active Scene page lists the Scene's Handouts in stored order with their kind and visibility, and its Non-Player Entities. Only Player-facing Handouts and Non-Player Entities offer "Reveal...".
 - **SPL-UX-21** "Reveal..." opens "Reveal {title}" with every present Investigator who hasn't received it checked. Those who have show "(already revealed)".
-- **SPL-UX-22** Confirming shows "{title} revealed to {names}.", adds "Revealed to {names}" to the item and an entry to "Revealed in this Scene", and returns focus to "Reveal...".
+- **SPL-UX-22** Confirming shows "{title} revealed to {names}.", adds "Revealed to {names}" to the item and an entry to "Revealed in this Scene", and returns focus to "Reveal...". If the Scene was finished meanwhile, the page shows "No Active Scene" with that status message.
 - **SPL-UX-23** Confirming with nothing checked shows "Choose at least one Investigator." and reveals nothing. "Cancel" reveals nothing.
 - **SPL-UX-24** Each refusal shows its section 17 message. A Scene finished meanwhile leads to "No Active Scene".
 - **SPL-UX-25** "Show Keeper notes" shows the notes. "Show content" shows a Handout's current content.
@@ -517,7 +518,7 @@ Stories cover:
 ## 20. Reveals and Clues accessibility acceptance criteria (WCAG 2.2 AA)
 
 - **SPL-A11Y-8** Sections are `section` elements labelled by their `h2`, items and Reveals have `h3` headings, and revealed rich text starts at `h4`. Each page has exactly one `h1` (1.3.1, 2.4.6).
-- **SPL-A11Y-9** The dialog has an accessible name, and focus starts on the first checkbox. The fieldset has a `legend`, and the hint and error are connected with `aria-describedby`. Focus returns to the trigger when the dialog closes (1.3.1, 2.4.3, 3.3.1, 4.1.2).
+- **SPL-A11Y-9** The dialog has an accessible name, and focus starts on the first checkbox. The fieldset has a `legend`, and the hint and error are connected with `aria-describedby`. Focus returns to the trigger when the dialog closes, or moves to the `h1` when the trigger is gone (1.3.1, 2.4.3, 3.3.1, 4.1.2).
 - **SPL-A11Y-10** Every image has `alt`: its image description, or its title when there is none. Kind, visibility, and "Read-aloud" are text, never color alone (1.1.1, 1.4.1).
 - **SPL-A11Y-11** Disclosure buttons expose `aria-expanded`, and their accessible names include the title (2.4.6, 4.1.2).
 - **SPL-A11Y-12** The reveal status uses `role=status` and refusals use `role=alert`. Live arrivals are announced politely, never on first load (4.1.3).

@@ -145,11 +145,11 @@
 ### D5: API shapes and Clue reads (Explorer Q5, Q6, Q7)
 - **`POST active-scene/reveals`:**
   - Body: `{subject: {type: "Handout"|"NonPlayerEntity"|"Item", id}, investigatorIds?: Guid[]}`.
-  - Success: 200 with the Keeper Active Scene shape, as start and PUT present return.
+  - Success: 200 with the created Keeper Reveal view `{revealId, revealedAt, subjectType, subjectId, title, handoutKind, content, file, imageDescription, recipients}` (revised 2026-10-30, see Revisions). The service does not read the Scene after the commit; the client refetches the Active Scene.
   - Error order:
     1. 401;
     2. 404 for a non-member or a Player (the Keeper check comes first, `ActiveSceneService.cs:131`);
-    3. 409 when no Scene is Active;
+    3. 409 when no Scene was Active before the Reveal (nothing was revealed);
     4. 400, keyed by request path (ADR 0018 style):
        - `subject.type`: missing or unknown, or `Item` ("Items can't be revealed yet.", PBI-SPL-003);
        - `subject.id`: not on the Active Scene, or a Keeper-facing Handout ("This Handout is Keeper-facing and can't be revealed.");
@@ -375,6 +375,7 @@
 - **`RevealService`:**
   - A Player or non-member gets `NotFound` before any port is touched.
   - The signal is called after the save with the distinct recipient accounts, and never on a refusal. A signal failure is swallowed.
+  - After a successful save, `RevealAsync` never reads the Active Scene again and returns the created Reveal, even when the Scene finishes meanwhile.
   - The file is served to the Keeper and to a recipient Player. A non-recipient, a Player without an Approved Investigator, or another Campaign gets `NotFound`.
 - **Projection:**
   - the Player Reveal view has no `subjectId` or `recipients`;
@@ -449,3 +450,20 @@
 - **PBI-SPL-004:** Scene History reuses the Reveal views and the Reveal file endpoint.
 
 ## Revisions
+- **2026-10-30, Verifier note N2 (changed decision, approved by the human):**
+  - **Problem:** N2 reads "A Reveal committed just before the Scene is finished returns an ambiguous 409. This is a known race and the Reveal is recorded."
+    - `RevealService.RevealAsync` committed and signalled the Reveal, then reloaded the Active Scene for the response.
+    - When a Finish landed in between, the Keeper got 409 "No Scene is Active." although Players had already received the Reveal.
+    - PBI-SPL-001 D4 rejected exactly this: a failure reported after a commit.
+  - **Human ruling:** "fix all non blocking issues". The change below was then approved ("approved").
+  - **Changed (D5):**
+    - The reveal endpoint answers 200 with the created Keeper Reveal view and does not reload the Scene after commit.
+    - 409 means only that no Scene was Active before the Reveal, so nothing was revealed.
+    - The client refetches the Active Scene. A Scene finished meanwhile then shows "No Active Scene" with the success status (ux.md section 13, SPL-UX-22, SPL-A11Y-9).
+    - Giving up: the reveal response no longer matches start and PUT present, which return the Keeper Active Scene.
+  - **Unchanged:** D1-D4 and D6-D8, D2's acceptance of the race itself, and every invariant. No rejected option returns.
+  - **Rejected:**
+    1. Keeping 409 and adding a `revealRecorded` marker with new copy. A 4xx for an applied write repeats what PBI-SPL-001 D4 rejected, and it adds a flag and a third 409 branch.
+    2. Answering 200 with the now-Finished Scene. It needs a Finished-Scene Keeper shape, which belongs to PBI-SPL-004.
+    3. Documenting the ambiguity only. The Keeper could believe nothing went out while Players have it.
+    4. Building the response from data read before the commit. It shows a Finished Scene as Active. The Developer must not build it.
