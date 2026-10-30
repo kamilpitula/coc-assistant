@@ -43,10 +43,10 @@ function RevealArticle({ campaignId, reveal }: { campaignId: string; reveal: Pla
 
   return (
     <article aria-labelledby={titleId} className="flex flex-col gap-2 border-t pt-4">
-      <h3 id={titleId} className="text-base font-semibold break-words">
+      <h3 id={titleId} className="max-w-2xl text-base font-semibold break-words">
         {reveal.title}
       </h3>
-      <p className="text-sm text-muted-foreground">
+      <p className="max-w-2xl text-sm text-muted-foreground">
         {revealKindLabel(reveal)} <span aria-hidden="true">&middot;</span> Revealed <time dateTime={reveal.revealedAt}>{formatRevealTime(reveal.revealedAt)}</time>
       </p>
       <RevealedContent campaignId={campaignId} reveal={reveal} />

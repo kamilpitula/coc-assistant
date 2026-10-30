@@ -72,15 +72,15 @@ export interface RevealAnnouncement {
  */
 export function useRevealAnnouncement(reveals: PlayerReveal[] | undefined, investigatorName: string | null, isFetchedAfterMount: boolean): RevealAnnouncement {
   const [announcement, setAnnouncement] = useState<RevealAnnouncement>({ message: '', sequence: 0 })
-  const known = useRef<ReadonlySet<string> | null>(null)
+  const knownRevealIds = useRef<ReadonlySet<string> | null>(null)
 
   useEffect(() => {
     if (!isFetchedAfterMount || reveals === undefined) {
       return
     }
 
-    const message = known.current === null ? null : newRevealAnnouncement(known.current, reveals, investigatorName)
-    known.current = new Set([...(known.current ?? []), ...reveals.map((reveal) => reveal.revealId)])
+    const message = knownRevealIds.current === null ? null : newRevealAnnouncement(knownRevealIds.current, reveals, investigatorName)
+    knownRevealIds.current = new Set([...(knownRevealIds.current ?? []), ...reveals.map((reveal) => reveal.revealId)])
     if (message) {
       setAnnouncement((current) => ({ message, sequence: current.sequence + 1 }))
     }

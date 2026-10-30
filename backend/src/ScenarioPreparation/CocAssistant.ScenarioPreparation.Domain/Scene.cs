@@ -173,14 +173,14 @@ public class Scene
     /// </summary>
     public RevealResult Reveal(RevealSubject subject, IReadOnlyCollection<Guid>? recipientIds, DateTimeOffset now)
     {
-        var refusal = CheckRevealSubject(subject, out var handout, out var link);
+        var refusal = SceneRevealChecks.CheckSubject(Status, subject, _handouts, _nonPlayerEntityLinks, out var handout, out var link);
         if (refusal != RevealOutcome.Revealed)
         {
             return new RevealResult(refusal, null);
         }
 
         var recipients = recipientIds ?? InvestigatorsPresent;
-        var recipientOutcome = CheckRecipients(recipients);
+        var recipientOutcome = SceneRevealChecks.CheckRecipients(recipients, InvestigatorsPresent);
         if (recipientOutcome != RevealOutcome.Revealed)
         {
             return new RevealResult(recipientOutcome, null);
@@ -397,7 +397,7 @@ public class Scene
 
     private void IncrementVersion() => Version++;
 
-    private static SceneTransitionOutcome ValidatePresent(IReadOnlyCollection<Guid> presentInvestigatorIds, IReadOnlyCollection<Guid> approvedInvestigatorIds)
+    internal static SceneTransitionOutcome ValidatePresent(IReadOnlyCollection<Guid> presentInvestigatorIds, IReadOnlyCollection<Guid> approvedInvestigatorIds)
     {
         if (presentInvestigatorIds.Count == 0)
         {
@@ -413,44 +413,6 @@ public class Scene
             ? SceneTransitionOutcome.Transitioned
             : SceneTransitionOutcome.InvestigatorNotApproved;
     }
-
-    private RevealOutcome CheckRevealSubject(RevealSubject subject, out Handout? handout, out NonPlayerEntityLink? link)
-    {
-        handout = null;
-        link = null;
-        if (Status != SceneStatus.Active)
-        {
-            return RevealOutcome.NotActive;
-        }
-
-        if (subject.Type is not (RevealSubjectType.Handout or RevealSubjectType.NonPlayerEntity))
-        {
-            return RevealOutcome.SubjectNotRevealable;
-        }
-
-        if (subject.Type == RevealSubjectType.NonPlayerEntity)
-        {
-            link = _nonPlayerEntityLinks.Find(candidate => candidate.Id == subject.Id);
-            return link is null ? RevealOutcome.SubjectNotFound : RevealOutcome.Revealed;
-        }
-
-        handout = _handouts.Find(candidate => candidate.Id == subject.Id);
-        if (handout is null)
-        {
-            return RevealOutcome.SubjectNotFound;
-        }
-
-        return handout.Visibility == HandoutVisibility.PlayerFacing ? RevealOutcome.Revealed : RevealOutcome.SubjectKeeperFacing;
-    }
-
-    // The recipients follow the start rules: not empty, no duplicate, all present (ValidatePresent).
-    private RevealOutcome CheckRecipients(IReadOnlyCollection<Guid> recipients) => ValidatePresent(recipients, InvestigatorsPresent) switch
-    {
-        SceneTransitionOutcome.NoInvestigatorPresent => RevealOutcome.NoRecipient,
-        SceneTransitionOutcome.DuplicateInvestigator => RevealOutcome.DuplicateRecipient,
-        SceneTransitionOutcome.InvestigatorNotApproved => RevealOutcome.RecipientNotPresent,
-        _ => RevealOutcome.Revealed,
-    };
 
     private void SetInvestigatorsPresent(IReadOnlyCollection<Guid> presentInvestigatorIds)
     {
