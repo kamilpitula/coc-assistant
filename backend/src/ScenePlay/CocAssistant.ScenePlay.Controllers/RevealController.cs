@@ -16,9 +16,9 @@ public class RevealController : ScenePlayControllerBase
         _reveals = reveals;
     }
 
-    /// <summary>Reveals a Player-facing Handout or a Non-Player Entity link of the Active Scene; returns the Keeper's Active Scene.</summary>
+    /// <summary>Reveals a Player-facing Handout or a Non-Player Entity link of the Active Scene; returns the created Reveal as the Keeper sees it.</summary>
     [HttpPost("active-scene/reveals")]
-    public async Task<ActionResult<KeeperActiveSceneResponse>> Reveal(Guid campaignId, RevealRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<KeeperRevealResponse>> Reveal(Guid campaignId, RevealRequest request, CancellationToken cancellationToken)
     {
         var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
         if (accountId is null)
@@ -28,7 +28,7 @@ public class RevealController : ScenePlayControllerBase
 
         var kind = ParseKind(request.Subject?.Type);
         var result = await _reveals.RevealAsync(campaignId, accountId.Value, kind, request.Subject?.Id ?? Guid.Empty, request.InvestigatorIds, cancellationToken);
-        return result.Scene is not null ? Ok(ActiveSceneController.ToResponse(result.Scene)) : Failure(result.Outcome, kind);
+        return result.Reveal is not null ? Ok(RevealMapping.ToResponse(result.Reveal)) : Failure(result.Outcome, kind);
     }
 
     /// <summary>The Reveal's snapshotted file as an attachment with its stored media type; 404 for anyone who did not receive it; 503 when storage fails.</summary>

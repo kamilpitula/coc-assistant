@@ -8,15 +8,15 @@ import { newRevealAnnouncement } from '@/scene-play/services/revealPresentation'
 import type { PlayerReveal, RevealInput } from '@/scene-play/types/Reveal'
 import { useAccessToken } from '@/shared/hooks/useAccessToken'
 
-/** Reveals a subject of the Active Scene; the confirmed Keeper view replaces the cached Active Scene. */
+/** Reveals a subject of the Active Scene. The created Reveal is not cached: the Active Scene and the Keeper Clues are refetched, so a Scene finished meanwhile shows as such. */
 export function useRevealToInvestigators(campaignId: string) {
   const getAccessToken = useAccessToken()
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (input: RevealInput) => revealToInvestigators(await getAccessToken(), campaignId, input),
-    onSuccess: (scene) => {
-      queryClient.setQueryData(activeSceneQueryKeys.detail(campaignId), scene)
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: activeSceneQueryKeys.detail(campaignId) })
       void queryClient.invalidateQueries({ queryKey: cluesQueryKeys.investigators(campaignId) })
     },
   })

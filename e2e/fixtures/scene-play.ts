@@ -249,12 +249,7 @@ export async function revealHandoutViaApi(
     data: { subject: { type: 'Handout', id: handoutId }, investigatorIds },
   })
   await ok(response, 'reveal the Handout')
-  const reveals = ((await response.json()) as { reveals: Array<{ revealId: string; subjectId: string }> }).reveals
-  const reveal = reveals.find((candidate) => candidate.subjectId === handoutId)
-  if (!reveal) {
-    throw new Error('The Reveal is not in the Active Scene')
-  }
-  return reveal.revealId
+  return ((await response.json()) as { revealId: string }).revealId
 }
 
 /** The "Reveal..." button of a Handout or Non-Player Entity on the Keeper's Active Scene page. */

@@ -72,7 +72,11 @@ export function ActiveScenePage({ campaignId }: ActiveScenePageProps) {
           void active.refetch()
         }}
         onPresentSaved={() => setMessage('Investigators present saved.')}
-        onRevealed={setMessage}
+        onRevealed={(revealMessage) => {
+          // If the Scene finished meanwhile, the refetch shows "No Active Scene", the Reveal's trigger is gone, and focus goes to the h1.
+          focusHeadingPending.current = true
+          setMessage(revealMessage)
+        }}
         onSceneFinished={() => {
           focusHeadingPending.current = true
           setMessage(null)

@@ -160,13 +160,12 @@ public class RevealApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
         var response = await RevealHandoutAsync(table, handoutId, [table.HarveyId]);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var keeper = await JsonAsync(response);
-        var reveal = Assert.Single(keeper.GetProperty("reveals").EnumerateArray());
+        var reveal = await JsonAsync(response);
         Assert.Equal(("Handout", "The cellar door", handoutId), (reveal.GetProperty("subjectType").GetString(), reveal.GetProperty("title").GetString(), reveal.GetProperty("subjectId").GetGuid()));
         Assert.Equal(("ReadAloud", JsonValueKind.Object), (reveal.GetProperty("handoutKind").GetString(), reveal.GetProperty("content").ValueKind));
         var recipient = Assert.Single(reveal.GetProperty("recipients").EnumerateArray());
         Assert.Equal((table.HarveyId, "Harvey Walters"), (recipient.GetProperty("id").GetGuid(), recipient.GetProperty("name").GetString()));
-        Assert.Equal(keeper.GetRawText(), (await JsonAsync(await GetActiveAsync(table, table.KeeperOid))).GetRawText());
+        Assert.Equal(reveal.GetRawText(), (await JsonAsync(await GetActiveAsync(table, table.KeeperOid))).GetProperty("reveals")[0].GetRawText());
 
         var harveyRaw = await (await GetActiveAsync(table, table.HarveyOid)).Content.ReadAsStringAsync();
         var harvey = JsonDocument.Parse(harveyRaw).RootElement;
@@ -194,7 +193,7 @@ public class RevealApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
         var response = await RevealHandoutAsync(table, handoutId);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal([table.HarveyId], (await JsonAsync(response)).GetProperty("reveals")[0].GetProperty("recipients").EnumerateArray().Select(recipient => recipient.GetProperty("id").GetGuid()).ToArray());
+        Assert.Equal([table.HarveyId], (await JsonAsync(response)).GetProperty("recipients").EnumerateArray().Select(recipient => recipient.GetProperty("id").GetGuid()).ToArray());
         Assert.Equal(1, (await JsonAsync(await GetActiveAsync(table, table.HarveyOid))).GetProperty("reveals").GetArrayLength());
         Assert.Equal(versionBefore, await SceneVersionAsync(table.CorbittHouse));
     }
@@ -339,7 +338,7 @@ public class RevealApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
     {
         var table = await TableAsync("11");
         var handoutId = await AddMapHandoutAsync(table, table.CorbittHouse);
-        var reveal = (await JsonAsync(await RevealHandoutAsync(table, handoutId, [table.HarveyId]))).GetProperty("reveals")[0];
+        var reveal = await JsonAsync(await RevealHandoutAsync(table, handoutId, [table.HarveyId]));
         var revealId = reveal.GetProperty("revealId").GetGuid();
         var uri = CampaignUri(table, $"/reveals/{revealId}/file");
 
@@ -368,7 +367,7 @@ public class RevealApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
     {
         var table = await TableAsync("12");
         var handoutId = await AddTextHandoutAsync(table, table.CorbittHouse, "The cellar door");
-        var revealId = (await JsonAsync(await RevealHandoutAsync(table, handoutId))).GetProperty("reveals")[0].GetProperty("revealId").GetGuid();
+        var revealId = (await JsonAsync(await RevealHandoutAsync(table, handoutId))).GetProperty("revealId").GetGuid();
 
         var response = await table.Client.SendAsync(BuildRequest(HttpMethod.Get, CampaignUri(table, $"/reveals/{revealId}/file"), table.KeeperOid));
 
@@ -380,7 +379,7 @@ public class RevealApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
     {
         var table = await TableAsync("13");
         var handoutId = await AddMapHandoutAsync(table, table.CorbittHouse);
-        var revealId = (await JsonAsync(await RevealHandoutAsync(table, handoutId))).GetProperty("reveals")[0].GetProperty("revealId").GetGuid();
+        var revealId = (await JsonAsync(await RevealHandoutAsync(table, handoutId))).GetProperty("revealId").GetGuid();
         foreach (var blob in StoredBlobs())
         {
             File.Delete(Path.Combine(_factory.HandoutFilesDirectory, blob));
@@ -403,7 +402,7 @@ public class RevealApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
             playerFacingName = "A nervous clerk",
             playerFacingDescription = PreparedScenarioSeed.Json(Rich("He keeps looking at the door")),
         });
-        var mapRevealId = (await JsonAsync(await RevealHandoutAsync(table, mapId, [table.HarveyId]))).GetProperty("reveals")[0].GetProperty("revealId").GetGuid();
+        var mapRevealId = (await JsonAsync(await RevealHandoutAsync(table, mapId, [table.HarveyId]))).GetProperty("revealId").GetGuid();
         await RevealAsync(table, new { subject = Subject("NonPlayerEntity", linkId), investigatorIds = new[] { table.HarveyId } });
         var before = await (await GetActiveAsync(table, table.HarveyOid)).Content.ReadAsStringAsync();
         var deleteProfile = await table.Client.SendAsync(BuildRequest(HttpMethod.Delete, CampaignUri(table, $"/human-npcs/{humanNpcId}"), table.KeeperOid));

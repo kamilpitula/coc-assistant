@@ -114,7 +114,7 @@ public class ActiveSceneController : ScenePlayControllerBase
         return ValidationProblem(ModelState);
     }
 
-    internal static KeeperActiveSceneResponse ToResponse(KeeperActiveSceneView view) =>
+    private static KeeperActiveSceneResponse ToResponse(KeeperActiveSceneView view) =>
         new(
             view.SceneId,
             view.ScenarioId,

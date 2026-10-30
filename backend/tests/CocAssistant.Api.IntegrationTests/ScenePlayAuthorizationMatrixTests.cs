@@ -151,7 +151,7 @@ public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactor
         var handoutId = (await handout.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
         var reveal = await client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/active-scene/reveals", KeeperOid, new { subject = new { type = "Handout", id = handoutId }, investigatorIds = new[] { investigatorId } }));
         reveal.EnsureSuccessStatusCode();
-        var revealId = (await reveal.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("reveals")[0].GetProperty("revealId").GetGuid();
+        var revealId = (await reveal.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("revealId").GetGuid();
         return new Seeded(campaignId, prepared.SceneId, revealId, investigatorId);
     }
 

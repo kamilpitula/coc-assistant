@@ -60,7 +60,7 @@ public class RevealServiceTests
 
         var result = await Service.RevealAsync(CampaignId, caller, RevealSubjectKind.Handout, SubjectId, null, CancellationToken.None);
 
-        Assert.Equal((RevealSceneOutcome.NotFound, null), (result.Outcome, result.Scene));
+        Assert.Equal((RevealSceneOutcome.NotFound, null), (result.Outcome, result.Reveal));
         Assert.Empty(_reveals.Calls);
         Assert.Empty(_scenes.Calls);
         Assert.Empty(_signals.Recipients);
@@ -74,9 +74,10 @@ public class RevealServiceTests
         var result = await Service.RevealAsync(CampaignId, KeeperId, RevealSubjectKind.Handout, SubjectId, [Lucy], CancellationToken.None);
 
         Assert.Equal(RevealSceneOutcome.Revealed, result.Outcome);
-        var reveal = Assert.Single(result.Scene!.Reveals);
-        Assert.Equal((SubjectId, "The cellar door"), (reveal.SubjectId, reveal.Reveal.Title));
+        var reveal = result.Reveal!;
+        Assert.Equal((RevealId, SubjectId, "The cellar door"), (reveal.Reveal.RevealId, reveal.SubjectId, reveal.Reveal.Title));
         Assert.Equal([new RevealRecipientView(Lucy, "Lucy Ward")], reveal.Recipients);
+        Assert.Empty(_scenes.Calls);
         Assert.Equal([Lucy], _reveals.LastRecipients);
         Assert.Equal([LucyPlayerId], Assert.Single(_signals.Recipients));
     }
@@ -106,7 +107,7 @@ public class RevealServiceTests
 
         var result = await Service.RevealAsync(CampaignId, KeeperId, RevealSubjectKind.Handout, SubjectId, null, CancellationToken.None);
 
-        Assert.Equal((expected, null), (result.Outcome, result.Scene));
+        Assert.Equal((expected, null), (result.Outcome, result.Reveal));
         Assert.Empty(_signals.Recipients);
     }
 
@@ -155,15 +156,17 @@ public class RevealServiceTests
     }
 
     [Fact]
-    public async Task Given_the_scene_finished_after_the_reveal_When_revealing_Then_no_active_scene_is_reported_but_the_signal_was_sent()
+    public async Task Given_the_scene_finished_after_the_reveal_When_revealing_Then_it_succeeds_with_the_reveal_without_reading_the_scene_again()
     {
         _reveals.RevealResult = new RevealRecordResult(RevealOutcome.Revealed, Record(Harvey));
         _scenes.Active = null;
 
         var result = await Service.RevealAsync(CampaignId, KeeperId, RevealSubjectKind.Handout, SubjectId, [Harvey], CancellationToken.None);
 
-        Assert.Equal(RevealSceneOutcome.NoActiveScene, result.Outcome);
-        Assert.Single(_signals.Recipients);
+        Assert.Equal(RevealSceneOutcome.Revealed, result.Outcome);
+        Assert.Equal(RevealId, result.Reveal!.Reveal.RevealId);
+        Assert.Empty(_scenes.Calls);
+        Assert.Equal([HarveyPlayerId], Assert.Single(_signals.Recipients));
     }
 
     [Fact]

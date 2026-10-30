@@ -1,8 +1,7 @@
 import { bearerHeaders, authHeaders } from '@/campaign-play/services/authHeaders'
 import { readValidationProblems } from '@/scenario-preparation/services/validationProblem'
-import { parseKeeperScene } from '@/scene-play/services/activeSceneApi'
-import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
-import type { RevealInput } from '@/scene-play/types/Reveal'
+import { keeperRevealSchema } from '@/scene-play/services/revealSchemas'
+import type { KeeperReveal, RevealInput } from '@/scene-play/types/Reveal'
 
 export const revealQueryKeys = {
   /** A Reveal's stored file. It sits outside the Active Scene's keys, so a live refetch of the Scene leaves it alone: a snapshot never changes. */
@@ -52,15 +51,15 @@ async function failReveal(response: Response): Promise<never> {
   throw new Error(`Failed to reveal (${response.status})`)
 }
 
-/** Calls POST .../active-scene/reveals (Keeper only); returns the Keeper's Active Scene with the new Reveal. */
-export async function revealToInvestigators(accessToken: string, campaignId: string, input: RevealInput): Promise<KeeperActiveScene> {
+/** Calls POST .../active-scene/reveals (Keeper only); returns the created Reveal as the Keeper sees it (PBI-SPL-002 D5). */
+export async function revealToInvestigators(accessToken: string, campaignId: string, input: RevealInput): Promise<KeeperReveal> {
   const response = await fetch(`/api/campaigns/${campaignId}/active-scene/reveals`, {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ subject: { type: input.subjectType, id: input.subjectId }, investigatorIds: input.investigatorIds }),
   })
 
-  return response.ok ? parseKeeperScene(await response.json()) : failReveal(response)
+  return response.ok ? keeperRevealSchema.parse(await response.json()) : failReveal(response)
 }
 
 /** Calls GET .../reveals/{revealId}/file with the bearer token and returns the snapshotted bytes; an img tag cannot send the header. */

@@ -105,6 +105,17 @@ describe('ActiveScenePage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('The front door revealed to Harvey Walters.')
   })
 
+  it('keeps "{title} revealed to {names}." and moves focus to the heading when the Scene finished meanwhile (SPL-UX-22, SPL-A11Y-9)', async () => {
+    const { rerender } = render(<ActiveScenePage campaignId="c1" />)
+
+    act(() => keeperProps.current!.onRevealed('The front door revealed to Harvey Walters.'))
+    mockUseActive.mockReturnValue(query(null))
+    rerender(<ActiveScenePage campaignId="c1" />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('The front door revealed to Harvey Walters.')
+    expect(await screen.findByRole('heading', { level: 1, name: 'No Active Scene' })).toHaveFocus()
+  })
+
   it('refetches and focuses the heading when the Scene was finished while the reveal dialog was open (SPL-UX-24)', async () => {
     const { rerender } = render(<ActiveScenePage campaignId="c1" />)
 

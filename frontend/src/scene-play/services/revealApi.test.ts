@@ -26,6 +26,18 @@ const keeperScene = {
   investigatorsPresent: [{ id: 'i1', name: 'Harvey Walters' }],
   reveals: [],
 }
+const keeperReveal = {
+  revealId: 'r1',
+  revealedAt: '2026-10-28T19:52:00Z',
+  subjectType: 'Handout',
+  title: 'The front door',
+  handoutKind: 'ReadAloud',
+  content: null,
+  file: null,
+  imageDescription: null,
+  subjectId: 'h1',
+  recipients: [{ id: 'i1', name: 'Harvey Walters' }],
+}
 const clue = {
   revealId: 'r1',
   revealedAt: '2026-10-28T19:52:00Z',
@@ -51,16 +63,24 @@ describe('reveal API', () => {
   describe('revealToInvestigators', () => {
     const input = { subjectType: 'Handout' as const, subjectId: 'h1', investigatorIds: ['i1'] }
 
-    it('posts the subject and the explicit Investigators with the token, and returns the Keeper view', async () => {
-      fetchMock.mockResolvedValueOnce(jsonResponse(200, keeperScene))
+    it('posts the subject and the explicit Investigators with the token, and returns the created Reveal as the Keeper sees it (D5)', async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, keeperReveal))
 
-      const scene = await revealToInvestigators('token', 'c1', input)
+      const reveal = await revealToInvestigators('token', 'c1', input)
 
-      expect(scene.kind).toBe('keeper')
+      expect(reveal).toEqual(keeperReveal)
       const [url, init] = fetchMock.mock.calls[0]
       expect(url).toBe('/api/campaigns/c1/active-scene/reveals')
       expect(init?.method).toBe('POST')
       expect(JSON.parse(init?.body as string)).toEqual({ subject: { type: 'Handout', id: 'h1' }, investigatorIds: ['i1'] })
+    })
+
+    it('rejects an answer that is the Active Scene, or a Reveal without its recipients', async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, keeperScene))
+      await expect(revealToInvestigators('token', 'c1', input)).rejects.toThrow()
+
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...keeperReveal, recipients: undefined }))
+      await expect(revealToInvestigators('token', 'c1', input)).rejects.toThrow()
     })
 
     it('maps 409 to a finished Scene, a 400 at the subject to a subject refusal, and a 400 at investigatorIds to an Investigators refusal', async () => {

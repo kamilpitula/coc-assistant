@@ -14,8 +14,8 @@ public enum RevealSceneOutcome
     RecipientNotPresent,
 }
 
-/// <summary>The Keeper's Active Scene, with the new Reveal, when <see cref="RevealSceneOutcome.Revealed"/>; otherwise null.</summary>
-public sealed record RevealSceneResult(RevealSceneOutcome Outcome, KeeperActiveSceneView? Scene);
+/// <summary>The created Reveal as the Keeper sees it, when <see cref="RevealSceneOutcome.Revealed"/>; otherwise null.</summary>
+public sealed record RevealSceneResult(RevealSceneOutcome Outcome, KeeperRevealView? Reveal);
 
 /// <summary>An Investigator's Clues, newest first, with the Investigator's name.</summary>
 public sealed record CluesResult(string? InvestigatorName, IReadOnlyList<ClueView> Clues);
@@ -92,10 +92,7 @@ public class RevealService
 
         var approved = await _approved.ListAsync(campaignId, cancellationToken);
         await TrySignalAsync(campaignId, RecipientAccountIds(result.Reveal!, approved), cancellationToken);
-        var active = await _scenes.FindActiveAsync(campaignId, cancellationToken);
-        return active is null
-            ? new RevealSceneResult(RevealSceneOutcome.NoActiveScene, null)
-            : new RevealSceneResult(RevealSceneOutcome.Revealed, ActiveSceneProjection.ForKeeper(active, approved));
+        return new RevealSceneResult(RevealSceneOutcome.Revealed, RevealProjection.ForKeeper(result.Reveal!, approved));
     }
 
     /// <summary>The caller's own Clues; null unless the caller is a Player with an Approved Investigator in the Campaign.</summary>
