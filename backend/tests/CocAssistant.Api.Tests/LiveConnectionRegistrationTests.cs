@@ -8,7 +8,7 @@ public class LiveConnectionRegistrationTests
 {
     private static async Task<string?> ReadBearerTokenAsync(string pathAndQuery)
     {
-        await using var factory = new WebApplicationFactory<Program>();
+        await using var factory = new CompositionRootTestFactory();
         var options = factory.Services
             .GetRequiredService<IOptionsMonitor<JwtBearerOptions>>()
             .Get(JwtBearerDefaults.AuthenticationScheme);

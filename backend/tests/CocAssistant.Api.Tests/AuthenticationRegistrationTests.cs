@@ -5,7 +5,7 @@ public class AuthenticationRegistrationTests
     [Fact]
     public async Task Given_the_composition_root_When_started_Then_the_Bearer_authentication_scheme_is_registered()
     {
-        await using var factory = new WebApplicationFactory<Program>();
+        await using var factory = new CompositionRootTestFactory();
         using var scope = factory.Services.CreateScope();
         var schemeProvider = scope.ServiceProvider.GetRequiredService<IAuthenticationSchemeProvider>();
 
