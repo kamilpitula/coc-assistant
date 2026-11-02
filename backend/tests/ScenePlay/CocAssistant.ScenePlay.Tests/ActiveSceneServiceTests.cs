@@ -36,7 +36,7 @@ public class ActiveSceneServiceTests
     private ActiveSceneService Service => new(_roles, _scenes, _approved, _wall, _signals, _logger);
 
     private static PlayableScene Scene(string title, params Guid[] present) =>
-        new(SceneId, ScenarioId, "The Haunting", title, "Arkham", new DateTimeOffset(2026, 10, 28, 19, 40, 0, TimeSpan.Zero), present);
+        new(SceneId, ScenarioId, "The Haunting", title, "Arkham", new DateTimeOffset(2026, 10, 28, 19, 40, 0, TimeSpan.Zero), present, []);
 
     private void ArrangeStart(PlayableScene started, PlayableScene? finished = null) =>
         _scenes.StartResult = new StartSceneResult(StartSceneOutcome.Started, started, finished);

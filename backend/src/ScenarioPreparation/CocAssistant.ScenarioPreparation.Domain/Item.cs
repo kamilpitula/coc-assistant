@@ -73,8 +73,8 @@ public class Item
         HandoutCollection.Add(_handouts, HandoutOwner.ForItem(Id), kind, visibility, title, content, now);
 
     /// <summary>Adds an Image, Document, or Map Handout after the others. The caller has detected the file's media type from its bytes.</summary>
-    public HandoutResult AddFileHandout(HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, DateTimeOffset now) =>
-        HandoutCollection.AddFile(_handouts, HandoutOwner.ForItem(Id), kind, visibility, title, file, now);
+    public HandoutResult AddFileHandout(HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, DateTimeOffset now, string? imageDescription = null) =>
+        HandoutCollection.AddFile(_handouts, HandoutOwner.ForItem(Id), kind, visibility, title, file, imageDescription, now);
 
     /// <summary>Replaces a rich-text Handout's fields, including its kind; Position is kept.</summary>
     public HandoutResult EditHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, string? content) =>
@@ -84,8 +84,8 @@ public class Item
     /// Replaces a file Handout's fields and, when one is given, its file. While the Item is in play the replaced key is not
     /// returned, so the old stored file is kept (ADR 0022).
     /// </summary>
-    public HandoutFileEditResult EditFileHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, bool isInPlay) =>
-        HandoutCollection.EditFile(_handouts, handoutId, kind, visibility, title, file, mayDeleteReplacedFile: !isInPlay);
+    public HandoutFileEditResult EditFileHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, bool isInPlay, string? imageDescription = null) =>
+        HandoutCollection.EditFile(_handouts, handoutId, kind, visibility, title, file, imageDescription, mayDeleteReplacedFile: !isInPlay);
 
     /// <summary>Removes a Handout only while the Item is not in play; that is checked before the Handout, so an unknown id is still refused.</summary>
     public HandoutRemovalOutcome RemoveHandout(Guid handoutId, bool isInPlay) =>

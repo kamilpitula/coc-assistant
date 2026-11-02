@@ -111,7 +111,7 @@ public class LinkedMaterialRaceTests : IDisposable
 
         var result = await _builder.CreateHandoutFileService(context, null, racing).EditAsync(
             _builder.CampaignId, Keeper, new ItemHandoutOwnerReference(item.Id), handout.Id, HandoutKind.Image, HandoutVisibility.PlayerFacing, "A photograph",
-            new HandoutUpload("new.png", png.Length, new MemoryStream(png)), CancellationToken.None);
+            new HandoutUpload("new.png", png.Length, new MemoryStream(png)), null, CancellationToken.None);
 
         Assert.Equal(HandoutWriteOutcome.InPlay, result.Outcome);
         Assert.Equal([oldKey], _builder.FileStore.StoredKeys.ToList());
@@ -129,7 +129,7 @@ public class LinkedMaterialRaceTests : IDisposable
 
         var result = await _builder.CreateHandoutFileService(context).EditAsync(
             _builder.CampaignId, Keeper, new ItemHandoutOwnerReference(item.Id), handout.Id, HandoutKind.Image, HandoutVisibility.PlayerFacing, "A photograph",
-            new HandoutUpload("new.png", png.Length, new MemoryStream(png)), CancellationToken.None);
+            new HandoutUpload("new.png", png.Length, new MemoryStream(png)), null, CancellationToken.None);
 
         Assert.Equal(HandoutWriteOutcome.Saved, result.Outcome);
         Assert.DoesNotContain(oldKey, _builder.FileStore.StoredKeys);

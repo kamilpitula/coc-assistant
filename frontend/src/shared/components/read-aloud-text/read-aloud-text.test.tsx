@@ -27,6 +27,15 @@ describe('ReadAloudText', () => {
     expect(within(panel).getByText('The door creaks open.')).toBeInTheDocument()
   })
 
+  it('has no heading of its own and starts the text headings at h4 when the heading is hidden (SPL-A11Y-8)', () => {
+    render(<ReadAloudText document={document} showHeading={false} />)
+
+    expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 4, name: 'Heading' })).toBeInTheDocument()
+    expect(screen.getByText('The door creaks open.')).toBeInTheDocument()
+  })
+
   it('keeps the text headings at h3 and h4 under the h2 (SP-A11Y-37)', () => {
     render(<ReadAloudText document={document} />)
 

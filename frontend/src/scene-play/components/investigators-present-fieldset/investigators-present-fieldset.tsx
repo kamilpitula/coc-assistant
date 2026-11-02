@@ -12,22 +12,38 @@ interface InvestigatorsPresentFieldsetProps {
   error?: string
   disabled?: boolean
   firstCheckboxRef?: Ref<HTMLButtonElement>
+  /** The legend; "Investigators present" by default ("Reveal to" in the reveal dialog). */
+  legend?: string
+  /** The hint under the legend; "Choose the Investigators taking part in this Scene." by default. */
+  hint?: string
+  /** Muted text inside an Investigator's label, by id, for example "(already revealed)". */
+  notes?: Record<string, string>
 }
 
 /**
  * The Keeper's choice of Investigators present, shared by the start page and the Active Scene page (specs/scene-play/ux.md
  * sections 2 and 3; SPL-A11Y-2): a fieldset with a legend, a hint, one labelled checkbox per Approved Investigator, and an error.
  */
-export function InvestigatorsPresentFieldset({ investigators, selected, onToggle, error, disabled, firstCheckboxRef }: InvestigatorsPresentFieldsetProps) {
+export function InvestigatorsPresentFieldset({
+  investigators,
+  selected,
+  onToggle,
+  error,
+  disabled,
+  firstCheckboxRef,
+  legend = 'Investigators present',
+  hint = 'Choose the Investigators taking part in this Scene.',
+  notes,
+}: InvestigatorsPresentFieldsetProps) {
   const idPrefix = useId()
   const hintId = `${idPrefix}-hint`
   const errorId = `${idPrefix}-error`
 
   return (
     <fieldset className="flex flex-col gap-2" aria-describedby={error ? `${hintId} ${errorId}` : hintId} aria-invalid={error !== undefined}>
-      <legend className="mb-1 text-sm font-medium">Investigators present</legend>
+      <legend className="mb-1 text-sm font-medium">{legend}</legend>
       <p id={hintId} className="text-sm text-muted-foreground">
-        Choose the Investigators taking part in this Scene.
+        {hint}
       </p>
       {error && (
         <p id={errorId} className="flex items-center gap-1 text-sm text-destructive">
@@ -50,7 +66,13 @@ export function InvestigatorsPresentFieldset({ investigators, selected, onToggle
             />
             <Label htmlFor={checkboxId} className="flex min-h-6 flex-wrap items-baseline gap-x-2 font-normal leading-6 break-words">
               <span>{investigator.name ?? 'Unnamed Investigator'}</span>
-              <span className="text-muted-foreground">{investigator.playerName}</span>
+              {investigator.playerName !== '' && <span className="text-muted-foreground">{investigator.playerName}</span>}
+              {notes?.[investigator.id] && (
+                <>
+                  {' '}
+                  <span className="text-muted-foreground">{notes[investigator.id]}</span>
+                </>
+              )}
             </Label>
           </div>
         )

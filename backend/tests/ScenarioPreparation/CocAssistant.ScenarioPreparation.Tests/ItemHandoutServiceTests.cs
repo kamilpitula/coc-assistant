@@ -37,7 +37,7 @@ public class ItemHandoutServiceTests : IDisposable
         using var context = _builder.Fixture.CreateContext();
         return await _builder.CreateHandoutFileService(context, items: items).EditAsync(
             _builder.CampaignId, Keeper, new ItemHandoutOwnerReference(itemId), handoutId, HandoutKind.Image, HandoutVisibility.PlayerFacing, "A photograph",
-            Upload(HandoutFileSamples.Jpeg(), "new.jpg"), CancellationToken.None);
+            Upload(HandoutFileSamples.Jpeg(), "new.jpg"), null, CancellationToken.None);
     }
 
     private async Task<IReadOnlyList<HandoutSummaryView>> StoredHandoutsAsync(Guid itemId) =>
@@ -111,7 +111,7 @@ public class ItemHandoutServiceTests : IDisposable
         var edited = await service.EditAsync(campaignId, accountId, owner, handout.Id, HandoutKind.Text, HandoutVisibility.KeeperFacing, "X", Text, CancellationToken.None);
         var removed = await service.RemoveAsync(campaignId, accountId, owner, handout.Id, CancellationToken.None);
         var reordered = await service.ReorderAsync(campaignId, accountId, owner, [handout.Id], CancellationToken.None);
-        var fileCreated = await files.CreateAsync(campaignId, accountId, owner, HandoutKind.Image, HandoutVisibility.KeeperFacing, "X", Upload(HandoutFileSamples.Png()), CancellationToken.None);
+        var fileCreated = await files.CreateAsync(campaignId, accountId, owner, HandoutKind.Image, HandoutVisibility.KeeperFacing, "X", Upload(HandoutFileSamples.Png()), null, CancellationToken.None);
         var opened = await files.OpenAsync(campaignId, accountId, owner, handout.Id, CancellationToken.None);
 
         Assert.Null(got);
@@ -269,7 +269,7 @@ public class ItemHandoutServiceTests : IDisposable
             using var serviceContext = _builder.Fixture.CreateContext();
             await _builder.CreateHandoutFileService(serviceContext, items: failing).CreateAsync(
                 _builder.CampaignId, Keeper, new ItemHandoutOwnerReference(item.Id), HandoutKind.Image, HandoutVisibility.PlayerFacing, "A photograph",
-                Upload(HandoutFileSamples.Png()), CancellationToken.None);
+                Upload(HandoutFileSamples.Png()), null, CancellationToken.None);
         });
 
         Assert.Empty(_builder.FileStore.StoredKeys);
@@ -306,7 +306,7 @@ public class ItemHandoutServiceTests : IDisposable
 
         var result = await _builder.CreateHandoutFileService(context).CreateAsync(
             _builder.CampaignId, Keeper, new ItemHandoutOwnerReference(item.Id), HandoutKind.Image, HandoutVisibility.PlayerFacing, "Drawing",
-            Upload(HandoutFileSamples.Svg(), "drawing.svg"), CancellationToken.None);
+            Upload(HandoutFileSamples.Svg(), "drawing.svg"), null, CancellationToken.None);
 
         Assert.Equal(HandoutWriteOutcome.UnsupportedFileType, result.Outcome);
         Assert.Empty(_builder.FileStore.StoredKeys);

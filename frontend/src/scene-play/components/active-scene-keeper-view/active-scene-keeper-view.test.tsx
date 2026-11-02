@@ -12,6 +12,12 @@ const { mockUseFinish, finishMutate, finishReset } = vi.hoisted(() => ({ mockUse
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/scene-play/hooks/useActiveScene', () => ({ useFinishActiveScene: mockUseFinish }))
+vi.mock('@/scene-play/components/scene-material-section/scene-material-section', () => ({
+  SceneMaterialSection: () => <div data-testid="material" />,
+}))
+vi.mock('@/scene-play/components/revealed-in-scene-section/revealed-in-scene-section', () => ({
+  RevealedInSceneSection: () => <section aria-label="Revealed stub" />,
+}))
 vi.mock('@/scene-play/components/investigators-present-section/investigators-present-section', () => ({
   InvestigatorsPresentSection: () => <section aria-label="Investigators present stub" />,
 }))
@@ -42,6 +48,8 @@ describe('ActiveSceneKeeperView', () => {
         onFinished={onFinished}
         onAlreadyFinished={onAlreadyFinished}
         onPresentSaved={vi.fn()}
+        onRevealed={vi.fn()}
+        onSceneFinished={vi.fn()}
         onRefetch={vi.fn()}
       />,
     )
@@ -51,7 +59,7 @@ describe('ActiveSceneKeeperView', () => {
     mockUseFinish.mockReturnValue(finishing())
   })
 
-  it('shows the title, Active status, start time, Scenario with its link, and location, but no Keeper notes or Handouts', () => {
+  it('shows the title, Active status, start time, Scenario with its link, and location, then the material and the Reveals sections (SPL-UX-9)', () => {
     renderView()
 
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
@@ -61,11 +69,12 @@ describe('ActiveSceneKeeperView', () => {
     expect(screen.getByText('Scenario: The Haunting')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Open in Scenario' })).toHaveAttribute('href', '/campaigns/c1/scenarios/p1/scenes/s1')
     expect(screen.getByText('Location').nextElementSibling).toHaveTextContent('Arkham, Boston Road')
-    expect(screen.queryByText(/Keeper notes|Handouts/)).not.toBeInTheDocument()
+    expect(screen.getByTestId('material')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Revealed stub' })).toBeInTheDocument()
   })
 
   it('omits the location when there is none', () => {
-    render(<ActiveSceneKeeperView campaignId="c1" scene={{ ...scene, location: '' }} headingRef={{ current: null }} onFinished={onFinished} onAlreadyFinished={onAlreadyFinished} onPresentSaved={vi.fn()} onRefetch={vi.fn()} />)
+    render(<ActiveSceneKeeperView campaignId="c1" scene={{ ...scene, location: '' }} headingRef={{ current: null }} onFinished={onFinished} onAlreadyFinished={onAlreadyFinished} onPresentSaved={vi.fn()} onRevealed={vi.fn()} onSceneFinished={vi.fn()} onRefetch={vi.fn()} />)
 
     expect(screen.queryByText('Location')).not.toBeInTheDocument()
   })

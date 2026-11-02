@@ -49,3 +49,28 @@ describe('InvestigatorsPresentFieldset', () => {
     expect(screen.getAllByRole('checkbox').every((checkbox) => checkbox.hasAttribute('disabled'))).toBe(true)
   })
 })
+
+describe('InvestigatorsPresentFieldset in the reveal dialog (specs/scene-play/ux.md section 13)', () => {
+  const present: ApprovedInvestigator[] = [
+    { id: 'i1', name: 'Harvey Walters', playerName: '' },
+    { id: 'i2', name: 'Lucy Ward', playerName: '' },
+  ]
+
+  it('takes its own legend and hint, and shows a muted note inside the label of the Investigator it names (SPL-UX-21)', () => {
+    render(
+      <InvestigatorsPresentFieldset
+        investigators={present}
+        selected={['i1']}
+        onToggle={vi.fn()}
+        legend="Reveal to"
+        hint="Players see it as it is now. A Reveal can't be undone."
+        notes={{ i2: '(already revealed)' }}
+      />,
+    )
+
+    const group = screen.getByRole('group', { name: 'Reveal to' })
+    expect(group).toHaveAccessibleDescription("Players see it as it is now. A Reveal can't be undone.")
+    expect(screen.getByRole('checkbox', { name: 'Lucy Ward (already revealed)' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Harvey Walters' })).toBeChecked()
+  })
+})

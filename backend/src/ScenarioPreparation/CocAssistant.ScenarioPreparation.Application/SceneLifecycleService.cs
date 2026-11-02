@@ -165,7 +165,8 @@ public class SceneLifecycleService
             scene.Status,
             scene.StartedAt,
             scene.FinishedAt,
-            scene.InvestigatorsPresent);
+            scene.InvestigatorsPresent,
+            scene.Reveals.Select(RevealViews.ToView).ToList());
     }
 
     private static SceneStartResult Refused(SceneStartOutcome outcome) => new(outcome, null, null);

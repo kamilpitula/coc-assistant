@@ -108,6 +108,11 @@ function ReadOnlyInvestigator({ campaignId, sheet }: { campaignId: string; sheet
         {sheet.characterSheet.identity.name ?? 'Your Investigator'}
       </h1>
       <InvestigatorStatusBadge status={sheet.status} audience="Player" />
+      {sheet.status === 'Approved' && (
+        <Link to="/campaigns/$campaignId/investigator/clues" params={{ campaignId }} className="w-fit text-sm font-medium break-words underline underline-offset-4">
+          {sheet.characterSheet.identity.name ?? 'Your Investigator'}&apos;s Clues
+        </Link>
+      )}
       <CharacterSheetView sheet={sheet.characterSheet} playerName={sheet.playerName} />
       <Link to="/campaigns/$campaignId" params={{ campaignId }} className={buttonVariants({ variant: 'link', className: 'self-start px-0' })}>
         Back to Campaign

@@ -18,6 +18,7 @@ const document1: FileHandout = {
   visibility: 'KeeperFacing',
   title: 'Diary',
   file: { name: 'diary-page.pdf', mediaType: 'application/pdf', sizeBytes: 1_258_291 },
+  imageDescription: null,
 }
 
 const query = (overrides: Record<string, unknown> = {}) => ({
@@ -28,7 +29,7 @@ const query = (overrides: Record<string, unknown> = {}) => ({
   refetch,
   ...overrides,
 })
-const renderDocument = () => render(<HandoutDocument owner={sceneOwner} handout={document1} />)
+const renderDocument = () => render(<HandoutDocument handout={document1} fileQuery={mockUseHandoutFile(sceneOwner, document1.id, true)} />)
 
 describe('HandoutDocument', () => {
   beforeEach(() => {

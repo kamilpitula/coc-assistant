@@ -58,10 +58,11 @@ export interface RichTextHandout extends HandoutSummary {
   content: RichTextDocument
 }
 
-/** An Image, Document, or Map Handout with its file's details. */
+/** An Image, Document, or Map Handout with its file's details and, for an Image or Map, its optional image description. */
 export interface FileHandout extends HandoutSummary {
   kind: FileHandoutKind
   file: HandoutFileDetails
+  imageDescription: string | null
 }
 
 /** A Handout with its content or its file; exactly one is present. */
@@ -83,6 +84,8 @@ export interface FileHandoutInput {
   visibility: HandoutVisibility
   title: string
   file: File | null
+  /** The description for an Image or Map; "" for none, which on an edit clears a stored one. Always "" for a Document. */
+  imageDescription: string
 }
 
 export type HandoutInput = RichTextHandoutInput | FileHandoutInput
@@ -92,4 +95,7 @@ export const isFileInput = (input: HandoutInput): input is FileHandoutInput => '
 /** The longest Handout title (specs/scenario-preparation/spec.md). */
 export const HANDOUT_TITLE_MAX_LENGTH = 200
 
-export type HandoutField = 'title' | 'kind' | 'visibility' | 'content' | 'file'
+/** The longest image description (specs/scenario-preparation/ux.md section 71). */
+export const HANDOUT_IMAGE_DESCRIPTION_MAX_LENGTH = 1000
+
+export type HandoutField = 'title' | 'kind' | 'visibility' | 'content' | 'file' | 'imageDescription'

@@ -1,18 +1,20 @@
-import { test, expect, type Browser, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 
 import { newAccount, signIn } from '../fixtures/auth'
-import { createCampaignViaUi, issueInviteViaUi } from '../fixtures/campaigns'
-import { joinAsNewPlayer, openAndCaptureBearer, type PlayerSession } from '../fixtures/investigators'
-import { PREPARED, prepareScenarioViaApi, type PreparedScenario } from '../fixtures/prepared-scenario'
+import { createCampaignViaUi } from '../fixtures/campaigns'
+import { openAndCaptureBearer } from '../fixtures/investigators'
+import { PREPARED, prepareScenarioViaApi } from '../fixtures/prepared-scenario'
 import {
   activeSceneCard,
   changePresentViaApi,
-  createApprovedInvestigatorViaApi,
+  closeTable,
   finishActiveSceneViaApi,
+  HARVEY,
+  LUCY,
   pageStatus,
   presentFieldset,
   presentSection,
-  sceneIdByTitle,
+  setUpTable,
   startSceneViaApi,
 } from '../fixtures/scene-play'
 import { sceneLinks, scenesSection } from '../fixtures/scenes'
@@ -24,7 +26,8 @@ import { openWall, wallEntry } from '../fixtures/wall'
  * - "Scenes can be started out of prepared order" (SPL-UX-3)
  * - "A second Active Scene is refused" (SPL-UX-5)
  * - "Keeper finishes the current Scene and starts the next one" (SPL-UX-6, 16)
- * - "Starting a Scene reveals nothing" (SPL-UX-12)
+ * - "Starting a Scene reveals nothing" (SPL-UX-12, amended by PBI-SPL-002: no Handout before any Reveal)
+ * - the Keeper's material list on the Active Scene page (SPL-UX-9, amended by PBI-SPL-002, SPL-UX-20, SPL-UX-25)
  * - "A Player whose Investigator is not present sees only the title" (SPL-UX-13)
  * - "Players cannot run Scenes" (SPL-UX-17)
  * - changing who is present (SPL-UX-10), finishing (SPL-UX-11), an empty selection and no Approved Investigator (SPL-UX-4, 8),
@@ -35,43 +38,11 @@ import { openWall, wallEntry } from '../fixtures/wall'
  * - "Scene Play stays within its Campaign": covered by the matrix and by the Campaign isolation integration test.
  */
 
-interface Table {
-  prepared: PreparedScenario
-  keeperBearer: string
-  harvey: PlayerSession
-  lucy: PlayerSession
-  harveyId: string
-  lucyId: string
-  meetingKnottId: string
-}
-
-const HARVEY = 'Harvey Walters'
-const LUCY = 'Lucy Ward'
 const CORBITT = PREPARED.firstSceneTitle
 const KNOTT = PREPARED.secondSceneTitle
 
-/** A Campaign with a prepared Scenario, a Keeper (the `page`), and two Players with Approved Investigators. */
-async function setUpTable(page: Page, browser: Browser, label: string): Promise<Table> {
-  const keeper = newAccount('Keeper')
-  await signIn(page, keeper)
-  const campaignId = await createCampaignViaUi(page, `${label} ${keeper.oid.slice(0, 6)}`)
-  const keeperBearer = await openAndCaptureBearer(page, `/campaigns/${campaignId}`)
-  const prepared = await prepareScenarioViaApi(page.request, keeperBearer, campaignId, `secret-${keeper.oid.slice(0, 8)}`)
-  const token = await issueInviteViaUi(page, campaignId)
-  const harvey = await joinAsNewPlayer(browser, token, 'Harvey')
-  const lucy = await joinAsNewPlayer(browser, token, 'Lucy')
-  const harveyBearer = await openAndCaptureBearer(harvey.page, `/campaigns/${campaignId}`)
-  const lucyBearer = await openAndCaptureBearer(lucy.page, `/campaigns/${campaignId}`)
-  const harveyId = await createApprovedInvestigatorViaApi(page.request, keeperBearer, harveyBearer, campaignId, HARVEY)
-  const lucyId = await createApprovedInvestigatorViaApi(page.request, keeperBearer, lucyBearer, campaignId, LUCY)
-  const meetingKnottId = await sceneIdByTitle(page.request, keeperBearer, campaignId, prepared.scenarioId, KNOTT)
-  return { prepared, keeperBearer, harvey, lucy, harveyId, lucyId, meetingKnottId }
-}
-
-async function closeTable(table: Table): Promise<void> {
-  await table.harvey.context.close()
-  await table.lucy.context.close()
-}
+/** Each Investigator present is followed by its "Clues" link (SPL-UX-33), so a list item starts with the name. */
+const startingWith = (...names: string[]): RegExp[] => names.map((name) => new RegExp(`^${name}`))
 
 test.describe('Starting and finishing a Scene', () => {
   // Each journey signs in a Keeper and joins Players in isolated contexts before it checks anything, which takes longer than the default.
@@ -92,18 +63,33 @@ test.describe('Starting and finishing a Scene', () => {
         await expect(presentFieldset(page).getByRole('checkbox', { name: new RegExp(LUCY) })).toBeChecked()
       })
 
-      await test.step('SPL-UX-2, SPL-UX-9: starting opens the Active Scene page, with no Keeper notes or Handouts', async () => {
+      await test.step('SPL-UX-2, SPL-UX-9: starting opens the Active Scene page with its header, controls, and material (Keeper notes collapsed)', async () => {
         await page.getByRole('button', { name: 'Start Scene' }).click()
         await expect(page).toHaveURL(`/campaigns/${prepared.campaignId}/active-scene`)
         await expect(page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
         await expect(pageStatus(page)).toHaveText(`${CORBITT} started.`)
         await expect(page.getByText('Active', { exact: true })).toBeVisible()
         await expect(page.getByText(`Scenario: ${PREPARED.scenarioTitle}`)).toBeVisible()
-        await expect(presentSection(page).getByRole('listitem')).toHaveText([HARVEY, LUCY])
+        await expect(presentSection(page).getByRole('listitem')).toHaveText(startingWith(HARVEY, LUCY))
         await expect(page.getByRole('button', { name: 'Change' })).toBeVisible()
         await expect(page.getByRole('button', { name: 'Finish Scene' })).toBeVisible()
         await expect(page.getByRole('link', { name: 'Open in Scenario' })).toBeVisible()
-        expect(await page.locator('body').innerText(), 'the Keeper notes are not on the Active Scene page').not.toContain('Scene notes')
+        expect(await page.locator('body').innerText(), 'the Keeper notes stay collapsed until shown').not.toContain('Scene notes')
+      })
+
+      await test.step('SPL-UX-9, SPL-UX-20, SPL-UX-25: the Keeper notes, Handouts, and Non-Player Entities are listed, and Reveal... is offered on Player-facing material only', async () => {
+        await expect(page.getByRole('button', { name: 'Show Keeper notes' })).toBeVisible()
+        const handouts = page.getByRole('region', { name: 'Handouts' })
+        await expect(handouts.getByRole('heading', { level: 3 })).toHaveText(PREPARED.handouts.map((handout) => handout.title))
+        await expect(handouts.getByRole('button', { name: /^Reveal / })).toHaveCount(2)
+        await expect(handouts.getByRole('button', { name: `Reveal ${PREPARED.handouts[0].title}` })).toBeVisible()
+        await expect(handouts.getByRole('button', { name: `Reveal ${PREPARED.handouts[1].title}` })).toHaveCount(0)
+        const entities = page.getByRole('region', { name: 'Non-Player Entities' })
+        await expect(entities.getByRole('heading', { level: 3 })).toHaveText([PREPARED.humanNpcLinkName, PREPARED.creatureLinkName])
+        await page.getByRole('button', { name: 'Show Keeper notes' }).click()
+        await expect(page.getByText(`Scene notes ${prepared.secret}`)).toBeVisible()
+        await handouts.getByRole('button', { name: `Show content of ${PREPARED.handouts[1].title}` }).click()
+        await expect(handouts.getByText(`${PREPARED.handouts[1].title} ${prepared.secret}`, { exact: true })).toBeVisible()
       })
 
       await test.step('SPL-UX-16: the Wall has a Public entry naming the Scene, which a Player sees', async () => {
@@ -212,7 +198,7 @@ test.describe('Starting and finishing a Scene', () => {
         await page.getByRole('button', { name: 'Start Scene' }).click()
         await expect(page).toHaveURL(`/campaigns/${table.prepared.campaignId}/active-scene`)
         await expect(page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
-        await expect(presentSection(page).getByRole('listitem')).toHaveText([HARVEY, LUCY])
+        await expect(presentSection(page).getByRole('listitem')).toHaveText(startingWith(HARVEY, LUCY))
       })
 
       await test.step('the old Scene is Finished and the new one Active', async () => {
@@ -249,7 +235,7 @@ test.describe('Starting and finishing a Scene', () => {
 
       await test.step('Cancel keeps the old list', async () => {
         await page.getByRole('button', { name: 'Cancel' }).click()
-        await expect(presentSection(page).getByRole('listitem')).toHaveText([HARVEY, LUCY])
+        await expect(presentSection(page).getByRole('listitem')).toHaveText(startingWith(HARVEY, LUCY))
         await expect(page.getByRole('button', { name: 'Change' })).toBeFocused()
       })
 
@@ -258,9 +244,9 @@ test.describe('Starting and finishing a Scene', () => {
         await presentFieldset(page).getByRole('checkbox', { name: new RegExp(HARVEY) }).uncheck()
         await page.getByRole('button', { name: 'Save' }).click()
         await expect(pageStatus(page)).toHaveText('Investigators present saved.')
-        await expect(presentSection(page).getByRole('listitem')).toHaveText([LUCY])
+        await expect(presentSection(page).getByRole('listitem')).toHaveText(startingWith(LUCY))
         await page.reload()
-        await expect(presentSection(page).getByRole('listitem')).toHaveText([LUCY])
+        await expect(presentSection(page).getByRole('listitem')).toHaveText(startingWith(LUCY))
       })
     } finally {
       await closeTable(table)
@@ -337,7 +323,7 @@ test.describe('What Players see of the Active Scene', () => {
     const { secret } = table.prepared
 
     try {
-      await test.step('SPL-UX-12: the present Player sees title, location, who is present, and that nothing was revealed', async () => {
+      await test.step('SPL-UX-12: the present Player sees title, location, who is present, and that nothing was revealed (no Handout before any Reveal)', async () => {
         await table.harvey.page.goto(activePath)
         await expect(table.harvey.page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
         await expect(table.harvey.page.getByText(`Arkham ${secret}`)).toBeVisible()

@@ -3,6 +3,8 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure;
 public class EfSceneRepository : ISceneRepository
 {
     private const string InvestigatorsPresentNavigation = "_investigatorsPresent";
+    private const string RevealsNavigation = "_reveals";
+    private const string RevealRecipientsNavigation = "_reveals._recipients";
 
     private readonly ScenarioPreparationDbContext _dbContext;
 
@@ -52,6 +54,26 @@ public class EfSceneRepository : ISceneRepository
         return await PreparedScenes(campaignId).Where(scene => sceneIds.Contains(scene.Id)).ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<SceneReveal>> ListRevealsForInvestigatorAsync(Guid campaignId, Guid investigatorId, CancellationToken cancellationToken)
+    {
+        var revealIds = _dbContext.Set<RevealRecipient>().Where(recipient => recipient.InvestigatorId == investigatorId).Select(recipient => recipient.RevealId);
+        var rows = await _dbContext.Set<Reveal>()
+            .AsNoTracking()
+            .Join(_dbContext.Scenes.Where(scene => scene.CampaignId == campaignId), reveal => reveal.SceneId, scene => scene.Id, (reveal, scene) => new { reveal, scene.Title })
+            .Where(row => revealIds.Contains(row.reveal.Id))
+            .OrderByDescending(row => row.reveal.RevealedAt)
+            .ThenBy(row => row.reveal.Id)
+            .ToListAsync(cancellationToken);
+        return rows.Select(row => new SceneReveal(row.reveal, row.reveal.SceneId, row.Title)).ToList();
+    }
+
+    public Task<Reveal?> FindRevealAsync(Guid campaignId, Guid revealId, CancellationToken cancellationToken) =>
+        _dbContext.Set<Reveal>()
+            .AsNoTracking()
+            .Include("_recipients")
+            .Where(reveal => reveal.Id == revealId && _dbContext.Scenes.Any(scene => scene.Id == reveal.SceneId && scene.CampaignId == campaignId))
+            .SingleOrDefaultAsync(cancellationToken);
+
     public async Task<int> MaxPositionAsync(Guid scenarioId, CancellationToken cancellationToken) =>
         await _dbContext.Scenes
             .Where(scene => scene.ScenarioId == scenarioId)
@@ -81,7 +103,8 @@ public class EfSceneRepository : ISceneRepository
             .Include(scene => scene.NonPlayerEntityLinks)
             .Include(scene => scene.ItemLinks)
             .Include(scene => scene.Handouts)
-            .Include(InvestigatorsPresentNavigation);
+            .Include(InvestigatorsPresentNavigation)
+            .Include(RevealRecipientsNavigation);
 
     private IQueryable<Scene> PreparedScenes(Guid campaignId) =>
         _dbContext.Scenes.Where(scene => scene.CampaignId == campaignId && scene.Status == SceneStatus.Prepared);

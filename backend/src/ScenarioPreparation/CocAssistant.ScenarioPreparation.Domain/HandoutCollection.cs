@@ -26,15 +26,15 @@ internal static class HandoutCollection
     }
 
     /// <summary>Adds an Image, Document, or Map Handout after the others, or reports the first problem and adds nothing.</summary>
-    public static HandoutResult AddFile(List<Handout> handouts, HandoutOwner owner, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, DateTimeOffset now)
+    public static HandoutResult AddFile(List<Handout> handouts, HandoutOwner owner, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, string? imageDescription, DateTimeOffset now)
     {
-        var outcome = Handout.ValidateFile(kind, visibility, title, file, null, out var trimmedTitle);
+        var outcome = Handout.ValidateFile(kind, visibility, title, file, null, imageDescription, out var trimmedTitle, out var normalizedDescription);
         if (outcome != HandoutOutcome.Accepted)
         {
             return new HandoutResult(outcome, null);
         }
 
-        var handout = Handout.CreateFile(owner, kind!.Value, visibility!.Value, trimmedTitle, file!, NextPosition(handouts), now);
+        var handout = Handout.CreateFile(owner, kind!.Value, visibility!.Value, trimmedTitle, file!, normalizedDescription, NextPosition(handouts), now);
         handouts.Add(handout);
         return new HandoutResult(outcome, handout);
     }
@@ -69,6 +69,7 @@ internal static class HandoutCollection
         HandoutVisibility? visibility,
         string title,
         HandoutFile? file,
+        string? imageDescription,
         bool mayDeleteReplacedFile)
     {
         var handout = handouts.Find(candidate => candidate.Id == handoutId);
@@ -77,14 +78,14 @@ internal static class HandoutCollection
             return new HandoutFileEditResult(HandoutOutcome.HandoutNotFound, null, null);
         }
 
-        var outcome = Handout.ValidateFile(kind, visibility, title, file, handout.Kind, out var trimmedTitle);
+        var outcome = Handout.ValidateFile(kind, visibility, title, file, handout.Kind, imageDescription, out var trimmedTitle, out var normalizedDescription);
         if (outcome != HandoutOutcome.Accepted)
         {
             return new HandoutFileEditResult(outcome, null, null);
         }
 
         var replacedKey = file is not null && mayDeleteReplacedFile ? handout.FileKey : null;
-        handout.ReplaceFile(kind!.Value, visibility!.Value, trimmedTitle, file);
+        handout.ReplaceFile(kind!.Value, visibility!.Value, trimmedTitle, file, normalizedDescription);
         return new HandoutFileEditResult(outcome, handout, replacedKey);
     }
 

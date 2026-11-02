@@ -115,6 +115,7 @@ describe('HandoutPage', () => {
       visibility: 'PlayerFacing',
       title: 'Corbitt House',
       file: { name: 'corbitt-house.png', mediaType: 'image/png', sizeBytes: 870_400 },
+      imageDescription: null,
     }
 
     it('shows the image with its name, size, and actions on a Prepared Scene (SP-UX-81, SP-UX-89)', () => {
@@ -135,7 +136,7 @@ describe('HandoutPage', () => {
       expect(screen.getByText('Current image: corbitt-house.png, 850 KB')).toBeInTheDocument()
       await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
-      expect(editMutate).toHaveBeenCalledWith({ kind: 'Map', visibility: 'PlayerFacing', title: 'Corbitt House', file: null }, expect.anything())
+      expect(editMutate).toHaveBeenCalledWith({ kind: 'Map', visibility: 'PlayerFacing', title: 'Corbitt House', file: null, imageDescription: '' }, expect.anything())
     })
 
     it('keeps the image viewable but offers no Edit or Delete on a Finished Scene (SP-UX-73, SP-UX-89)', () => {

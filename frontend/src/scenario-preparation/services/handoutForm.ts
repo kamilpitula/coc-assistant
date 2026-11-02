@@ -1,5 +1,6 @@
 import { validateHandoutFile } from '@/scenario-preparation/services/handoutFile'
 import {
+  HANDOUT_IMAGE_DESCRIPTION_MAX_LENGTH,
   HANDOUT_KIND_FAMILIES,
   HANDOUT_TITLE_MAX_LENGTH,
   type FileHandoutKind,
@@ -19,6 +20,7 @@ const KIND_REQUIRED = 'Choose a kind.'
 const VISIBILITY_REQUIRED = 'Choose who can see this Handout.'
 const CONTENT_REQUIRED = 'Enter the Handout text.'
 const CONTENT_TOO_LONG = 'The text is too long. Shorten it and try again.'
+const IMAGE_DESCRIPTION_TOO_LONG = `Image description must be ${HANDOUT_IMAGE_DESCRIPTION_MAX_LENGTH.toLocaleString('en-US')} characters or fewer.`
 
 /** The conflict shown at the form when the Scene was finished meanwhile (ux.md section 16). */
 export const HANDOUT_SCENE_FINISHED_MEANWHILE = "This Scene has been finished, so it can't be changed. Copy anything you need, then select Cancel."
@@ -35,6 +37,8 @@ export interface HandoutFormValues {
   visibility: HandoutVisibility | null
   content: RichTextDocument | null
   file?: File | null
+  /** The description typed for an Image or Map; ignored for any other kind. */
+  imageDescription?: string
   hasStoredFile?: boolean
   /** The file an edit starts from; the form shows it and lets it be kept. */
   storedFile?: HandoutFileDetails | null
@@ -65,15 +69,23 @@ function contentFieldErrors(values: HandoutFormValues, kind: HandoutKind): Hando
   }
 
   const file = values.file ?? null
+  const errors: HandoutFormErrors = {}
   const message = file === null && values.hasStoredFile ? undefined : validateHandoutFile(family, file)
-  return message ? { file: message } : {}
+  if (message) {
+    errors.file = message
+  }
+  if (family === 'picture' && (values.imageDescription ?? '').trim().length > HANDOUT_IMAGE_DESCRIPTION_MAX_LENGTH) {
+    errors.imageDescription = IMAGE_DESCRIPTION_TOO_LONG
+  }
+  return errors
 }
 
 function toInput(values: HandoutFormValues, kind: HandoutKind, visibility: HandoutVisibility, title: string): HandoutInput | null {
   if (HANDOUT_KIND_FAMILIES[kind] === 'richText') {
     return values.content ? { kind: kind as RichTextHandoutKind, visibility, title, content: values.content } : null
   }
-  return { kind: kind as FileHandoutKind, visibility, title, file: values.file ?? null }
+  const imageDescription = HANDOUT_KIND_FAMILIES[kind] === 'picture' ? (values.imageDescription ?? '').trim() : ''
+  return { kind: kind as FileHandoutKind, visibility, title, file: values.file ?? null, imageDescription }
 }
 
 /**
@@ -106,9 +118,9 @@ export function validateHandoutForm(values: HandoutFormValues): HandoutFormResul
   return data ? { success: true, data } : { success: false, errors }
 }
 
-const FIELD_ORDER: HandoutField[] = ['title', 'kind', 'visibility', 'content', 'file']
+const FIELD_ORDER: HandoutField[] = ['title', 'kind', 'visibility', 'content', 'file', 'imageDescription']
 
-/** The field that gets focus first when the form is refused, in the order title, kind, visibility, text, file. */
+/** The field that gets focus first when the form is refused, in the order title, kind, visibility, text, file, image description. */
 export function firstInvalidField(errors: HandoutFormErrors): HandoutField | null {
   return FIELD_ORDER.find((field) => errors[field]) ?? null
 }

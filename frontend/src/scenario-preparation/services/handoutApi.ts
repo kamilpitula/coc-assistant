@@ -32,6 +32,7 @@ const richTextHandoutSchema = z
     kind: z.enum(['ReadAloud', 'Text']),
     content: richTextSchema,
     file: z.null().optional(),
+    imageDescription: z.null().optional(),
   })
   .transform(({ id, kind, visibility, title, content }) => ({ id, kind, visibility, title, content }))
 
@@ -43,8 +44,9 @@ const fileHandoutSchema = z
     kind: z.enum(['Image', 'Document', 'Map']),
     content: z.null(),
     file: fileDetailsSchema,
+    imageDescription: z.string().nullable(),
   })
-  .transform(({ id, kind, visibility, title, file }) => ({ id, kind, visibility, title, file }))
+  .transform(({ id, kind, visibility, title, file, imageDescription }) => ({ id, kind, visibility, title, file, imageDescription }))
 
 const handoutSchema = z.union([richTextHandoutSchema, fileHandoutSchema])
 
@@ -98,6 +100,7 @@ const FIELDS: Record<string, HandoutField> = {
   visibility: 'visibility',
   content: 'content',
   file: 'file',
+  imageDescription: 'imageDescription',
 }
 
 const handoutsUrl = (owner: HandoutOwner): string => describeHandoutOwner(owner).handoutsUrl
@@ -145,6 +148,8 @@ function toFormData(input: FileHandoutInput): FormData {
   form.set('kind', input.kind)
   form.set('visibility', input.visibility)
   form.set('title', input.title)
+  // Sent even when empty: an edit replaces the description as a whole, so an empty one clears it.
+  form.set('imageDescription', input.imageDescription)
   if (input.file) {
     form.set('file', input.file, input.file.name)
   }

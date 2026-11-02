@@ -92,6 +92,9 @@ _Avoid_: Adventure, module
 The basic unit of play in a Scenario: a situation at a location with a title, Keeper notes, ordered Handouts, links to the Non-Player Entities present or relevant there, and links to Items. Scenes have a suggested prepared order within their Scenario, and each Scene is Prepared, Active, or Finished.
 _Avoid_: Chapter, encounter
 
+**Non-Player Entity link**:
+A Scene's link to a Human NPC or Mythos Creature, carrying the Player-facing name and Player-facing description used in that Scene. A Reveal of a Non-Player Entity snapshots them; the profile never reaches Players.
+
 **Keeper notes**:
 The Keeper's own notes on a Scenario, a Scene, or an Item; never shown to Players. Plain text on a Scenario, rich text on a Scene or an Item.
 

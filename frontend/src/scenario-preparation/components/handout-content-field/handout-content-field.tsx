@@ -1,4 +1,5 @@
 import { HandoutFileField } from '@/scenario-preparation/components/handout-file-field/handout-file-field'
+import { ImageDescriptionField } from '@/scenario-preparation/components/image-description-field/image-description-field'
 import type { HandoutFileFamily } from '@/scenario-preparation/services/handoutFile'
 import { HANDOUT_KIND_FAMILIES, type HandoutFileDetails, type HandoutKind } from '@/scenario-preparation/types/Handout'
 import { RichTextEditor } from '@/shared/components/rich-text-editor/rich-text-editor'
@@ -14,6 +15,9 @@ export interface HandoutContentFieldIds {
   contentError: string
   file: string
   fileError: string
+  imageDescription: string
+  imageDescriptionHint: string
+  imageDescriptionError: string
 }
 
 interface HandoutContentFieldProps {
@@ -28,6 +32,10 @@ interface HandoutContentFieldProps {
   storedFile?: HandoutFileDetails | null
   contentError?: string
   fileError?: string
+  /** The description typed for an Image or Map; the field is shown for those two kinds only (SP-UX-104). */
+  imageDescription: string
+  onImageDescriptionChange: (value: string) => void
+  imageDescriptionError?: string
 }
 
 /**
@@ -43,15 +51,27 @@ export function HandoutContentField(props: HandoutContentFieldProps) {
   const family = HANDOUT_KIND_FAMILIES[kind]
   if (family !== 'richText') {
     return (
-      <HandoutFileField
-        family={family}
-        file={props.files[family]}
-        onChange={(file) => props.onFileChange(family, file)}
-        stored={props.storedFile}
-        error={props.fileError}
-        inputId={ids.file}
-        errorId={ids.fileError}
-      />
+      <>
+        <HandoutFileField
+          family={family}
+          file={props.files[family]}
+          onChange={(file) => props.onFileChange(family, file)}
+          stored={props.storedFile}
+          error={props.fileError}
+          inputId={ids.file}
+          errorId={ids.fileError}
+        />
+        {family === 'picture' && (
+          <ImageDescriptionField
+            value={props.imageDescription}
+            onChange={props.onImageDescriptionChange}
+            error={props.imageDescriptionError}
+            inputId={ids.imageDescription}
+            hintId={ids.imageDescriptionHint}
+            errorId={ids.imageDescriptionError}
+          />
+        )}
+      </>
     )
   }
 

@@ -121,7 +121,8 @@ public class HandoutsController : ScenarioPreparationControllerBase
             view.Visibility.ToString(),
             view.Title,
             RichTextJson.Parse(view.Content),
-            view.File is { } file ? new HandoutFileResponse(file.Name, file.MediaType, file.SizeBytes) : null);
+            view.File is { } file ? new HandoutFileResponse(file.Name, file.MediaType, file.SizeBytes) : null,
+            view.ImageDescription);
 
     // Only the exact wire names are accepted, case-sensitively, so numbers and odd casings are not kinds.
     internal static HandoutKind? ParseKind(string? kind) => kind switch

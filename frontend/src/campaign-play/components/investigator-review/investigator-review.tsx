@@ -106,6 +106,16 @@ function Review({ campaignId, investigatorId, loaded, onReload }: ReviewProps) {
         </h1>
         <p className="text-sm">Player: {investigator.playerName ?? 'Unknown Player'}</p>
         <InvestigatorStatusBadge status={investigator.status} audience="Keeper" />
+        {investigator.status === 'Approved' && (
+          <Link
+            to="/campaigns/$campaignId/investigators/$investigatorId/clues"
+            params={{ campaignId, investigatorId }}
+            aria-label={`${name}'s Clues`}
+            className="w-fit text-sm font-medium underline underline-offset-4"
+          >
+            Clues
+          </Link>
+        )}
       </div>
 
       <p ref={approvedMessage} role="status" tabIndex={-1} className="text-sm empty:hidden focus:outline-none">

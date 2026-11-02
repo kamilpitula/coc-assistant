@@ -1,6 +1,8 @@
+import { RevealedToSection } from '@/scene-play/components/revealed-to-section/revealed-to-section'
 import type { AbsentPlayerActiveScene, PresentPlayerActiveScene } from '@/scene-play/types/ActiveScene'
 
 interface ActiveScenePlayerViewProps {
+  campaignId: string
   scene: PresentPlayerActiveScene | AbsentPlayerActiveScene
 }
 
@@ -8,7 +10,7 @@ interface ActiveScenePlayerViewProps {
  * The Active Scene for a Player (specs/scene-play/ux.md section 4): a Player whose Investigator is present sees the title,
  * location, who is present, and what was revealed to their Investigator; any other Player sees only that the Scene is in progress.
  */
-export function ActiveScenePlayerView({ scene }: ActiveScenePlayerViewProps) {
+export function ActiveScenePlayerView({ campaignId, scene }: ActiveScenePlayerViewProps) {
   if (scene.kind === 'absent-player') {
     return (
       <section className="flex max-w-2xl flex-col gap-3">
@@ -21,15 +23,15 @@ export function ActiveScenePlayerView({ scene }: ActiveScenePlayerViewProps) {
   const yourName = scene.investigatorsPresent.find((investigator) => investigator.isYours)?.name ?? 'Unnamed Investigator'
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold break-words">{scene.title}</h1>
+    <div className="flex flex-col gap-6">
+      <h1 className="max-w-2xl text-2xl font-semibold break-words">{scene.title}</h1>
       {scene.location !== '' && (
-        <dl className="flex flex-wrap gap-x-3 text-sm">
+        <dl className="flex max-w-2xl flex-wrap gap-x-3 text-sm">
           <dt className="font-medium">Location</dt>
           <dd className="break-words">{scene.location}</dd>
         </dl>
       )}
-      <section aria-labelledby="present-heading" className="flex flex-col gap-2">
+      <section aria-labelledby="present-heading" className="flex max-w-2xl flex-col gap-2">
         <h2 id="present-heading" className="text-lg font-semibold">
           Investigators present
         </h2>
@@ -42,12 +44,7 @@ export function ActiveScenePlayerView({ scene }: ActiveScenePlayerViewProps) {
           ))}
         </ul>
       </section>
-      <section aria-labelledby="revealed-heading" className="flex flex-col gap-2">
-        <h2 id="revealed-heading" className="text-lg font-semibold break-words">
-          Revealed to {yourName}
-        </h2>
-        <p className="text-sm text-muted-foreground">The Keeper hasn&apos;t revealed anything to {yourName} yet.</p>
-      </section>
+      <RevealedToSection campaignId={campaignId} investigatorName={yourName} reveals={scene.reveals} />
     </div>
   )
 }

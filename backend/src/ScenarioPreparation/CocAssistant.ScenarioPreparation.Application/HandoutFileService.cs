@@ -31,6 +31,7 @@ public class HandoutFileService
         HandoutVisibility? visibility,
         string title,
         HandoutUpload? upload,
+        string? imageDescription,
         CancellationToken cancellationToken)
     {
         var owner = await _owners.FindAsync(campaignId, callerAccountId, ownerReference, cancellationToken);
@@ -40,7 +41,7 @@ public class HandoutFileService
         }
 
         var file = await DescribeAsync(upload, kind, cancellationToken);
-        var result = owner.AddFileHandout(kind, visibility, title, file, _timeProvider.GetUtcNow());
+        var result = owner.AddFileHandout(kind, visibility, title, file, imageDescription, _timeProvider.GetUtcNow());
         return await StoreAndSaveAsync(owner, result.Outcome, result.Handout, upload, file, null, cancellationToken);
     }
 
@@ -54,6 +55,7 @@ public class HandoutFileService
         HandoutVisibility? visibility,
         string title,
         HandoutUpload? upload,
+        string? imageDescription,
         CancellationToken cancellationToken)
     {
         var owner = await _owners.FindAsync(campaignId, callerAccountId, ownerReference, cancellationToken);
@@ -63,7 +65,7 @@ public class HandoutFileService
         }
 
         var file = await DescribeAsync(upload, kind, cancellationToken);
-        var result = owner.EditFileHandout(handoutId, kind, visibility, title, file);
+        var result = owner.EditFileHandout(handoutId, kind, visibility, title, file, imageDescription);
         return await StoreAndSaveAsync(owner, result.Outcome, result.Handout, upload, file, result.ReplacedKey, cancellationToken);
     }
 

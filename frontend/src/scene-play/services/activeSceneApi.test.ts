@@ -64,7 +64,41 @@ describe('active scene API', () => {
     it('reads the present Player shape', async () => {
       fetchMock.mockResolvedValueOnce(jsonResponse(200, presentScene))
 
-      expect(await getActiveScene('token', 'c1')).toEqual({ kind: 'present-player', title: 'The Corbitt House', location: 'Arkham', investigatorsPresent: presentScene.investigatorsPresent })
+      expect(await getActiveScene('token', 'c1')).toEqual({ kind: 'present-player', title: 'The Corbitt House', location: 'Arkham', investigatorsPresent: presentScene.investigatorsPresent, reveals: [] })
+    })
+
+    const playerReveal = {
+      revealId: 'r1',
+      revealedAt: '2026-10-28T19:52:00Z',
+      subjectType: 'Handout',
+      title: 'The front door',
+      handoutKind: 'Map',
+      content: null,
+      file: { name: 'cellar.png', mediaType: 'image/png', sizeBytes: 68 },
+      imageDescription: 'A plan of the cellar',
+    }
+
+    it('reads the Reveals of a present Player, which carry no subject id or recipients (SPL-UX-26)', async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...presentScene, reveals: [playerReveal] }))
+
+      const scene = await getActiveScene('token', 'c1')
+
+      expect(scene).toMatchObject({ kind: 'present-player', reveals: [playerReveal] })
+    })
+
+    it('rejects a Player Reveal that names a subject id or recipients (PBI-SPL-002 D5)', async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...presentScene, reveals: [{ ...playerReveal, subjectId: 'h1' }] }))
+      await expect(getActiveScene('token', 'c1')).rejects.toThrow()
+
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...presentScene, reveals: [{ ...playerReveal, recipients: [] }] }))
+      await expect(getActiveScene('token', 'c1')).rejects.toThrow()
+    })
+
+    it('reads the Keeper Reveals with the subject id and the recipients', async () => {
+      const keeperReveal = { ...playerReveal, subjectId: 'h1', recipients: [{ id: 'i1', name: 'Harvey Walters' }] }
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...keeperScene, reveals: [keeperReveal] }))
+
+      expect(await getActiveScene('token', 'c1')).toMatchObject({ kind: 'keeper', reveals: [keeperReveal] })
     })
 
     it('reads the not-present Player shape, which is only a title', async () => {

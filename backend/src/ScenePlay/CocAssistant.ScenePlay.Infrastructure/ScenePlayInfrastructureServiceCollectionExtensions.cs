@@ -10,7 +10,11 @@ public static class ScenePlayInfrastructureServiceCollectionExtensions
         services.AddScoped<IPlayableScenes, ScenarioPreparationPlayableScenes>();
         services.AddScoped<ISceneWallEntries, CampaignPlaySceneWallEntries>();
         services.AddScoped<IActiveSceneSignals, CampaignPlayActiveSceneSignals>();
+        services.AddScoped<ISceneReveals, ScenarioPreparationSceneReveals>();
+        services.AddScoped<IRevealedFiles, ScenarioPreparationRevealedFiles>();
+        services.AddScoped<IRevealSignals, CampaignPlayRevealSignals>();
         services.AddScoped<ActiveSceneService>();
+        services.AddScoped<RevealService>();
 
         return services;
     }

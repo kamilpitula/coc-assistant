@@ -166,6 +166,7 @@ function EditHandoutForm({ handout, edit, onDone }: EditHandoutFormProps) {
         visibility: handout.visibility,
         content: isFileHandout(handout) ? null : handout.content,
         storedFile: isFileHandout(handout) ? handout.file : null,
+        imageDescription: isFileHandout(handout) ? (handout.imageDescription ?? '') : '',
       }}
       submitLabel="Save"
       busyLabel="Saving..."

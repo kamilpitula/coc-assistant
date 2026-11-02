@@ -30,6 +30,15 @@ public interface ISceneRepository
     /// <summary>The Campaign's Active Scene, change-tracked like <see cref="FindForPlayAsync"/>; null when none is Active.</summary>
     Task<Scene?> FindActiveAsync(Guid campaignId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// The Reveals that reached the Investigator, across the Campaign's Scenes, newest first (RevealedAt descending, then Id), read-only
+    /// and without their recipients (PBI-SPL-002 D5).
+    /// </summary>
+    Task<IReadOnlyList<SceneReveal>> ListRevealsForInvestigatorAsync(Guid campaignId, Guid investigatorId, CancellationToken cancellationToken);
+
+    /// <summary>A Reveal of a Scene of the Campaign with its recipients, read-only; null when there is none.</summary>
+    Task<Reveal?> FindRevealAsync(Guid campaignId, Guid revealId, CancellationToken cancellationToken);
+
     /// <summary>The Campaign's Prepared Scenes that link the Human NPC or Mythos Creature, change-tracked (ADR 0025, D6).</summary>
     Task<IReadOnlyList<Scene>> ListTrackedPreparedLinkingNonPlayerEntityAsync(Guid campaignId, NonPlayerEntityType type, Guid nonPlayerEntityId, CancellationToken cancellationToken);
 

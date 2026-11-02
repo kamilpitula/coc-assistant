@@ -104,6 +104,67 @@ public class ScenarioPreparationDbContext : DbContext
             builder.HasKey(presence => new { presence.SceneId, presence.InvestigatorId });
         });
 
+        // A Reveal is a child of its Scene holding an immutable snapshot of what was shown (PBI-SPL-002). The subject id has no foreign
+        // key, so unlinking or editing the source never touches it; its recipients cascade with it and carry no Investigator key (ADR 0013).
+        modelBuilder.Entity<Scene>().HasMany<Reveal>("_reveals")
+            .WithOne()
+            .HasForeignKey(reveal => reveal.SceneId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Scene>().Navigation("_reveals").UsePropertyAccessMode(PropertyAccessMode.Field);
+        modelBuilder.Entity<Scene>().Ignore(scene => scene.Reveals);
+
+        modelBuilder.Entity<Reveal>(builder =>
+        {
+            builder.ToTable("Reveals");
+            builder.HasKey(reveal => reveal.Id);
+            builder.Property(reveal => reveal.Id).ValueGeneratedNever();
+            builder.Property(reveal => reveal.SubjectType).IsRequired().HasConversion<string>().HasMaxLength(20);
+            builder.Property(reveal => reveal.SubjectId).IsRequired();
+            builder.Property(reveal => reveal.RevealedAt).IsRequired().HasConversion(
+                revealedAt => revealedAt.UtcDateTime,
+                stored => new DateTimeOffset(DateTime.SpecifyKind(stored, DateTimeKind.Utc)));
+            builder.Property(reveal => reveal.Title).IsRequired().HasMaxLength(Handout.TitleMaxLength);
+            builder.Property(reveal => reveal.HandoutKind).HasConversion<string>().HasMaxLength(20);
+            builder.Property(reveal => reveal.Content);
+            builder.Property(reveal => reveal.FileKey).HasMaxLength(32);
+            builder.Property(reveal => reveal.FileName).HasMaxLength(255);
+            builder.Property(reveal => reveal.FileMediaType).HasMaxLength(50);
+            builder.Property(reveal => reveal.FileSizeBytes);
+            builder.Property(reveal => reveal.ImageDescription).HasMaxLength(Handout.ImageDescriptionMaxLength);
+            builder.Ignore(reveal => reveal.File);
+            builder.Ignore(reveal => reveal.RecipientIds);
+
+            // The file columns are all null or all set.
+            builder.ToTable(table => table.HasCheckConstraint(
+                "CK_Reveals_File",
+                "(FileKey IS NULL AND FileName IS NULL AND FileMediaType IS NULL AND FileSizeBytes IS NULL) "
+                + "OR (FileKey IS NOT NULL AND FileName IS NOT NULL AND FileMediaType IS NOT NULL AND FileSizeBytes IS NOT NULL)"));
+
+            // A Handout snapshot has a kind and exactly one of content and file; a Non-Player Entity snapshot has neither a kind, a file, nor an image description.
+            builder.ToTable(table => table.HasCheckConstraint(
+                "CK_Reveals_Subject",
+                "(SubjectType = 'Handout' AND HandoutKind IS NOT NULL AND ((Content IS NOT NULL AND FileKey IS NULL) OR (Content IS NULL AND FileKey IS NOT NULL))) "
+                + "OR (SubjectType = 'NonPlayerEntity' AND HandoutKind IS NULL AND FileKey IS NULL AND ImageDescription IS NULL)"));
+
+            // Serves the Scene's newest-first read.
+            builder.HasIndex(reveal => new { reveal.SceneId, reveal.RevealedAt });
+        });
+
+        modelBuilder.Entity<Reveal>().HasMany<RevealRecipient>("_recipients")
+            .WithOne()
+            .HasForeignKey(recipient => recipient.RevealId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Reveal>().Navigation("_recipients").UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        modelBuilder.Entity<RevealRecipient>(builder =>
+        {
+            builder.ToTable("RevealRecipients");
+            builder.HasKey(recipient => new { recipient.RevealId, recipient.InvestigatorId });
+
+            // Serves the Clue read of one Investigator.
+            builder.HasIndex(recipient => recipient.InvestigatorId);
+        });
+
         // A link is a child of its Scene, reached through the Scene's backing field. Its Human NPC and Mythos Creature keys are
         // in-context foreign keys (ADR 0019) that cascade, so deleting a profile or a Prepared Scene removes its links atomically.
         modelBuilder.Entity<Scene>().HasMany(scene => scene.NonPlayerEntityLinks)
@@ -204,6 +265,7 @@ public class ScenarioPreparationDbContext : DbContext
             builder.Property(handout => handout.FileMediaType).HasMaxLength(50);
             builder.Property(handout => handout.FileSizeBytes);
             builder.Ignore(handout => handout.File);
+            builder.Property(handout => handout.ImageDescription).HasMaxLength(Handout.ImageDescriptionMaxLength);
             builder.Property(handout => handout.Position).IsRequired();
             builder.Property(handout => handout.CreatedAt).IsRequired().HasConversion(
                 createdAt => createdAt.UtcDateTime,
@@ -214,6 +276,11 @@ public class ScenarioPreparationDbContext : DbContext
                 "CK_Handouts_Content",
                 "(Kind IN ('ReadAloud', 'Text') AND Content IS NOT NULL AND FileKey IS NULL AND FileName IS NULL AND FileMediaType IS NULL AND FileSizeBytes IS NULL) "
                 + "OR (Kind IN ('Image', 'Document', 'Map') AND Content IS NULL AND FileKey IS NOT NULL AND FileName IS NOT NULL AND FileMediaType IS NOT NULL AND FileSizeBytes IS NOT NULL)"));
+
+            // Only an Image or a Map Handout can have an image description (PBI-SPL-002 D7).
+            builder.ToTable(table => table.HasCheckConstraint(
+                "CK_Handouts_ImageDescription",
+                "ImageDescription IS NULL OR Kind IN ('Image', 'Map')"));
 
             // Every Handout has exactly one owner, a Scene or an Item (ADR 0020).
             builder.ToTable(table => table.HasCheckConstraint(

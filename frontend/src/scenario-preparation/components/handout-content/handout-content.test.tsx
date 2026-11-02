@@ -30,6 +30,7 @@ const fileHandout = (kind: 'Image' | 'Document' | 'Map'): Handout => ({
   visibility: 'PlayerFacing',
   title: 'Corbitt House',
   file: { name: 'corbitt-house.png', mediaType: 'image/png', sizeBytes: 1_258_291 },
+  imageDescription: null,
 })
 
 describe('HandoutContent', () => {

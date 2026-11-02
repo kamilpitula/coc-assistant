@@ -4,6 +4,8 @@ import { useRef, useState, type Ref } from 'react'
 import { SceneStatusBadge } from '@/scenario-preparation/components/scene-status-badge/scene-status-badge'
 import { SceneTimes } from '@/scenario-preparation/components/scene-times/scene-times'
 import { FinishSceneDialog } from '@/scene-play/components/finish-scene-dialog/finish-scene-dialog'
+import { RevealedInSceneSection } from '@/scene-play/components/revealed-in-scene-section/revealed-in-scene-section'
+import { SceneMaterialSection } from '@/scene-play/components/scene-material-section/scene-material-section'
 import { InvestigatorsPresentSection } from '@/scene-play/components/investigators-present-section/investigators-present-section'
 import { useFinishActiveScene } from '@/scene-play/hooks/useActiveScene'
 import { NoActiveSceneError } from '@/scene-play/services/activeSceneApi'
@@ -19,14 +21,29 @@ interface ActiveSceneKeeperViewProps {
   /** The Scene had been finished elsewhere: the page says so and refetches. */
   onAlreadyFinished: () => void
   onPresentSaved: () => void
+  /** A Reveal was made: the page shows "{title} revealed to {names}.". */
+  onRevealed: (message: string) => void
+  /** The Scene was finished while the reveal dialog was open, and the dialog was closed. */
+  onSceneFinished: () => void
   onRefetch: () => void
 }
 
 /**
  * The Active Scene for its Keeper (specs/scene-play/ux.md section 3): title, status, start time, Scenario, location, who is
- * present, and "Finish Scene". Keeper notes and Handouts are not shown until PBI-SPL-002; "Open in Scenario" leads to them.
+ * present, and "Finish Scene" (section 3), then the Keeper notes, Handouts, and Non-Player Entities with "Reveal...", and what was
+ * revealed in this Scene (sections 12 and 13).
  */
-export function ActiveSceneKeeperView({ campaignId, scene, headingRef, onFinished, onAlreadyFinished, onPresentSaved, onRefetch }: ActiveSceneKeeperViewProps) {
+export function ActiveSceneKeeperView({
+  campaignId,
+  scene,
+  headingRef,
+  onFinished,
+  onAlreadyFinished,
+  onPresentSaved,
+  onRevealed,
+  onSceneFinished,
+  onRefetch,
+}: ActiveSceneKeeperViewProps) {
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -58,6 +75,8 @@ export function ActiveSceneKeeperView({ campaignId, scene, headingRef, onFinishe
         <FinishControl campaignId={campaignId} title={scene.title} onFinished={onFinished} onAlreadyFinished={onAlreadyFinished} />
       </div>
       <InvestigatorsPresentSection campaignId={campaignId} scene={scene} onSaved={onPresentSaved} onFinishedMeanwhile={onRefetch} />
+      <SceneMaterialSection campaignId={campaignId} scene={scene} onRevealed={onRevealed} onSceneFinished={onSceneFinished} onRefetch={onRefetch} />
+      <RevealedInSceneSection campaignId={campaignId} reveals={scene.reveals} />
     </div>
   )
 }

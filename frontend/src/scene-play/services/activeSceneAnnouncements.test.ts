@@ -8,6 +8,7 @@ import { announcementFor } from './activeSceneAnnouncements'
 const absent: ActiveScene = { kind: 'absent-player', title: 'The Corbitt House' }
 const present: ActiveScene = {
   kind: 'present-player',
+  reveals: [],
   title: 'The Corbitt House',
   location: 'Arkham',
   investigatorsPresent: [{ name: 'Harvey Walters', isYours: true }],

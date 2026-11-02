@@ -50,6 +50,7 @@ export const PresentPlayer: Story = {
     isKeeper: false,
     scene: {
       kind: 'present-player',
+      reveals: [],
       title: 'The Corbitt House',
       location: 'Arkham, Boston Road',
       investigatorsPresent: [{ name: 'Harvey Walters', isYours: true }, { name: 'Lucy Ward', isYours: false }],

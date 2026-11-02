@@ -47,7 +47,7 @@ public class ItemHandoutApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var body = await BodyAsync(response);
-        Assert.Equal(["id", "kind", "visibility", "title", "content", "file"], body.EnumerateObject().Select(property => property.Name));
+        Assert.Equal(["id", "kind", "visibility", "title", "content", "file", "imageDescription"], body.EnumerateObject().Select(property => property.Name));
         Assert.Equal(("Text", "PlayerFacing", "The last entry"), (body.GetProperty("kind").GetString(), body.GetProperty("visibility").GetString(), body.GetProperty("title").GetString()));
         Assert.Equal(Text, body.GetProperty("content").GetRawText());
         var summary = Assert.Single((await GetItemAsync(client, campaignId, itemId, "ihand-keeper-1")).GetProperty("handouts").EnumerateArray());

@@ -110,6 +110,75 @@ public sealed class RecordingActiveSceneSignals : IActiveSceneSignals
     }
 }
 
+/// <summary>Records each call and answers with set results, so the Reveal service's decisions are observable.</summary>
+public sealed class FakeSceneReveals : ISceneReveals
+{
+    public List<string> Calls { get; } = [];
+
+    public RevealRecordResult RevealResult { get; set; } = new(RevealOutcome.NoActiveScene, null);
+
+    public List<ClueRecord> Clues { get; } = [];
+
+    public RevealFileRecord? File { get; set; }
+
+    public Guid? LastCluesInvestigatorId { get; private set; }
+
+    public IReadOnlyCollection<Guid>? LastRecipients { get; private set; }
+
+    public Task<RevealRecordResult> RevealAsync(Guid campaignId, RevealSubjectKind subjectKind, Guid subjectId, IReadOnlyCollection<Guid>? recipientIds, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(RevealAsync));
+        LastRecipients = recipientIds;
+        return Task.FromResult(RevealResult);
+    }
+
+    public Task<IReadOnlyList<ClueRecord>> ListCluesAsync(Guid campaignId, Guid investigatorId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(ListCluesAsync));
+        LastCluesInvestigatorId = investigatorId;
+        return Task.FromResult<IReadOnlyList<ClueRecord>>(Clues.ToList());
+    }
+
+    public Task<RevealFileRecord?> FindFileAsync(Guid campaignId, Guid revealId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(FindFileAsync));
+        return Task.FromResult(File);
+    }
+}
+
+public sealed class FakeRevealedFiles : IRevealedFiles
+{
+    public bool Fail { get; set; }
+
+    public List<string> OpenedKeys { get; } = [];
+
+    public Task<Stream> OpenReadAsync(string fileKey, CancellationToken cancellationToken)
+    {
+        OpenedKeys.Add(fileKey);
+        return Fail
+            ? throw new RevealedFileStorageException("The store is down.", new InvalidOperationException())
+            : Task.FromResult<Stream>(new MemoryStream([1, 2, 3]));
+    }
+}
+
+public sealed class RecordingRevealSignals : IRevealSignals
+{
+    public List<IReadOnlyCollection<Guid>> Recipients { get; } = [];
+
+    public bool Fail { get; set; }
+
+    public Task RevealMadeAsync(Guid campaignId, IReadOnlyCollection<Guid> recipientAccountIds, CancellationToken cancellationToken)
+    {
+        if (Fail)
+        {
+            throw new InvalidOperationException("The hub is down.");
+        }
+
+        Recipients.Add(recipientAccountIds);
+        return Task.CompletedTask;
+    }
+}
+
 public sealed class RecordingLogger<T> : ILogger<T>
 {
     public List<LogLevel> Levels { get; } = [];

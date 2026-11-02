@@ -163,17 +163,21 @@ export function HandoutForm({
     contentError: useId(),
     file: useId(),
     fileError: useId(),
+    imageDescription: useId(),
+    imageDescriptionHint: useId(),
+    imageDescriptionError: useId(),
   }
   const [title, setTitle] = useState(initialValues.title)
   const [kind, setKind] = useState(initialValues.kind)
   const [visibility, setVisibility] = useState(initialValues.visibility)
   const [text, setText] = useState<RichTextDocument | null>(initialValues.content)
   const [files, setFiles] = useState<Record<HandoutFileFamily, File | null>>({ picture: null, document: null })
+  const [imageDescription, setImageDescription] = useState(initialValues.imageDescription ?? '')
   const [clientErrors, setClientErrors] = useState<HandoutFormErrors>({})
   const [contentChanged, setContentChanged] = useState(false)
   const errors: HandoutFormErrors = { ...serverErrors, ...clientErrors }
   const kindOptions = kindOptionsFor(initialValues.kind)
-  useUnsavedChangesPrompt(isFormDirty(initialValues, { title, kind, visibility, contentChanged, files }))
+  useUnsavedChangesPrompt(isFormDirty(initialValues, { title, kind, visibility, contentChanged, files, imageDescription }))
 
   const focusField = (field: HandoutField | null) => {
     const targets: Record<HandoutField, string> = {
@@ -182,6 +186,7 @@ export function HandoutForm({
       visibility: `${ids.visibility}-${VISIBILITY_OPTIONS[0].value}`,
       content: ids.content,
       file: ids.file,
+      imageDescription: ids.imageDescription,
     }
     if (field) {
       document.getElementById(targets[field])?.focus()
@@ -212,6 +217,7 @@ export function HandoutForm({
       visibility,
       content: text,
       file: kind ? files[fileFamilyOf(kind)] : null,
+      imageDescription,
       hasStoredFile: Boolean(initialValues.storedFile),
     })
     if (result.success) {
@@ -272,6 +278,9 @@ export function HandoutForm({
         storedFile={initialValues.storedFile}
         contentError={errors.content}
         fileError={errors.file}
+        imageDescription={imageDescription}
+        onImageDescriptionChange={setImageDescription}
+        imageDescriptionError={errors.imageDescription}
       />
 
       <FormActions failureMessage={failureMessage} pending={pending} submitLabel={submitLabel} busyLabel={busyLabel} cancel={cancel} />
@@ -314,6 +323,7 @@ interface FormState {
   visibility: HandoutVisibility | null
   contentChanged: boolean
   files: Record<HandoutFileFamily, File | null>
+  imageDescription: string
 }
 
 function isFormDirty(initial: HandoutFormValues, state: FormState): boolean {
@@ -323,7 +333,8 @@ function isFormDirty(initial: HandoutFormValues, state: FormState): boolean {
     state.visibility !== initial.visibility ||
     state.contentChanged ||
     state.files.picture !== null ||
-    state.files.document !== null
+    state.files.document !== null ||
+    state.imageDescription !== (initial.imageDescription ?? '')
   )
 }
 

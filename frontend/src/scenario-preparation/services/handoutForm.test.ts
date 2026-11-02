@@ -77,7 +77,7 @@ describe('validateHandoutForm for a file kind', () => {
   it('returns the file input with the trimmed title and no content', () => {
     expect(validateHandoutForm(validImage)).toEqual({
       success: true,
-      data: { title: 'Floor plan', kind: 'Image', visibility: 'PlayerFacing', file: png },
+      data: { title: 'Floor plan', kind: 'Image', visibility: 'PlayerFacing', file: png, imageDescription: '' },
     })
     expect(validateHandoutForm({ ...validImage, kind: 'Map' }).success).toBe(true)
     expect(validateHandoutForm({ ...validImage, kind: 'Document', file: pdf }).success).toBe(true)
@@ -109,7 +109,7 @@ describe('validateHandoutForm for a file kind', () => {
   it('lets an edit keep the stored file when none is chosen, but still checks a chosen one', () => {
     expect(validateHandoutForm({ ...validImage, file: null, hasStoredFile: true })).toEqual({
       success: true,
-      data: { title: 'Floor plan', kind: 'Image', visibility: 'PlayerFacing', file: null },
+      data: { title: 'Floor plan', kind: 'Image', visibility: 'PlayerFacing', file: null, imageDescription: '' },
     })
     expect(validateHandoutForm({ ...validImage, file: pdf, hasStoredFile: true }).success).toBe(false)
   })
@@ -132,5 +132,36 @@ describe('firstInvalidField', () => {
     expect(firstInvalidField({ content: 'x', file: 'x' })).toBe('content')
     expect(firstInvalidField({ file: 'x' })).toBe('file')
     expect(firstInvalidField({})).toBeNull()
+  })
+})
+
+describe('validateHandoutForm image description', () => {
+  // specs/scenario-preparation/ux.md section 71; SP-UX-104, SP-UX-106.
+  const png = new File(['x'], 'plan.png', { type: 'image/png' })
+  const image: HandoutFormValues = { title: 'Plan', kind: 'Image', visibility: 'PlayerFacing', content: null, file: png }
+
+  it('sends the trimmed description of an Image or a Map, and an empty one when none is typed', () => {
+    expect(validateHandoutForm({ ...image, imageDescription: '  A plan  ' })).toMatchObject({ success: true, data: { imageDescription: 'A plan' } })
+    expect(validateHandoutForm({ ...image, kind: 'Map', imageDescription: 'A map' })).toMatchObject({ success: true, data: { imageDescription: 'A map' } })
+    expect(validateHandoutForm(image)).toMatchObject({ success: true, data: { imageDescription: '' } })
+  })
+
+  it('ignores a description for a Document', () => {
+    const pdf = new File(['x'], 'letter.pdf', { type: 'application/pdf' })
+
+    expect(validateHandoutForm({ ...image, kind: 'Document', file: pdf, imageDescription: 'Ignored' })).toMatchObject({
+      success: true,
+      data: { imageDescription: '' },
+    })
+  })
+
+  it('accepts 1,000 characters and refuses 1,001 with the message at the field, after the image checks (SP-UX-106)', () => {
+    expect(validateHandoutForm({ ...image, imageDescription: 'a'.repeat(1000) }).success).toBe(true)
+
+    const result = validateHandoutForm({ ...image, imageDescription: 'a'.repeat(1001) })
+
+    expect(result).toEqual({ success: false, errors: { imageDescription: 'Image description must be 1,000 characters or fewer.' } })
+    expect(firstInvalidField({ file: 'Choose an image.', imageDescription: 'x' })).toBe('file')
+    expect(firstInvalidField({ imageDescription: 'x' })).toBe('imageDescription')
   })
 })

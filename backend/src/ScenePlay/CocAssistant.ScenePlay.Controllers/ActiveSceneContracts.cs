@@ -8,7 +8,7 @@ public record ChangePresentInvestigatorsRequest(IReadOnlyList<Guid>? PresentInve
 
 public record InvestigatorPresentResponse(Guid Id, string? Name);
 
-/// <summary>The Keeper's Active Scene. <c>Reveals</c> is always present and is empty until Reveals are built (PBI-SPL-002).</summary>
+/// <summary>The Keeper's Active Scene. <c>Reveals</c> is always present: every Reveal of the Scene, newest first.</summary>
 public record KeeperActiveSceneResponse(
     Guid SceneId,
     Guid ScenarioId,
@@ -17,17 +17,17 @@ public record KeeperActiveSceneResponse(
     string Location,
     DateTimeOffset? StartedAt,
     IReadOnlyList<InvestigatorPresentResponse> InvestigatorsPresent,
-    IReadOnlyList<object> Reveals);
+    IReadOnlyList<KeeperRevealResponse> Reveals);
 
 public record PlayerInvestigatorPresentResponse(string? Name, bool IsYours);
 
-/// <summary>The Active Scene for a Player whose Investigator is present. It never carries an Investigator id.</summary>
+/// <summary>The Active Scene for a Player whose Investigator is present. <c>Reveals</c> holds only what reached their Investigator. It never carries an Investigator id.</summary>
 public record PresentPlayerActiveSceneResponse(
     bool IsPresent,
     string Title,
     string Location,
     IReadOnlyList<PlayerInvestigatorPresentResponse> InvestigatorsPresent,
-    IReadOnlyList<object> Reveals);
+    IReadOnlyList<PlayerRevealResponse> Reveals);
 
 /// <summary>The Active Scene for any other Player: exactly the title and <c>isPresent: false</c>.</summary>
 public record AbsentPlayerActiveSceneResponse(string Title, bool IsPresent);

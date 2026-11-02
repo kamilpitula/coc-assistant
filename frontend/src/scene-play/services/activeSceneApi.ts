@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { authHeaders } from '@/campaign-play/services/authHeaders'
+import { keeperRevealSchema, playerRevealSchema } from '@/scene-play/services/revealSchemas'
 import type { ActiveScene, KeeperActiveScene, StartSceneInput } from '@/scene-play/types/ActiveScene'
 
 // Strict, so a field the contract does not name (such as another Player's Investigator id) is rejected, not passed on.
@@ -12,7 +13,7 @@ const keeperSchema = z.strictObject({
   location: z.string(),
   startedAt: z.string().nullable(),
   investigatorsPresent: z.array(z.strictObject({ id: z.string(), name: z.string().nullable() })),
-  reveals: z.array(z.unknown()),
+  reveals: z.array(keeperRevealSchema),
 })
 
 const presentPlayerSchema = z.strictObject({
@@ -20,7 +21,7 @@ const presentPlayerSchema = z.strictObject({
   title: z.string(),
   location: z.string(),
   investigatorsPresent: z.array(z.strictObject({ name: z.string().nullable(), isYours: z.boolean() })),
-  reveals: z.array(z.unknown()),
+  reveals: z.array(playerRevealSchema),
 })
 
 const absentPlayerSchema = z.strictObject({ title: z.string(), isPresent: z.literal(false) })
@@ -28,7 +29,7 @@ const absentPlayerSchema = z.strictObject({ title: z.string(), isPresent: z.lite
 const activeSceneSchema = z.union([
   keeperSchema.transform((scene): KeeperActiveScene => ({ kind: 'keeper', ...scene })),
   presentPlayerSchema.transform(
-    ({ title, location, investigatorsPresent }): ActiveScene => ({ kind: 'present-player', title, location, investigatorsPresent }),
+    ({ title, location, investigatorsPresent, reveals }): ActiveScene => ({ kind: 'present-player', title, location, investigatorsPresent, reveals }),
   ),
   absentPlayerSchema.transform(({ title }): ActiveScene => ({ kind: 'absent-player', title })),
 ])
@@ -85,7 +86,7 @@ export async function getActiveScene(accessToken: string, campaignId: string): P
   return activeSceneSchema.parse(await response.json())
 }
 
-function parseKeeperScene(body: unknown): KeeperActiveScene {
+export function parseKeeperScene(body: unknown): KeeperActiveScene {
   return { kind: 'keeper', ...keeperSchema.parse(body) }
 }
 

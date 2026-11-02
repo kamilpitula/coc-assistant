@@ -1,22 +1,26 @@
 import { HandoutFileFailure, HandoutFileLoading } from '@/scenario-preparation/components/handout-file-status/handout-file-status'
-import { useHandoutFile } from '@/scenario-preparation/hooks/useHandouts'
 import { formatFileSize } from '@/scenario-preparation/services/handoutFile'
-import type { HandoutOwner } from '@/scenario-preparation/services/handoutOwner'
+import type { FileQuery } from '@/scenario-preparation/types/FileQuery'
 import type { FileHandout } from '@/scenario-preparation/types/Handout'
 import { buttonVariants } from '@/shared/components/ui/button'
 import { useObjectUrl } from '@/shared/hooks/useObjectUrl'
 
+/** What the document view reads of a Handout or of a Reveal's snapshot. */
+export type DocumentSource = Pick<FileHandout, 'id' | 'file'>
+
 interface HandoutDocumentProps {
-  owner: HandoutOwner
-  handout: FileHandout
+  handout: DocumentSource
+  /** The query of the stored file: the Keeper's current file, or a Reveal's snapshot (D8). */
+  fileQuery: FileQuery
+  /** The "Document" heading; false inside a Reveal, whose own heading names it. Default true. */
+  showHeading?: boolean
 }
 
 /**
  * The content of a Document Handout (specs/scenario-preparation/ux.md section 53): its name, "PDF, {size}", and "Open" and
  * "Download". The PDF loads with the page so both are plain links on its object URL; there is no inline preview.
  */
-export function HandoutDocument({ owner, handout }: HandoutDocumentProps) {
-  const file = useHandoutFile(owner, handout.id, true)
+export function HandoutDocument({ handout, fileQuery: file, showHeading = true }: HandoutDocumentProps) {
   const url = useObjectUrl(file.data)
 
   let body
@@ -30,13 +34,13 @@ export function HandoutDocument({ owner, handout }: HandoutDocumentProps) {
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold">Document</h2>
+      {showHeading && <h2 className="text-lg font-semibold">Document</h2>}
       {body}
     </section>
   )
 }
 
-function LoadedDocument({ url, handout }: { url: string; handout: FileHandout }) {
+function LoadedDocument({ url, handout }: { url: string; handout: DocumentSource }) {
   const { name, sizeBytes } = handout.file
   const newTabNote = `${handout.id}-new-tab`
 

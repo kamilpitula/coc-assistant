@@ -15,6 +15,7 @@ public enum HandoutWriteOutcome
     MissingFile,
     UnsupportedFileType,
     FileTooLarge,
+    InvalidImageDescription,
     StorageFailed,
 
     /// <summary>An Item's file was not replaced because the Item came into play at the same time (ADR 0025).</summary>
@@ -63,6 +64,7 @@ internal static class HandoutWriteOutcomes
         [HandoutOutcome.MissingFile] = HandoutWriteOutcome.MissingFile,
         [HandoutOutcome.UnsupportedFileType] = HandoutWriteOutcome.UnsupportedFileType,
         [HandoutOutcome.FileTooLarge] = HandoutWriteOutcome.FileTooLarge,
+        [HandoutOutcome.InvalidImageDescription] = HandoutWriteOutcome.InvalidImageDescription,
     };
 
     public static HandoutWriteOutcome From(HandoutOutcome outcome) => Map[outcome];

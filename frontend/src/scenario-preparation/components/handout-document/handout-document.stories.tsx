@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
+import { useHandoutFile } from '@/scenario-preparation/hooks/useHandouts'
 import { handoutQueryKeys } from '@/scenario-preparation/services/handoutApi'
 import type { FileHandout } from '@/scenario-preparation/types/Handout'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
@@ -15,10 +16,16 @@ const diary: FileHandout = {
   visibility: 'KeeperFacing',
   title: 'Diary',
   file: { name: 'diary-page.pdf', mediaType: 'application/pdf', sizeBytes: 1_258_291 },
+  imageDescription: null,
 }
 
 interface StoryArgs {
   state?: 'loaded' | 'loading' | 'error'
+}
+
+function KeeperDocument() {
+  const file = useHandoutFile(OWNER, diary.id, true)
+  return <HandoutDocument handout={diary} fileQuery={file} />
 }
 
 function DocumentStory({ state = 'loaded' }: StoryArgs) {
@@ -34,7 +41,7 @@ function DocumentStory({ state = 'loaded' }: StoryArgs) {
           }
         }}
       >
-        <HandoutDocument owner={OWNER} handout={diary} />
+        <KeeperDocument />
       </StoryProviders>
     </StoryMsal>
   )

@@ -26,16 +26,16 @@ public sealed class ItemHandoutOwner : IHandoutOwner
     public HandoutResult AddHandout(HandoutKind? kind, HandoutVisibility? visibility, string title, string? content, DateTimeOffset now) =>
         _item.AddHandout(kind, visibility, title, content, now);
 
-    public HandoutResult AddFileHandout(HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, DateTimeOffset now) =>
-        _item.AddFileHandout(kind, visibility, title, file, now);
+    public HandoutResult AddFileHandout(HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, string? imageDescription, DateTimeOffset now) =>
+        _item.AddFileHandout(kind, visibility, title, file, now, imageDescription);
 
     public HandoutResult EditHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, string? content) =>
         _item.EditHandout(handoutId, kind, visibility, title, content);
 
     // A blob is deleted only when the Item is not in play, so the Prepared Scenes that link it are guarded against a start (ADR 0025).
-    public HandoutFileEditResult EditFileHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file)
+    public HandoutFileEditResult EditFileHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, string? imageDescription)
     {
-        var result = _item.EditFileHandout(handoutId, kind, visibility, title, file, _isInPlay);
+        var result = _item.EditFileHandout(handoutId, kind, visibility, title, file, _isInPlay, imageDescription);
         if (result.ReplacedKey is not null)
         {
             LinkedSceneGuard.Guard(_linkingPreparedScenes);

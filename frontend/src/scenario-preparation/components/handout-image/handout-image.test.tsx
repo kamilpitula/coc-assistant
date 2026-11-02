@@ -18,6 +18,7 @@ const image: FileHandout = {
   visibility: 'PlayerFacing',
   title: 'Corbitt House',
   file: { name: 'corbitt-house.png', mediaType: 'image/png', sizeBytes: 1_258_291 },
+  imageDescription: null,
 }
 const map: FileHandout = { ...image, kind: 'Map' }
 
@@ -29,7 +30,8 @@ const query = (overrides: Record<string, unknown> = {}) => ({
   refetch,
   ...overrides,
 })
-const renderImage = (handout: FileHandout) => render(<HandoutImage owner={sceneOwner} handout={handout} />)
+const renderImage = (handout: FileHandout, alt = handout.imageDescription ?? handout.title, showDescription = false) =>
+  render(<HandoutImage handout={handout} fileQuery={mockUseHandoutFile(sceneOwner, handout.id, true)} alt={alt} showDescription={showDescription} />)
 
 describe('HandoutImage', () => {
   beforeEach(() => {
@@ -71,6 +73,20 @@ describe('HandoutImage', () => {
     expect(open).toHaveAccessibleDescription('Opens in a new tab')
     const download = screen.getByRole('link', { name: 'Download corbitt-house.png' })
     expect(download).toHaveAttribute('download', 'corbitt-house.png')
+  })
+
+  it('uses the image description as alt and shows it below the caption on the Handout page (SP-UX-105, SP-A11Y-59)', () => {
+    renderImage({ ...image, imageDescription: 'A plan of the cellar' }, 'A plan of the cellar', true)
+
+    expect(screen.getByRole('img', { name: 'A plan of the cellar' })).toBeInTheDocument()
+    expect(screen.getByText('Image description: A plan of the cellar')).toBeInTheDocument()
+  })
+
+  it('shows no description line when there is none, and no kind heading when the heading is hidden', () => {
+    render(<HandoutImage handout={image} fileQuery={mockUseHandoutFile()} alt={image.title} showDescription showHeading={false} />)
+
+    expect(screen.queryByText(/Image description:/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument()
   })
 
   it('fetches the file of this Handout for the Keeper', () => {

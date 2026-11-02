@@ -1139,7 +1139,7 @@ Stories cover:
 - **Decided (U1, approved 2026-10-22):** the Kind radio has no default, so the Keeper always chooses deliberately. The alternative was preselecting "Text".
 - **Deferred:**
   - Item Handouts (PBI-SP-008), now specified in section 65 (Image, Document, and Map Handouts are in sections 50 to 58);
-  - an image description for screen-reader users beside the title (flag for PBI-SPL-002, where Players see images), thumbnails in the list, drag and drop, and upload progress (PBI-SP-007);
+  - an image description for screen-reader users (decided in PBI-SPL-002, section 71), thumbnails in the list, drag and drop, and upload progress (PBI-SP-007);
   - revealing a Handout, and a "revealed" marker (PBI-SPL-002);
   - Active and Finished journeys end to end (PBI-SPL-001);
   - previews of the text in the Scene list;
@@ -1293,7 +1293,7 @@ Stories cover:
 
 - **SP-A11Y-44** The image or PDF input has a visible `label`. It is described by its hint and, when there is one, its error (`aria-describedby`, `aria-invalid`) (1.3.1, 3.3.1, 3.3.2).
 - **SP-A11Y-45** The content field appearing after a kind is chosen does not move focus. It follows the Kind fieldset in DOM and reading order (2.4.3, 3.2.2).
-- **SP-A11Y-46** The image on the Handout page has `alt` equal to the title, and the preview has "Preview of {name}". The name and size are text, not part of the image (1.1.1).
+- **SP-A11Y-46** (amended by PBI-SPL-002, section 71) The image on the Handout page has `alt` equal to its image description, or the title when there is none, and the preview has "Preview of {name}". The name and size are text, not part of the image (1.1.1).
 - **SP-A11Y-47** "Open full size", "Open", and "Download" include the title or name in their accessible names. Links that open a new tab say so in their accessible description ("Opens in a new tab"). Each is at least 24 by 24 CSS pixels with a visible focus ring (2.4.4, 2.4.7, 2.5.8).
 - **SP-A11Y-48** Load failures use `role=alert`, and the loading Skeleton region has `aria-busy="true"`. "Adding..." and "Saving..." stay as in SP-A11Y-41 (4.1.3).
 - **SP-A11Y-49** At 320px and 200% zoom, the image, the Map, the preview, long names, and the actions fit without horizontal scrolling, and images scale to the width (1.4.10).
@@ -1668,9 +1668,47 @@ No new primitives are needed.
 
 - **Deferred:**
   - giving and taking back Items, and showing the holder (PBI-SPL-003);
-  - revealing an Item or its Handouts (PBI-SPL-002);
+  - revealing an Item or its Handouts (PBI-SPL-003; PBI-SPL-002 reveals Scene Handouts and Non-Player Entity links only);
   - Active and Finished journeys end to end (PBI-SPL-001);
   - returning to the Scene after "Create Item" from the picker (the convenience of rejected Option B);
   - Item previews on the Scene page;
   - live updates across the Keeper's own tabs.
 - **Research gap:** whether Keepers often link several Items to one Scene at once. If they do, revisit Option C's multi-select.
+
+## 71. Image description (PBI-SPL-002)
+
+Decided at the PBI-SPL-002 UX gate (2026-10-29, Q2 a), where Players first see images: an optional plain-text description for screen-reader users. Design record: [docs/scene-play/issues/02-reveal-to-investigators-and-clues.design.md](../../docs/scene-play/issues/02-reveal-to-investigators-and-clues.design.md), D7.
+
+```
+Image                                             (label)
+  PNG, JPEG, WebP, or GIF, up to 20 MB.
+  [native input]
+Image description (optional)                      (label)
+  Describe the image for Players who use a screen reader. Players receive it when you reveal the Handout.
+  [textarea]
+```
+
+- **Field:**
+  - Shown on the add and edit form (section 51) for Image and Map only, after the image field.
+  - A `Textarea` labelled "Image description (optional)", described by its hint.
+  - It has no `maxLength`.
+  - On edit it is prefilled, and emptying it clears the description.
+  - It is hidden for a Document. Switching kinds between Image and Map keeps it, as section 51 keeps the image.
+- **Validation:** "Image description must be 1,000 characters or fewer." It is shown at the field, after the image checks, with `aria-invalid` and `aria-describedby`. The server returns the same message at `imageDescription`.
+- **Handout page (section 52):**
+  - The image's `alt` is the description, or the title when there is none.
+  - Below the `figcaption`, muted text reads "Image description: {text}" when one is set (`break-words`).
+- **Unsaved input:** typing a description makes the form dirty.
+- **Content:**
+
+| Key | Copy |
+|---|---|
+| Field | Image description (optional) |
+| Hint | Describe the image for Players who use a screen reader. Players receive it when you reveal the Handout. |
+| Error | Image description must be 1,000 characters or fewer. |
+| View | Image description: {text} |
+
+- **SP-UX-104** The add and edit forms offer "Image description (optional)" for Image and Map, and not for Document, Read-aloud, or Text.
+- **SP-UX-105** A saved description shows as "Image description: {text}" on the Handout page and survives a reload. Emptying it on edit and saving removes it.
+- **SP-UX-106** A description over 1,000 characters shows "Image description must be 1,000 characters or fewer.", focuses the field, and saves nothing.
+- **SP-A11Y-59** The field has a visible label and is connected to its hint and error with `aria-describedby`, with `aria-invalid` when invalid. The image's `alt` is the description, or the title when there is none (1.1.1, 1.3.1, 3.3.1, 3.3.2).

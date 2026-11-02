@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 
 import { useCampaignMembers } from '@/campaign-play/hooks/useCampaignMembers'
@@ -118,7 +119,15 @@ export function InvestigatorsPresentSection({ campaignId, scene, onSaved, onFini
         <ul className="list-disc pl-5 text-sm">
           {scene.investigatorsPresent.map((investigator) => (
             <li key={investigator.id} className="break-words">
-              {investigator.name ?? 'Unnamed Investigator'}
+              {investigator.name ?? 'Unnamed Investigator'}{' '}
+              <Link
+                to="/campaigns/$campaignId/investigators/$investigatorId/clues"
+                params={{ campaignId, investigatorId: investigator.id }}
+                aria-label={`${investigator.name ?? 'Unnamed Investigator'}'s Clues`}
+                className="font-medium underline underline-offset-4"
+              >
+                Clues
+              </Link>
             </li>
           ))}
         </ul>
