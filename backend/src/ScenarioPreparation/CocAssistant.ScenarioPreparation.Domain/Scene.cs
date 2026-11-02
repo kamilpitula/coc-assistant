@@ -173,10 +173,10 @@ public class Scene
     /// </summary>
     public RevealResult Reveal(RevealSubject subject, IReadOnlyCollection<Guid>? recipientIds, DateTimeOffset now)
     {
-        var refusal = SceneRevealChecks.CheckSubject(Status, subject, _handouts, _nonPlayerEntityLinks, out var handout, out var link);
-        if (refusal != RevealOutcome.Revealed)
+        var subjectCheck = SceneRevealChecks.CheckSubject(Status, subject, _handouts, _nonPlayerEntityLinks);
+        if (subjectCheck.Outcome != RevealOutcome.Revealed)
         {
-            return new RevealResult(refusal, null);
+            return new RevealResult(subjectCheck.Outcome, null);
         }
 
         var recipients = recipientIds ?? InvestigatorsPresent;
@@ -186,9 +186,9 @@ public class Scene
             return new RevealResult(recipientOutcome, null);
         }
 
-        var reveal = handout is not null
-            ? Domain.Reveal.FromHandout(Id, handout, recipients, now)
-            : Domain.Reveal.FromNonPlayerEntityLink(Id, link!, recipients, now);
+        var reveal = subjectCheck.Handout is not null
+            ? Domain.Reveal.FromHandout(Id, subjectCheck.Handout, recipients, now)
+            : Domain.Reveal.FromNonPlayerEntityLink(Id, subjectCheck.Link!, recipients, now);
         _reveals.Add(reveal);
         return new RevealResult(RevealOutcome.Revealed, reveal);
     }
