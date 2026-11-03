@@ -1,7 +1,7 @@
 ---
 name: explorer
 description: Read-only codebase exploration. Maps relevant files/symbols, dependency relationships, and reuse candidates before any planning or implementation happens.
-model: sonnet
+model: muse-spark-contributor
 tools:
   - Grep
   - Glob

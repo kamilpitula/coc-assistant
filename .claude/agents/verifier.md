@@ -1,7 +1,7 @@
 ---
 name: verifier
 description: Independent, fresh-context review of a Developer diff against the approved plan and stated requirements. Re-runs verification itself rather than trusting Developer's report. Recommends but does not authorize merge.
-model: sonnet
+model: muse-spark-contributor
 isolation: worktree
 tools:
   - Grep

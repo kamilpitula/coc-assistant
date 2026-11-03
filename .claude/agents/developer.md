@@ -1,7 +1,7 @@
 ---
 name: developer
 description: Implements a feature or fix via red-green TDD from the Architect's approved decision record, or from its own short plan for tasks that hit no architecture trigger. Consumes the Explorer's report. Escalates instead of redesigning.
-model: sonnet
+model: muse-spark-contributor
 isolation: worktree
 tools:
   - Grep

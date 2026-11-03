@@ -175,6 +175,17 @@ Do not use arbitrary numerical scores unless the user explicitly asks for a scor
 
 When evidence strongly supports one option, identify it as the **recommended starting point**, but still show the alternatives and their trade-offs. Never conceal uncertainty.
 
+## Phase 4b - Prototype gate (optional, human-triggered)
+
+After presenting the Phase 4 options and before selection moves ahead, run this gate every time:
+
+1. Output a one-line prototype recommendation: for or against, with the reason (the uncertainty a prototype would resolve).
+2. Ask the human for a yes/no decision. Do not build a prototype without an explicit yes.
+3. On yes, recommend the prototype branch using the question test from the prototype skill: "what should this look like?" means UI (default); "does this logic / state model feel right?" means logic. The human confirms the branch.
+4. Build the prototype by following `.claude/commands/prototype/SKILL.md` (branch LOGIC.md or UI.md). UI prototypes default to the existing route plus `?variant=` switching; a throwaway route with `prototype` in the name is a last resort. Logic prototypes are a single HTML file next to the slice, with `prototype` in the filename.
+5. Prototype code is throwaway and exempt from the normal unit-test, E2E, and lint gates: no tests, no polish, never merged to main. Keep it on a `prototype/<area>-<nnn>-<topic>` branch as evidence until the PBI closes.
+6. Record the outcome in `specs/<feature>/ux.md` under a `Prototype validation` section (question, branch, throwaway branch, verdict, date, deciding human, screenshots or HTML link) and add a one-line pointer in the PBI Verification/Follow-ups area.
+
 ## Phase 5 — Refine the selected direction
 
 After the user selects an option, create an implementation-ready UX/UI specification.

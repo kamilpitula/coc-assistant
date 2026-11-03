@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Read-only review sub-agent for the code-review skill. Does exactly the brief it is given (Standards or Spec axis over a fixed diff) and reports in the format the brief asks for. Spawned by the Verifier, not directly.
-model: sonnet
+model: muse-spark-contributor
 tools:
   - Grep
   - Glob

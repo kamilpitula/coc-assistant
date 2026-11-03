@@ -67,6 +67,8 @@ Do not prototype every pixel. Prototype the part most likely to be wrong:
 
 A low-fidelity prototype can be enough to validate task flow.
 
+When this step runs inside the UX designer workflow, use the prototype skill at `.claude/commands/prototype/SKILL.md`: UI questions default to `?variant=` switching on the existing route, logic questions get a single HTML file next to the slice. Capture the verdict in `specs/<feature>/ux.md` and keep the code on a throwaway `prototype/` branch (exempt from test/lint gates, never merged).
+
 ## 6. Run lightweight usability checks
 
 When real users are available, use task-based evaluation:
