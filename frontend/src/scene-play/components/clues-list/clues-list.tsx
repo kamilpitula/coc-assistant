@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { createElement, useId, useState } from 'react'
 
 import { RevealedContent } from '@/scene-play/components/revealed-content/revealed-content'
 import { groupCluesByScene } from '@/scene-play/services/cluesGrouping'
@@ -37,13 +37,11 @@ export function CluesList({ campaignId, clues }: CluesListProps) {
 
 function SceneGroup({ campaignId, title, clues }: { campaignId: string; title: string; clues: Clue[] }) {
   const headingId = useId()
-  const Heading = useHeadingTag(2)
+  const tag = useHeadingTag(2)
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
-      <Heading id={headingId} className="text-lg font-semibold break-words">
-        {title}
-      </Heading>
+      {createElement(tag, { id: headingId, className: 'text-lg font-semibold break-words' }, title)}
       {clues.map((clue) => (
         <ClueItem key={clue.revealId} campaignId={campaignId} clue={clue} />
       ))}
@@ -54,14 +52,12 @@ function SceneGroup({ campaignId, title, clues }: { campaignId: string; title: s
 function ClueItem({ campaignId, clue }: { campaignId: string; clue: Clue }) {
   const [open, setOpen] = useState(false)
   const titleId = useId()
-  const Heading = useHeadingTag(3)
+  const tag = useHeadingTag(3)
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} asChild>
       <article aria-labelledby={titleId} className="flex flex-col gap-2 border-t pt-4">
-        <Heading id={titleId} className="text-base font-semibold break-words">
-          {clue.title}
-        </Heading>
+        {createElement(tag, { id: titleId, className: 'text-base font-semibold break-words' }, clue.title)}
         <p className="text-sm text-muted-foreground">
           {revealKindLabel(clue)} <span aria-hidden="true">&middot;</span> Revealed <time dateTime={clue.revealedAt}>{formatClueTime(clue.revealedAt)}</time>
         </p>

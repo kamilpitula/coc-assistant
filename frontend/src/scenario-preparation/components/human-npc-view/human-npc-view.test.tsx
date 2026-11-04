@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import type { RichTextDocument } from '@/shared/types/RichText'
+import { HeadingOffsetProvider } from '@/shared/providers/heading-offset/heading-offset'
 import { gangsterHumanNpc, knottHumanNpc, whateleyHumanNpc } from '@/scenario-preparation/test-support/humanNpcFixtures'
 
 import { HumanNpcView } from './human-npc-view'
@@ -57,5 +58,16 @@ describe('HumanNpcView', () => {
 
     expect(screen.getByText('Cellar key')).toBeInTheDocument()
     expect(screen.queryByText('No Keeper notes yet.')).not.toBeInTheDocument()
+  })
+
+  it('shifts the name to h4 and sections to h5 inside a +3 offset provider (NAV-UX-9, entity panel)', () => {
+    render(
+      <HeadingOffsetProvider value={3}>
+        <HumanNpcView humanNpc={knottHumanNpc} />
+      </HeadingOffsetProvider>,
+    )
+
+    expect(screen.getByRole('heading', { level: 4, name: 'Mr. Knott' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 5, name: 'Details' })).toBeInTheDocument()
   })
 })

@@ -1,3 +1,5 @@
+import { createElement } from 'react'
+
 import { StatTable } from '@/scenario-preparation/components/stat-table/stat-table'
 import {
   CHARACTERISTIC_CODES,
@@ -5,6 +7,7 @@ import {
   type HumanNpcCharacteristics,
 } from '@/scenario-preparation/types/HumanNpc'
 import { CHARACTERISTIC_NAMES } from '@/scenario-preparation/types/NonPlayerEntity'
+import { useHeadingTag } from '@/shared/providers/heading-offset/heading-offset-context'
 
 const MOVEMENT_NOT_COVERED = 'Not covered by the rules for this age'
 
@@ -35,6 +38,7 @@ export function NpcCharacteristicsView({ characteristics }: NpcCharacteristicsVi
     characteristics.difficulty[code] ?? '',
   ])
   const derived = workedOutValues(characteristics.derived)
+  const tag = useHeadingTag(3)
 
   if (rows.length === 0) {
     return <p className="text-sm text-muted-foreground">None recorded.</p>
@@ -44,7 +48,7 @@ export function NpcCharacteristicsView({ characteristics }: NpcCharacteristicsVi
     <div className="flex flex-col gap-4">
       <StatTable label="Characteristics" columns={['Characteristic', 'Value', 'Investigator difficulty']} rows={rows} />
       <div className="flex flex-col gap-2">
-        <h3 className="font-medium">Worked-out values</h3>
+        {createElement(tag, { className: 'font-medium' }, 'Worked-out values')}
         {derived.length === 0 ? (
           <p className="text-sm text-muted-foreground">Worked-out values appear when the characteristics they need are entered.</p>
         ) : (

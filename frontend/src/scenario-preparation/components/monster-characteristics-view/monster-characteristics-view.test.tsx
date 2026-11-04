@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { dissolvingGhoul, ghoulMythosCreature, overriddenGhoul } from '@/scenario-preparation/test-support/mythosCreatureFixtures'
+import { HeadingOffsetProvider } from '@/shared/providers/heading-offset/heading-offset'
 
 import { MonsterCharacteristicsView } from './monster-characteristics-view'
 
@@ -83,5 +84,15 @@ describe('MonsterCharacteristicsView', () => {
 
     rerender(view({ ...onlyStrength, characteristics: { ...onlyStrength.characteristics, values: {}, difficulty: {} } }))
     expect(screen.getByText('None recorded.')).toBeInTheDocument()
+  })
+
+  it('shifts "Worked-out values" to h6 inside a +3 offset provider (NAV-UX-9, entity panel)', () => {
+    render(
+      <HeadingOffsetProvider value={3}>
+        {view()}
+      </HeadingOffsetProvider>,
+    )
+
+    expect(screen.getByRole('heading', { level: 6, name: 'Worked-out values' })).toBeInTheDocument()
   })
 })

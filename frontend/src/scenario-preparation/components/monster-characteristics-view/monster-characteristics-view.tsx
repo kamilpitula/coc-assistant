@@ -1,6 +1,9 @@
+import { createElement } from 'react'
+
 import { StatTable } from '@/scenario-preparation/components/stat-table/stat-table'
 import { MONSTER_CHARACTERISTIC_CODES, type MonsterCharacteristics } from '@/scenario-preparation/types/MythosCreature'
 import { CHARACTERISTIC_NAMES } from '@/scenario-preparation/types/NonPlayerEntity'
+import { useHeadingTag } from '@/shared/providers/heading-offset/heading-offset-context'
 
 type WorkedOutKind = 'hitPoints' | 'magicPoints' | 'damageBonus' | 'build'
 
@@ -58,6 +61,7 @@ export function MonsterCharacteristicsView({ characteristics, defeatOutcome }: M
     characteristics.difficulty[code] ?? '',
   ])
   const lines = VALUES.map((entry) => lineOf(entry, characteristics, defeatOutcome)).filter((line): line is WorkedOutLine => line !== null)
+  const tag = useHeadingTag(3)
 
   if (rows.length === 0 && lines.length === 0) {
     return <p className="text-sm text-muted-foreground">None recorded.</p>
@@ -67,7 +71,7 @@ export function MonsterCharacteristicsView({ characteristics, defeatOutcome }: M
     <div className="flex flex-col gap-4">
       {rows.length > 0 && <StatTable label="Characteristics" columns={['Characteristic', 'Value', 'Investigator difficulty']} rows={rows} />}
       <div className="flex flex-col gap-2">
-        <h3 className="font-medium">Worked-out values</h3>
+        {createElement(tag, { className: 'font-medium' }, 'Worked-out values')}
         {lines.length === 0 ? (
           <p className="text-sm text-muted-foreground">Worked-out values appear when the characteristics they need are entered.</p>
         ) : (

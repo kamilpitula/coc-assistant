@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import { thugHumanNpc, whateleyHumanNpc } from '@/scenario-preparation/test-support/humanNpcFixtures'
 import type { HumanNpcCharacteristics } from '@/scenario-preparation/types/HumanNpc'
+import { HeadingOffsetProvider } from '@/shared/providers/heading-offset/heading-offset'
 
 import { NpcCharacteristicsView } from './npc-characteristics-view'
 
@@ -64,5 +65,15 @@ describe('NpcCharacteristicsView', () => {
 
     expect(screen.getByText('None recorded.')).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  })
+
+  it('shifts "Worked-out values" to h6 inside a +3 offset provider (NAV-UX-9, entity panel)', () => {
+    render(
+      <HeadingOffsetProvider value={3}>
+        <NpcCharacteristicsView characteristics={thugHumanNpc.characteristics!} />
+      </HeadingOffsetProvider>,
+    )
+
+    expect(screen.getByRole('heading', { level: 6, name: 'Worked-out values' })).toBeInTheDocument()
   })
 })
