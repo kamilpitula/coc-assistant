@@ -55,7 +55,7 @@ test.describe('Campaign overview and navigation', () => {
       })
 
       await test.step('CO-UX-2: the Campaign navigation shows "Overview" as current, "Wall", and "Settings"', async () => {
-        await expect(campaignNav(page).getByRole('link')).toHaveText(['Overview', 'Wall', 'Settings'])
+        await expect(campaignNav(page).getByRole('link')).toHaveText(['Overview', 'Active Scene', 'Wall', 'Settings'])
         await expect(navLink(page, 'Overview')).toHaveAttribute('aria-current', 'page')
         await expect(navLink(page, 'Settings')).not.toHaveAttribute('aria-current', 'page')
       })
@@ -81,7 +81,7 @@ test.describe('Campaign overview and navigation', () => {
     try {
       await test.step('CO-UX-2: the Player\'s Campaign navigation shows "Overview" and "Wall", not "Settings"', async () => {
         await player.page.goto(`/campaigns/${campaignId}`)
-        await expect(campaignNav(player.page).getByRole('link')).toHaveText(['Overview', 'Wall'])
+        await expect(campaignNav(player.page).getByRole('link')).toHaveText(['Overview', 'Active Scene', 'Wall'])
       })
 
       await test.step('CO-UX-12: opening the Settings address shows that the page could not be found', async () => {

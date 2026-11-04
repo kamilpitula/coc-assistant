@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 
 import { CampaignHeader, type CampaignSection } from '@/campaign-play/components/campaign-header/campaign-header'
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
+import { useActiveScene } from '@/scene-play/hooks/useActiveScene'
 import { Header } from '@/shared/components/header/header'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
@@ -34,6 +35,7 @@ export function CampaignLayout({ campaignId, section, isOverview, children }: Ca
 
 function CampaignFrame({ campaignId, section, isOverview, children }: CampaignLayoutProps) {
   const campaign = useCampaign(campaignId)
+  const activeScene = useActiveScene(campaignId, Boolean(campaign.data))
 
   if (campaign.isPending) {
     return (
@@ -63,7 +65,7 @@ function CampaignFrame({ campaignId, section, isOverview, children }: CampaignLa
 
   return (
     <>
-      <CampaignHeader campaign={campaign.data} section={section} isOverview={isOverview} />
+      <CampaignHeader campaign={campaign.data} section={section} isOverview={isOverview} hasActiveScene={activeScene.data != null} />
       {children}
     </>
   )
