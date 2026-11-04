@@ -204,16 +204,19 @@ test.describe('Revealing to Investigators', () => {
         expect(edited.status(), 'edit the Handout').toBe(200)
       })
 
-      await test.step('SPL-UX-30: Harvey reloads and still sees the title and text as revealed, on the page and among the Clues', async () => {
+      await test.step('SPL-UX-30: Harvey reloads and still sees the title and text as revealed, on the page and in the Clues panel', async () => {
         await table.harvey.page.goto(activeScenePath(campaignId))
         const article = revealedToSection(table.harvey.page, HARVEY).getByRole('article')
         await expect(article.getByRole('heading', { level: 3, name: FRONT_DOOR })).toBeVisible()
         await expect(article).toContainText(`${FRONT_DOOR} ${secret}`)
         expect(await table.harvey.page.locator('body').innerText()).not.toContain('Changed')
 
-        await table.harvey.page.getByRole('link', { name: `${HARVEY}'s Clues` }).click()
-        await table.harvey.page.getByRole('button', { name: `Show ${FRONT_DOOR}` }).click()
-        await expect(table.harvey.page.getByText(`${FRONT_DOOR} ${secret}`)).toBeVisible()
+        await revealedToSection(table.harvey.page, HARVEY).getByRole('button', { name: `${HARVEY}'s Clues` }).click()
+        const panel = table.harvey.page.getByRole('dialog', { name: `${HARVEY}'s Clues` })
+        await expect(panel).toBeVisible()
+        await expect(table.harvey.page).toHaveURL(/panel=clues/)
+        await panel.getByRole('button', { name: `Show ${FRONT_DOOR}` }).click()
+        await expect(panel.getByText(`${FRONT_DOOR} ${secret}`)).toBeVisible()
       })
 
       await test.step('the Keeper still sees the Reveal as it was made', async () => {
@@ -303,12 +306,14 @@ test.describe('Revealing to Investigators', () => {
     await revealHandoutViaApi(page.request, table.keeperBearer, campaignId, handoutId(table, FRONT_DOOR), [table.harveyId])
 
     try {
-      await test.step('SPL-UX-29: Lucy, added after the Reveal, sees nothing revealed and has no Clues', async () => {
+      await test.step('SPL-UX-29: Lucy, added after the Reveal, sees nothing revealed and an empty Clues panel', async () => {
         await changePresentViaApi(page.request, table.keeperBearer, campaignId, [table.harveyId, table.lucyId])
         await table.lucy.page.goto(activeScenePath(campaignId))
         await expect(table.lucy.page.getByText(`The Keeper hasn't revealed anything to ${LUCY} yet.`)).toBeVisible()
-        await table.lucy.page.getByRole('link', { name: `${LUCY}'s Clues` }).click()
-        await expect(table.lucy.page.getByText(`${LUCY} hasn't received any Clues yet.`)).toBeVisible()
+        await revealedToSection(table.lucy.page, LUCY).getByRole('button', { name: `${LUCY}'s Clues` }).click()
+        const panel = table.lucy.page.getByRole('dialog', { name: `${LUCY}'s Clues` })
+        await expect(panel).toBeVisible()
+        await expect(panel.getByText(`${LUCY} hasn't received any Clues yet.`)).toBeVisible()
       })
 
       await test.step('SPL-UX-29: Harvey, removed from the Scene, sees that he is not taking part and keeps his Clues', async () => {
@@ -395,13 +400,17 @@ test.describe('Clues', () => {
         await expect(harveyPage.getByText(`${FRONT_DOOR} ${table.prepared.secret}`)).toHaveCount(0)
       })
 
-      await test.step('SPL-UX-33: the Keeper reads Lucy\'s Clues from "Investigators present", and they hold only what reached her', async () => {
+      await test.step('SPL-UX-33: the Keeper reads Lucy\'s Clues in a panel from "Investigators present", then opens the full page', async () => {
         await changePresentViaApi(page.request, table.keeperBearer, campaignId, [table.harveyId, table.lucyId])
         await page.goto(activeScenePath(campaignId))
-        await presentSection(page).getByRole('link', { name: `${LUCY}'s Clues` }).click()
+        await presentSection(page).getByRole('button', { name: `${LUCY}'s Clues` }).click()
+        const panel = page.getByRole('dialog', { name: `${LUCY}'s Clues` })
+        await expect(panel).toBeVisible()
+        await expect(page).toHaveURL(/panel=clues&investigator=/)
+        await expect(panel.getByRole('heading', { level: 4, name: FRONT_DOOR })).toBeVisible()
+        await panel.getByRole('link', { name: 'Open full page' }).click()
         await expect(page.getByRole('heading', { level: 1, name: `${LUCY}'s Clues` })).toBeVisible()
-        await expect(page.getByRole('heading', { level: 3 })).toHaveText([FRONT_DOOR])
-        await expect(page.getByRole('link', { name: `Back to ${LUCY}` })).toBeVisible()
+        await expect(page.getByRole('link', { name: 'Back to The Corbitt House' })).toBeVisible()
       })
 
       await test.step('SPL-UX-34: a Player opening a Keeper Clues URL is told the Investigator was not found', async () => {

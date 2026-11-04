@@ -1,4 +1,3 @@
-import { Link } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 
 import { useCampaignMembers } from '@/campaign-play/hooks/useCampaignMembers'
@@ -8,6 +7,7 @@ import { presentRefusalFor } from '@/scene-play/services/presentRefusal'
 import { approvedInvestigatorsFrom, initialSelection, toggled } from '@/scene-play/services/presentSelection'
 import { EMPTY_SELECTION_MESSAGE } from '@/scene-play/services/startSceneForm'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
+import { useSidePanel } from '@/shared/hooks/useSidePanel'
 import { Alert } from '@/shared/components/ui/alert'
 import { Button } from '@/shared/components/ui/button'
 
@@ -23,6 +23,7 @@ interface InvestigatorsPresentSectionProps {
 /** The Keeper's Investigators present: a list with "Change", which swaps in the start page's fieldset (specs/scene-play/ux.md section 3). */
 export function InvestigatorsPresentSection({ campaignId, scene, onSaved, onFinishedMeanwhile }: InvestigatorsPresentSectionProps) {
   const members = useCampaignMembers(campaignId)
+  const { open: openPanel } = useSidePanel()
   const change = useChangeInvestigatorsPresent(campaignId)
   const approved = approvedInvestigatorsFrom(members.data)
   const [isEditing, setIsEditing] = useState(false)
@@ -120,14 +121,15 @@ export function InvestigatorsPresentSection({ campaignId, scene, onSaved, onFini
           {scene.investigatorsPresent.map((investigator) => (
             <li key={investigator.id} className="break-words">
               {investigator.name ?? 'Unnamed Investigator'}{' '}
-              <Link
-                to="/campaigns/$campaignId/investigators/$investigatorId/clues"
-                params={{ campaignId, investigatorId: investigator.id }}
+              <button
+                type="button"
+                aria-haspopup="dialog"
                 aria-label={`${investigator.name ?? 'Unnamed Investigator'}'s Clues`}
-                className="font-medium underline underline-offset-4"
+                onClick={(event) => openPanel({ type: 'clues', investigatorId: investigator.id }, event.currentTarget)}
+                className="cursor-pointer border-0 bg-transparent p-0 font-medium underline underline-offset-4"
               >
                 Clues
-              </Link>
+              </button>
             </li>
           ))}
         </ul>

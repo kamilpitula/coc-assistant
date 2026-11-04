@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import type { RichTextDocument } from '@/shared/types/RichText'
+import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 
@@ -9,12 +10,14 @@ import { ActiveScenePlayerView } from './active-scene-player-view'
 const meta = {
   title: 'ScenePlay/ActiveScenePlayerView',
   component: ActiveScenePlayerView,
-  args: { campaignId: 'story-campaign' },
+  args: { campaignId: 'story-campaign', headingRef: { current: null } },
   decorators: [
     (Story) => (
       <StoryMsal tokens="pending">
         <StoryProviders>
-          <Story />
+          <SidePanelScopeProvider>
+            <Story />
+          </SidePanelScopeProvider>
         </StoryProviders>
       </StoryMsal>
     ),

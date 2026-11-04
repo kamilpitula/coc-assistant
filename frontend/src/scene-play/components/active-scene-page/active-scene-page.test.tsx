@@ -8,18 +8,29 @@ import { routerState } from '@/shared/test-support/routerMock'
 import { ActiveScenePage } from './active-scene-page'
 
 // specs/scene-play/ux.md sections 3 and 4; SPL-UX-9, 11, 12, 13, 15, SPL-A11Y-3, SPL-A11Y-5.
-const { mockUseCampaign, mockUseActive, mockUseAnnouncement, refetch, keeperProps } = vi.hoisted(() => ({
+const { mockUseCampaign, mockUseActive, mockUseAnnouncement, refetch, keeperProps, panelProps } = vi.hoisted(() => ({
   mockUseCampaign: vi.fn(),
   mockUseActive: vi.fn(),
   mockUseAnnouncement: vi.fn(),
   refetch: vi.fn(),
   keeperProps: { current: null as null | Record<string, (...args: string[]) => void> },
+  panelProps: { current: null as null | { campaignId: string; headingRef: { current: unknown } } },
 }))
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
 vi.mock('@/scene-play/hooks/useActiveScene', () => ({ useActiveScene: mockUseActive }))
 vi.mock('@/scene-play/hooks/useActiveSceneAnnouncement', () => ({ useActiveSceneAnnouncement: mockUseAnnouncement }))
+vi.mock('@/scene-play/components/active-scene-panel/active-scene-panel', async () => {
+  const { useSidePanelScope } = await import('@/shared/components/side-panel/side-panel-scope-context')
+  return {
+    ActiveScenePanel: (props: { campaignId: string; headingRef: { current: unknown } }) => {
+      panelProps.current = props
+      useSidePanelScope()
+      return null
+    },
+  }
+})
 vi.mock('@/scene-play/components/active-scene-keeper-view/active-scene-keeper-view', () => ({
   ActiveSceneKeeperView: (props: Record<string, (...args: string[]) => void> & { headingRef: React.Ref<HTMLHeadingElement> }) => {
     keeperProps.current = props
@@ -36,10 +47,19 @@ const query = (data: unknown, overrides: Record<string, unknown> = {}) => ({ dat
 describe('ActiveScenePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    routerState.location.search = {}
     routerState.location.state = {}
+    panelProps.current = null
     mockUseCampaign.mockReturnValue({ data: { id: 'c1', role: 'Keeper' } })
     mockUseActive.mockReturnValue(query(keeperScene))
     mockUseAnnouncement.mockReturnValue({ message: '', sequence: 0 })
+  })
+
+  it('hosts the side panel in the page scope with the page h1 as the focus fallback (NAV-UX-4, D4)', () => {
+    render(<ActiveScenePage campaignId="c1" />)
+
+    expect(panelProps.current?.campaignId).toBe('c1')
+    expect(panelProps.current?.headingRef.current).toBe(screen.getByRole('heading', { name: 'Keeper view' }))
   })
 
   it('shows the Keeper view to the Keeper, with the navigation message in the status region', () => {

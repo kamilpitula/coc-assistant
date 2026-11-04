@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { PresentPlayerActiveScene } from '@/scene-play/types/ActiveScene'
 import type { PlayerReveal } from '@/scene-play/types/Reveal'
+import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 
 import { ActiveScenePlayerView } from './active-scene-player-view'
 
@@ -36,8 +37,34 @@ const present = (reveals: PlayerReveal[] = []): PresentPlayerActiveScene =>
   })
 
 describe('ActiveScenePlayerView', () => {
+  const renderView = (scene: PresentPlayerActiveScene | { kind: 'absent-player'; title: string }) => {
+    const headingRef = { current: null as HTMLHeadingElement | null }
+    const view = render(
+      <SidePanelScopeProvider>
+        <ActiveScenePlayerView campaignId="c1" scene={scene} headingRef={headingRef} />
+      </SidePanelScopeProvider>,
+    )
+    return { ...view, headingRef }
+  }
+
+  it('exposes the h1 for panel focus return (NAV-A11Y-2)', () => {
+    const { headingRef } = renderView(present())
+    const h1 = screen.getByRole('heading', { level: 1, name: 'The Corbitt House' })
+
+    expect(h1).toHaveAttribute('tabindex', '-1')
+    expect(headingRef.current).toBe(h1)
+  })
+
+  it('exposes the absent Player h1 for panel focus return too (NAV-A11Y-2)', () => {
+    const { headingRef } = renderView({ kind: 'absent-player', title: 'The Corbitt House' })
+    const h1 = screen.getByRole('heading', { level: 1, name: 'The Corbitt House' })
+
+    expect(h1).toHaveAttribute('tabindex', '-1')
+    expect(headingRef.current).toBe(h1)
+  })
+
   it('shows a present Player the title, location, who is present with their own marked, and the empty Reveals sentence', () => {
-    render(<ActiveScenePlayerView campaignId="c1" scene={present()} />)
+    renderView(present())
 
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
     expect(screen.getByRole('heading', { level: 1, name: 'The Corbitt House' })).toBeInTheDocument()
@@ -50,15 +77,15 @@ describe('ActiveScenePlayerView', () => {
     expect(screen.queryByRole('article')).not.toBeInTheDocument()
   })
 
-  it('links to the Player\'s own Clues under "Revealed to {name}" (SPL-UX-26)', () => {
-    render(<ActiveScenePlayerView campaignId="c1" scene={present()} />)
+  it('opens the Clues panel from "{name}\'s Clues" under "Revealed to {name}" (SPL-UX-26, G1)', () => {
+    renderView(present())
 
     const section = screen.getByRole('region', { name: 'Revealed to Harvey Walters' })
-    expect(within(section).getByRole('link', { name: "Harvey Walters's Clues" })).toHaveAttribute('href', '/campaigns/c1/investigator/clues')
+    expect(within(section).getByRole('button', { name: "Harvey Walters's Clues" })).toHaveAttribute('aria-haspopup', 'dialog')
   })
 
   it('lists the Reveals as articles labelled by their h3, with the kind and time, newest first as given, and no empty sentence (SPL-UX-26, SPL-A11Y-8)', () => {
-    render(<ActiveScenePlayerView campaignId="c1" scene={present([reveal('r2', 'The cellar door'), reveal('r1', 'The front door', { handoutKind: 'Text' })])} />)
+    renderView(present([reveal('r2', 'The cellar door'), reveal('r1', 'The front door', { handoutKind: 'Text' })]))
 
     const articles = screen.getAllByRole('article')
     expect(articles.map((article) => within(article).getByRole('heading', { level: 3 }).textContent)).toEqual(['The cellar door', 'The front door'])
@@ -70,25 +97,20 @@ describe('ActiveScenePlayerView', () => {
   })
 
   it('names a Non-Player Entity Reveal as such (SPL-UX-27)', () => {
-    render(<ActiveScenePlayerView campaignId="c1" scene={present([reveal('r1', 'A nervous clerk', { subjectType: 'NonPlayerEntity', handoutKind: null })])} />)
+    renderView(present([reveal('r1', 'A nervous clerk', { subjectType: 'NonPlayerEntity', handoutKind: null })]))
 
     expect(within(screen.getByRole('article')).getByText(/Non-Player Entity/)).toBeInTheDocument()
   })
 
   it('omits the location when there is none and names an unnamed Investigator', () => {
-    render(
-      <ActiveScenePlayerView
-        campaignId="c1"
-        scene={{ kind: 'present-player', reveals: [], title: 'X', location: '', investigatorsPresent: [{ name: null, isYours: true }] }}
-      />,
-    )
+    renderView({ kind: 'present-player', reveals: [], title: 'X', location: '', investigatorsPresent: [{ name: null, isYours: true }] })
 
     expect(screen.queryByText('Location')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 2, name: 'Revealed to Unnamed Investigator' })).toBeInTheDocument()
   })
 
-  it('shows any other Player only the title and that the Scene is in progress, with no Reveals or Clues link (SPL-UX-35)', () => {
-    const { container } = render(<ActiveScenePlayerView campaignId="c1" scene={{ kind: 'absent-player', title: 'The Corbitt House' }} />)
+  it('shows any other Player only the title and that the Scene is in progress, with no Reveals or Clues button (SPL-UX-35)', () => {
+    const { container } = renderView({ kind: 'absent-player', title: 'The Corbitt House' })
 
     expect(screen.getByRole('heading', { level: 1, name: 'The Corbitt House' })).toBeInTheDocument()
     expect(screen.getByText("This Scene is in progress. You aren't taking part in it.")).toBeInTheDocument()

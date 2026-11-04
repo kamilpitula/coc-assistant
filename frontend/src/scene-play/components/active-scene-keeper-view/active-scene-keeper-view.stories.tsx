@@ -6,6 +6,7 @@ import { keeperRosterAllApproved, STORY_CAMPAIGN_ID } from '@/campaign-play/test
 import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
+import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 
@@ -48,17 +49,19 @@ function ViewStory({ withLocation = true, tokens = 'pending' as 'pending' | 'gra
           client.setQueryData(sceneQueryKeys.detail(STORY_CAMPAIGN_ID, scene.scenarioId, scene.sceneId), material)
         }}
       >
-        <ActiveSceneKeeperView
-          campaignId={STORY_CAMPAIGN_ID}
-          scene={withLocation ? scene : { ...scene, location: '' }}
-          headingRef={{ current: null }}
-          onFinished={() => undefined}
-          onAlreadyFinished={() => undefined}
-          onPresentSaved={() => undefined}
-          onRevealed={() => undefined}
-          onSceneFinished={() => undefined}
-          onRefetch={() => undefined}
-        />
+        <SidePanelScopeProvider>
+          <ActiveSceneKeeperView
+            campaignId={STORY_CAMPAIGN_ID}
+            scene={withLocation ? scene : { ...scene, location: '' }}
+            headingRef={{ current: null }}
+            onFinished={() => undefined}
+            onAlreadyFinished={() => undefined}
+            onPresentSaved={() => undefined}
+            onRevealed={() => undefined}
+            onSceneFinished={() => undefined}
+            onRefetch={() => undefined}
+          />
+        </SidePanelScopeProvider>
       </StoryProviders>
     </StoryMsal>
   )

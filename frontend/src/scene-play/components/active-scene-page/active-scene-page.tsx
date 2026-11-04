@@ -4,12 +4,14 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
 import { ActiveSceneKeeperView } from '@/scene-play/components/active-scene-keeper-view/active-scene-keeper-view'
+import { ActiveScenePanel } from '@/scene-play/components/active-scene-panel/active-scene-panel'
 import { ActiveScenePlayerView } from '@/scene-play/components/active-scene-player-view/active-scene-player-view'
 import { NoActiveScene } from '@/scene-play/components/no-active-scene/no-active-scene'
 import { useActiveScene } from '@/scene-play/hooks/useActiveScene'
 import { useActiveSceneAnnouncement } from '@/scene-play/hooks/useActiveSceneAnnouncement'
 import { usePlayerRevealAnnouncement } from '@/scene-play/hooks/usePlayerRevealAnnouncement'
 import type { ActiveScene } from '@/scene-play/types/ActiveScene'
+import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { Button } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 
@@ -50,41 +52,44 @@ export function ActiveScenePage({ campaignId }: ActiveScenePageProps) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <p role="status" className="text-sm empty:hidden">
-        {message ?? (announcement.sequence > 0 ? announcement.message : navigationMessage)}
-      </p>
-      <p aria-live="polite" className="sr-only">
-        {revealAnnouncement.message}
-      </p>
-      <ActiveSceneBody
-        campaignId={campaignId}
-        isKeeper={isKeeper}
-        scene={active.data}
-        headingRef={headingRef}
-        onFinished={(title) => {
-          focusHeadingPending.current = true
-          setMessage(`${title} finished.`)
-        }}
-        onAlreadyFinished={() => {
-          focusHeadingPending.current = true
-          setMessage('This Scene was already finished.')
-          void active.refetch()
-        }}
-        onPresentSaved={() => setMessage('Investigators present saved.')}
-        onRevealed={(revealMessage) => {
-          // If the Scene finished meanwhile, the refetch shows "No Active Scene", the Reveal's trigger is gone, and focus goes to the h1.
-          focusHeadingPending.current = true
-          setMessage(revealMessage)
-        }}
-        onSceneFinished={() => {
-          focusHeadingPending.current = true
-          setMessage(null)
-          void active.refetch()
-        }}
-        onRefetch={() => void active.refetch()}
-      />
-    </div>
+    <SidePanelScopeProvider>
+      <div className="flex flex-col gap-6">
+        <p role="status" className="text-sm empty:hidden">
+          {message ?? (announcement.sequence > 0 ? announcement.message : navigationMessage)}
+        </p>
+        <p aria-live="polite" className="sr-only">
+          {revealAnnouncement.message}
+        </p>
+        <ActiveSceneBody
+          campaignId={campaignId}
+          isKeeper={isKeeper}
+          scene={active.data}
+          headingRef={headingRef}
+          onFinished={(title) => {
+            focusHeadingPending.current = true
+            setMessage(`${title} finished.`)
+          }}
+          onAlreadyFinished={() => {
+            focusHeadingPending.current = true
+            setMessage('This Scene was already finished.')
+            void active.refetch()
+          }}
+          onPresentSaved={() => setMessage('Investigators present saved.')}
+          onRevealed={(revealMessage) => {
+            // If the Scene finished meanwhile, the refetch shows "No Active Scene", the Reveal's trigger is gone, and focus goes to the h1.
+            focusHeadingPending.current = true
+            setMessage(revealMessage)
+          }}
+          onSceneFinished={() => {
+            focusHeadingPending.current = true
+            setMessage(null)
+            void active.refetch()
+          }}
+          onRefetch={() => void active.refetch()}
+        />
+        <ActiveScenePanel campaignId={campaignId} headingRef={headingRef} />
+      </div>
+    </SidePanelScopeProvider>
   )
 }
 
@@ -143,5 +148,5 @@ function ActiveSceneBody({ campaignId, isKeeper, scene, headingRef, onFinished, 
     )
   }
 
-  return <ActiveScenePlayerView campaignId={campaignId} scene={scene} />
+  return <ActiveScenePlayerView campaignId={campaignId} scene={scene} headingRef={headingRef} />
 }

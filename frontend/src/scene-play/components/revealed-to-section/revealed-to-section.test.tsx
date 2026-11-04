@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import { entityReveal, readAloudReveal, textReveal } from '@/scene-play/test-support/revealFixtures'
@@ -6,15 +7,27 @@ import { entityReveal, readAloudReveal, textReveal } from '@/scene-play/test-sup
 import { RevealedToSection } from './revealed-to-section'
 
 // specs/scene-play/ux.md section 14; SPL-UX-26, SPL-UX-27, SPL-A11Y-8.
+const { openPanel } = vi.hoisted(() => ({ openPanel: vi.fn() }))
+
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/scene-play/hooks/useReveals', () => ({ useRevealFile: vi.fn() }))
+vi.mock('@/shared/hooks/useSidePanel', () => ({ useSidePanel: () => ({ panel: null, open: openPanel, close: vi.fn() }) }))
 
 describe('RevealedToSection', () => {
-  it('is a section labelled by "Revealed to {name}" with a link to the Player\'s own Clues', () => {
+  it('is a section labelled by "Revealed to {name}" with a "{name}\'s Clues" panel button', () => {
     render(<RevealedToSection campaignId="c1" investigatorName="Harvey Walters" reveals={[]} />)
 
     const section = screen.getByRole('region', { name: 'Revealed to Harvey Walters' })
-    expect(within(section).getByRole('link', { name: "Harvey Walters's Clues" })).toHaveAttribute('href', '/campaigns/c1/investigator/clues')
+    expect(within(section).getByRole('button', { name: "Harvey Walters's Clues" })).toBeInTheDocument()
+  })
+
+  it('opens the Clues panel from "{name}\'s Clues" with the button as the focus trigger (NAV-UX-4, G1)', async () => {
+    render(<RevealedToSection campaignId="c1" investigatorName="Harvey Walters" reveals={[]} />)
+
+    const button = screen.getByRole('button', { name: "Harvey Walters's Clues" })
+    expect(button).toHaveAttribute('aria-haspopup', 'dialog')
+    await userEvent.click(button)
+    expect(openPanel).toHaveBeenCalledWith({ type: 'clues' }, button)
   })
 
   it('says the Keeper has revealed nothing when there are no Reveals', () => {

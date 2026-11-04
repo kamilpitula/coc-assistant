@@ -60,4 +60,5 @@ export const routerMock = {
   useNavigate: () => navigateSpy,
   useRouter: () => ({ history: { back: backSpy } }),
   useRouterState: ({ select }: { select: (state: typeof routerState) => unknown }) => select(routerState),
+  useSearch: () => routerState.location.search,
 }
