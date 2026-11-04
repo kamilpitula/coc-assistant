@@ -1,13 +1,11 @@
 import { Link } from '@tanstack/react-router'
 import { ChevronLeft } from 'lucide-react'
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef } from 'react'
 
 import type { CampaignRole, CampaignView } from '@/campaign-play/types/Campaign'
 import type { CampaignSection } from '@/campaign-play/services/campaignSection'
 import { LiveBadge } from '@/shared/components/live-badge/live-badge'
 import { cn } from '@/shared/components/utils'
-
-export type { CampaignSection } from '@/campaign-play/services/campaignSection'
 
 interface CampaignHeaderProps {
   campaign: Pick<CampaignView, 'id' | 'name' | 'era'> & { role: CampaignRole }
@@ -59,8 +57,7 @@ export function CampaignHeader({ campaign, section, isOverview, hasActiveScene }
           to="/campaigns/$campaignId/active-scene"
           campaignId={campaign.id}
           current={section === 'active-scene'}
-          badge={hasActiveScene ? <LiveBadge /> : undefined}
-          ariaLabel={hasActiveScene ? 'Active Scene, live' : undefined}
+          live={hasActiveScene}
         >
           Active Scene
         </CampaignNavLink>
@@ -81,29 +78,29 @@ interface CampaignNavLinkProps {
   to: '/campaigns/$campaignId' | '/campaigns/$campaignId/active-scene' | '/campaigns/$campaignId/wall' | '/campaigns/$campaignId/settings'
   campaignId: string
   current: boolean
-  /** Exact router-active matching; the Overview path prefixes every Campaign page, so without it the router marks two tabs current. */
+  /** Exact router-active matching. The Overview path prefixes every Campaign page, so without it the router adds its own aria-current here alongside the section-driven one. */
   exact?: boolean
-  badge?: ReactNode
-  ariaLabel?: string
+  /** Shows the Live badge and names the link "<label>, live". */
+  live?: boolean
   children: string
 }
 
 /** A navigation link at least 44px high; the current one has a border and weight, not only a colour (CO-A11Y-2). */
-function CampaignNavLink({ to, campaignId, current, exact, badge, ariaLabel, children }: CampaignNavLinkProps) {
+function CampaignNavLink({ to, campaignId, current, exact, live, children }: CampaignNavLinkProps) {
   return (
     <Link
       to={to}
       params={{ campaignId }}
       activeOptions={exact ? { exact: true } : undefined}
       aria-current={current ? 'page' : undefined}
-      aria-label={ariaLabel}
+      aria-label={live ? `${children}, live` : undefined}
       className={cn(
         'inline-flex min-h-11 items-center gap-1 whitespace-nowrap border-b-2 px-1 sm:-mb-px',
         current ? 'border-foreground font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
       )}
     >
       {children}
-      {badge}
+      {live ? <LiveBadge /> : undefined}
     </Link>
   )
 }

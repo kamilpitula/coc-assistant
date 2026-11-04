@@ -102,7 +102,7 @@ describe('CampaignHeader', () => {
       <CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="overview" isOverview hasActiveScene={false} />,
     )
     const nav = screen.getByRole('navigation', { name: 'Campaign' })
-    const wall = screen.getByRole('link', { name: 'Wall', exact: true })
+    const wall = screen.getByRole('link', { name: 'Wall' })
     vi.spyOn(nav, 'getBoundingClientRect').mockReturnValue({ left: 24, right: 296 } as unknown as DOMRect)
     vi.spyOn(wall, 'getBoundingClientRect').mockReturnValue({ left: 263, right: 323 } as unknown as DOMRect)
 
@@ -117,7 +117,7 @@ describe('CampaignHeader', () => {
     expect(nav.scrollLeft).toBe(104)
 
     // A current tab out of view to the left scrolls back the other way.
-    const overview = screen.getByRole('link', { name: 'Overview', exact: true })
+    const overview = screen.getByRole('link', { name: 'Overview' })
     vi.spyOn(overview, 'getBoundingClientRect').mockReturnValue({ left: 0, right: 60 } as unknown as DOMRect)
     rerender(<CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="overview" isOverview hasActiveScene />)
     expect(nav.scrollLeft).toBe(80)

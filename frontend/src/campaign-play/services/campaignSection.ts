@@ -1,8 +1,8 @@
 /** The Campaign navigation entry a page belongs to; sheet, wizard, and review pages belong to the overview. */
 export type CampaignSection = 'overview' | 'active-scene' | 'wall' | 'settings'
 
-function isTabOrSubRoute(routeId: string, tab: string): boolean {
-  return routeId === tab || routeId.startsWith(`${tab}/`)
+function isTabOrSubRoute(routeId: string, tabRouteId: string): boolean {
+  return routeId === tabRouteId || routeId.startsWith(`${tabRouteId}/`)
 }
 
 /** The tab for a Campaign leaf route id; Active Scene stays current on every sub-route under it (specs/navigation/ux.md section 2). */

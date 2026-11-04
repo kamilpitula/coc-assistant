@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
-import { CampaignHeader, type CampaignSection } from '@/campaign-play/components/campaign-header/campaign-header'
+import { CampaignHeader } from '@/campaign-play/components/campaign-header/campaign-header'
+import type { CampaignSection } from '@/campaign-play/services/campaignSection'
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import { useActiveScene } from '@/scene-play/hooks/useActiveScene'
 import { Header } from '@/shared/components/header/header'
