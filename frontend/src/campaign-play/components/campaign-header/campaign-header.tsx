@@ -24,9 +24,21 @@ export function CampaignHeader({ campaign, section, isOverview, hasActiveScene }
   const navRef = useRef<HTMLElement>(null)
 
   // The tab row scrolls inside itself on narrow screens; keep the current tab visible without moving focus.
+  // Re-runs when Live appears or disappears because the badge shifts the tabs.
   useEffect(() => {
-    navRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-  }, [section])
+    const nav = navRef.current
+    const current = nav?.querySelector('[aria-current="page"]')
+    if (!nav || !current) {
+      return
+    }
+    const navBox = nav.getBoundingClientRect()
+    const linkBox = current.getBoundingClientRect()
+    if (linkBox.right > navBox.right) {
+      nav.scrollLeft += linkBox.right - navBox.right
+    } else if (linkBox.left < navBox.left) {
+      nav.scrollLeft -= navBox.left - linkBox.left
+    }
+  }, [section, hasActiveScene])
 
   return (
     <header className="flex flex-col gap-1 border-b">
@@ -40,7 +52,7 @@ export function CampaignHeader({ campaign, section, isOverview, hasActiveScene }
       <NameElement className="break-words text-2xl font-semibold">{campaign.name}</NameElement>
       <p className="text-sm text-muted-foreground">{campaign.era}</p>
       <nav ref={navRef} aria-label="Campaign" className="mt-2 flex gap-4 overflow-x-auto overflow-y-hidden sm:overflow-visible">
-        <CampaignNavLink to="/campaigns/$campaignId" campaignId={campaign.id} current={section === 'overview'}>
+        <CampaignNavLink to="/campaigns/$campaignId" campaignId={campaign.id} current={section === 'overview'} exact>
           Overview
         </CampaignNavLink>
         <CampaignNavLink
@@ -69,17 +81,20 @@ interface CampaignNavLinkProps {
   to: '/campaigns/$campaignId' | '/campaigns/$campaignId/active-scene' | '/campaigns/$campaignId/wall' | '/campaigns/$campaignId/settings'
   campaignId: string
   current: boolean
+  /** Exact router-active matching; the Overview path prefixes every Campaign page, so without it the router marks two tabs current. */
+  exact?: boolean
   badge?: ReactNode
   ariaLabel?: string
   children: string
 }
 
 /** A navigation link at least 44px high; the current one has a border and weight, not only a colour (CO-A11Y-2). */
-function CampaignNavLink({ to, campaignId, current, badge, ariaLabel, children }: CampaignNavLinkProps) {
+function CampaignNavLink({ to, campaignId, current, exact, badge, ariaLabel, children }: CampaignNavLinkProps) {
   return (
     <Link
       to={to}
       params={{ campaignId }}
+      activeOptions={exact ? { exact: true } : undefined}
       aria-current={current ? 'page' : undefined}
       aria-label={ariaLabel}
       className={cn(

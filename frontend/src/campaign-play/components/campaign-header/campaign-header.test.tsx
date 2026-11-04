@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { CampaignHeader } from './campaign-header'
 
@@ -15,10 +15,6 @@ function navLinks() {
 }
 
 describe('CampaignHeader', () => {
-  beforeEach(() => {
-    Element.prototype.scrollIntoView = vi.fn()
-  })
-
   it('shows the back link, the Campaign name as the page heading, and the Era on the overview (CO-UX-1)', () => {
     render(<CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="overview" isOverview hasActiveScene={false} />)
 
@@ -93,18 +89,37 @@ describe('CampaignHeader', () => {
     expect(screen.getByRole('navigation', { name: 'Campaign' }).querySelector('[aria-live], [role="status"]')).toBeNull()
   })
 
-  it('scrolls the current tab into view on mount and when the tab changes', () => {
-    const scrollIntoView = Element.prototype.scrollIntoView as unknown as ReturnType<typeof vi.fn>
+  it('marks exactly one tab current on a non-overview page with Live on (NAV-UX-2, NAV-A11Y-1)', () => {
+    render(<CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="wall" isOverview={false} hasActiveScene />)
+
+    const current = screen.getByRole('navigation', { name: 'Campaign' }).querySelectorAll('[aria-current="page"]')
+    expect(current).toHaveLength(1)
+    expect(current[0].textContent).toBe('Wall')
+  })
+
+  it('scrolls the tab row so the current tab fits when the tab changes or Live appears (NAV-A11Y-4)', () => {
     const { rerender } = render(
       <CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="overview" isOverview hasActiveScene={false} />,
     )
+    const nav = screen.getByRole('navigation', { name: 'Campaign' })
+    const wall = screen.getByRole('link', { name: 'Wall', exact: true })
+    vi.spyOn(nav, 'getBoundingClientRect').mockReturnValue({ left: 24, right: 296 } as unknown as DOMRect)
+    vi.spyOn(wall, 'getBoundingClientRect').mockReturnValue({ left: 263, right: 323 } as unknown as DOMRect)
 
-    expect(scrollIntoView).toHaveBeenCalledTimes(1)
-    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' })
-    expect(vi.mocked(scrollIntoView).mock.instances[0].textContent).toBe('Overview')
+    expect(nav.scrollLeft).toBe(0)
 
     rerender(<CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="wall" isOverview={false} hasActiveScene={false} />)
-    expect(scrollIntoView).toHaveBeenCalledTimes(2)
-    expect(vi.mocked(scrollIntoView).mock.instances[1].textContent).toBe('Wall')
+    expect(nav.scrollLeft).toBe(27)
+
+    // Live appears and the badge shifts Wall out of view again, so the row re-scrolls.
+    vi.spyOn(wall, 'getBoundingClientRect').mockReturnValue({ left: 313, right: 373 } as unknown as DOMRect)
+    rerender(<CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="wall" isOverview={false} hasActiveScene />)
+    expect(nav.scrollLeft).toBe(104)
+
+    // A current tab out of view to the left scrolls back the other way.
+    const overview = screen.getByRole('link', { name: 'Overview', exact: true })
+    vi.spyOn(overview, 'getBoundingClientRect').mockReturnValue({ left: 0, right: 60 } as unknown as DOMRect)
+    rerender(<CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="overview" isOverview hasActiveScene />)
+    expect(nav.scrollLeft).toBe(80)
   })
 })

@@ -136,6 +136,8 @@ test.describe('Campaign tabs with the Active Scene tab', () => {
         // Load the page at the narrow viewport so the mount effect positions the current tab, as for a real narrow load.
         await page.reload()
         await openWall(page, campaignId)
+        // Wait for Live so the badge-shift re-scroll has run before measuring.
+        await expect(campaignNav(page).getByRole('link', { name: 'Active Scene, live' })).toBeVisible()
         const campaignHeader = page.locator('main header')
         const main = page.locator('main')
         const siteHeader = page.getByRole('banner')
