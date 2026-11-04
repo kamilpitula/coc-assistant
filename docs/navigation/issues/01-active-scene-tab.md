@@ -25,7 +25,8 @@ Read: [specs/navigation/ux.md](../../../specs/navigation/ux.md) sections 1, 2, 6
 - Reuse `useActiveScene`; do not add a second request when it is cached.
 
 ## Verification
-- [ ] NAV-UX-1, NAV-UX-2, NAV-UX-3 and NAV-A11Y-1, NAV-A11Y-3, NAV-A11Y-4, NAV-A11Y-5 hold.
+- [ ] NAV-UX-1, NAV-UX-2, NAV-UX-3 and NAV-A11Y-1, NAV-A11Y-3, NAV-A11Y-5 hold.
+- [ ] NAV-A11Y-4 holds. Deferred: see Follow-ups.
 - [ ] Unit tests cover the current-tab mapping for every Campaign route and the Live badge states.
 - [ ] Playwright E2E covers the navigation spec scenarios "The Keeper returns to the Active Scene from the Wall" and "The Active Scene tab shows Live only while a Scene is Active", with steps named after the criteria.
 - [ ] Screenshots of the header at 1366px and 320px, Keeper and Player, match the prototype's tab row in order, labels, and badge.
@@ -34,3 +35,4 @@ Read: [specs/navigation/ux.md](../../../specs/navigation/ux.md) sections 1, 2, 6
 A change to the tabs updates specs/navigation/ux.md section 2, the note in campaign-overview ux section 2, `campaign-header`, and its tests together.
 
 ## Follow-ups
+- Site header overflows at 320px (`shared/components/header/header.tsx`); the document-level NAV-A11Y-4 / CO-A11Y-9 check waits on a site-header narrow layout (needs UX options per CLAUDE.md).

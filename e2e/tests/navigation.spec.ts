@@ -131,10 +131,26 @@ test.describe('Campaign tabs with the Active Scene tab', () => {
         await harveyPage.screenshot({ path: test.info().outputPath('player-1366.png') })
       })
 
-      await test.step('NAV-A11Y-4: at 320px the page never scrolls sideways and the row scrolls inside itself', async () => {
+      await test.step('NAV-A11Y-4: the Campaign header fits 320px and the site header holds the rest', async () => {
         await page.setViewportSize({ width: 320, height: 700 })
+        // Load the page at the narrow viewport so the mount effect positions the current tab, as for a real narrow load.
+        await page.reload()
         await openWall(page, campaignId)
-        await expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+        const campaignHeader = page.locator('main header')
+        const main = page.locator('main')
+        const siteHeader = page.getByRole('banner')
+        await expect(campaignHeader).toBeVisible()
+        await expect(await campaignHeader.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+        await expect(await main.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+        const campaignBox = await campaignHeader.boundingBox()
+        const mainBox = await main.boundingBox()
+        expect(campaignBox).not.toBeNull()
+        expect(mainBox).not.toBeNull()
+        if (campaignBox && mainBox) {
+          expect(campaignBox.x + campaignBox.width).toBeLessThanOrEqual(320 + 1)
+          expect(mainBox.x + mainBox.width).toBeLessThanOrEqual(320 + 1)
+        }
+        await expect(await siteHeader.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true)
         await expect(await campaignNav(page).evaluate((nav) => nav.scrollWidth > nav.clientWidth)).toBe(true)
       })
 
