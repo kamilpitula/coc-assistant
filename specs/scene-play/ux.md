@@ -25,10 +25,11 @@ Behavior and rules: [spec.md](spec.md). This document covers presentation only. 
 /campaigns/$campaignId/investigators/$investigatorId/clues     Keeper: an Investigator's Clues (section 15)
 ```
 
-- Overview is the current Campaign tab on the start page and the Active Scene page. No new tab is added.
+- Overview is the current Campaign tab on the start page. **Since PBI-NAV-001** the Active Scene page has its own Campaign tab, "Active Scene" ([navigation ux](../navigation/ux.md) section 2); this replaces "No new tab is added".
 - The Keeper starts a Scene only from its Scene page. A Prepared Scene gets the action "Start Scene", a link styled as a primary button, placed before "Edit". An Active Scene gets the link "Open Active Scene", placed before "Edit". A Finished Scene is unchanged. This amends [scenario-preparation ux](../scenario-preparation/ux.md) section 14, "Actions by status".
 - Every member reaches the Active Scene page from the overview card. The Keeper also reaches it from "Open Active Scene" and after starting a Scene.
 - **Since PBI-SPL-002:** the Keeper's Active Scene page shows Keeper notes, Handouts, and Non-Player Entities with the Reveal controls (section 12). "Open in Scenario" stays, for editing. Items arrive with PBI-SPL-003.
+- **Since PBI-SPL-006:** the Keeper's Active Scene page is split into Run, To reveal, Keeper reference, and Revealed, each with its own route (section 21.1).
 
 ## 2. Start page (`start-scene-page`)
 
@@ -92,6 +93,8 @@ Choose the Investigators taking part in this Scene. (hint)
 - **Unsaved changes:** there is no prompt. The page holds only a selection.
 
 ## 3. Active Scene page, Keeper view (`active-scene-page`, `active-scene-keeper-view`)
+
+> **Since PBI-SPL-006** the header layout and the page order are section 21.2 and 21.3. The Investigators present and Finish behavior below stay.
 
 ```
 The Corbitt House started.                       (role=status)
@@ -307,8 +310,11 @@ Stories cover:
   - The Investigator review page of an Approved Investigator has the link "Clues".
 - The Clues pages keep the Campaign header with Overview as the current tab.
 - Items are not revealed in this PBI (PBI-SPL-003).
+- **Since PBI-NAV-002** both "Clues" entry points on the Active Scene open the `clues` side panel ([navigation ux](../navigation/ux.md) section 3); the other entry points still navigate.
 
 ## 12. Keeper view additions (`active-scene-keeper-view`)
+
+> **Superseded by section 21 (PBI-SPL-006).** Kept as the record of PBI-SPL-002; the data, empty, and Revealed rules below are reused by section 21 where it says so.
 
 ```
 (header, Finish Scene, and Investigators present as section 3; each name followed by a "Clues" link)
@@ -441,6 +447,7 @@ The Corbitt House                     (h2, Scene title)
 - **Grouping:** Clues are grouped by Scene. Groups are ordered by their newest Clue, and Clues within a group are newest first.
 - **Each Clue:** a `Collapsible` that starts closed and shows `revealed-content`. A file loads on first open. The trigger reads "Show" or "Hide".
 - **Empty:** "{name} hasn't received any Clues yet."
+- **Back link (since PBI-NAV-002):** with `?from=active-scene` the back link is "Back to {Active Scene title}"; otherwise it is the one shown above ([navigation ux](../navigation/ux.md) section 4).
 - **No Approved Investigator (Player, 404):** the `h1` "No Clues to show", "You don't have an Approved Investigator in this Campaign yet.", and "Back to your Campaign".
 - **Not found:**
   - The Keeper opening an unknown or unapproved Investigator sees `investigator-not-found`.
@@ -524,3 +531,176 @@ Stories cover:
 - **SPL-A11Y-12** The reveal status uses `role=status` and refusals use `role=alert`. Live arrivals are announced politely, never on first load (4.1.3).
 - **SPL-A11Y-13** Every control is reachable and operable by keyboard, has a visible focus ring, and is at least 24 by 24 CSS px (2.1.1, 2.4.7, 2.5.8).
 - **SPL-A11Y-14** At 320px and 200% zoom, the material list, the dialog, a Map, and the Clues pages fit without horizontal scrolling (1.4.10).
+
+## 21. Active Scene redesign (PBI-SPL-006, PBI-SPL-007)
+
+Selected direction, chosen 2026-11-04 from three clickable prototypes ([navigation prototype](../navigation/prototype/active-scene.html)): **variant A, Scene sub-tabs.** The prototype is illustrative; this section is normative. Navigation pieces (the Active Scene tab, side panels, back links) are in [navigation ux](../navigation/ux.md).
+
+Alternatives considered:
+- **B, a material drawer over the Run view:** rejected at the gate; the Keeper preferred material as destinations of their own.
+- **C, one "Scene material" page with collapsible sections:** rejected; every reveal trip is a full page change and back.
+
+Human decisions (2026-11-04):
+- The main view (Run) shows no Handouts, Non-Player Entities, or Items. Material is grouped by what the Keeper wants to do with it, not by type: "To reveal", "Keeper reference", "Revealed".
+- Material leaves "To reveal" once it has reached **every** Investigator present; partly revealed material stays and says who is still missing.
+- Keeper notes stay on Run and start open (this replaces the PBI-SPL-002 decision that they start collapsed).
+- The Wall (latest entries and a way to post) sits on Run above Investigators present, for the Keeper and for Players.
+- Handouts, Non-Player Entities, and Items use one material entry on the Scene page and the Active Scene ([scenario-preparation ux](../scenario-preparation/ux.md) section 72).
+- Run reserves room for future play tools (rolls, combat, a timer); nothing is rendered for them until the first one lands.
+
+This section replaces, for the Keeper, the layout of section 3 (header and order) and all of section 12. The Investigators present and Finish behavior of section 3, and sections 13, 14, 15, 17, and 18, stay in force unless stated below.
+
+### 21.1 Routes and sub-navigation
+
+```
+/campaigns/$campaignId/active-scene              Run (Keeper and Players)
+/campaigns/$campaignId/active-scene/to-reveal    To reveal         (Keeper)
+/campaigns/$campaignId/active-scene/reference    Keeper reference  (Keeper)
+/campaigns/$campaignId/active-scene/revealed     Revealed          (Keeper)
+```
+
+- **Sub-navigation (`active-scene-nav`):** under the scene header, a `nav` labelled "Active Scene" with four links: "Run", "To reveal {n}", "Keeper reference {n}", "Revealed {n}". Each count is a `Badge` with tabular numbers; the link's accessible name is "To reveal, {n}". The current link has `aria-current="page"`. Styled as a segmented control (muted track, the current link raised), at least 44px high, scrolling inside itself below 640px.
+- **Counts:** the number of entries the sub-tab lists (21.4 to 21.6). They update with the lists.
+- **Players** get no sub-navigation. A Player opening a Keeper sub-route is redirected (replace) to `/active-scene`.
+- **No Active Scene:** every sub-route redirects (replace) to `/active-scene`, which shows section 4.3. A Scene finished while the Keeper is on a sub-tab does the same, with the status of section 3.
+
+### 21.2 Scene header
+
+```
+Run:                                                   Other sub-tabs (compact):
+The Corbitt House started.          (role=status)      The Corbitt House            [Finish Scene]
+The Corbitt House                   [Finish Scene]     (>) Active  Started 19:40
+(>) Active  Started 28 Oct 2026, 19:40
+Scenario: The Haunting . Open in Scenario . Location Arkham, Boston Road
+[ Run | To reveal 4 | Keeper reference 5 | Revealed 2 ]
+```
+
+- The `role=status` paragraph, the `h1`, `scene-status-badge`, and `scene-times` are as section 3.
+- "Finish Scene" moves to the right of the `h1` (it wraps under it below 640px) and is on every sub-tab. Its dialog and outcomes are section 3's.
+- On Run only: "Scenario: {title}" with "Open in Scenario", and "Location" when set, on one wrapping meta line.
+
+### 21.3 Run
+
+```
+>= 1024px                                                   < 1024px (one column)
++--------------------------------------+------------------+  Keeper notes
+| Keeper notes            [Hide]  (h2) | Wall        (h2) |  Investigators present
+| <rich text>                          | [New Wall Entry] |  Wall
+|                                      | 5 latest entries |
+|                                      +------------------+
+| (future play tools go here)          | Investigators    |
+|                                      | present (h2)     |
+|                                      | Harvey  [Clues]  |
++--------------------------------------+------------------+
+```
+
+- **Grid:** `lg:grid-cols-[minmax(0,1fr)_20rem]` with `grid-template-areas`. DOM order is Keeper notes, Investigators present, Wall; from 1024px the right column shows Wall above Investigators present. The regions are independent, so the visual reordering does not change meaning (1.3.2).
+- **Regions:** each is a `section` labelled by its `h2`, drawn as a bordered card.
+- **Keeper notes:** a `Collapsible` that starts **open**; the trigger reads "Hide Keeper notes" or "Show Keeper notes". Content and empty text as section 12.
+- **Investigators present:** section 3, except that each name is followed by the button "Clues" (accessible name "{name}'s Clues"), which opens the `clues` side panel instead of navigating.
+- **Wall (PBI-SPL-007):** see 21.8.
+- **Future play tools** take the left column under Keeper notes. Nothing is rendered there now.
+
+### 21.4 To reveal
+
+```
+To reveal                                     (h2)
+Player-facing material that hasn't reached every Investigator present.
+Handouts                                      (h3)
+  The front door                (button)              [Reveal...]
+  Read-aloud . Player-facing
+  Revealed to Harvey Walters . not yet: Lucy Ward and Cy Holloway
+Non-Player Entities                           (h3)
+  The landlord                  (button)              [Reveal...]
+  Human NPC: Mr. Knott
+Items                                         (h3, from PBI-SPL-003)
+```
+
+- **What is listed:** Player-facing Handouts (stored order), Non-Player Entity links (link order), and from PBI-SPL-003 Items, each while the union of its Reveals' recipients does not include every Investigator present. The rule lives in one pure function, `isRevealedToEveryonePresent(subjectId, reveals, investigatorsPresent)`.
+- Adding an Investigator present brings back every subject they haven't received; removing one can complete a subject.
+- **Entries:** the material entry (scenario-preparation ux section 72) in play context: the title opens the `handout` or `entity` side panel; the action is "Reveal..." (accessible name "Reveal {title}"); the status line "Revealed to {names} . not yet: {names}" shows once anyone has received it.
+- **Type groups:** an `h3` per type that has entries; types without entries are omitted.
+- **Empty:** "Everything Player-facing has reached every Investigator present."
+
+### 21.5 Keeper reference
+
+- **What is listed:** Keeper-facing Handouts (stored order), then every Non-Player Entity link (link order), whatever has been revealed. From PBI-SPL-003, Items add their Keeper-facing material here.
+- **Entries:** the material entry in play context with no action; the title opens the `handout` or `entity` side panel.
+- **Hint:** "Only you see these: Keeper-facing Handouts and the profiles behind Non-Player Entities."
+- **Empty:** "Nothing Keeper-only in this Scene."
+
+### 21.6 Revealed
+
+- Section 12's "Revealed in this Scene" list, newest first, with the `h2` "Revealed" and the hint "Every Reveal in this Scene, newest first.".
+- "Show what was revealed" (accessible name "Show what was revealed: {title}") opens the `reveal` side panel instead of expanding inline.
+- **Empty:** "Nothing has been revealed in this Scene yet."
+
+### 21.7 Revealing from the sub-tabs and the panel
+
+- "Reveal..." opens the section 13 dialog, unchanged.
+- The `handout` and `entity` panels opened from the Active Scene add "Reveal..." to their footer for a revealable subject; revealing keeps the panel open and updates its status line.
+- **Success:** the status says "{title} revealed to {names}.". When the subject has now reached everyone present, it leaves "To reveal" and the status adds " Moved to Revealed.".
+- **Focus after success:** back to the trigger when it still exists; otherwise the next entry's title in the list, then the previous one, then the sub-tab `h2`.
+- Refusals and a Scene finished meanwhile behave as section 13.
+
+### 21.8 Wall on the Active Scene (`active-scene-wall`, PBI-SPL-007)
+
+```
+Wall                                (h2)          Open the Wall
+[ New Wall Entry                            ]
+(o) Public  ( ) Keeper only                     (Keeper only)
+0 / 2000                              [Add to the Wall]
+19:14  Keeper     The front door slams shut behind Harvey.
+19:10  Keeper  [Keeper only]  Corbitt has noticed Cy.
+...  (5 latest)
+```
+
+- **Entries:** the `wall-preview` of [campaign-wall ux](../campaign-wall/ux.md) section 7 (5 latest the viewer may read, clamped to 3 lines, live, announced as there), with "Open the Wall".
+- **Compose:** the Wall page's compose form (campaign-wall ux section 4.2), reused, with a 2-row Textarea. The Keeper gets the "Who can read this?" group; Players get "Everyone in this Campaign can read this.". Success puts the entry at the top of the list and shows "Wall Entry added." in the page's `role=status` paragraph.
+- No "Remove" and no "Show older entries" here; both stay on the Wall page.
+- Entries are the Campaign's, not this Scene's; there is no link between a Wall Entry and a Scene.
+- **Players:** from 1024px the Player view (section 4.1) becomes two columns with this region on the right; below, it comes last. A Player whose Investigator is not present (section 4.2) sees the region too: it shows only Campaign Wall Entries, never Scene details.
+
+### 21.9 Player view changes
+
+- The link "{name}'s Clues" (section 14) opens the `clues` side panel. "Open full page" leads to the Clues page with `?from=active-scene`.
+- Everything else in sections 4 and 14 is unchanged, except the Wall region of 21.8.
+
+### 21.10 States and live updates
+
+- The sub-tab lists load from the Keeper Scene read with section 12's Skeleton and "We couldn't load this Scene's material." states; the header, sub-navigation (without counts while loading), and Run are unaffected.
+- `activeScene`, `sceneReveals`, and `scenes` refetch silently and update lists and counts in place. Nothing is announced to the Keeper (section 3).
+
+### 21.11 Content
+
+| Element | Copy |
+|---|---|
+| Sub-navigation | "Run", "To reveal", "Keeper reference", "Revealed" |
+| To reveal hint | "Player-facing material that hasn't reached every Investigator present." |
+| Status line | "Revealed to {names} . not yet: {names}" |
+| To reveal empty | "Everything Player-facing has reached every Investigator present." |
+| Reference hint | "Only you see these: Keeper-facing Handouts and the profiles behind Non-Player Entities." |
+| Reference empty | "Nothing Keeper-only in this Scene." |
+| Revealed hint | "Every Reveal in this Scene, newest first." |
+| Reveal status suffix | " Moved to Revealed." |
+
+### 21.12 UX acceptance criteria
+
+- **SPL-UX-40** Run shows the scene header, Keeper notes (open), Investigators present, and the Wall, and no Handout, Non-Player Entity, or Item.
+- **SPL-UX-41** The sub-navigation shows Run, To reveal, Keeper reference, and Revealed with counts; each has its own URL, and browser back and refresh keep the sub-tab.
+- **SPL-UX-42** To reveal lists Player-facing material until it has reached every Investigator present; partly revealed entries show "Revealed to {names} . not yet: {names}".
+- **SPL-UX-43** Revealing a subject to the last Investigator present moves it from To reveal to Revealed, updates both counts, and says "Moved to Revealed.".
+- **SPL-UX-44** Adding an Investigator present returns every subject they haven't received to To reveal.
+- **SPL-UX-45** Keeper reference lists Keeper-facing Handouts and every Non-Player Entity, and offers no "Reveal...".
+- **SPL-UX-46** Titles, "Clues", and "Show what was revealed" open side panels ([navigation ux](../navigation/ux.md) section 3); the page beneath keeps its state.
+- **SPL-UX-47** "Finish Scene" is available on every sub-tab; Location and "Open in Scenario" show on Run only.
+- **SPL-UX-48** A Player sees no sub-navigation, and a Player opening a Keeper sub-route lands on `/active-scene`.
+- **SPL-UX-49** The Keeper and Players can post to the Wall from Run and see the 5 latest entries they may read, live; a Player never sees a Keeper only entry or the visibility choice.
+- **SPL-UX-50** Below 1024px Run is one column in the order Keeper notes, Investigators present, Wall.
+
+### 21.13 Accessibility acceptance criteria (WCAG 2.2 AA)
+
+- **SPL-A11Y-15** The sub-navigation is a `nav` labelled "Active Scene" with `aria-current="page"`; counts are part of each link's accessible name (1.3.1, 4.1.2).
+- **SPL-A11Y-16** Each sub-tab has the page `h1` and one `h2`; type groups are `h3` (1.3.1, 2.4.6).
+- **SPL-A11Y-17** Focus after a Reveal follows 21.7 and never lands on `body` (2.4.3).
+- **SPL-A11Y-18** At 320px and 200% zoom, the sub-navigation scrolls inside itself and Run is one column; the page body never scrolls sideways (1.4.10).

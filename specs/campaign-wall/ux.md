@@ -124,6 +124,8 @@ Wall                                                          (h1)
 
 ## 7. Wall preview (`wall-preview`)
 
+> **Since PBI-SPL-007** the preview, together with the compose form of section 4.2, also appears on the Active Scene's Run view for the Keeper and Players ([scene-play ux](../scene-play/ux.md) section 21.8). Both are reused there, not copied.
+
 Completes [campaign-overview ux](../campaign-overview/ux.md) section 7.
 
 - **Source:** the same entries the Wall page would show to this viewer, newest first, limited to 5. For a Player this is the 5 latest Public entries, never the 5 latest overall with Keeper only entries removed afterwards.

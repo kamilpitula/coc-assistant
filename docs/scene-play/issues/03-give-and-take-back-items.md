@@ -1,7 +1,7 @@
 ---
 id: PBI-SPL-003
 status: todo
-blocked_by: [PBI-SPL-001, PBI-SP-008]
+blocked_by: [PBI-SPL-001, PBI-SP-008, PBI-SPL-006]
 ---
 
 # PBI-SPL-003: Give and Take Back Items
@@ -17,7 +17,7 @@ Build the end-to-end ability for a Keeper to give an Item to an Investigator, ta
 - **Out of scope:** Players passing, dropping, or destroying Items; Gear on the Character Sheet.
 
 ## Dependencies
-- Blocked by: PBI-SPL-001 (Active Scene); PBI-SP-008 (Items).
+- Blocked by: PBI-SPL-001 (Active Scene); PBI-SP-008 (Items); PBI-SPL-006 (Items land in the Active Scene's To reveal and Keeper reference groups, scene-play ux section 21, instead of the superseded section 12 layout).
 - Must merge before: None.
 
 ## Context

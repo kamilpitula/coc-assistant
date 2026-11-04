@@ -1,0 +1,599 @@
+<!-- Throwaway reference prototype approved on 2026-11-04 (variant A selected). Not production code: specs/navigation/ux.md and specs/scene-play/ux.md section 21 are normative. Open the published copy or this file in a browser. -->
+<title>Active Scene Navigation Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: prototype toolbar on top, then a fake browser frame holding the app (shadcn-neutral look of the real app). */
+:root {
+  --bg: #ffffff; --fg: #171717; --muted: #6b6b6b; --muted-bg: #f4f4f5; --border: #e4e4e7;
+  --primary: #171717; --primary-fg: #fafafa; --live: #15803d; --live-bg: #dcfce7; --destructive: #b91c1c;
+  --chrome: #eceaf3; --chrome-fg: #2b2645; --proto: #5b4bd6; --proto-bg: #efecff; --overlay: rgba(10,10,10,.45);
+  --focus: #2563eb;
+  --font-ui: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0b0b0c; --fg: #ededed; --muted: #a1a1aa; --muted-bg: #1c1c1f; --border: #2c2c31;
+  --primary: #ededed; --primary-fg: #111; --live: #4ade80; --live-bg: #12301d; --destructive: #f87171;
+  --chrome: #1a1828; --chrome-fg: #dcd8f5; --proto: #a99cff; --proto-bg: #241f45; --overlay: rgba(0,0,0,.6); --focus: #60a5fa;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0b0b0c; --fg: #ededed; --muted: #a1a1aa; --muted-bg: #1c1c1f; --border: #2c2c31;
+  --primary: #ededed; --primary-fg: #111; --live: #4ade80; --live-bg: #12301d; --destructive: #f87171;
+  --chrome: #1a1828; --chrome-fg: #dcd8f5; --proto: #a99cff; --proto-bg: #241f45; --overlay: rgba(0,0,0,.6); --focus: #60a5fa;
+  color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 14px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px 40px }
+button, a { font: inherit; color: inherit }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px }
+h1, h2, h3 { text-wrap: balance; margin: 0 }
+
+/* Prototype toolbar */
+.proto { background: var(--chrome); color: var(--chrome-fg); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; max-width: 1280px; margin: 0 auto }
+.proto-row { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center }
+.proto-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .75; font-weight: 700 }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid color-mix(in srgb, var(--chrome-fg) 25%, transparent); border-radius: 8px; overflow: hidden }
+.seg button { border: 0; background: transparent; padding: 6px 12px; cursor: pointer; color: var(--chrome-fg) }
+.seg button[aria-pressed="true"] { background: var(--proto); color: #fff }
+.notes { background: var(--proto-bg); border-left: 3px solid var(--proto); border-radius: 6px; padding: 8px 12px; font-size: 13px }
+.notes ul { margin: 4px 0 0; padding-left: 18px }
+.notes b { font-weight: 700 }
+
+/* Fake browser */
+.browser { max-width: 1280px; margin: 14px auto 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; position: relative; background: var(--bg) }
+.addr { display: flex; gap: 8px; align-items: center; padding: 8px 10px; background: var(--muted-bg); border-bottom: 1px solid var(--border) }
+.addr button { border: 1px solid var(--border); background: var(--bg); border-radius: 6px; padding: 2px 10px; cursor: pointer }
+.addr button:disabled { opacity: .4; cursor: default }
+.url { flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; overflow-x: auto; white-space: nowrap }
+.url .q { color: var(--proto); font-weight: 600 }
+.viewport { position: relative; min-height: 760px; overflow: hidden }
+.app { padding: 0 24px 40px }
+.topbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); margin: 0 -24px; padding-inline: 24px }
+.topbar .brand { font-weight: 700; font-size: 16px }
+.topbar nav { display: flex; gap: 16px; align-items: center; font-size: 13px }
+
+/* App components */
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--bg); border-radius: 6px; padding: 6px 12px; cursor: pointer; font-weight: 600; font-size: 13px; text-decoration: none; white-space: nowrap }
+.btn:hover { background: var(--muted-bg) }
+.btn.sm { padding: 3px 10px; font-size: 12px }
+.btn.primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary) }
+.btn.danger { color: var(--destructive) }
+.btn:disabled { opacity: .5; cursor: not-allowed }
+.link { background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; font-weight: 600 }
+.backlink { display: inline-flex; gap: 6px; align-items: center; background: none; border: 0; padding: 0; cursor: pointer; color: var(--muted); font-size: 13px }
+.backlink:hover { color: var(--fg) }
+.muted { color: var(--muted) }
+.small { font-size: 12.5px }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--muted-bg); border: 1px solid var(--border) }
+.chip.outline { background: transparent }
+.chip.live { background: var(--live-bg); color: var(--live); border-color: transparent }
+.chip.soon { background: var(--proto-bg); color: var(--proto); border-color: transparent }
+.campaign-head { padding-top: 18px; display: flex; flex-direction: column; gap: 4px }
+.campaign-head h1 { font-size: 22px }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-top: 12px; overflow-x: auto }
+.tabs button { background: none; border: 0; padding: 8px 10px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap }
+.tabs button[aria-current="page"] { color: var(--fg); border-bottom-color: var(--fg); font-weight: 700 }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--live) }
+.page { padding-top: 20px; display: flex; flex-direction: column; gap: 18px }
+.status { font-size: 13px; padding: 8px 12px; border-radius: 6px; background: var(--live-bg); color: var(--live); font-weight: 600 }
+
+/* Scene header */
+.scene-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-start }
+.scene-head h1 { font-size: 24px }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 13px; color: var(--muted); margin-top: 6px }
+.subtabs { display: flex; gap: 2px; background: var(--muted-bg); padding: 3px; border-radius: 8px; width: fit-content; max-width: 100%; overflow-x: auto }
+.subtabs button { border: 0; background: transparent; padding: 6px 12px; border-radius: 6px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; color: var(--muted); font-weight: 600 }
+.subtabs button[aria-current="page"] { background: var(--bg); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.08) }
+.count { font-size: 11px; font-variant-numeric: tabular-nums; background: var(--border); color: var(--fg); border-radius: 999px; padding: 0 7px; font-weight: 700 }
+
+.run { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start }
+@media (max-width: 1024px) { .run { grid-template-columns: minmax(0,1fr) } }
+.region { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0 }
+.region > header { display: flex; justify-content: space-between; align-items: center; gap: 8px }
+.region h2 { font-size: 15px }
+.region.placeholder { border-style: dashed; color: var(--muted); background: transparent }
+.notes-body p { margin: 0 0 8px; max-width: 65ch }
+.people { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column }
+.people li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid var(--border) }
+.people li:first-child { border-top: 0 }
+.matnav { display: flex; flex-direction: column; gap: 0 }
+.matnav button { display: flex; justify-content: space-between; align-items: center; background: none; border: 0; border-top: 1px solid var(--border); padding: 9px 2px; cursor: pointer; text-align: left }
+.matnav button:first-child { border-top: 0 }
+.matnav button:hover { background: var(--muted-bg) }
+.matnav .hint { font-size: 12px; color: var(--muted); display: block }
+
+/* Material entry (shared between Scene page and Active Scene) */
+.group { display: flex; flex-direction: column; gap: 8px }
+.group-head { display: flex; flex-direction: column; gap: 2px }
+.group-head h2 { font-size: 17px; display: flex; gap: 8px; align-items: center }
+.entries { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden }
+.entry { display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 10px 14px; border-top: 1px solid var(--border); flex-wrap: wrap }
+.entry:first-child { border-top: 0 }
+.entry .info { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 260px }
+.entry .title { background: none; border: 0; padding: 0; cursor: pointer; font-weight: 700; text-align: left; font-size: 14px }
+.entry .title:hover { text-decoration: underline; text-underline-offset: 3px }
+.entry .badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
+.entry .actions { display: flex; gap: 6px; flex-wrap: wrap }
+.partial { font-size: 12.5px; color: var(--muted) }
+.partial b { color: var(--fg); font-weight: 600 }
+.empty { padding: 14px; color: var(--muted); font-size: 13px }
+.subhead { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; padding: 8px 14px; background: var(--muted-bg); border-top: 1px solid var(--border) }
+.subhead:first-child { border-top: 0 }
+details.sect { border: 1px solid var(--border); border-radius: 10px }
+details.sect > summary { cursor: pointer; padding: 12px 14px; font-weight: 700; font-size: 16px; display: flex; gap: 8px; align-items: center; list-style: none }
+details.sect > summary::-webkit-details-marker { display: none }
+details.sect > summary::before { content: "\25B8"; transition: transform .15s }
+details.sect[open] > summary::before { transform: rotate(90deg) }
+details.sect > .entries { border: 0; border-top: 1px solid var(--border); border-radius: 0 }
+details.sect > p { margin: 0 14px 10px; font-size: 12.5px; color: var(--muted) }
+
+/* Side panel (sheet) */
+.scrim { position: absolute; inset: 0; background: var(--overlay); z-index: 20 }
+.sheet { position: absolute; top: 0; right: 0; bottom: 0; width: min(440px, 100%); background: var(--bg); border-left: 1px solid var(--border); z-index: 21; display: flex; flex-direction: column; box-shadow: -8px 0 24px rgba(0,0,0,.12) }
+.sheet.wide { width: min(720px, 100%) }
+.sheet header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px; align-items: flex-start }
+.sheet header h2 { font-size: 17px }
+.sheet .body { padding: 14px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; flex: 1 }
+.sheet footer { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px; align-items: center }
+.x { border: 1px solid var(--border); background: var(--bg); border-radius: 6px; width: 30px; height: 30px; cursor: pointer; flex: none }
+.readaloud { border-left: 3px solid var(--border); padding: 8px 12px; background: var(--muted-bg); border-radius: 0 6px 6px 0; font-style: italic }
+.img-ph { aspect-ratio: 4/3; max-width: 100%; border-radius: 8px; background: repeating-linear-gradient(45deg, var(--muted-bg) 0 10px, var(--bg) 10px 20px); border: 1px solid var(--border); display: grid; place-items: center; color: var(--muted); font-size: 12px }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; font-variant-numeric: tabular-nums }
+.stats div { border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; display: flex; justify-content: space-between; font-size: 13px }
+.stats b { font-weight: 700 }
+.clue { border-top: 1px solid var(--border); padding-top: 10px; display: flex; flex-direction: column; gap: 6px }
+.clue:first-child { border-top: 0; padding-top: 0 }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
+.wall-compose { display: flex; flex-direction: column; gap: 6px }
+.wall-compose textarea { width: 100%; resize: vertical; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px }
+.wall-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column }
+.wall-entry { border-top: 1px solid var(--border); padding: 8px 0; display: flex; flex-direction: column; gap: 2px }
+.wall-entry p { margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden }
+
+/* Dialog */
+.modal { position: absolute; z-index: 31; top: 120px; left: 50%; transform: translateX(-50%); width: min(440px, calc(100% - 32px)); background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 16px 40px rgba(0,0,0,.2) }
+.modal fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px }
+.modal legend { font-weight: 700; margin-bottom: 6px }
+.modal label { display: flex; gap: 8px; align-items: center }
+.scrim.top { z-index: 30 }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px }
+.toast { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--primary); color: var(--primary-fg); padding: 8px 14px; border-radius: 8px; z-index: 40; font-size: 13px }
+@media (max-width: 640px) { .app { padding: 0 14px 30px } .topbar { margin: 0 -14px; padding-inline: 14px } .stats { grid-template-columns: repeat(2, minmax(0,1fr)) } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+</style>
+
+<div class="proto" aria-label="Prototype controls">
+  <div class="proto-row">
+    <span class="proto-label">Prototype</span>
+    <div class="seg" role="group" aria-label="Variant" id="variantSeg">
+      <button type="button" data-variant="a">A &middot; Scene sub-tabs</button>
+      <button type="button" data-variant="b">B &middot; Material drawer</button>
+      <button type="button" data-variant="c">C &middot; Material page</button>
+    </div>
+    <div class="seg" role="group" aria-label="Signed in as" id="roleSeg">
+      <button type="button" data-role="keeper">Keeper</button>
+      <button type="button" data-role="player">Player (Harvey)</button>
+    </div>
+    <button type="button" class="btn sm" id="resetBtn">Reset data</button>
+  </div>
+  <div class="notes" id="notes"></div>
+</div>
+
+<div class="browser">
+  <div class="addr">
+    <button type="button" id="backBtn" aria-label="Browser back">&larr;</button>
+    <div class="url" id="url" aria-label="Address"></div>
+  </div>
+  <div class="viewport" id="viewport">
+    <div class="app" id="app"></div>
+    <div id="overlay"></div>
+  </div>
+</div>
+
+<script>
+const INVESTIGATORS = { harvey: 'Harvey Walters', lucy: 'Lucy Ward', cy: 'Cy Holloway' };
+const MATERIAL = [
+  { id: 'h1', type: 'Handout', title: 'The front door', kind: 'Read-aloud', vis: 'PF',
+    body: 'The door hangs crooked on rust-brown hinges. Someone has nailed a horseshoe above it, upside down, and the paint around the keyhole is scored with fresh scratches.' },
+  { id: 'h2', type: 'Handout', title: 'The secret door', kind: 'Text', vis: 'KF',
+    body: 'Behind the study bookcase. A Spot Hidden roll finds the draught from the gap; the latch is the third volume of Gibbon.' },
+  { id: 'h3', type: 'Handout', title: 'Corbitt House plan', kind: 'Image', vis: 'PF', img: 'Ground-floor plan of the Corbitt House' },
+  { id: 'h4', type: 'Handout', title: 'Arkham map', kind: 'Map', vis: 'KF', img: 'Keeper map of Arkham with the Corbitt House marked' },
+  { id: 'h5', type: 'Handout', title: 'Diary pages', kind: 'Document', vis: 'KF', body: 'PDF, 4 pages: Walter Corbitt, 1835-1852.' },
+  { id: 'h6', type: 'Handout', title: 'Boston Globe clipping, 1918', kind: 'Text', vis: 'PF',
+    body: 'FAMILY FLEES "HAUNTED" HOUSE. The Macario family left the Corbitt House on Tuesday after the father was gravely injured in an unexplained fall.' },
+  { id: 'n1', type: 'NPE', title: 'The landlord', entity: 'Mr. Knott', entityType: 'Human NPC',
+    body: 'A stooped man in his sixties who keeps the house keys on a ring at his belt and will not step past the porch.',
+    stats: { STR: 50, CON: 55, SIZ: 60, DEX: 40, INT: 65, POW: 50, HP: 11, SAN: 48 }, skills: 'Listen 50%, Spot Hidden 40%, Persuade 35%' },
+  { id: 'n2', type: 'NPE', title: 'A shape in the cellar', entity: 'Corbitt (revenant)', entityType: 'Mythos Creature', body: null,
+    stats: { STR: 90, CON: 75, SIZ: 70, DEX: 40, INT: 70, POW: 90, HP: 14, MP: 18 }, skills: 'Attacks: Flying dagger 50%, 1D4+2. Sanity loss 0/1D6.' },
+  { id: 'i1', type: 'Item', title: 'Rusted cellar key', soon: true },
+];
+const SEED_REVEALS = [
+  { id: 'r1', subject: 'h3', to: ['harvey', 'lucy', 'cy'], at: '9:12 PM' },
+  { id: 'r2', subject: 'h1', to: ['harvey'], at: '9:05 PM' },
+];
+const NOTES = {
+  a: `<b>A &middot; Scene sub-tabs (selected).</b> v2: Wall region (5 latest + composer) above Investigators present; the Scene material box is removed from Run because the sub-tabs already carry the counts.<br> A second row of tabs inside the Active Scene: <b>Run</b>, <b>To reveal</b>, <b>Keeper reference</b>, <b>Revealed</b>. Each tab has its own URL.
+    <ul><li>Try: Reveal "The front door" to Lucy and Cy from <b>To reveal</b> and watch it move to <b>Revealed</b>.</li>
+    <li>Try: on <b>Run</b>, open Lucy's Clues (side panel), then "Open full page" and use "Back to The Corbitt House".</li>
+    <li>Watch out: two tab rows stacked. The scene header stays visible on every sub-tab.</li></ul>`,
+  b: `<b>B &middot; Material drawer.</b> The Run view is the only page. "Material" opens a wide drawer with the three groups; the Keeper never leaves Run.
+    <ul><li>Try: open Material, reveal something, close the drawer with the browser back button.</li>
+    <li>Content opens inside the drawer (with "Back to material") so only one panel is ever open.</li>
+    <li>Watch out: the drawer covers Investigators present while it is open.</li></ul>`,
+  c: `<b>C &middot; Material page.</b> Run links to one "Scene material" page with the three groups as collapsible sections and a "Back to The Corbitt House" link.
+    <ul><li>Try: open Scene material, collapse sections, reveal, go back.</li>
+    <li>Simplest to build; the Active Scene tab stays current on both pages.</li>
+    <li>Watch out: a full page change for every reveal trip.</li></ul>`,
+  shared: `Shared in every variant: the <b>Active Scene</b> tab with a Live badge, side panels kept in the URL (<span style="font-family:var(--font-mono)">?panel=</span>), "Open full page" with <span style="font-family:var(--font-mono)">?from=active-scene</span>, and the same material entry on the Scene page (Overview &rarr; The Haunting &rarr; The Corbitt House, or "Open in Scenario").`,
+  player: `<b>Player view.</b> Content is unchanged. New: the <b>Active Scene</b> tab with a Live badge, the <b>Wall</b> box in the right column (Public entries only, posts are Public), Clues open in the side panel, and the full Clues page links back to the scene.`,
+};
+
+const S = {};
+function reset() {
+  S.variant = (location.hash || '#a').slice(1).replace(/[^abc]/g, '') || 'a';
+  S.role = 'keeper';
+  S.present = ['harvey', 'lucy', 'cy'];
+  S.reveals = SEED_REVEALS.map((r) => ({ ...r, to: [...r.to] }));
+  S.history = [];
+  S.route = { page: 'active', sub: 'run' };
+  S.dialog = null;
+  S.status = '';
+  S.notesOpen = true;
+  S.wall = [
+    { at: '9:14 PM', author: 'Keeper', text: 'The front door slams shut behind Harvey. Nobody touched it.', keeperOnly: false },
+    { at: '9:10 PM', author: 'Keeper', text: 'Corbitt has noticed Cy. Whispers start next time Cy is alone.', keeperOnly: true },
+    { at: '9:06 PM', author: 'Lucy', text: 'Lucy pockets the horseshoe from above the door.', keeperOnly: false },
+    { at: '9:02 PM', author: 'Keeper', text: 'The Investigators reach the Corbitt House at dusk. Knott hands over the keys at the gate.', keeperOnly: false },
+  ];
+}
+
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const byId = (id) => MATERIAL.find((m) => m.id === id);
+const names = (ids) => { const n = ids.map((i) => INVESTIGATORS[i]); return n.length < 2 ? n.join('') : n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1]; };
+const recipients = (id) => [...new Set(S.reveals.filter((r) => r.subject === id).flatMap((r) => r.to))];
+const revealable = (m) => (m.type === 'Handout' && m.vis === 'PF') || m.type === 'NPE' || m.type === 'Item';
+const isDone = (m) => !m.soon && S.present.every((p) => recipients(m.id).includes(p));
+function groups() {
+  const toReveal = MATERIAL.filter((m) => revealable(m) && !isDone(m));
+  const reference = [...MATERIAL.filter((m) => m.type === 'Handout' && m.vis === 'KF'),
+    ...MATERIAL.filter((m) => m.type === 'NPE').map((m) => ({ id: 'p-' + m.id, type: 'Profile', npe: m, title: m.entity, entityType: m.entityType }))];
+  const revealed = [...S.reveals].reverse();
+  return { toReveal, reference, revealed };
+}
+
+/* ---------- routing ---------- */
+const BASE = '/campaigns/arkham-nights';
+function urlOf(r) {
+  let path = BASE; const q = [];
+  if (r.page === 'overview') path += '';
+  if (r.page === 'wall') path += '/wall';
+  if (r.page === 'settings') path += '/settings';
+  if (r.page === 'active') { path += '/active-scene'; if (S.variant === 'a' && r.sub && r.sub !== 'run' && S.role === 'keeper') path += '/' + r.sub; }
+  if (r.page === 'material') path += '/active-scene/material';
+  if (r.page === 'scene-prep') path += '/scenarios/the-haunting/scenes/corbitt-house';
+  if (r.page === 'clues') path += S.role === 'player' ? '/investigator/clues' : '/investigators/' + r.id + '/clues';
+  if (r.page === 'content') path += '/scenarios/the-haunting/scenes/corbitt-house/handouts/' + r.id;
+  if (r.page === 'profile') path += '/' + (byId(r.id).entityType === 'Human NPC' ? 'human-npcs' : 'mythos-creatures') + '/' + r.id;
+  if (r.drawer) { q.push('material=' + r.drawer); if (r.drawerItem) q.push('item=' + r.drawerItem); }
+  if (r.panel) { q.push('panel=' + r.panel.type); q.push((r.panel.type === 'clues' ? 'investigator=' : 'id=') + r.panel.id); }
+  if (r.from) q.push('from=' + r.from);
+  return esc(path) + (q.length ? '<span class="q">?' + esc(q.join('&')) + '</span>' : '');
+}
+function go(r, opts = {}) { if (!opts.replace) S.history.push(S.route); S.route = r; if (!opts.keepStatus) S.status = ''; render(); }
+function back() { if (S.history.length) { S.route = S.history.pop(); S.status = ''; render(); } }
+function closePanel() {
+  const prev = S.history[S.history.length - 1];
+  const without = { ...S.route, panel: undefined };
+  if (prev && !prev.panel && prev.page === S.route.page && prev.sub === S.route.sub && prev.drawer === S.route.drawer) back();
+  else go(without, { replace: true });
+}
+function openPanel(type, id) { go({ ...S.route, panel: { type, id } }, { keepStatus: true }); }
+
+/* ---------- shared pieces ---------- */
+function campaignHeader(current) {
+  const live = S.present.length > 0;
+  const tab = (key, label, extra = '') => `<button type="button" data-go='${JSON.stringify({ page: key === 'active' ? 'active' : key, sub: 'run' })}' ${current === key ? 'aria-current="page"' : ''}>${label}${extra}</button>`;
+  return `
+  <div class="topbar"><span class="brand">CoC Assistant</span><nav><span>Campaigns</span><span>${S.role === 'keeper' ? 'Keeper' : 'Harvey'}</span><span class="btn sm">Sign Out</span></nav></div>
+  <div class="campaign-head">
+    <button type="button" class="backlink">&lsaquo; Back to Campaigns</button>
+    <h1>Arkham Nights</h1><span class="muted small">1920s</span>
+  </div>
+  <nav class="tabs" aria-label="Campaign">
+    ${tab('overview', 'Overview')}
+    ${tab('active', 'Active Scene', live ? ' <span class="chip live"><span class="dot" aria-hidden="true"></span>Live</span>' : '')}
+    ${tab('wall', 'Wall')}
+    ${S.role === 'keeper' ? tab('settings', 'Settings') : ''}
+  </nav>`;
+}
+function tabOf(page) { return ({ active: 'active', material: 'active', wall: 'wall', settings: 'settings' })[page] || 'overview'; }
+
+function badges(m) {
+  if (m.type === 'Handout') return `<span class="chip">${m.kind}</span><span class="chip outline">${m.vis === 'PF' ? '&#128065; Player-facing' : '&#128274; Keeper-facing'}</span>`;
+  if (m.type === 'NPE') return `<span class="chip">${m.entityType}</span><span class="small muted">Profile: <button type="button" class="link" data-panel="profile:${m.id}">${esc(m.entity)}</button></span>`;
+  if (m.type === 'Item') return `<span class="chip">Item</span><span class="chip soon">Arrives with PBI-SPL-003</span>`;
+  if (m.type === 'Profile') return `<span class="chip">${m.entityType} profile</span><span class="small muted">Stats, skills, Keeper notes</span>`;
+  return '';
+}
+function partialLine(m) {
+  const rec = recipients(m.id); if (!rec.length || isDone(m)) return '';
+  const missing = S.present.filter((p) => !rec.includes(p));
+  return `<span class="partial">Revealed to <b>${names(rec)}</b> &middot; not yet: ${names(missing)}</span>`;
+}
+/** The one material entry used on the Scene page (ctx 'prep') and the Active Scene (ctx 'play'). */
+function entry(m, ctx) {
+  const opener = m.type === 'Profile' ? `profile:${m.npe.id}` : `content:${m.id}`;
+  let actions = '';
+  if (ctx === 'prep') actions = m.type === 'Profile' ? '' : `<button type="button" class="btn sm" data-noop>Edit</button><button type="button" class="btn sm danger" data-noop>${m.type === 'Handout' ? 'Delete' : 'Unlink'}</button>`;
+  else if (m.type === 'Item') actions = `<button type="button" class="btn sm" disabled>Give&hellip;</button>`;
+  else if (revealable(m)) actions = `<button type="button" class="btn sm" data-reveal="${m.id}" id="rv-${m.id}">Reveal&hellip;</button>`;
+  else if (m.type === 'Profile') actions = `<button type="button" class="btn sm" data-panel="${opener}">Open profile</button>`;
+  return `<li class="entry">
+    <div class="info">
+      <button type="button" class="title" data-panel="${opener}" ${m.soon ? 'disabled' : ''}>${esc(m.title)}</button>
+      <div class="badges">${badges(m)}</div>
+      ${ctx === 'play' ? partialLine(m) : ''}
+    </div>
+    <div class="actions">${actions}</div>
+  </li>`;
+}
+function revealEntry(r) {
+  const m = byId(r.subject);
+  return `<li class="entry"><div class="info">
+      <button type="button" class="title" data-panel="content:${m.id}">${esc(m.title)}</button>
+      <span class="small muted">${m.type === 'Handout' ? m.kind : 'Non-Player Entity'} &middot; ${r.at} &middot; to ${names(r.to)}</span>
+    </div><div class="actions"><button type="button" class="btn sm" data-panel="content:${m.id}">Show what was revealed</button></div></li>`;
+}
+function entriesList(list, ctx, emptyText) {
+  return list.length ? `<ul class="entries">${list.map((m) => entry(m, ctx)).join('')}</ul>` : `<div class="entries"><p class="empty">${emptyText}</p></div>`;
+}
+function toRevealList(list) {
+  if (!list.length) return `<div class="entries"><p class="empty">Everything Player-facing has reached every Investigator present.</p></div>`;
+  const sub = (label, items) => items.length ? `<li class="subhead">${label}</li>${items.map((m) => entry(m, 'play')).join('')}` : '';
+  return `<ul class="entries">${sub('Handouts', list.filter((m) => m.type === 'Handout'))}${sub('Non-Player Entities', list.filter((m) => m.type === 'NPE'))}${sub('Items', list.filter((m) => m.type === 'Item'))}</ul>`;
+}
+const GROUP_COPY = {
+  'to-reveal': ['To reveal', 'Player-facing material that has not reached every Investigator present.'],
+  reference: ['Keeper reference', 'Only you see these. Keeper-facing Handouts and Non-Player Entity profiles.'],
+  revealed: ['Revealed', 'Every Reveal in this Scene, newest first.'],
+};
+function groupBody(key) {
+  const g = groups();
+  if (key === 'to-reveal') return toRevealList(g.toReveal);
+  if (key === 'reference') return entriesList(g.reference, 'play', 'Nothing Keeper-only in this Scene.');
+  return g.revealed.length ? `<ul class="entries">${g.revealed.map(revealEntry).join('')}</ul>` : `<div class="entries"><p class="empty">Nothing has been revealed in this Scene yet.</p></div>`;
+}
+function counts() { const g = groups(); return { 'to-reveal': g.toReveal.length, reference: g.reference.length, revealed: g.revealed.length }; }
+
+/* ---------- Keeper: Active Scene ---------- */
+function sceneHeader(compact) {
+  return `<div class="scene-head">
+    <div>
+      <h1 tabindex="-1">The Corbitt House</h1>
+      <div class="meta"><span class="chip live"><span class="dot" aria-hidden="true"></span>Active</span><span>Started 9:02 PM</span>
+        ${compact ? '' : `<span>Scenario: The Haunting &middot; <button type="button" class="link" data-go='{"page":"scene-prep"}'>Open in Scenario</button></span><span><b style="color:var(--fg)">Location</b> Corbitt House, Arkham</span>`}
+      </div>
+    </div>
+    <button type="button" class="btn danger" data-noop>Finish Scene</button>
+  </div>`;
+}
+function presentRegion() {
+  return `<section class="region" aria-labelledby="present-h"><header><h2 id="present-h">Investigators present</h2><button type="button" class="btn sm" data-noop>Change</button></header>
+    <ul class="people">${S.present.map((id) => `<li><span>${INVESTIGATORS[id]}</span><button type="button" class="btn sm" data-panel="clues:${id}">Clues</button></li>`).join('')}</ul></section>`;
+}
+function wallRegion() {
+  const keeper = S.role === 'keeper';
+  const entries = S.wall.filter((w) => keeper || !w.keeperOnly).slice(0, 5).map((w) => `<li class="wall-entry"><div class="small muted"><time>${w.at}</time> &middot; ${esc(w.author)}${w.keeperOnly ? ' <span class="chip outline">Keeper only</span>' : ''}</div><p>${esc(w.text)}</p></li>`).join('');
+  return `<section class="region" aria-labelledby="wall-h"><header><h2 id="wall-h">Wall</h2><button type="button" class="link small" data-go='{"page":"wall"}'>Open the Wall</button></header>
+    <form class="wall-compose" id="wallForm"><label for="wallText" class="sr-only">New Wall Entry</label><textarea id="wallText" rows="2" placeholder="New Wall Entry"></textarea>
+      <div class="row" style="justify-content:space-between">${keeper ? '<label class="small"><input type="checkbox" id="wallKeeperOnly"> Keeper only</label>' : '<span class="small muted">Everyone in this Campaign can read this.</span>'}<button type="submit" class="btn sm primary">Add to the Wall</button></div></form>
+    <ol class="wall-list">${entries}</ol></section>`;
+}
+function materialRegion() {
+  const c = counts();
+  const rows = Object.keys(GROUP_COPY).map((k) => {
+    const target = S.variant === 'a' ? `data-go='{"page":"active","sub":"${k}"}'` : S.variant === 'b' ? `data-drawer="${k}"` : `data-go='{"page":"material","open":"${k}"}'`;
+    return `<button type="button" ${target}><span><span>${GROUP_COPY[k][0]}</span><span class="hint">${k === 'to-reveal' ? 'Reveal to Investigators present' : k === 'reference' ? 'Keeper-only Handouts and profiles' : 'What has been revealed and to whom'}</span></span><span class="count">${c[k]}</span></button>`;
+  }).join('');
+  const action = S.variant === 'b' ? `<button type="button" class="btn sm primary" data-drawer="to-reveal">Open material</button>` : S.variant === 'c' ? `<button type="button" class="btn sm primary" data-go='{"page":"material"}'>Open material</button>` : '';
+  return `<section class="region" aria-labelledby="mat-h"><header><h2 id="mat-h">Scene material</h2>${action}</header><div class="matnav">${rows}</div></section>`;
+}
+function runView() {
+  return `<div class="run">
+    <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+      <section class="region" aria-labelledby="kn-h"><header><h2 id="kn-h">Keeper notes</h2><button type="button" class="btn sm" data-noop>Collapse</button></header>
+        <div class="notes-body"><p>The Investigators arrive at dusk. Knott hands over the keys at the gate and refuses to come further.</p>
+        <p>If anyone lingers in the hall, the front door slams behind them (no damage; Sanity 0/1). Corbitt is aware of them from the first minute and tests the weakest-willed with whispers.</p>
+        <p>The cellar door is locked. The key is in Knott's ring; he "forgot" to mention it.</p></div></section>
+      <section class="region placeholder" aria-label="Play tools (future)"><header><h2>Play tools</h2><span class="chip soon">Reserved</span></header>
+        <p class="small" style="margin:0">Future run-time tools land here (rolls, combat, timer, session notes) without another layout change.</p></section>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:20px;min-width:0">${wallRegion()}${presentRegion()}${S.variant === 'a' ? '' : materialRegion()}</div>
+  </div>`;
+}
+function variantA() {
+  const sub = S.route.sub || 'run'; const c = counts();
+  const st = (k, label) => `<button type="button" data-go='{"page":"active","sub":"${k}"}' ${sub === k ? 'aria-current="page"' : ''}>${label}${k === 'run' ? '' : ` <span class="count">${c[k]}</span>`}</button>`;
+  const body = sub === 'run' ? runView() : `<section class="group"><div class="group-head"><h2>${GROUP_COPY[sub][0]}</h2><span class="small muted">${GROUP_COPY[sub][1]}</span></div>${groupBody(sub)}</section>`;
+  return `${sceneHeader(sub !== 'run')}<nav class="subtabs" aria-label="Active Scene">${st('run', 'Run')}${st('to-reveal', 'To reveal')}${st('reference', 'Keeper reference')}${st('revealed', 'Revealed')}</nav>${body}`;
+}
+function materialPage() {
+  const c = counts(); const open = S.route.open;
+  const sect = (k) => `<details class="sect" ${k === 'revealed' && open !== 'revealed' ? '' : 'open'} ${open && open !== k ? '' : ''}><summary>${GROUP_COPY[k][0]} <span class="count">${c[k]}</span></summary><p>${GROUP_COPY[k][1]}</p>${groupBody(k)}</details>`;
+  return `<div><button type="button" class="backlink" data-back-to="active">&larr; Back to The Corbitt House</button></div>
+    <div><h1 style="font-size:22px">Scene material</h1><span class="small muted">The Corbitt House &middot; Active since 9:02 PM</span></div>
+    ${sect('to-reveal')}${sect('reference')}${sect('revealed')}`;
+}
+
+/* ---------- other pages ---------- */
+function overviewPage() {
+  return `<div class="cards">
+    <section class="region"><header><h2>Active Scene</h2><span class="chip live"><span class="dot"></span>Live</span></header><p style="margin:0">The Corbitt House &middot; started 9:02 PM</p><div><button type="button" class="btn sm primary" data-go='{"page":"active","sub":"run"}'>Open Active Scene</button></div></section>
+    <section class="region"><header><h2>Scenarios</h2></header><button type="button" class="link" style="text-align:left" data-go='{"page":"scene-prep"}'>The Haunting &rsaquo; The Corbitt House</button><span class="small muted">2 Scenes</span></section>
+    <section class="region"><header><h2>Investigators</h2></header><span>Harvey Walters, Lucy Ward, Cy Holloway</span></section></div>`;
+}
+function wallPage() {
+  return `<p class="muted">Campaign Wall. The <b>Active Scene</b> tab above is always one click away.</p>
+  <section class="region"><b>Lucy Ward</b><p style="margin:0">Does anyone remember what the clipping said about the father's fall?</p></section>`;
+}
+function scenePrepPage() {
+  const ho = MATERIAL.filter((m) => m.type === 'Handout'), npe = MATERIAL.filter((m) => m.type === 'NPE'), it = MATERIAL.filter((m) => m.type === 'Item');
+  const sect = (title, list, add) => `<section class="group"><div class="row" style="justify-content:space-between"><h2 style="font-size:17px">${title}</h2><button type="button" class="btn sm" data-noop>${add}</button></div>${entriesList(list, 'prep', '')}</section>`;
+  return `<div><button type="button" class="backlink">&larr; Back to The Haunting</button></div>
+    <div class="scene-head"><div><h1>The Corbitt House</h1><div class="meta"><span class="chip live"><span class="dot"></span>Active</span><span>Scenario: The Haunting</span></div></div>
+      <div class="row"><button type="button" class="btn primary" data-go='{"page":"active","sub":"run"}'>Open Active Scene</button><button type="button" class="btn" data-noop>Edit</button></div></div>
+    <p class="notes" style="margin:0">Scene page in preparation. Same material entry as the Active Scene: same title, badges and content panel; only the actions differ (Edit / Delete here, Reveal&hellip; in play).</p>
+    ${sect('Handouts', ho, 'Add Handout')}${sect('Non-Player Entities', npe, 'Link Non-Player Entity')}${sect('Items', it, 'Link Item')}`;
+}
+function backFor(r, structural) {
+  if (r.from === 'active-scene') return `<button type="button" class="backlink" data-go='{"page":"active","sub":"run"}'>&larr; Back to The Corbitt House</button>`;
+  return `<button type="button" class="backlink" data-noop>&larr; ${structural}</button>`;
+}
+function cluesFor(id) {
+  const list = S.reveals.filter((r) => r.to.includes(id)).reverse();
+  if (!list.length) return `<p class="muted">${INVESTIGATORS[id]} hasn't received any Clues yet.</p>`;
+  return `<div style="display:flex;flex-direction:column;gap:10px"><span class="small muted" style="text-transform:uppercase;letter-spacing:.06em;font-weight:700">The Corbitt House</span>${list.map((r) => { const m = byId(r.subject); return `<div class="clue"><b>${esc(m.title)}</b><span class="small muted">${m.type === 'Handout' ? m.kind : 'Non-Player Entity'} &middot; revealed ${r.at}</span>${contentOf(m)}</div>`; }).join('')}</div>`;
+}
+function contentOf(m) {
+  if (m.img) return `<div class="img-ph" role="img" aria-label="${esc(m.img)}">${esc(m.img)}</div>`;
+  if (m.kind === 'Read-aloud') return `<div class="readaloud">${esc(m.body)}</div>`;
+  if (m.type === 'NPE') return m.body ? `<p style="margin:0">${esc(m.body)}</p>` : `<p class="muted" style="margin:0">No Player-facing description yet.</p>`;
+  return `<p style="margin:0">${esc(m.body || '')}</p>`;
+}
+function profileOf(m) {
+  return `<div class="stats">${Object.entries(m.stats).map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div><p style="margin:0" class="small">${esc(m.skills)}</p>
+    <p style="margin:0" class="small muted">Player-facing as "${esc(m.title)}". Players never see this profile.</p>`;
+}
+function fullPage() {
+  const r = S.route;
+  if (r.page === 'clues') { const id = S.role === 'player' ? 'harvey' : r.id;
+    return `<div>${backFor(r, S.role === 'player' ? 'Back to your Campaign' : 'Back to ' + INVESTIGATORS[id])}</div><h1 style="font-size:22px">${INVESTIGATORS[id]}'s Clues</h1><p class="muted" style="margin:0">Everything ${INVESTIGATORS[id]} received from the Keeper, newest first.</p>${cluesFor(id)}`; }
+  if (r.page === 'content') { const m = byId(r.id);
+    return `<div>${backFor(r, 'Back to The Corbitt House (Scene page)')}</div><h1 style="font-size:22px">${esc(m.title)}</h1><div class="badges row">${badges(m)}</div>${contentOf(m)}`; }
+  const m = byId(r.id);
+  return `<div>${backFor(r, 'Back to Non-Player Entities')}</div><h1 style="font-size:22px">${esc(m.entity)}</h1><span class="chip" style="width:fit-content">${m.entityType}</span>${profileOf(m)}`;
+}
+
+/* ---------- Player ---------- */
+function playerActive() {
+  const mine = S.reveals.filter((r) => r.to.includes('harvey')).reverse();
+  return `<div class="run"><div style="display:flex;flex-direction:column;gap:18px;min-width:0"><h1>The Corbitt House</h1><dl class="row small" style="margin:0"><dt><b>Location</b></dt><dd style="margin:0">Corbitt House, Arkham</dd></dl>
+    <section class="group"><h2 style="font-size:17px">Investigators present</h2><ul style="margin:0;padding-left:18px">${S.present.map((id) => `<li>${INVESTIGATORS[id]}${id === 'harvey' ? ' (your Investigator)' : ''}</li>`).join('')}</ul></section>
+    <section class="group"><div class="row" style="justify-content:space-between"><h2 style="font-size:17px">Revealed to Harvey Walters</h2><button type="button" class="btn sm" data-panel="clues:harvey">Harvey Walters's Clues</button></div>
+    ${mine.map((r) => { const m = byId(r.subject); return `<article class="region"><h3 style="font-size:15px">${esc(m.title)}</h3><span class="small muted">${m.type === 'Handout' ? m.kind : 'Non-Player Entity'} &middot; Revealed ${r.at}</span>${contentOf(m)}</article>`; }).join('') || '<p class="muted">The Keeper hasn\'t revealed anything to Harvey Walters yet.</p>'}</section></div><div style="min-width:0">${wallRegion()}</div></div>`;
+}
+
+/* ---------- overlays ---------- */
+function panelHtml() {
+  const p = S.route.panel; if (!p) return '';
+  let title, body, full;
+  if (p.type === 'clues') { title = `${INVESTIGATORS[p.id]}'s Clues`; body = cluesFor(p.id); full = { page: 'clues', id: p.id, from: 'active-scene' }; }
+  else if (p.type === 'profile') { const m = byId(p.id); title = m.entity; body = `<span class="chip" style="width:fit-content">${m.entityType}</span>${profileOf(m)}`; full = { page: 'profile', id: p.id, from: S.route.page === 'scene-prep' ? undefined : 'active-scene' }; }
+  else { const m = byId(p.id); title = m.title; body = `<div class="badges row">${badges(m)}</div>${S.route.page === 'scene-prep' ? '' : partialLine(m)}${contentOf(m)}`; full = { page: m.type === 'NPE' ? 'profile' : 'content', id: m.id, from: S.route.page === 'scene-prep' ? undefined : 'active-scene' }; }
+  const canReveal = p.type === 'content' && S.role === 'keeper' && S.route.page !== 'scene-prep' && revealable(byId(p.id));
+  return `<div class="scrim" data-close-panel></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-h">
+    <header><div><span class="small muted">${p.type === 'clues' ? 'Clues' : p.type === 'profile' ? 'Non-Player Entity profile' : 'Content'}</span><h2 id="sheet-h">${esc(title)}</h2></div><button type="button" class="x" aria-label="Close" data-close-panel>&times;</button></header>
+    <div class="body">${body}</div>
+    <footer><button type="button" class="link" data-full='${JSON.stringify(full)}'>Open full page &rarr;</button>${canReveal ? `<button type="button" class="btn sm" data-reveal="${p.id}">Reveal&hellip;</button>` : ''}</footer></aside>`;
+}
+function drawerHtml() {
+  const d = S.route.drawer; if (!d || S.variant !== 'b') return '';
+  const c = counts();
+  let body;
+  if (S.route.drawerItem) {
+    const it = S.route.drawerItem; const isProfile = it.startsWith('p-'); const m = byId(isProfile ? it.slice(2) : it);
+    body = `<div><button type="button" class="backlink" data-drawer-item="">&larr; Back to ${GROUP_COPY[d][0]}</button></div><h3 style="font-size:17px">${esc(isProfile ? m.entity : m.title)}</h3>
+      ${isProfile ? profileOf(m) : `<div class="badges row">${badges(m)}</div>${partialLine(m)}${contentOf(m)}${revealable(m) ? `<div><button type="button" class="btn sm" data-reveal="${m.id}">Reveal&hellip;</button></div>` : ''}`}`;
+  } else {
+    body = `<nav class="subtabs" aria-label="Material">${Object.keys(GROUP_COPY).map((k) => `<button type="button" data-drawer="${k}" ${d === k ? 'aria-current="page"' : ''}>${GROUP_COPY[k][0]} <span class="count">${c[k]}</span></button>`).join('')}</nav>
+      <span class="small muted">${GROUP_COPY[d][1]}</span>${groupBody(d)}`;
+  }
+  return `<div class="scrim" data-close-drawer></div><aside class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="drawer-h">
+    <header><div><span class="small muted">The Corbitt House</span><h2 id="drawer-h">Scene material</h2></div><button type="button" class="x" aria-label="Close" data-close-drawer>&times;</button></header>
+    <div class="body">${body}</div></aside>`;
+}
+function dialogHtml() {
+  const dlg = S.dialog; if (!dlg) return '';
+  const m = byId(dlg.id); const rec = recipients(m.id);
+  return `<div class="scrim top"></div><div class="modal" role="dialog" aria-modal="true" aria-labelledby="dlg-h">
+    <h2 id="dlg-h" style="font-size:17px">Reveal ${esc(m.title)}</h2><span class="small muted">${m.type === 'Handout' ? m.kind + ' &middot; Player-facing' : 'Non-Player Entity'}</span>
+    <fieldset><legend>Reveal to</legend>${S.present.map((id) => `<label><input type="checkbox" id="cb-${id}" data-cb="${id}" ${dlg.checked.includes(id) ? 'checked' : ''}> ${INVESTIGATORS[id]}${rec.includes(id) ? ' <span class="muted small">(already revealed)</span>' : ''}</label>`).join('')}</fieldset>
+    ${dlg.error ? `<p style="margin:0;color:var(--destructive)" class="small">Choose at least one Investigator.</p>` : ''}
+    <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-dlg="cancel">Cancel</button><button type="button" class="btn primary" data-dlg="ok">Reveal</button></div></div>`;
+}
+
+/* ---------- render ---------- */
+function render() {
+  document.querySelectorAll('#variantSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.variant === S.variant)));
+  document.querySelectorAll('#roleSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.role === S.role)));
+  document.getElementById('notes').innerHTML = (S.role === 'player' ? NOTES.player : NOTES[S.variant]) + `<div style="margin-top:6px">${NOTES.shared}</div>`;
+  document.getElementById('url').innerHTML = urlOf(S.route);
+  document.getElementById('backBtn').disabled = !S.history.length;
+  const r = S.route; let page;
+  if (r.page === 'active') page = S.role === 'player' ? playerActive() : (S.variant === 'a' ? variantA() : sceneHeader(false) + runView());
+  else if (r.page === 'material') page = materialPage();
+  else if (r.page === 'overview') page = overviewPage();
+  else if (r.page === 'wall') page = wallPage();
+  else if (r.page === 'settings') page = '<p class="muted">Campaign settings.</p>';
+  else if (r.page === 'scene-prep') page = scenePrepPage();
+  else page = fullPage();
+  document.getElementById('app').innerHTML = campaignHeader(tabOf(r.page)) + `<div class="page">${S.status ? `<p class="status" role="status">${esc(S.status)}</p>` : ''}${page}</div>`;
+  document.getElementById('overlay').innerHTML = drawerHtml() + panelHtml() + dialogHtml();
+  const focusTarget = document.querySelector('#overlay .modal input, #overlay .sheet .x');
+  if (focusTarget) focusTarget.focus({ preventScroll: true });
+}
+
+function toast(text) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = text;
+  document.getElementById('viewport').appendChild(t); setTimeout(() => t.remove(), 1600);
+}
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('button, [data-close-panel], [data-close-drawer]'); if (!el) return;
+  const d = el.dataset;
+  if (d.variant) { S.variant = d.variant; history.replaceState(null, '', '#' + d.variant); S.history = []; S.route = { page: 'active', sub: 'run' }; S.status = ''; S.dialog = null; return render(); }
+  if (d.role) { S.role = d.role; S.history = []; S.route = { page: 'active', sub: 'run' }; S.status = ''; S.dialog = null; return render(); }
+  if (el.id === 'resetBtn') { const v = S.variant; reset(); S.variant = v; return render(); }
+  if (el.id === 'backBtn') return back();
+  if (d.noop !== undefined) return toast('Not part of this prototype');
+  if (d.go) return go(JSON.parse(d.go));
+  if (d.backTo) { const prev = S.history[S.history.length - 1]; return prev && prev.page === 'active' && !prev.panel ? back() : go({ page: 'active', sub: 'run' }); }
+  if (d.panel) { const [type, id] = d.panel.split(':'); if (S.route.drawer) return go({ ...S.route, drawerItem: type === 'profile' ? 'p-' + id : id }, { keepStatus: true }); return openPanel(type, id); }
+  if (d.closePanel !== undefined) return closePanel();
+  if (d.full) { const f = JSON.parse(d.full); return go(f); }
+  if (d.drawer) return go({ page: 'active', sub: 'run', drawer: d.drawer }, { keepStatus: true, replace: Boolean(S.route.drawer) });
+  if (d.drawerItem !== undefined) return d.drawerItem === '' ? back() : go({ ...S.route, drawerItem: d.drawerItem });
+  if (d.closeDrawer !== undefined) { const base = { page: 'active', sub: 'run' }; return go(base); }
+  if (d.reveal) { const rec = recipients(d.reveal); S.dialog = { id: d.reveal, trigger: el.id, checked: S.present.filter((p) => !rec.includes(p)) }; return render(); }
+  if (d.dlg === 'cancel') { S.dialog = null; return render(); }
+  if (d.dlg === 'ok') {
+    if (!S.dialog.checked.length) { S.dialog.error = true; return render(); }
+    const m = byId(S.dialog.id); const now = new Date(); const at = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    S.reveals.push({ id: 'r' + (S.reveals.length + 1), subject: m.id, to: [...S.dialog.checked], at });
+    S.status = `${m.title} revealed to ${names(S.dialog.checked)}.` + (isDone(m) ? ' Moved to Revealed.' : '');
+    S.dialog = null; return render();
+  }
+});
+document.addEventListener('submit', (e) => {
+  if (e.target.id !== 'wallForm') return;
+  e.preventDefault();
+  const text = document.getElementById('wallText').value.trim(); if (!text) return;
+  const at = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const ko = document.getElementById('wallKeeperOnly');
+  S.wall.unshift({ at, author: S.role === 'keeper' ? 'Keeper' : 'Harvey', text, keeperOnly: Boolean(ko && ko.checked) });
+  S.status = 'Wall Entry added.'; render();
+});
+document.addEventListener('change', (e) => {
+  const id = e.target.dataset && e.target.dataset.cb; if (!id || !S.dialog) return;
+  S.dialog.checked = e.target.checked ? [...new Set([...S.dialog.checked, id])] : S.dialog.checked.filter((x) => x !== id);
+  S.dialog.error = false;
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (S.dialog) { S.dialog = null; render(); } else if (S.route.panel) closePanel(); else if (S.route.drawer) go({ page: 'active', sub: 'run' });
+});
+reset(); render();
+</script>

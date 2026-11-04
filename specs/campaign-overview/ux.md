@@ -44,6 +44,7 @@ Haunting of Corbitt House                                   (h1 on Overview only
   - Overview is current on the overview, sheet, wizard, review, and Scenario pages.
   - Wall is rendered for both roles. Settings is rendered only for the Keeper.
   - The row never wraps. With at most three short labels it fits at 320px. Each link is at least 44px high.
+  - **Since PBI-NAV-001:** the tabs are Overview, Active Scene (with a "Live" badge), Wall, and Settings, and below 640px the row scrolls inside itself instead of being limited to three labels ([navigation ux](../navigation/ux.md) section 2). CO-A11Y-9 still holds: the page never scrolls sideways.
 - **Header states:**
   - **Campaign loading:** a Skeleton for the name and the tab row, with `aria-busy="true"`. The page below shows its own loading state.
   - **Load error:** "We couldn't load this Campaign." and a "Try again" button replace the header and the page.

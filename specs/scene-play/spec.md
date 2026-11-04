@@ -29,7 +29,7 @@ Scene Play lets a Keeper run a prepared Scene at the table and lets Players expe
   - `sceneReveals` to `campaign:{campaignId}:keeper` when a Reveal is made or an Item changes holder.
   - `myItems` to `account:{accountId}` of the Player whose Investigator receives or loses an Item.
   - `scenes` to `campaign:{campaignId}:keeper` when Scene content, the prepared order, links, or Items change.
-- **UX specification:** [ux.md](ux.md) covers starting, the Active Scene page, and the overview card (PBI-SPL-001), and Reveals, revealed content, and the Clues pages (PBI-SPL-002). Each later PBI with UI goes through the UX designer skill before it is built and extends it. Views: an Active Scene page for the Keeper (run controls) and for Players (what reached their Investigator, with a Map shown prominently and Read-aloud Handouts styled as read-aloud text), a Scene History page for every Campaign Member, an Investigator's Clues and Items, and an Active Scene card on the Campaign overview ([campaign-overview spec](../campaign-overview/spec.md)).
+- **UX specification:** [ux.md](ux.md) covers starting, the Active Scene page, and the overview card (PBI-SPL-001), and Reveals, revealed content, and the Clues pages (PBI-SPL-002). The Active Scene redesign (PBI-SPL-006, PBI-SPL-007) is section 21: the Keeper's page is split into Run, To reveal, Keeper reference, and Revealed, with the Campaign Wall on Run, following the app-wide [navigation](../navigation/spec.md) pattern. Each later PBI with UI goes through the UX designer skill before it is built and extends it. Views: an Active Scene page for the Keeper (run controls) and for Players (what reached their Investigator, with a Map shown prominently and Read-aloud Handouts styled as read-aloud text), a Scene History page for every Campaign Member, an Investigator's Clues and Items, and an Active Scene card on the Campaign overview ([campaign-overview spec](../campaign-overview/spec.md)).
 - **Dependencies:** Depends on Scenario Preparation for Scenes, Handouts, Non-Player Entity links, Items, and Scene status transitions; on Campaign Play for membership, Investigator approval, the Campaign Wall, and the Campaign hub; on Identity and Access for authentication.
 
 ### Constraints
@@ -57,6 +57,8 @@ Scene Play lets a Keeper run a prepared Scene at the table and lets Players expe
 - [ ] Every Campaign Member sees the Scene History in the order Scenes were started, filtered to their Investigator's Clues for a Player.
 - [ ] Starting and finishing a Scene each create a Public Wall Entry naming the Scene title.
 - [ ] Connected Campaign Members receive Active Scene, Scene History, Clue, and Item changes without reloading, within their visibility.
+- [ ] The Keeper's Active Scene keeps material off the main view: Player-facing material waits under "To reveal" until it has reached every Investigator present, Keeper-only material is under "Keeper reference", and Reveals are under "Revealed".
+- [ ] Campaign Members read and post to the Campaign Wall from the Active Scene, within each entry's visibility.
 
 ### Regression Guardrails
 - A Campaign never has two Active Scenes.
@@ -181,4 +183,33 @@ Scenario: Scene Play stays within its Campaign
   Given a Scene is Active in Campaign A
   When a member of Campaign B requests the Active Scene or Scene History of Campaign A
   Then the request returns 404
+
+Scenario: Material reached by everyone present leaves "To reveal"
+  Given "The Corbitt House" is Active with "Harvey Walters" and "Lucy Ward" present
+  And "The front door" has been revealed to "Harvey Walters" only
+  Then "The front door" is under "To reveal" with "not yet: Lucy Ward"
+  When the Keeper reveals "The front door" to "Lucy Ward"
+  Then "The front door" is no longer under "To reveal"
+  And it is under "Revealed"
+
+Scenario: An Investigator added later brings material back to "To reveal"
+  Given "The Corbitt House" is Active with "Harvey Walters" present
+  And "The front door" has been revealed to "Harvey Walters"
+  When the Keeper adds "Lucy Ward" to the Investigators present
+  Then "The front door" is under "To reveal" with "not yet: Lucy Ward"
+
+Scenario: Keeper-only material is never offered for a Reveal
+  Given the Active Scene has the Keeper-facing Handout "The secret door"
+  Then "The secret door" is under "Keeper reference" without "Reveal..."
+
+Scenario: The Keeper posts to the Wall from the Active Scene
+  Given "The Corbitt House" is Active
+  When the Keeper adds the Public Wall Entry "The front door slams shut." from the Active Scene
+  Then the entry is at the top of the Wall on the Active Scene and on the Wall page
+  And every connected Player sees it without reloading
+
+Scenario: A Player never sees a Keeper-only Wall Entry on the Active Scene
+  Given the Keeper added the Keeper-only Wall Entry "Corbitt has noticed Cy."
+  When "Harvey Walters"'s Player opens the Active Scene
+  Then the Wall on the page does not show "Corbitt has noticed Cy."
 ```
