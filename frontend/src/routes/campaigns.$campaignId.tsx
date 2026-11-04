@@ -1,7 +1,7 @@
-import { createFileRoute, Outlet, useMatchRoute } from '@tanstack/react-router'
+import { createFileRoute, Outlet, useRouterState } from '@tanstack/react-router'
 
-import type { CampaignSection } from '@/campaign-play/components/campaign-header/campaign-header'
 import { CampaignLayout } from '@/campaign-play/components/campaign-layout/campaign-layout'
+import { campaignSectionOf, isOverviewRoute } from '@/campaign-play/services/campaignSection'
 import { CampaignLiveConnection } from '@/campaign-play/providers/campaign-live-connection'
 
 export const Route = createFileRoute('/campaigns/$campaignId')({
@@ -14,11 +14,9 @@ export const Route = createFileRoute('/campaigns/$campaignId')({
  */
 function CampaignLayoutRoute() {
   const { campaignId } = Route.useParams()
-  const matchRoute = useMatchRoute()
-  const isOverview = Boolean(matchRoute({ to: '/campaigns/$campaignId', params: { campaignId } }))
-  const isSettings = Boolean(matchRoute({ to: '/campaigns/$campaignId/settings', params: { campaignId } }))
-  const isWall = Boolean(matchRoute({ to: '/campaigns/$campaignId/wall', params: { campaignId } }))
-  const section = sectionOf(isSettings, isWall)
+  const leafRouteId = useRouterState({ select: (state) => state.matches.at(-1)?.routeId })
+  const section = campaignSectionOf(leafRouteId ?? '')
+  const isOverview = leafRouteId !== undefined && isOverviewRoute(leafRouteId)
 
   return (
     <CampaignLiveConnection campaignId={campaignId}>
@@ -27,12 +25,4 @@ function CampaignLayoutRoute() {
       </CampaignLayout>
     </CampaignLiveConnection>
   )
-}
-
-function sectionOf(isSettings: boolean, isWall: boolean): CampaignSection {
-  if (isSettings) {
-    return 'settings'
-  }
-
-  return isWall ? 'wall' : 'overview'
 }

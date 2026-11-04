@@ -26,7 +26,7 @@ test.describe('Campaign Wall', () => {
     try {
       await test.step('WL-UX-1, CO-UX-2: the Keeper opens the Wall from the Campaign navigation', async () => {
         await page.goto(`/campaigns/${campaignId}`)
-        await expect(campaignNav(page).getByRole('link')).toHaveText(['Overview', 'Wall', 'Settings'])
+        await expect(campaignNav(page).getByRole('link')).toHaveText(['Overview', 'Active Scene', 'Wall', 'Settings'])
         await campaignNav(page).getByRole('link', { name: 'Wall', exact: true }).click()
         await expect(page.getByRole('heading', { level: 1, name: 'Wall' })).toBeVisible()
         await expect(campaignNav(page).getByRole('link', { name: 'Wall', exact: true })).toHaveAttribute('aria-current', 'page')
