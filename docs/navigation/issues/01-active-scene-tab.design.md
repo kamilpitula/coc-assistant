@@ -95,7 +95,7 @@
   - `CampaignNavLink` gets optional `badge?: ReactNode` and `ariaLabel?: string`
   - Order: Overview, Active Scene, Wall, Settings (Keeper only). The Active Scene tab is shown to every role.
 - Narrow screens: the nav gets `overflow-x-auto overflow-y-hidden sm:overflow-visible`, and the links use `sm:-mb-px` instead of `-mb-px`, because the -1px overlap would otherwise make the scroll container scroll vertically. No scrollbar-hiding utility. Links keep `min-h-11`.
-- Current link into view: a `useEffect` keyed on `section` runs `navRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })`. The ref sits on the nav (a plain element) rather than on the Link, so routerMock-based tests work. No focus change.
+- Current link into view: a `useEffect` keyed on `[section, hasActiveScene]` runs `navRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })`. The ref sits on the nav (a plain element) rather than on the Link, so routerMock-based tests work. No focus change. `hasActiveScene` is a dependency because the Live badge usually arrives after mount (the query is gated on the loaded Campaign) and widens the row; ux.md section 2 "on load" includes the badge arriving. Fallback, only if the E2E still fails with these deps: set `nav.scrollLeft` so the current link's right edge fits, instead of calling `scrollIntoView`, so that only the nav scrolls and the horizontally scrollable document (D4) cannot take the scroll. Same intent, no new abstraction.
 
 ## Patterns
 - **Used:** none. The mapping is a four-branch function (complexity about 5).
@@ -159,7 +159,7 @@
   - `hasActiveScene` true -> a link named "Active Scene, live" with visible text "Live".
   - `hasActiveScene` false -> named "Active Scene" with no "Live".
 - Header: no element with aria-live or role=status inside the nav (NAV-A11Y-5).
-- Header: `scrollIntoView` is called on the current link with `{ block: 'nearest', inline: 'nearest' }` on mount and when section changes (stub `Element.prototype.scrollIntoView`).
+- Header: `scrollIntoView` is called on the current link with `{ block: 'nearest', inline: 'nearest' }` on mount, when section changes, and when `hasActiveScene` changes, so a badge arriving after mount keeps the current tab visible (stub `Element.prototype.scrollIntoView`; with the fallback, assert the nav's `scrollLeft` instead).
 - Layout, gating: `useActiveScene` is called with `(campaignId, false)` while the Campaign is pending, errored, or not found, and with `(campaignId, true)` once it has loaded.
 - Layout, badge state: non-null data shows the badge; null data and an error hide it.
 - Layout, no second request: with a real QueryClient and a mocked `getActiveScene`, rendering CampaignLayout with a child that also calls `useActiveScene` calls `getActiveScene` once.
@@ -179,6 +179,7 @@
 - NAV-A11Y-4 and NAV-A11Y-3 at a 320px viewport (revised by D4; this replaces the document-level assertion at `e2e/tests/navigation.spec.ts:136`, step named "NAV-A11Y-4: the Campaign header ..."):
   - The Campaign `header` and `main` each have `scrollWidth <= clientWidth`, and their bounding boxes' right edges are at most 320.
   - The site `header` (the banner outside `main`) is wider than the viewport, which shows where the remaining overflow comes from.
+  - Before measuring the current tab, wait until the link named "Active Scene, live" is visible, so the measurement follows the badge's layout shift.
   - The nav's scrollWidth > clientWidth.
   - The current tab is within the nav's visible box.
   - Every tab is at least 44px high.
@@ -208,3 +209,7 @@
   - Revised the NAV-A11Y-4 E2E step.
   - Added the Deferred and Follow-ups step to the Implementation plan.
   - D1-D3 and their rejections are unchanged.
+- 2026-11-04: clarification, no option, rejection, or invariant changed.
+  - Escalation: the Developer reported, at commit 8858dcf, that "NAV-A11Y-4: the current tab is within the visible tab row at 320px" fails (Wall right edge 323 vs nav right edge about 297). Cause: the scroll effect ran before the Live badge arrived and widened the row, and its deps (`section` only) never re-ran it.
+  - Change: the deps become `[section, hasActiveScene]`, with a conditional fallback to setting `nav.scrollLeft` if `scrollIntoView` is still taken by the scrollable document. The TDD unit is updated to match, and the E2E waits for the Live link before measuring.
+  - Accepted side effect: when the badge appears or disappears, the row scrolls back to the current tab. Scrolling is not focus, so NAV-A11Y-5 still holds.
