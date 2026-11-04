@@ -406,7 +406,7 @@ Stories cover:
 /campaigns/$campaignId/mythos-creatures/$mythosCreatureId Monster Profile page (section 25)     -> Overview tab current
 ```
 
-- No Campaign tab is added; three tab labels is the limit at 320px ([campaign-overview ux](../campaign-overview/ux.md) section 2).
+- No Campaign tab is added; three tab labels is the limit at 320px ([campaign-overview ux](../campaign-overview/ux.md) section 2). **Since PBI-NAV-001** the limit is lifted: the tab row scrolls inside itself below 640px ([navigation ux](../navigation/ux.md) section 2).
 - The Overview section is the entry point; the list page is the only full list.
 - The profile type is chosen once on the create page and never changes; each type has its own route.
 - Players get no entry point. Every Non-Player Entity URL shows them `non-player-entity-not-found`, without an API call. A profile id of another Campaign, or opened under the other type's route, also shows it.
@@ -798,6 +798,8 @@ Stories cover:
 
 ## 32. Non-Player Entities section on the Scene page (`scene-link-section`)
 
+> **Since PBI-SPL-005** each entry is the material entry of section 72: the title opens a side panel and the description moves into it, and the actions below sit in its action slot.
+
 ```
 Non-Player Entities                               (h2)  [Link a Non-Player Entity]
 Only the Player-facing name and description can reach Players, and only when you reveal them.
@@ -949,6 +951,8 @@ Stories cover:
 - UI copy never uses "attachment", "asset", "file", "article", "boxed text", or "narration" (root CONTEXT.md). It names the content of a file kind "image", "PDF", or "document".
 
 ## 41. Handouts section on the Scene page (`scene-handout-section`)
+
+> **Since PBI-SPL-005** each entry is the material entry of section 72: the title opens a side panel, and the actions below sit in its action slot.
 
 ```
 Handouts                                          (h2)  [Add Handout]
@@ -1473,6 +1477,8 @@ Scenes                                            (h2)
 
 ### 64.1 Items section (`scene-item-section`)
 
+> **Since PBI-SPL-005** each entry is the material entry of section 72: the title keeps its link to the Item page until PBI-SPL-003 adds an `item` panel, and the actions below sit in its action slot.
+
 ```
 Items                                             (h2)  [Link an Item]
 Players see an Item's name and description only when you reveal or give it.
@@ -1712,3 +1718,41 @@ Image description (optional)                      (label)
 - **SP-UX-105** A saved description shows as "Image description: {text}" on the Handout page and survives a reload. Emptying it on edit and saving removes it.
 - **SP-UX-106** A description over 1,000 characters shows "Image description must be 1,000 characters or fewer.", focuses the field, and saves nothing.
 - **SP-A11Y-59** The field has a visible label and is connected to its hint and error with `aria-describedby`, with `aria-invalid` when invalid. The image's `alt` is the description, or the title when there is none (1.1.1, 1.3.1, 3.3.1, 3.3.2).
+
+## 72. Material entry (`material-entry`, PBI-SPL-005)
+
+One entry for a Scene's Handouts, Non-Player Entity links, and Items, used on the Scene page (sections 32, 41, and 64.1) and on the Active Scene ([scene-play ux](../scene-play/ux.md) section 21), so that material looks and opens the same before and during play. Chosen 2026-11-04 with the Active Scene redesign ([navigation prototype](../navigation/prototype/active-scene.html), "Scene page" from the Overview). Only the actions differ by context.
+
+```
++-------------------------------------------------------------------------+
+| The front door                 (h3 > button)          [action slot]     |
+| Read-aloud . Player-facing     (badges / type line)                     |
+| Revealed to Harvey Walters . not yet: Lucy Ward       (status slot)     |
++-------------------------------------------------------------------------+
+```
+
+- **Lives in** `scenario-preparation/components/material-entry` (the slice that owns Handouts, links, and Items); Scene Play passes its action and status.
+- **Title:** an `h3` (level configurable) holding a button with the title (`break-words`, `aria-haspopup="dialog"`). It opens the side panel of [navigation ux](../navigation/ux.md) section 3: `handout` for a Handout, `entity` for a Non-Player Entity link. The button keeps the `id` used as a focus target after a create or link.
+- **Second line:**
+  - Handout: `handout-badges` (kind and visibility).
+  - Non-Player Entity link: "{type label}: {profile name}" in muted text. The profile name is plain text; the profile is in the panel.
+  - Item: the badge "Item".
+- **Status slot:** empty on the Scene page; the reveal status line on the Active Scene.
+- **Action slot:** right of the text, wrapping under it below 640px:
+  - Scene page, Handout: `move-controls` (section 41), unchanged.
+  - Scene page, Non-Player Entity link: "Edit" and "Unlink" (section 32), unchanged.
+  - Scene page, Item: "Unlink" (section 64.1), unchanged.
+  - Active Scene: "Reveal..." or nothing (scene-play ux section 21).
+- **List:** entries are `li` rows in one bordered list, separated by a top border; the list keeps its existing `ol` or `ul`.
+- **What moves off the Scene page list:** the Non-Player Entity description (now in the `entity` panel) and the Handout title link (now the panel, whose "Open full page" leads to the Handout page with its Edit and Delete). Items keep their title link to the Item page until PBI-SPL-003 adds an `item` panel.
+- **Panels from the Scene page** have no "Reveal..." and open full pages without `from`; their structural back links already return to the Scene page.
+
+### 72.1 UX acceptance criteria
+
+- **SP-UX-107** A Handout, a Non-Player Entity link, and an Item look the same on the Scene page and the Active Scene: same title, same second line, same order.
+- **SP-UX-108** Selecting a Handout or Non-Player Entity title on the Scene page opens its side panel; "Open full page" leads to the Handout or profile page.
+- **SP-UX-109** The Scene page keeps its move controls, "Edit", and "Unlink" in the entry's action slot, with their existing accessible names and outcomes.
+
+### 72.2 Accessibility acceptance criteria (WCAG 2.2 AA)
+
+- **SP-A11Y-60** The title button is inside the entry's heading, is announced as opening a dialog, and returns focus to itself when the panel closes (1.3.1, 2.4.3, 4.1.2).
