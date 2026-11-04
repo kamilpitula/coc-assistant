@@ -19,9 +19,9 @@ vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-suppo
 vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
 vi.mock('@/scenario-preparation/hooks/useSceneHandoutContext', () => ({ useSceneHandoutContext: mockUseSceneHandoutContext }))
 vi.mock('@/scenario-preparation/components/handout-page/handout-page', () => ({
-  HandoutPage: ({ handoutId, context }: { handoutId: string; context: { backLabel: string } }) => (
+  HandoutPage: ({ handoutId, context, from }: { handoutId: string; context: { backLabel: string }; from?: string }) => (
     <p>
-      Handout page {handoutId} {context.backLabel}
+      Handout page {handoutId} {context.backLabel} {from}
     </p>
   ),
 }))
@@ -32,7 +32,8 @@ vi.mock('@/scenario-preparation/components/add-handout-page/add-handout-page', (
 const loaded = (scene: Scene) => ({ scene: { data: scene, isError: false, refetch }, context: sceneContext(scene.status) })
 const pending = { scene: { data: undefined, isError: false, refetch }, context: null }
 
-const renderRoute = (handoutId?: string) => render(<SceneHandoutRoute campaignId="c1" scenarioId="s1" sceneId="a1" handoutId={handoutId} />)
+const renderRoute = (handoutId?: string, from?: string) =>
+  render(<SceneHandoutRoute campaignId="c1" scenarioId="s1" sceneId="a1" handoutId={handoutId} from={from} />)
 
 describe('SceneHandoutRoute', () => {
   beforeEach(() => {
@@ -45,6 +46,12 @@ describe('SceneHandoutRoute', () => {
     renderRoute('h1')
 
     expect(screen.getByText('Handout page h1 Back to the Scene')).toBeInTheDocument()
+  })
+
+  it('passes the origin through to the Handout page', () => {
+    renderRoute('h1', 'active-scene')
+
+    expect(screen.getByText('Handout page h1 Back to the Scene active-scene')).toBeInTheDocument()
   })
 
   it('shows the Add Handout page without a Handout id', () => {

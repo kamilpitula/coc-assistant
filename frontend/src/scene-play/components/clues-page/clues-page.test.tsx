@@ -7,15 +7,17 @@ import type { Clue, Clues } from '@/scene-play/types/Reveal'
 import { CluesPage } from './clues-page'
 
 // specs/scene-play/ux.md section 15; SPL-UX-31 to SPL-UX-34, SPL-UX-37, SPL-A11Y-8, SPL-A11Y-11.
-const { mockUseCampaign, mockUseMyClues, mockUseInvestigatorClues, refetch } = vi.hoisted(() => ({
+const { mockUseCampaign, mockUseMyClues, mockUseInvestigatorClues, mockUseOriginBackLink, refetch } = vi.hoisted(() => ({
   mockUseCampaign: vi.fn(),
   mockUseMyClues: vi.fn(),
   mockUseInvestigatorClues: vi.fn(),
+  mockUseOriginBackLink: vi.fn(),
   refetch: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
+vi.mock('@/campaign-play/hooks/useOriginBackLink', () => ({ useOriginBackLink: mockUseOriginBackLink }))
 vi.mock('@/scene-play/hooks/useReveals', () => ({
   useMyClues: mockUseMyClues,
   useInvestigatorClues: mockUseInvestigatorClues,
@@ -51,6 +53,7 @@ describe('CluesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseCampaign.mockReturnValue({ data: { role: 'Player' } })
+    mockUseOriginBackLink.mockReturnValue('The Corbitt House')
     mockUseMyClues.mockReturnValue(query(clues))
     mockUseInvestigatorClues.mockReturnValue(query(undefined))
   })
@@ -86,6 +89,18 @@ describe('CluesPage', () => {
     expect(screen.getByRole('link', { name: 'Back to your Campaign' })).toHaveAttribute('href', '/campaigns/c1')
   })
 
+  it('links back to the Active Scene with ?from=active-scene for a Player (NAV-UX-7)', () => {
+    render(<CluesPage campaignId="c1" from="active-scene" />)
+
+    expect(screen.getByRole('link', { name: 'Back to The Corbitt House' })).toHaveAttribute('href', '/campaigns/c1/active-scene')
+  })
+
+  it('ignores an unknown from and links back to the Campaign (NAV-UX-8)', () => {
+    render(<CluesPage campaignId="c1" from="wall" />)
+
+    expect(screen.getByRole('link', { name: 'Back to your Campaign' })).toHaveAttribute('href', '/campaigns/c1')
+  })
+
   it('says the Investigator has no Clues yet when there are none', () => {
     mockUseMyClues.mockReturnValue(query({ investigatorName: 'Harvey Walters', clues: [] }))
     render(<CluesPage campaignId="c1" />)
@@ -100,6 +115,13 @@ describe('CluesPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'No Clues to show' })).toBeInTheDocument()
     expect(screen.getByText("You don't have an Approved Investigator in this Campaign yet.")).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Back to your Campaign' })).toBeInTheDocument()
+  })
+
+  it('links back to the Active Scene with ?from=active-scene when there is nothing to show (NAV-UX-7)', () => {
+    mockUseMyClues.mockReturnValue(query(null))
+    render(<CluesPage campaignId="c1" from="active-scene" />)
+
+    expect(screen.getByRole('link', { name: 'Back to The Corbitt House' })).toHaveAttribute('href', '/campaigns/c1/active-scene')
   })
 
   it('shows a Skeleton while loading and "Try again" on a failure', async () => {
@@ -135,6 +157,12 @@ describe('CluesPage', () => {
       expect(mockUseInvestigatorClues).toHaveBeenCalledWith('c1', 'i1', true)
       expect(screen.getByRole('heading', { level: 1, name: "Harvey Walters's Clues" })).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Back to Harvey Walters' })).toHaveAttribute('href', '/campaigns/c1/investigators/i1')
+    })
+
+    it('links back to the Active Scene with ?from=active-scene for the Keeper (NAV-UX-7)', () => {
+      render(<CluesPage campaignId="c1" investigatorId="i1" from="active-scene" />)
+
+      expect(screen.getByRole('link', { name: 'Back to The Corbitt House' })).toHaveAttribute('href', '/campaigns/c1/active-scene')
     })
 
     it('shows investigator-not-found for an unknown or unapproved Investigator', () => {

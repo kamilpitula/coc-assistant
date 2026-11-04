@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
+import { useOriginBackLink } from '@/campaign-play/hooks/useOriginBackLink'
 import '@/campaign-play/types/navigationState'
 import { DeleteNonPlayerEntityDialog } from '@/scenario-preparation/components/delete-non-player-entity-dialog/delete-non-player-entity-dialog'
 import { MythosCreatureForm } from '@/scenario-preparation/components/mythos-creature-form/mythos-creature-form'
@@ -12,6 +13,7 @@ import { NonPlayerEntityNotFound } from '@/scenario-preparation/components/non-p
 import { useDeleteMythosCreature, useDuplicateMythosCreature, useEditMythosCreature, useMythosCreature } from '@/scenario-preparation/hooks/useNonPlayerEntities'
 import { NonPlayerEntityInUseError, NonPlayerEntityValidationError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import type { MythosCreature } from '@/scenario-preparation/types/MythosCreature'
+import { BackLink } from '@/shared/components/back-link/back-link'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 
@@ -20,6 +22,8 @@ const COPY_CREATED_MESSAGE = "Copy created. It isn't part of any Scene."
 interface MythosCreaturePageProps {
   campaignId: string
   mythosCreatureId: string
+  /** Where the viewer came from; an allow-listed origin replaces the structural back link (specs/navigation/ux.md section 4). */
+  from?: string
 }
 
 /**
@@ -27,7 +31,7 @@ interface MythosCreaturePageProps {
  * preparation/ux.md section 25). A Player, an unknown id, another Campaign's id, and the other type's id all get the
  * not-found page; a Player's client makes no request.
  */
-export function MythosCreaturePage({ campaignId, mythosCreatureId }: MythosCreaturePageProps) {
+export function MythosCreaturePage({ campaignId, mythosCreatureId, from }: MythosCreaturePageProps) {
   const campaign = useCampaign(campaignId)
   const isKeeper = campaign.data?.role === 'Keeper'
   const mythosCreature = useMythosCreature(campaignId, mythosCreatureId, isKeeper)
@@ -57,15 +61,16 @@ export function MythosCreaturePage({ campaignId, mythosCreatureId }: MythosCreat
     )
   }
 
-  return <MythosCreatureDetail key={mythosCreature.data.id} campaignId={campaignId} mythosCreature={mythosCreature.data} />
+  return <MythosCreatureDetail key={mythosCreature.data.id} campaignId={campaignId} mythosCreature={mythosCreature.data} from={from} />
 }
 
 interface MythosCreatureDetailProps {
   campaignId: string
   mythosCreature: MythosCreature
+  from?: string
 }
 
-function MythosCreatureDetail({ campaignId, mythosCreature }: MythosCreatureDetailProps) {
+function MythosCreatureDetail({ campaignId, mythosCreature, from }: MythosCreatureDetailProps) {
   const navigationMessage = useRouterState({ select: (state) => state.location.state.statusMessage })
   const focusHeading = useRouterState({ select: (state) => state.location.state.focusHeading })
   const edit = useEditMythosCreature(campaignId, mythosCreature.id)
@@ -110,14 +115,7 @@ function MythosCreatureDetail({ campaignId, mythosCreature }: MythosCreatureDeta
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <Link
-        to="/campaigns/$campaignId/non-player-entities"
-        params={{ campaignId }}
-        className={buttonVariants({ variant: 'link', className: 'self-start px-0' })}
-      >
-        <ArrowLeft aria-hidden="true" />
-        Back to Non-Player Entities
-      </Link>
+      <MythosCreatureBackLink campaignId={campaignId} from={from} />
       <p role="status" className="text-sm empty:hidden">
         {justSaved ? 'Mythos Creature saved.' : navigationMessage}
       </p>
@@ -141,6 +139,24 @@ function MythosCreatureDetail({ campaignId, mythosCreature }: MythosCreatureDeta
         </>
       )}
     </div>
+  )
+}
+
+function MythosCreatureBackLink({ campaignId, from }: { campaignId: string; from?: string }) {
+  const originLabel = useOriginBackLink(campaignId)
+
+  return (
+    <BackLink
+      from={from}
+      fallback={{ label: 'Non-Player Entities', to: '/campaigns/$campaignId/non-player-entities' as const, params: { campaignId } }}
+      originTargets={{ 'active-scene': { label: originLabel, to: '/campaigns/$campaignId/active-scene' as const, params: { campaignId } } }}
+      render={(target) => (
+        <Link to={target.to} params={target.params} className={buttonVariants({ variant: 'link', className: 'self-start px-0' })}>
+          <ArrowLeft aria-hidden="true" />
+          Back to {target.label}
+        </Link>
+      )}
+    />
   )
 }
 

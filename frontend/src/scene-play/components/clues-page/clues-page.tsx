@@ -2,12 +2,14 @@ import { Link } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { useId, useState } from 'react'
 
+import { useOriginBackLink } from '@/campaign-play/hooks/useOriginBackLink'
 import { InvestigatorNotFound } from '@/campaign-play/components/investigator-not-found/investigator-not-found'
 import { RevealedContent } from '@/scene-play/components/revealed-content/revealed-content'
 import { useCluesRead } from '@/scene-play/hooks/useCluesRead'
 import { groupCluesByScene } from '@/scene-play/services/cluesGrouping'
 import { formatClueTime, revealKindLabel, UNNAMED_INVESTIGATOR } from '@/scene-play/services/revealPresentation'
 import type { Clue, Clues } from '@/scene-play/types/Reveal'
+import { BackLink } from '@/shared/components/back-link/back-link'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible'
 import { Skeleton } from '@/shared/components/ui/skeleton'
@@ -16,6 +18,8 @@ interface CluesPageProps {
   campaignId: string
   /** The Investigator whose Clues the Keeper reads; undefined on a Player's own Clues page. */
   investigatorId?: string
+  /** Where the viewer came from; an allow-listed origin replaces the structural back link (specs/navigation/ux.md section 4). */
+  from?: string
 }
 
 /**
@@ -23,7 +27,7 @@ interface CluesPageProps {
  * Scene, newest first, each Clue closed until "Show". The Player reads their own; the Keeper reads any Approved Investigator's. The
  * wrong role sees investigator-not-found without any request. The Player's page announces new arrivals politely.
  */
-export function CluesPage({ campaignId, investigatorId }: CluesPageProps) {
+export function CluesPage({ campaignId, investigatorId, from }: CluesPageProps) {
   const { query, announcement, isKeeperRoute, wrongRole } = useCluesRead(campaignId, investigatorId)
 
   if (wrongRole) {
@@ -33,7 +37,7 @@ export function CluesPage({ campaignId, investigatorId }: CluesPageProps) {
     return <LoadFailed onRetry={() => void query.refetch()} />
   }
   if (query.data === null) {
-    return isKeeperRoute ? <InvestigatorNotFound campaignId={campaignId} /> : <NoClues campaignId={campaignId} />
+    return isKeeperRoute ? <InvestigatorNotFound campaignId={campaignId} /> : <NoClues campaignId={campaignId} from={from} />
   }
   if (query.data === undefined) {
     return <Skeleton aria-busy="true" className="h-40 w-full max-w-2xl" />
@@ -44,7 +48,7 @@ export function CluesPage({ campaignId, investigatorId }: CluesPageProps) {
       <p role="status" className="sr-only">
         {announcement.message}
       </p>
-      <CluesBody campaignId={campaignId} investigatorId={investigatorId} clues={query.data} />
+      <CluesBody campaignId={campaignId} investigatorId={investigatorId} clues={query.data} from={from} />
     </div>
   )
 }
@@ -60,28 +64,35 @@ function LoadFailed({ onRetry }: { onRetry: () => void }) {
   )
 }
 
-function NoClues({ campaignId }: { campaignId: string }) {
+function NoClues({ campaignId, from }: { campaignId: string; from?: string }) {
   return (
     <section className="flex flex-col items-start gap-4">
       <h1 className="text-2xl font-semibold">No Clues to show</h1>
       <p className="text-sm">You don&apos;t have an Approved Investigator in this Campaign yet.</p>
-      <BackLink campaignId={campaignId} />
+      <CluesBackLink campaignId={campaignId} from={from} />
     </section>
   )
 }
 
-function BackLink({ campaignId, investigatorId, name }: { campaignId: string; investigatorId?: string; name?: string }) {
-  const className = buttonVariants({ variant: 'link', className: 'self-start px-0' })
-  return investigatorId ? (
-    <Link to="/campaigns/$campaignId/investigators/$investigatorId" params={{ campaignId, investigatorId }} className={className}>
-      <ArrowLeft aria-hidden="true" />
-      Back to {name}
-    </Link>
-  ) : (
-    <Link to="/campaigns/$campaignId" params={{ campaignId }} className={className}>
-      <ArrowLeft aria-hidden="true" />
-      Back to your Campaign
-    </Link>
+function CluesBackLink({ campaignId, investigatorId, name, from }: { campaignId: string; investigatorId?: string; name?: string; from?: string }) {
+  const originLabel = useOriginBackLink(campaignId)
+  const fallback =
+    investigatorId === undefined
+      ? { label: 'your Campaign', to: '/campaigns/$campaignId' as const, params: { campaignId } }
+      : { label: name ?? UNNAMED_INVESTIGATOR, to: '/campaigns/$campaignId/investigators/$investigatorId' as const, params: { campaignId, investigatorId } }
+
+  return (
+    <BackLink
+      from={from}
+      fallback={fallback}
+      originTargets={{ 'active-scene': { label: originLabel, to: '/campaigns/$campaignId/active-scene' as const, params: { campaignId } } }}
+      render={(target) => (
+        <Link to={target.to} params={target.params} className={buttonVariants({ variant: 'link', className: 'self-start px-0' })}>
+          <ArrowLeft aria-hidden="true" />
+          Back to {target.label}
+        </Link>
+      )}
+    />
   )
 }
 
@@ -89,15 +100,16 @@ interface CluesBodyProps {
   campaignId: string
   investigatorId?: string
   clues: Clues
+  from?: string
 }
 
-function CluesBody({ campaignId, investigatorId, clues }: CluesBodyProps) {
+function CluesBody({ campaignId, investigatorId, clues, from }: CluesBodyProps) {
   const name = clues.investigatorName ?? UNNAMED_INVESTIGATOR
   const groups = groupCluesByScene(clues.clues)
 
   return (
     <>
-      <BackLink campaignId={campaignId} investigatorId={investigatorId} name={name} />
+      <CluesBackLink campaignId={campaignId} investigatorId={investigatorId} name={name} from={from} />
       <div className="flex max-w-2xl flex-col gap-2">
         <h1 className="text-2xl font-semibold break-words">{name}&apos;s Clues</h1>
         <p className="text-sm text-muted-foreground">Everything {name} received from the Keeper, newest first.</p>
