@@ -68,6 +68,20 @@
 - **Chosen:** A, because it is the only option that renders the normative copy exactly - giving up a label string that repeats the visible text.
 - **Rejected:** B - it deviates from the ux.md copy. The Developer must not reintroduce it.
 
+### D4: The site header overflows at 320px (added in revision, see Revisions)
+| Metric | A: Expand this PBI to fix the site header | B: Narrow this PBI's assertion to what it owns; defer the document-level check | C: Keep the assertion, mark it `test.fixme` |
+| --- | --- | --- | --- |
+| Consistency | - identity-and-access UI inside a navigation PBI | + one concern per PBI; uses the backlog `Deferred: see Follow-ups.` convention | - hides a failing criterion in code |
+| Modifiability | 0 | + the site header gets its own UX pass | - nothing tracks it |
+| Testability | + the full NAV-A11Y-4 holds | + the Campaign-header part is asserted now, the rest is tracked | - no assertion runs |
+| Simplicity | - new UI with no spec, so trigger 7 applies (UX options and a human selection), which delays PBI-SPL-006 | + a small test change and a follow-up | + no work |
+| Reversibility | 0 | + | 0 |
+| Security and correctness | 0 | 0 NAV-A11Y-4 is only partly met until the follow-up lands | - silently ships a known 1.4.10 failure |
+
+- Context: `frontend/src/shared/components/header/header.tsx` lays out a single non-wrapping row with `px-6` (title, Campaigns, display name, Sign Out). `specs/identity-and-access/ux.md` does not specify a narrow layout.
+- **Chosen:** B (human, 2026-11-04), because of Simplicity and Consistency - giving up the full NAV-A11Y-4 and CO-A11Y-9 at document level until the site-header follow-up merges.
+- **Rejected:** A - it needs a site-header UX design inside a PBI that PBI-SPL-006 is waiting on. C - it hides a failing criterion untracked. The Developer must not reintroduce either.
+
 ### Single-option decisions
 - Query freshness: keep the TanStack defaults (no `staleTime` or `gcTime`). With one query key, a mount at the same time as a page observer is deduplicated, and later page mounts refetch exactly as today. A per-observer staleTime would not stop the page's own refetchOnMount. "No second request when cached" means: no request of the header's own and no new query key.
 - Gating: `useActiveScene(campaignId, Boolean(campaign.data))` (the enabled parameter exists, `useActiveScene.ts:16`), so a non-member or a failed Campaign load never fires GET active-scene.
@@ -94,7 +108,8 @@
 - Badge changes are never announced (no aria-live, no role=status) and nothing moves focus (NAV-A11Y-5).
 - The nav stays `<nav aria-label="Campaign">` with links, not ARIA tabs, and `aria-current="page"` is on exactly one link. Links are at least 44px high.
 - Active Scene is current on `/active-scene` and every descendant; Overview is the fallback for every other Campaign route.
-- At 320px and at 200% zoom the document never scrolls horizontally (CO-A11Y-9, NAV-A11Y-4).
+- At 320px and at 200% zoom, nothing this PBI renders (the Campaign header, its tab row, and `main`) overflows the viewport horizontally, and the tab row scrolls inside itself (CO-A11Y-9, NAV-A11Y-4 for what this PBI owns; see D4).
+- The E2E must show that any remaining document-level overflow comes from the site header. If the site header is not wider than the viewport, the overflow comes from somewhere else and the Developer escalates again.
 - Settings stays Keeper-only in the UI; server authorization is unchanged.
 - Cyclomatic complexity stays at 10 or below with no new suppressions.
 
@@ -111,7 +126,9 @@
    - Read the leaf routeId via `useRouterState({ select: (state) => state.matches.at(-1)?.routeId })` and derive `section` and `isOverview` from step 2.
    - Remove `useMatchRoute` and `sectionOf`.
 6. E2E (see E2E coverage), including the existing nav-list assertions.
-7. Set the PBI status per `docs/backlog.md` when done.
+7. Set the PBI status per `docs/backlog.md` when done (D4):
+   - The NAV-A11Y-4 part of the first Verification item stays unticked: split it onto its own line ending `Deferred: see Follow-ups.`
+   - Add this `## Follow-ups` entry: "Site header overflows at 320px (`shared/components/header/header.tsx`); the document-level NAV-A11Y-4 / CO-A11Y-9 check waits on a site-header narrow layout (needs UX options per CLAUDE.md)."
 
 ## Reuse
 - Using:
@@ -159,8 +176,9 @@
   - Start via the API: all three see "Active Scene, live" without reloading.
   - Finish via the API: Live disappears for all three.
   - NAV-A11Y-5: focus is unchanged.
-- NAV-A11Y-4 and NAV-A11Y-3 at a 320px viewport:
-  - `document.documentElement.scrollWidth <= clientWidth`.
+- NAV-A11Y-4 and NAV-A11Y-3 at a 320px viewport (revised by D4; this replaces the document-level assertion at `e2e/tests/navigation.spec.ts:136`, step named "NAV-A11Y-4: the Campaign header ..."):
+  - The Campaign `header` and `main` each have `scrollWidth <= clientWidth`, and their bounding boxes' right edges are at most 320.
+  - The site `header` (the banner outside `main`) is wider than the viewport, which shows where the remaining overflow comes from.
   - The nav's scrollWidth > clientWidth.
   - The current tab is within the nav's visible box.
   - Every tab is at least 44px high.
@@ -178,5 +196,15 @@
 - 2026-11-04, plan-approval gate (verbatim): "approve D1-A, D2-B, D3-A".
 - 2026-11-04, follow-up on the ux.md section 2 wording "no visible scrollbar gutter change" (verbatim): "Confirm reading". It means: do not reserve a scrollbar gutter and do not hide the scrollbar.
 
+- 2026-11-04, D4 (verbatim): "approve B".
+- CO-A11Y-9 says "the header, tabs, and overview". This PBI reads "header" as the Campaign header; the human has not confirmed that reading.
+
 ## Revisions
 - 2026-11-04: clarification, no decision changed. The human confirmed the reading of "no visible scrollbar gutter change"; the open confirmation under Human decisions was replaced by the confirmed decision.
+- 2026-11-04: changed invariant, approved by the human.
+  - Escalation: the Developer reported, at checkpoint a39dac1, that the 320px document-level scrollWidth assertion (`e2e/tests/navigation.spec.ts:136`) fails because of the pre-existing site-header overflow, not the tab row.
+  - Added D4 (choice B).
+  - Narrowed the 320px invariant to what this PBI renders, and added an invariant that the E2E must attribute the remaining overflow to the site header.
+  - Revised the NAV-A11Y-4 E2E step.
+  - Added the Deferred and Follow-ups step to the Implementation plan.
+  - D1-D3 and their rejections are unchanged.
