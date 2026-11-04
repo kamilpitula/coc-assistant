@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
+import { HeadingOffsetProvider } from '@/shared/providers/heading-offset/heading-offset'
 import type { RichTextDocument } from '@/shared/types/RichText'
 
 import { RichTextView } from './rich-text-view'
@@ -62,5 +63,35 @@ describe('RichTextView', () => {
     expect(container.querySelector('blockquote')).toHaveTextContent('Quote')
     expect(container.querySelector('strong')).not.toBeNull()
     expect(container.querySelector('[contenteditable="true"]')).toBeNull()
+  })
+
+  it('renders Heading and Subheading as h5 and h6 when the heading offset is 2', () => {
+    const { container } = render(<RichTextView document={everyNode} headingOffset={2} />)
+
+    expect(container.querySelector('h5')).toHaveTextContent('Heading')
+    expect(container.querySelector('h6')).toHaveTextContent('Subheading')
+    expect(container.querySelector('h4')).toBeNull()
+  })
+
+  it('adds the provider offset to its own offset', () => {
+    const { container } = render(
+      <HeadingOffsetProvider value={1}>
+        <RichTextView document={everyNode} headingOffset={1} />
+      </HeadingOffsetProvider>,
+    )
+
+    expect(container.querySelector('h5')).toHaveTextContent('Heading')
+    expect(container.querySelector('h6')).toHaveTextContent('Subheading')
+  })
+
+  it('clamps the combined offset at h6', () => {
+    const { container } = render(
+      <HeadingOffsetProvider value={3}>
+        <RichTextView document={everyNode} headingOffset={2} />
+      </HeadingOffsetProvider>,
+    )
+
+    expect(container.querySelector('h6')).toHaveTextContent('Heading')
+    expect(container.querySelector('h5')).toBeNull()
   })
 })

@@ -4,71 +4,87 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { HeadingNode, type HeadingTagType } from '@lexical/rich-text'
-import type { EditorConfig, Klass, LexicalNode, LexicalNodeReplacement } from 'lexical'
-import { useState } from 'react'
+import type { EditorConfig, EditorThemeClasses, Klass, LexicalNode, LexicalNodeReplacement } from 'lexical'
+import { useContext, useState } from 'react'
 
+import { HeadingOffsetContext } from '@/shared/providers/heading-offset/heading-offset-context'
 import { RICH_TEXT_NODES, RICH_TEXT_THEME } from '@/shared/services/richText'
 import type { RichTextDocument } from '@/shared/types/RichText'
 
-const OFFSET_TAGS: Record<string, HeadingTagType> = { h1: 'h2', h2: 'h3', h3: 'h4', h4: 'h5', h5: 'h6', h6: 'h6' }
+/** The largest combined offset: the stored h3 and h4 still render, clamped at h6. */
+const MAX_OFFSET = 3
 
-/** Renders a heading one level lower, only in the read-only view; the stored document keeps its level (ADR 0015). */
-class OffsetHeadingNode extends HeadingNode {
-  $config() {
-    return this.config('offset-heading', { extends: HeadingNode })
+function shiftHeadingTag(tag: HeadingTagType, offset: number): HeadingTagType {
+  const level = Math.min(6, Math.max(1, Number(tag.slice(1)) + offset))
+  return `h${level}` as HeadingTagType
+}
+
+/** The stored h3 and h4 render shifted but keep their own visual style (so an offset view reads the same, lower). */
+function offsetTheme(offset: number): EditorThemeClasses {
+  return {
+    ...RICH_TEXT_THEME,
+    heading: {
+      [shiftHeadingTag('h3', offset)]: RICH_TEXT_THEME.heading?.h3,
+      [shiftHeadingTag('h4', offset)]: RICH_TEXT_THEME.heading?.h4,
+    },
   }
+}
 
-  createDOM(config: EditorConfig): HTMLElement {
-    const tag = OFFSET_TAGS[this.__tag] ?? this.__tag
-    const element = globalThis.document.createElement(tag)
-    const className = config.theme.heading?.[tag]
-    if (className !== undefined) {
-      addClassNamesToElement(element, className)
+function offsetNodes(offset: number): ReadonlyArray<Klass<LexicalNode> | LexicalNodeReplacement> {
+  /** Renders a heading lower, only in the read-only view; the stored document keeps its level (ADR 0015). */
+  class OffsetHeadingNode extends HeadingNode {
+    $config() {
+      return this.config(`offset-heading-${offset}`, { extends: HeadingNode })
     }
-    return element
+
+    createDOM(config: EditorConfig): HTMLElement {
+      const tag = shiftHeadingTag(this.__tag, offset)
+      const element = globalThis.document.createElement(tag)
+      const className = config.theme.heading?.[tag]
+      if (className !== undefined) {
+        addClassNamesToElement(element, className)
+      }
+      return element
+    }
   }
-}
 
-const OFFSET_THEME = {
-  ...RICH_TEXT_THEME,
-  heading: {
-    h4: RICH_TEXT_THEME.heading?.h3,
-    h5: RICH_TEXT_THEME.heading?.h4,
-  },
+  return [
+    ...RICH_TEXT_NODES,
+    OffsetHeadingNode,
+    {
+      replace: HeadingNode,
+      with: (node: HeadingNode) => new OffsetHeadingNode(node.getTag()),
+      withKlass: OffsetHeadingNode,
+    },
+  ]
 }
-
-// The replacement class must be registered as well as the node it replaces.
-const OFFSET_NODES: ReadonlyArray<Klass<LexicalNode> | LexicalNodeReplacement> = [
-  ...RICH_TEXT_NODES,
-  OffsetHeadingNode,
-  {
-    replace: HeadingNode,
-    with: (node: HeadingNode) => new OffsetHeadingNode(node.getTag()),
-    withKlass: OffsetHeadingNode,
-  },
-]
 
 interface RichTextViewProps {
   document: RichTextDocument
   /** Shifts every heading down this many levels (default 0). A section under an h2 and an h3 passes 1: Heading is h4. */
-  headingOffset?: 0 | 1
+  headingOffset?: 0 | 1 | 2 | 3
 }
 
 /**
  * Renders a rich-text document read-only with the same nodes and theme as the editor (specs/scenario-preparation/ux.md
- * section 15). Nothing outside the allowed nodes can render, because only those nodes are registered.
+ * section 15). Nothing outside the allowed nodes can render, because only those nodes are registered. The effective
+ * offset adds the enclosing `HeadingOffsetProvider` offset to the prop, clamped to 3.
  */
 export function RichTextView({ document, headingOffset = 0 }: RichTextViewProps) {
-  const [initialConfig] = useState(() => ({
-    namespace: 'rich-text-view',
-    nodes: headingOffset === 1 ? [...OFFSET_NODES] : [...RICH_TEXT_NODES],
-    theme: headingOffset === 1 ? OFFSET_THEME : RICH_TEXT_THEME,
-    editable: false,
-    editorState: JSON.stringify(document),
-    onError: (error: Error) => {
-      throw error
-    },
-  }))
+  const contextOffset = useContext(HeadingOffsetContext)
+  const [initialConfig] = useState(() => {
+    const effectiveOffset = Math.min(MAX_OFFSET, Math.max(0, headingOffset + contextOffset))
+    return {
+      namespace: 'rich-text-view',
+      nodes: effectiveOffset === 0 ? [...RICH_TEXT_NODES] : offsetNodes(effectiveOffset),
+      theme: effectiveOffset === 0 ? RICH_TEXT_THEME : offsetTheme(effectiveOffset),
+      editable: false,
+      editorState: JSON.stringify(document),
+      onError: (error: Error) => {
+        throw error
+      },
+    }
+  })
 
   return (
     <LexicalComposer initialConfig={initialConfig}>

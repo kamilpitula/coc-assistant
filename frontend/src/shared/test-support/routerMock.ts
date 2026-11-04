@@ -7,10 +7,14 @@ import { vi } from 'vitest'
  */
 export const navigateSpy = vi.fn()
 
+export const backSpy = vi.fn()
+
 export const routerState = {
   location: {
+    search: {} as Record<string, unknown>,
     state: {} as {
       statusMessage?: string
+      sidePanelOpenedHere?: boolean
       focusHeading?: boolean
       focusLinkId?: string
       focusItemLinkId?: string
@@ -24,9 +28,17 @@ function resolvePath(to: string, params: Record<string, string> = {}): string {
   return Object.entries(params).reduce((path, [name, value]) => path.replace(`$${name}`, value), to)
 }
 
+function resolveHref(to: string, params: Record<string, string> = {}, search: Record<string, string> = {}): string {
+  const path = resolvePath(to, params)
+  const query = new URLSearchParams(search).toString()
+  return query === '' ? path : `${path}?${query}`
+}
+
 interface MockLinkProps {
   to: string
   params?: Record<string, string>
+  search?: Record<string, string>
+  state?: unknown
   children: ReactNode
   className?: string
   onClick?: MouseEventHandler<HTMLAnchorElement>
@@ -35,12 +47,17 @@ interface MockLinkProps {
   id?: string
 }
 
-function MockLink({ to, params, children, className, onClick, 'aria-current': ariaCurrent, 'aria-label': ariaLabel, id }: MockLinkProps) {
-  return createElement('a', { href: resolvePath(to, params), className, onClick, 'aria-current': ariaCurrent, 'aria-label': ariaLabel, id }, children)
+function MockLink({ to, params, search, children, className, onClick, 'aria-current': ariaCurrent, 'aria-label': ariaLabel, id }: MockLinkProps) {
+  return createElement(
+    'a',
+    { href: resolveHref(to, params, search), className, onClick, 'aria-current': ariaCurrent, 'aria-label': ariaLabel, id },
+    children,
+  )
 }
 
 export const routerMock = {
   Link: MockLink,
   useNavigate: () => navigateSpy,
+  useRouter: () => ({ history: { back: backSpy } }),
   useRouterState: ({ select }: { select: (state: typeof routerState) => unknown }) => select(routerState),
 }
