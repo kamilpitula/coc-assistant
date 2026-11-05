@@ -78,6 +78,12 @@ cd e2e
 npm test
 ```
 
+In a fresh checkout or agent worktree, run `npm run build:backend` (in `e2e/`) once first.
+`globalSetup.ts` runs `dotnet ef`, which builds the backend while the `api` server's
+`dotnet run` is building it too; on a cold build the two collide on MSBuild file locks and
+setup fails with "Build failed". A warm build avoids it. `.worktreeinclude` copies the
+gitignored `e2e/.certs/` into new worktrees.
+
 Playwright's `webServer` config starts three servers for you:
 
 | Server         | Port                                  | Owner             |

@@ -156,7 +156,15 @@ how to proceed; never switch it to another model on your own.
 Once implementation and the Developer's own verification are done, take
 its final report forward.
 
+Resume a Developer with `SendMessage`. If a `ToolSearch` for it returns a
+`tool_reference`, the tool is loaded: call it. If it truly cannot be loaded,
+tell the human; do not quietly spawn a new Developer for the same work.
+
 ## 6. Verifier (if warranted)
+
+Spawn the Verifier as soon as the Developer reports. It reviews a commit
+SHA with `git checkout --detach`, so do not wait for the PBI branch to move
+or for the human to run git commands first.
 
 Hand the Verifier the Developer's diff/report, the decision record (or the
 approved Developer plan), the original task, and the Explorer's report if

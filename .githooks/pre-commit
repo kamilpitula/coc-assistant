@@ -12,3 +12,12 @@ echo "pre-commit: ascii-check"
 node tools/ascii-check/src/cli.ts
 echo "pre-commit: backlog --check"
 node tools/backlog/src/cli.ts --check
+# Type-check staged frontend changes; `tsc --noEmit` in frontend/ checks nothing (root tsconfig has "files": []).
+if git diff --cached --name-only | grep -q '^frontend/'; then
+  if [ ! -d frontend/node_modules ]; then
+    echo "pre-commit: frontend/node_modules missing, skipping typecheck (run 'npm ci' in frontend/)" >&2
+  else
+    echo "pre-commit: frontend typecheck"
+    (cd frontend && npm run generate-routes --silent && npm run typecheck --silent)
+  fi
+fi

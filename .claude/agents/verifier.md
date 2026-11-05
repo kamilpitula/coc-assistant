@@ -60,6 +60,7 @@ Run from `frontend/`:
 - Install (only if `node_modules` is missing/stale): `npm ci`
 - Route tree (gitignored, needed by lint and tsc): `npm run generate-routes`
 - Lint: `npm run lint`
+- Type-check: `npm run typecheck` (`npx tsc --noEmit` checks no files)
 - Type-check + build: `npm run build`
 - Unit tests: `npm run test`
 - Storybook build: `npm run build-storybook`
@@ -104,6 +105,10 @@ blocking finding, regardless of what the Developer's report claimed.
   `git checkout --detach <branch-or-sha>` to review the Developer's commits.
   Before running the ASCII or backlog checks, run
   `npm ci --prefix tools/ascii-check` and `npm ci --prefix tools/backlog`.
+- **Run installs and checks in the foreground.** `npm ci`, type-check, lint,
+  and tests run in the foreground with a long timeout. Never end your turn
+  to wait for a background job; it ends your run, and a check you did not
+  finish is reported as unverified. Run the frontend `npm ci` first.
 - **A failing CI-mirroring command blocks merge.** A non-zero exit from any
   command that mirrors CI (for example `dotnet format ... --verify-no-changes`)
   blocks merge, unless you reproduce the same failure on the base commit.
