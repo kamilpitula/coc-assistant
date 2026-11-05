@@ -14,6 +14,7 @@ import {
   pageStatus,
   presentFieldset,
   presentSection,
+  revealHandoutViaApi,
   setUpTable,
   startSceneViaApi,
 } from '../fixtures/scene-play'
@@ -21,13 +22,14 @@ import { sceneLinks, scenesSection } from '../fixtures/scenes'
 import { openWall, wallEntry } from '../fixtures/wall'
 
 /**
- * Traces to specs/scene-play/spec.md Scenarios and to specs/scene-play/ux.md (PBI-SPL-001):
+ * Traces to specs/scene-play/spec.md Scenarios and to specs/scene-play/ux.md (PBI-SPL-001, PBI-SPL-006):
  * - "Keeper starts a Scene" (SPL-UX-1, 2, 9, 16)
  * - "Scenes can be started out of prepared order" (SPL-UX-3)
  * - "A second Active Scene is refused" (SPL-UX-5)
  * - "Keeper finishes the current Scene and starts the next one" (SPL-UX-6, 16)
  * - "Starting a Scene reveals nothing" (SPL-UX-12, amended by PBI-SPL-002: no Handout before any Reveal)
- * - the Keeper's material list on the Active Scene page (SPL-UX-9, amended by PBI-SPL-002, SPL-UX-20, SPL-UX-25)
+ * - the Keeper's Run tab and sub-navigation (SPL-UX-40, SPL-UX-41), To reveal (SPL-UX-20, SPL-UX-42),
+ *   Keeper reference (SPL-UX-45), and material side panels (SPL-UX-25, SPL-UX-46 as amended by PBI-SPL-006)
  * - "A Player whose Investigator is not present sees only the title" (SPL-UX-13)
  * - "Players cannot run Scenes" (SPL-UX-17)
  * - changing who is present (SPL-UX-10), finishing (SPL-UX-11), an empty selection and no Approved Investigator (SPL-UX-4, 8),
@@ -63,7 +65,7 @@ test.describe('Starting and finishing a Scene', () => {
         await expect(presentFieldset(page).getByRole('checkbox', { name: new RegExp(LUCY) })).toBeChecked()
       })
 
-      await test.step('SPL-UX-2, SPL-UX-9: starting opens the Active Scene page with its header, controls, and material (Keeper notes collapsed)', async () => {
+      await test.step('SPL-UX-2, SPL-UX-9, SPL-UX-40: starting opens the Run tab with its header, controls, and Keeper notes, and no material', async () => {
         await page.getByRole('button', { name: 'Start Scene' }).click()
         await expect(page).toHaveURL(`/campaigns/${prepared.campaignId}/active-scene`)
         await expect(page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
@@ -74,30 +76,51 @@ test.describe('Starting and finishing a Scene', () => {
         await expect(page.getByRole('button', { name: 'Change' })).toBeVisible()
         await expect(page.getByRole('button', { name: 'Finish Scene' })).toBeVisible()
         await expect(page.getByRole('link', { name: 'Open in Scenario' })).toBeVisible()
-        expect(await page.locator('body').innerText(), 'the Keeper notes stay collapsed until shown').not.toContain('Scene notes')
+        await expect(page.getByRole('button', { name: 'Hide Keeper notes' })).toBeVisible()
+        await expect(page.getByText(`Scene notes ${prepared.secret}`)).toBeVisible()
+        await expect(page.getByRole('region', { name: 'Handouts' })).toHaveCount(0)
+        await expect(page.getByRole('region', { name: 'Non-Player Entities' })).toHaveCount(0)
+        await expect(page.getByRole('button', { name: /^Reveal/ })).toHaveCount(0)
       })
 
-      await test.step('SPL-UX-9, SPL-UX-20: the Keeper notes, Handouts, and Non-Player Entities are listed, and Reveal... is offered on Player-facing material only', async () => {
-        await expect(page.getByRole('button', { name: 'Show Keeper notes' })).toBeVisible()
+      await test.step('SPL-UX-41: the sub-navigation shows each tab with its count, and Run is current', async () => {
+        await expect(page.getByRole('link', { name: 'Run', exact: true })).toHaveAttribute('aria-current', 'page')
+        await expect(page.getByRole('link', { name: 'To reveal, 4' })).toBeVisible()
+        await expect(page.getByRole('link', { name: 'Keeper reference, 5' })).toBeVisible()
+        await expect(page.getByRole('link', { name: 'Revealed, 0' })).toBeVisible()
+      })
+
+      await test.step('SPL-UX-20, SPL-UX-42: To reveal lists the Player-facing Handouts and Non-Player Entities with "Reveal..."', async () => {
+        await page.getByRole('link', { name: 'To reveal, 4' }).click()
+        await expect(page).toHaveURL(`/campaigns/${prepared.campaignId}/active-scene/to-reveal`)
+        await expect(page.getByRole('link', { name: 'To reveal, 4' })).toHaveAttribute('aria-current', 'page')
         const handouts = page.getByRole('region', { name: 'Handouts' })
-        await expect(handouts.getByRole('heading', { level: 3 })).toHaveText(PREPARED.handouts.map((handout) => handout.title))
+        await expect(handouts.getByRole('heading', { level: 4 })).toHaveText([PREPARED.handouts[0].title, PREPARED.handouts[2].title])
         await expect(handouts.getByRole('button', { name: /^Reveal / })).toHaveCount(2)
         await expect(handouts.getByRole('button', { name: `Reveal ${PREPARED.handouts[0].title}` })).toBeVisible()
         await expect(handouts.getByRole('button', { name: `Reveal ${PREPARED.handouts[1].title}` })).toHaveCount(0)
         const entities = page.getByRole('region', { name: 'Non-Player Entities' })
-        await expect(entities.getByRole('heading', { level: 3 })).toHaveText([PREPARED.humanNpcLinkName, PREPARED.creatureLinkName])
-        await page.getByRole('button', { name: 'Show Keeper notes' }).click()
-        await expect(page.getByText(`Scene notes ${prepared.secret}`)).toBeVisible()
+        await expect(entities.getByRole('heading', { level: 4 })).toHaveText([PREPARED.humanNpcLinkName, PREPARED.creatureLinkName])
+        await expect(entities.getByRole('button', { name: /^Reveal / })).toHaveCount(2)
+      })
+
+      await test.step('SPL-UX-45: Keeper reference lists the Keeper-facing Handouts and every Non-Player Entity with no "Reveal..."', async () => {
+        await page.getByRole('link', { name: 'Keeper reference, 5' }).click()
+        await expect(page).toHaveURL(`/campaigns/${prepared.campaignId}/active-scene/reference`)
+        const handouts = page.getByRole('region', { name: 'Handouts' })
+        await expect(handouts.getByRole('heading', { level: 4 })).toHaveText([PREPARED.handouts[1].title, PREPARED.handouts[3].title, PREPARED.handouts[4].title])
+        const entities = page.getByRole('region', { name: 'Non-Player Entities' })
+        await expect(entities.getByRole('heading', { level: 4 })).toHaveText([PREPARED.humanNpcLinkName, PREPARED.creatureLinkName])
+        await expect(page.getByRole('button', { name: /^Reveal/ })).toHaveCount(0)
       })
 
       await test.step('SPL-UX-25 as amended: a Handout title opens its content in the side panel', async () => {
+        await page.getByRole('link', { name: 'To reveal, 4' }).click()
         const handouts = page.getByRole('region', { name: 'Handouts' })
         await handouts.getByRole('button', { name: PREPARED.handouts[1].title, exact: true }).click()
         const panel = page.getByRole('dialog', { name: PREPARED.handouts[1].title })
         await expect(panel).toBeVisible()
         await expect(panel.getByText(`${PREPARED.handouts[1].title} ${prepared.secret}`, { exact: true })).toBeVisible()
-        await page.screenshot({ path: test.info().outputPath('keeper-handout-panel.png') })
-        await page.screenshot({ path: '../docs/scene-play/screenshots/spl-005-active-scene.png' })
         await panel.getByRole('button', { name: 'Close' }).click()
         await expect(panel).toBeHidden()
       })
@@ -310,6 +333,45 @@ test.describe('Starting and finishing a Scene', () => {
       await test.step('SPL-UX-16: the Wall has the finish entry', async () => {
         await openWall(table.harvey.page, table.prepared.campaignId)
         await expect(wallEntry(table.harvey.page, `Scene finished: ${CORBITT}`)).toBeVisible()
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('Keeper sub-tab screenshots at desktop and phone widths (PBI-SPL-006)', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'Shots')
+    const { campaignId } = table.prepared
+    await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
+    await revealHandoutViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneHandoutIds[PREPARED.handouts[0].title], [table.harveyId])
+
+    try {
+      await test.step('SPL-UX-40 to SPL-UX-43, SPL-UX-45: each sub-tab at 1366px', async () => {
+        await page.setViewportSize({ width: 1366, height: 800 })
+        await page.goto(`/campaigns/${campaignId}/active-scene`)
+        await expect(page.getByRole('button', { name: 'Hide Keeper notes' })).toBeVisible()
+        await page.screenshot({ path: '../docs/scene-play/screenshots/spl-006-run-1366.png' })
+        await page.goto(`/campaigns/${campaignId}/active-scene/to-reveal`)
+        await expect(page.getByRole('region', { name: 'Handouts' })).toBeVisible()
+        await page.screenshot({ path: '../docs/scene-play/screenshots/spl-006-to-reveal-1366.png' })
+        await page.goto(`/campaigns/${campaignId}/active-scene/reference`)
+        await expect(page.getByText('Only you see these: Keeper-facing Handouts and the profiles behind Non-Player Entities.')).toBeVisible()
+        await page.screenshot({ path: '../docs/scene-play/screenshots/spl-006-reference-1366.png' })
+        await page.goto(`/campaigns/${campaignId}/active-scene/revealed`)
+        await expect(page.getByRole('region', { name: 'Revealed', exact: true }).getByRole('heading', { level: 3, name: PREPARED.handouts[0].title })).toBeVisible()
+        await page.screenshot({ path: '../docs/scene-play/screenshots/spl-006-revealed-1366.png' })
+      })
+
+      await test.step('SPL-A11Y-18: each sub-tab at 375px with no sideways scrolling', async () => {
+        await page.setViewportSize({ width: 375, height: 800 })
+        for (const tab of ['', '/to-reveal', '/reference', '/revealed']) {
+          await page.goto(`/campaigns/${campaignId}/active-scene${tab}`)
+          await expect(page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
+          const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+          expect(sideways, `no sideways scrolling on ${tab || 'run'}`).toBeLessThanOrEqual(0)
+          const file = tab === '' ? 'run' : tab.slice(1)
+          await page.screenshot({ path: `../docs/scene-play/screenshots/spl-006-${file}-375.png` })
+        }
       })
     } finally {
       await closeTable(table)

@@ -500,12 +500,12 @@ Stories cover:
 
 ## 19. Reveals and Clues UX acceptance criteria
 
-- **SPL-UX-20** The Keeper's Active Scene page lists the Scene's Handouts in stored order with their kind and visibility, and its Non-Player Entities. Only Player-facing Handouts and Non-Player Entities offer "Reveal...".
-- **SPL-UX-21** "Reveal..." opens "Reveal {title}" with every present Investigator who hasn't received it checked. Those who have show "(already revealed)".
-- **SPL-UX-22** Confirming shows "{title} revealed to {names}.", adds "Revealed to {names}" to the item and an entry to "Revealed in this Scene", and returns focus to "Reveal...". If the Scene was finished meanwhile, the page shows "No Active Scene" with that status message.
-- **SPL-UX-23** Confirming with nothing checked shows "Choose at least one Investigator." and reveals nothing. "Cancel" reveals nothing.
+- **SPL-UX-20** The Keeper's Active Scene page lists the Scene's Handouts in stored order with their kind and visibility, and its Non-Player Entities. Only Player-facing Handouts and Non-Player Entities offer "Reveal...". (Amended by PBI-SPL-006: "To reveal" lists Player-facing Handouts in stored order with their kind and visibility, then Non-Player Entity links in link order, each until it has reached every Investigator present; "Keeper reference" lists Keeper-facing Handouts and every Non-Player Entity with no "Reveal...". Only "To reveal" and the `handout` and `entity` panel footers offer "Reveal...".)
+- **SPL-UX-21** "Reveal..." opens "Reveal {title}" with every present Investigator who hasn't received it checked. Those who have show "(already revealed)". (Amended by PBI-SPL-006: "Reveal..." lives on "To reveal" entries and in the `handout` and `entity` panel footers; the dialog is unchanged.)
+- **SPL-UX-22** Confirming shows "{title} revealed to {names}.", adds "Revealed to {names}" to the item and an entry to "Revealed in this Scene", and returns focus to "Reveal...". If the Scene was finished meanwhile, the page shows "No Active Scene" with that status message. (Amended by PBI-SPL-006: the item keeps the status line "Revealed to {names} . not yet: {names}" on "To reveal" until everyone present has received it; reaching the last Investigator present moves it to the "Revealed" sub-tab and adds " Moved to Revealed." to the status; focus follows section 21.7.)
+- **SPL-UX-23** Confirming with nothing checked shows "Choose at least one Investigator." and reveals nothing. "Cancel" reveals nothing. (Amended by PBI-SPL-006: "Cancel" returns focus to the "Reveal..." trigger.)
 - **SPL-UX-24** Each refusal shows its section 17 message. A Scene finished meanwhile leads to "No Active Scene".
-- **SPL-UX-25** "Show Keeper notes" shows the notes. "Show content" shows a Handout's current content. (Amended by PBI-SPL-005: "Show content" is removed; a Handout's title opens its current content in the `handout` side panel, and a Non-Player Entity's title opens its description and profile in the `entity` side panel.)
+- **SPL-UX-25** "Show Keeper notes" shows the notes. "Show content" shows a Handout's current content. (Amended by PBI-SPL-005: "Show content" is removed; a Handout's title opens its current content in the `handout` side panel, and a Non-Player Entity's title opens its description and profile in the `entity` side panel. Amended by PBI-SPL-006: Keeper notes sit on Run and start open with "Hide Keeper notes"; titles open the same panels from "To reveal" and "Keeper reference".)
 - **SPL-UX-26** A Player whose Investigator received a Reveal sees it under "Revealed to {name}", newest first, with its title, kind, and time.
 - **SPL-UX-27** Revealed content renders by kind:
   - Read-aloud shows in the read-aloud panel.
@@ -518,7 +518,7 @@ Stories cover:
 - **SPL-UX-30** After the Keeper edits or replaces a revealed Handout, the Player still sees the text or image as revealed, both on the Active Scene page and among the Clues.
 - **SPL-UX-31** "{name}'s Clues" lists every Clue grouped by Scene, newest first. "Show" shows its content.
 - **SPL-UX-32** A Player without an Approved Investigator sees "You don't have an Approved Investigator in this Campaign yet." on the Clues page.
-- **SPL-UX-33** The Keeper reaches any Approved Investigator's Clues from "Investigators present" and from the review page.
+- **SPL-UX-33** The Keeper reaches any Approved Investigator's Clues from "Investigators present" and from the review page. (Amended by PBI-SPL-006: "{name}'s Clues" on Run opens the `clues` side panel, whose "Open full page" leads to the Clues page with `?from=active-scene`.)
 - **SPL-UX-34** A Player opening a Keeper Clues URL sees `investigator-not-found`.
 - **SPL-UX-35** A Player sees no "Reveal...", no Keeper notes, and no Keeper-facing material.
 - **SPL-UX-36** While a Reveal is in flight, its button reads "Revealing..." and is disabled, and a second activation does nothing.
