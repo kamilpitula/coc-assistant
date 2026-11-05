@@ -19,12 +19,13 @@ import { HandoutPage } from './handout-page'
 // specs/scenario-preparation/ux.md sections 42, 44, and 65; SP-UX-68 to SP-UX-76, SP-UX-100, SP-A11Y-37, SP-A11Y-38, SP-A11Y-40,
 // SP-A11Y-41. The page takes its owner and what the owner allows as a context; the Scene gating is in scene-handout-route.
 
-const { mockUseHandoutFile, mockUseHandout, mockUseEdit, mockUseDelete, editMutate, deleteMutate, editReset, deleteReset, refetchScene, refetchHandout } =
+const { mockUseHandoutFile, mockUseHandout, mockUseEdit, mockUseDelete, mockUseOriginBackLink, editMutate, deleteMutate, editReset, deleteReset, refetchScene, refetchHandout } =
   vi.hoisted(() => ({
     mockUseHandoutFile: vi.fn(),
     mockUseHandout: vi.fn(),
     mockUseEdit: vi.fn(),
     mockUseDelete: vi.fn(),
+    mockUseOriginBackLink: vi.fn(),
     editMutate: vi.fn(),
     deleteMutate: vi.fn(),
     editReset: vi.fn(),
@@ -34,6 +35,7 @@ const { mockUseHandoutFile, mockUseHandout, mockUseEdit, mockUseDelete, editMuta
   }))
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
+vi.mock('@/campaign-play/hooks/useOriginBackLink', () => ({ useOriginBackLink: mockUseOriginBackLink }))
 vi.mock('@/scenario-preparation/hooks/useHandouts', () => ({
   useHandout: mockUseHandout,
   useHandoutFile: mockUseHandoutFile,
@@ -94,11 +96,13 @@ const itemContext = (overrides: Partial<HandoutOwnerContext> = {}): HandoutOwner
   ...overrides,
 })
 
-const renderPage = (context: HandoutOwnerContext = prepared()) => render(<HandoutPage owner={sceneOwner} handoutId="h1" context={context} />)
+const renderPage = (context: HandoutOwnerContext = prepared(), from?: string) =>
+  render(<HandoutPage owner={sceneOwner} handoutId="h1" context={context} from={from} />)
 
 describe('HandoutPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseOriginBackLink.mockReturnValue('The Corbitt House')
     mockUseHandout.mockReturnValue(handoutQuery(readAloud))
     mockUseEdit.mockReturnValue(editing())
     mockUseDelete.mockReturnValue(deleting())
@@ -160,6 +164,24 @@ describe('HandoutPage', () => {
       expect(screen.getAllByText('Read-aloud')).toHaveLength(2)
       expect(screen.getByText('Player-facing')).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Back to the Scene' })).toHaveAttribute('href', '/campaigns/c1/scenarios/s1/scenes/a1')
+    })
+
+    it('links back to the Active Scene with ?from=active-scene (NAV-UX-7)', () => {
+      renderPage(prepared(), 'active-scene')
+
+      expect(screen.getByRole('link', { name: 'Back to The Corbitt House' })).toHaveAttribute('href', '/campaigns/c1/active-scene')
+    })
+
+    it('ignores an unknown from and links back to the Scene (NAV-UX-8)', () => {
+      renderPage(prepared(), 'wall')
+
+      expect(screen.getByRole('link', { name: 'Back to the Scene' })).toHaveAttribute('href', '/campaigns/c1/scenarios/s1/scenes/a1')
+    })
+
+    it('links an Item Handout back to the Active Scene with ?from=active-scene (NAV-UX-7)', () => {
+      render(<HandoutPage owner={itemOwner} handoutId="h1" context={itemContext()} from="active-scene" />)
+
+      expect(screen.getByRole('link', { name: 'Back to The Corbitt House' })).toHaveAttribute('href', '/campaigns/c1/active-scene')
     })
 
     it('shows a Read-aloud Handout in the Read-aloud panel with its headings at h3 (SP-UX-68, SP-A11Y-37)', () => {

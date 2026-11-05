@@ -1,4 +1,4 @@
-import { forwardRef } from 'react'
+import { createElement, forwardRef } from 'react'
 
 import { NpcCharacteristicsView } from '@/scenario-preparation/components/npc-characteristics-view/npc-characteristics-view'
 import { NpcCombatView } from '@/scenario-preparation/components/npc-combat-view/npc-combat-view'
@@ -7,6 +7,7 @@ import { SpellsView } from '@/scenario-preparation/components/spells-view/spells
 import { ProfileSection } from '@/scenario-preparation/components/profile-section/profile-section'
 import type { HumanNpc } from '@/scenario-preparation/types/HumanNpc'
 import { RichTextView } from '@/shared/components/rich-text-view/rich-text-view'
+import { useHeadingTag } from '@/shared/providers/heading-offset/heading-offset-context'
 import { isEmptyRichText } from '@/shared/services/richText'
 
 const DETAIL_LABELS: [keyof HumanNpc['details'], string][] = [
@@ -30,13 +31,12 @@ interface HumanNpcViewProps {
  */
 export const HumanNpcView = forwardRef<HTMLHeadingElement, HumanNpcViewProps>(function HumanNpcView({ humanNpc }, ref) {
   const details = DETAIL_LABELS.filter(([key]) => humanNpc.details[key])
+  const tag = useHeadingTag(1)
 
   return (
     <>
       <div className="flex flex-col gap-1">
-        <h1 ref={ref} tabIndex={-1} className="text-2xl font-semibold break-words outline-none">
-          {humanNpc.name}
-        </h1>
+        {createElement(tag, { ref, tabIndex: -1, className: 'text-2xl font-semibold break-words outline-none' }, humanNpc.name)}
         <p className="text-sm text-muted-foreground">
           Human NPC
           <span aria-hidden="true"> &middot; </span>

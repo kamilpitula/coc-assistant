@@ -13,13 +13,15 @@ interface SceneHandoutRouteProps {
   sceneId: string
   /** The Handout to show; without one the page adds a Handout. */
   handoutId?: string
+  /** Where the viewer came from; passed to the Handout page, which replaces its back link for an allow-listed origin. */
+  from?: string
 }
 
 /**
  * The Handout pages of a Scene: loads the Scene, turns it into what the Handout screens need to know, and shows the Handout or
  * the "Add Handout" page. A Player and an unknown Scene get the Scene not-found page and make no request (ux.md sections 42 and 43).
  */
-export function SceneHandoutRoute({ campaignId, scenarioId, sceneId, handoutId }: SceneHandoutRouteProps) {
+export function SceneHandoutRoute({ campaignId, scenarioId, sceneId, handoutId, from }: SceneHandoutRouteProps) {
   const campaign = useCampaign(campaignId)
   const isKeeper = campaign.data?.role === 'Keeper'
   const owner: SceneHandoutOwner = { type: 'scene', campaignId, scenarioId, sceneId }
@@ -50,7 +52,7 @@ export function SceneHandoutRoute({ campaignId, scenarioId, sceneId, handoutId }
   }
 
   return handoutId ? (
-    <HandoutPage owner={owner} handoutId={handoutId} context={context} />
+    <HandoutPage owner={owner} handoutId={handoutId} context={context} from={from} />
   ) : (
     <AddHandoutPage owner={owner} context={context} ownerNotFound={<SceneNotFound campaignId={campaignId} />} />
   )

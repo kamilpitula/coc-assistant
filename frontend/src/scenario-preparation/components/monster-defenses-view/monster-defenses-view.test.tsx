@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { ghoulMythosCreature } from '@/scenario-preparation/test-support/mythosCreatureFixtures'
+import { HeadingOffsetProvider } from '@/shared/providers/heading-offset/heading-offset'
 
 import { MonsterDefensesView } from './monster-defenses-view'
 
@@ -30,5 +31,16 @@ describe('MonsterDefensesView', () => {
     render(<MonsterDefensesView defenses={{ armorPoints: null, armorNote: null, immunities: [], vulnerabilities: [] }} />)
 
     expect(screen.getByText('None recorded.')).toBeInTheDocument()
+  })
+
+  it('shifts the entry headings to h6 inside a +3 offset provider (NAV-UX-9, entity panel)', () => {
+    render(
+      <HeadingOffsetProvider value={3}>
+        <MonsterDefensesView defenses={ghoulMythosCreature.defenses!} />
+      </HeadingOffsetProvider>,
+    )
+
+    expect(screen.getByRole('heading', { level: 6, name: 'Immunities' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 6, name: 'Vulnerabilities' })).toBeInTheDocument()
   })
 })

@@ -1,4 +1,6 @@
-import { forwardRef } from 'react'
+import { createElement, forwardRef } from 'react'
+
+import { useHeadingTag } from '@/shared/providers/heading-offset/heading-offset-context'
 
 import type { CreatureKind } from '@/scenario-preparation/types/MythosCreature'
 
@@ -15,11 +17,11 @@ export const MythosCreatureHeading = forwardRef<HTMLHeadingElement, MythosCreatu
   { name, creatureKind },
   ref,
 ) {
+  const tag = useHeadingTag(1)
+
   return (
     <div className="flex flex-col gap-1">
-      <h1 ref={ref} tabIndex={-1} className="text-2xl font-semibold break-words outline-none">
-        {name}
-      </h1>
+      {createElement(tag, { ref, tabIndex: -1, className: 'text-2xl font-semibold break-words outline-none' }, name)}
       <p className="text-sm text-muted-foreground">
         Mythos Creature
         {creatureKind && (

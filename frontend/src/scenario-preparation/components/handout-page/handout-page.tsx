@@ -2,6 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
+import { useOriginBackLink } from '@/campaign-play/hooks/useOriginBackLink'
 import '@/campaign-play/types/navigationState'
 import { DeleteHandoutDialog } from '@/scenario-preparation/components/delete-handout-dialog/delete-handout-dialog'
 import { HandoutBadges } from '@/scenario-preparation/components/handout-badges/handout-badges'
@@ -15,6 +16,8 @@ import { describeHandoutOwner, type HandoutOwner } from '@/scenario-preparation/
 import { SceneFinishedError } from '@/scenario-preparation/services/sceneApi'
 import { isFileHandout, type Handout } from '@/scenario-preparation/types/Handout'
 import type { HandoutOwnerContext } from '@/scenario-preparation/types/HandoutOwnerContext'
+import { BackLink } from '@/shared/components/back-link/back-link'
+import type { BackLinkTarget } from '@/shared/components/back-link/backLinkOrigin'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 
@@ -23,6 +26,11 @@ interface HandoutPageProps {
   owner: HandoutOwner
   handoutId: string
   context: HandoutOwnerContext
+  /**
+   * Where the viewer came from; an allow-listed origin replaces the structural back link (specs/navigation/ux.md section 4).
+   * Only the Scene Handout route passes one.
+   */
+  from?: string
 }
 
 /**
@@ -30,7 +38,7 @@ interface HandoutPageProps {
  * not otherwise (specs/scenario-preparation/ux.md sections 42 and 65). An unknown Handout, or a 404 on save, gets the Handout
  * not-found page.
  */
-export function HandoutPage({ owner, handoutId, context }: HandoutPageProps) {
+export function HandoutPage({ owner, handoutId, context, from }: HandoutPageProps) {
   const handout = useHandout(owner, handoutId, true)
   const edit = useEditHandout(owner, handoutId)
 
@@ -65,7 +73,7 @@ export function HandoutPage({ owner, handoutId, context }: HandoutPageProps) {
     )
   }
 
-  return <HandoutDetail owner={owner} context={context} handout={handout.data} edit={edit} />
+  return <HandoutDetail owner={owner} context={context} handout={handout.data} edit={edit} from={from} />
 }
 
 type FocusTarget = 'edit' | 'heading'
@@ -75,9 +83,10 @@ interface HandoutDetailProps {
   context: HandoutOwnerContext
   handout: Handout
   edit: ReturnType<typeof useEditHandout>
+  from?: string
 }
 
-function HandoutDetail({ owner, context, handout, edit }: HandoutDetailProps) {
+function HandoutDetail({ owner, context, handout, edit, from }: HandoutDetailProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
   const [returnFocusTo, setReturnFocusTo] = useState<FocusTarget | null>(null)
@@ -110,10 +119,7 @@ function HandoutDetail({ owner, context, handout, edit }: HandoutDetailProps) {
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <Link {...describeHandoutOwner(owner).ownerPage} className={buttonVariants({ variant: 'link', className: 'self-start px-0' })}>
-        <ArrowLeft aria-hidden="true" />
-        {context.backLabel}
-      </Link>
+      <HandoutBackLink owner={owner} context={context} from={from} />
       <p role="status" className="text-sm empty:hidden">
         {justSaved ? 'Handout saved.' : null}
       </p>
@@ -139,6 +145,31 @@ function HandoutDetail({ owner, context, handout, edit }: HandoutDetailProps) {
         />
       )}
     </div>
+  )
+}
+
+function HandoutBackLink({ owner, context, from }: { owner: HandoutOwner; context: HandoutOwnerContext; from?: string }) {
+  const originLabel = useOriginBackLink(owner.campaignId)
+  const ownerPage = describeHandoutOwner(owner).ownerPage
+  // Annotated like the Clues fallback: the owner page is a union of two page shapes, and the origin target joins the
+  // generic only through the shared target type. The params are re-spread into a fresh literal: the declared
+  // page-param interfaces carry no index signature.
+  const fallback: BackLinkTarget = { ...ownerPage, label: `the ${context.ownerLabel}`, params: { ...ownerPage.params } }
+
+  return (
+    <BackLink
+      from={from}
+      fallback={fallback}
+      originTargets={{
+        'active-scene': { label: originLabel, to: '/campaigns/$campaignId/active-scene' as const, params: { campaignId: owner.campaignId } },
+      }}
+      render={(target) => (
+        <Link to={target.to} params={target.params} className={buttonVariants({ variant: 'link', className: 'self-start px-0' })}>
+          <ArrowLeft aria-hidden="true" />
+          Back to {target.label}
+        </Link>
+      )}
+    />
   )
 }
 

@@ -1,13 +1,17 @@
+import { createElement } from 'react'
+
 import type { MonsterDefenseEntry, MonsterDefenses } from '@/scenario-preparation/types/MythosCreature'
+import { useHeadingTag } from '@/shared/providers/heading-offset/heading-offset-context'
 
 function EntryList({ title, entries }: { title: string; entries: MonsterDefenseEntry[] }) {
+  const tag = useHeadingTag(3)
   if (entries.length === 0) {
     return null
   }
 
   return (
     <div className="flex flex-col gap-1">
-      <h3 className="font-medium">{title}</h3>
+      {createElement(tag, { className: 'font-medium' }, title)}
       <ul className="list-disc pl-5 text-sm">
         {entries.map((entry, index) => (
           <li key={`${entry.description}-${index}`} className="break-words whitespace-pre-wrap">

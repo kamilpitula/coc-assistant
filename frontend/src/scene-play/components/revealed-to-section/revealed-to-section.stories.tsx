@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import { revealQueryKeys } from '@/scene-play/services/revealApi'
 import { mapReveal, pngBlob, readAloudReveal, textReveal } from '@/scene-play/test-support/revealFixtures'
+import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 
@@ -11,7 +12,9 @@ function SectionStory({ withReveals = true }: { withReveals?: boolean }) {
   return (
     <StoryMsal tokens="pending">
       <StoryProviders seed={(client) => client.setQueryData(revealQueryKeys.file('story-campaign', mapReveal.revealId), pngBlob())}>
-        <RevealedToSection campaignId="story-campaign" investigatorName="Harvey Walters" reveals={withReveals ? [mapReveal, readAloudReveal, textReveal] : []} />
+        <SidePanelScopeProvider>
+          <RevealedToSection campaignId="story-campaign" investigatorName="Harvey Walters" reveals={withReveals ? [mapReveal, readAloudReveal, textReveal] : []} />
+        </SidePanelScopeProvider>
       </StoryProviders>
     </StoryMsal>
   )

@@ -2,6 +2,8 @@
 declare module '@tanstack/react-router' {
   interface HistoryState {
     statusMessage?: string
+    /** Set when the entry opened its side panel; closing goes back instead of replacing (PBI-NAV-002, ADR-0027). */
+    sidePanelOpenedHere?: boolean
     /** Set to put focus on the next page's h1, for example after Duplicate. */
     focusHeading?: boolean
     /** Set to put focus on that Scene link's heading, for example after linking or saving a link. */

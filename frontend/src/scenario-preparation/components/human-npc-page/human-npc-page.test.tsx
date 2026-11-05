@@ -10,12 +10,13 @@ import { HumanNpcPage } from './human-npc-page'
 
 // specs/scenario-preparation/ux.md sections 25.1 to 25.3 and 25.6; SP-UX-32, SP-UX-33, SP-UX-35 to SP-UX-41, SP-A11Y-22.
 
-const { mockUseCampaign, mockUseHumanNpc, mockUseEdit, mockUseDelete, mockUseDuplicate, editMutate, deleteMutate, duplicateMutate, refetch } = vi.hoisted(() => ({
+const { mockUseCampaign, mockUseHumanNpc, mockUseEdit, mockUseDelete, mockUseDuplicate, mockUseOriginBackLink, editMutate, deleteMutate, duplicateMutate, refetch } = vi.hoisted(() => ({
   mockUseCampaign: vi.fn(),
   mockUseHumanNpc: vi.fn(),
   mockUseEdit: vi.fn(),
   mockUseDelete: vi.fn(),
   mockUseDuplicate: vi.fn(),
+  mockUseOriginBackLink: vi.fn(),
   editMutate: vi.fn(),
   deleteMutate: vi.fn(),
   duplicateMutate: vi.fn(),
@@ -24,6 +25,7 @@ const { mockUseCampaign, mockUseHumanNpc, mockUseEdit, mockUseDelete, mockUseDup
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
+vi.mock('@/campaign-play/hooks/useOriginBackLink', () => ({ useOriginBackLink: mockUseOriginBackLink }))
 vi.mock('@/campaign-play/hooks/useRuleData', () => ({
   useSkillCatalog: () => ({ data: undefined, isError: false, refetch: vi.fn() }),
   useOccupationCatalog: () => ({ data: undefined }),
@@ -48,6 +50,7 @@ describe('HumanNpcPage', () => {
     mockUseEdit.mockReturnValue(mutation(editMutate))
     mockUseDelete.mockReturnValue(mutation(deleteMutate))
     mockUseDuplicate.mockReturnValue(mutation(duplicateMutate))
+    mockUseOriginBackLink.mockReturnValue('The Corbitt House')
   })
 
   it('shows the profile with a Back link, the status passed by the page that created it, Edit, Duplicate, and Delete (SP-UX-32)', () => {
@@ -61,6 +64,18 @@ describe('HumanNpcPage', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Duplicate' })).toBeInTheDocument()
+  })
+
+  it('links back to the Active Scene with ?from=active-scene (NAV-UX-7)', () => {
+    render(<HumanNpcPage campaignId="c1" humanNpcId="h1" from="active-scene" />)
+
+    expect(screen.getByRole('link', { name: 'Back to The Corbitt House' })).toHaveAttribute('href', '/campaigns/c1/active-scene')
+  })
+
+  it('ignores an unknown from and links back to Non-Player Entities (NAV-UX-8)', () => {
+    render(<HumanNpcPage campaignId="c1" humanNpcId="h1" from="wall" />)
+
+    expect(screen.getByRole('link', { name: 'Back to Non-Player Entities' })).toHaveAttribute('href', '/campaigns/c1/non-player-entities')
   })
 
   it('swaps the whole view for the form on Edit, keeping the saved name as the h1 (ux 25.2)', async () => {

@@ -1,7 +1,7 @@
 import { useId, useState } from 'react'
 
 import { RevealedContent } from '@/scene-play/components/revealed-content/revealed-content'
-import { formatRevealTime, recipientNames, revealKindLabel } from '@/scene-play/services/revealPresentation'
+import { RevealMetaLine } from '@/scene-play/components/reveal-meta-line/reveal-meta-line'
 import type { KeeperReveal } from '@/scene-play/types/Reveal'
 import { Button } from '@/shared/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible'
@@ -41,10 +41,7 @@ function RevealEntry({ campaignId, reveal }: { campaignId: string; reveal: Keepe
     <Collapsible open={open} onOpenChange={setOpen} asChild>
       <li className="flex flex-col gap-2 border-t pt-3">
         <h3 className="text-base font-semibold break-words">{reveal.title}</h3>
-        <p className="text-sm break-words text-muted-foreground">
-          {revealKindLabel(reveal)} <span aria-hidden="true">&middot;</span> <time dateTime={reveal.revealedAt}>{formatRevealTime(reveal.revealedAt)}</time>{' '}
-          <span aria-hidden="true">&middot;</span> to {recipientNames(reveal)}
-        </p>
+        <RevealMetaLine reveal={reveal} />
         <div>
           <CollapsibleTrigger asChild>
             <Button type="button" variant="outline" size="sm" aria-label={`${open ? 'Hide' : 'Show'} what was revealed: ${reveal.title}`}>

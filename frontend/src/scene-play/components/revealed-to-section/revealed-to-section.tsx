@@ -1,9 +1,9 @@
-import { Link } from '@tanstack/react-router'
 import { useId } from 'react'
 
 import { RevealedContent } from '@/scene-play/components/revealed-content/revealed-content'
 import { formatRevealTime, revealKindLabel } from '@/scene-play/services/revealPresentation'
 import type { PlayerReveal } from '@/scene-play/types/Reveal'
+import { useSidePanel } from '@/shared/hooks/useSidePanel'
 
 interface RevealedToSectionProps {
   campaignId: string
@@ -18,6 +18,7 @@ interface RevealedToSectionProps {
  */
 export function RevealedToSection({ campaignId, investigatorName, reveals }: RevealedToSectionProps) {
   const headingId = useId()
+  const { open } = useSidePanel()
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
@@ -25,9 +26,14 @@ export function RevealedToSection({ campaignId, investigatorName, reveals }: Rev
         <h2 id={headingId} className="text-lg font-semibold break-words">
           Revealed to {investigatorName}
         </h2>
-        <Link to="/campaigns/$campaignId/investigator/clues" params={{ campaignId }} className="w-fit text-sm font-medium break-words underline underline-offset-4">
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          onClick={(event) => open({ type: 'clues' }, event.currentTarget)}
+          className="w-fit cursor-pointer border-0 bg-transparent p-0 text-left text-sm font-medium break-words underline underline-offset-4"
+        >
           {investigatorName}&apos;s Clues
-        </Link>
+        </button>
       </div>
       {reveals.length === 0 ? (
         <p className="text-sm text-muted-foreground">The Keeper hasn&apos;t revealed anything to {investigatorName} yet.</p>

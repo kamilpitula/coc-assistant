@@ -9,16 +9,18 @@ import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 import { InvestigatorsPresentSection } from './investigators-present-section'
 
 // specs/scene-play/ux.md section 3 (Investigators present); SPL-UX-10, SPL-UX-18, SPL-A11Y-3.
-const { mockUseMembers, mockUseChange, changeMutate, changeReset } = vi.hoisted(() => ({
+const { mockUseMembers, mockUseChange, changeMutate, changeReset, openPanel } = vi.hoisted(() => ({
   mockUseMembers: vi.fn(),
   mockUseChange: vi.fn(),
   changeMutate: vi.fn(),
   changeReset: vi.fn(),
+  openPanel: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/campaign-play/hooks/useCampaignMembers', () => ({ useCampaignMembers: mockUseMembers }))
 vi.mock('@/scene-play/hooks/useActiveScene', () => ({ useChangeInvestigatorsPresent: mockUseChange }))
+vi.mock('@/shared/hooks/useSidePanel', () => ({ useSidePanel: () => ({ panel: null, open: openPanel, close: vi.fn() }) }))
 
 const scene: KeeperActiveScene = {
   kind: 'keeper',
@@ -46,12 +48,18 @@ describe('InvestigatorsPresentSection', () => {
     mockUseChange.mockReturnValue(changing())
   })
 
-  it('follows each present Investigator with a "Clues" link to their Clues (SPL-UX-33)', () => {
+  it('opens each present Investigator\'s Clues panel from a "Clues" button with the button as the focus trigger (SPL-UX-33, G1)', async () => {
     renderSection()
 
-    expect(screen.getByRole('link', { name: "Dr. Ames's Clues" })).toHaveAttribute('href', '/campaigns/c1/investigators/i-a/clues')
-    expect(screen.getByRole('link', { name: "Unnamed Investigator's Clues" })).toHaveAttribute('href', '/campaigns/c1/investigators/unknown/clues')
-    expect(screen.getAllByRole('link', { name: /Clues/ })[0]).toHaveTextContent('Clues')
+    const button = screen.getByRole('button', { name: "Dr. Ames's Clues" })
+    expect(button).toHaveAttribute('aria-haspopup', 'dialog')
+    expect(button).toHaveTextContent('Clues')
+    await userEvent.click(button)
+    expect(openPanel).toHaveBeenCalledWith({ type: 'clues', investigatorId: 'i-a' }, button)
+
+    const unnamed = screen.getByRole('button', { name: "Unnamed Investigator's Clues" })
+    await userEvent.click(unnamed)
+    expect(openPanel).toHaveBeenCalledWith({ type: 'clues', investigatorId: 'unknown' }, unnamed)
   })
 
   it('lists who is present under a labelled section with a Change button', () => {

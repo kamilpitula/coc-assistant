@@ -80,6 +80,18 @@ Arkham Nights
 - **Focus:** on open, focus moves to the panel `h2` (`tabIndex=-1`). On close, focus returns to the control that opened it; if that control is gone (the page was reloaded with the panel open, or the subject left the list), focus moves to the page `h1`.
 - **States:** loading shows a Skeleton with `aria-busy="true"`; a failure shows "We couldn't load this." with "Try again"; a missing or forbidden subject shows "We couldn't find that." with no footer link. The page under the panel is unaffected by any of these.
 - **Live:** the panel body refetches on the same topics as its full page, silently.
+- **Refinements (PBI-NAV-002, [design record](../../docs/navigation/issues/02-side-panel-and-origin-back-links.design.md)):**
+  - **Entry points:** a control that opens a panel is a button with `aria-haspopup="dialog"`, not a link. The Clues entry points keep the accessible name "{name}'s Clues" ([scene-play ux](../scene-play/ux.md) section 21.3).
+  - **Title while not ready:** the panel `h2` shows the kind label ("Clues", "Handout", ...) until the subject's title is known, and in the error and not-found states. It is the same element, so focus stays on it.
+  - **Invalid params:** an unknown `panel` value or a missing id opens no panel, silently, like an unknown `from`.
+  - **Player without an Approved Investigator:** the `clues` panel shows "We couldn't find that." The Clues page keeps "No Clues to show".
+  - **Heading levels:**
+    - `clues`: Scene groups `h3`, Clues `h4`, revealed rich text from `h5`.
+    - `entity`: "What Players see" and "Profile" `h3`; the Player-facing description from `h4`; the profile name `h4`, profile sections `h5`, inner headings and Keeper-notes rich text clamped at `h6`.
+    - `handout` and `reveal`: content headings start at `h3` under the panel `h2`.
+  - **Footer only when ready:** "Open full page" appears only in the ready state, not while loading, on failure, or when not found.
+  - **Silent:** the panel announces nothing. While it is open, the page's own live regions are outside the modal and hidden from screen readers; nothing is re-announced on close.
+  - **When panels render:** a panel on the Active Scene renders once the Active Scene query has loaded. `handout`, `entity`, and `reveal` need the Keeper's Active Scene; without it (a Player, or no Scene Active) they show "We couldn't find that." and send no request. `clues` works whether or not a Scene is Active.
 
 ## 4. Back link with an origin (`back-link`)
 
@@ -136,9 +148,11 @@ New features follow this table. A feature that needs a new origin adds it to the
 |---|---|---|
 | Campaign tabs | `campaign-header` (changed) | adds the Active Scene link and `live-badge` |
 | Live badge | `Badge` + dot | `shared/components/live-badge` |
-| Side panel | `Sheet` (shadcn) | `shared/components/side-panel`; panel params parsed by a `useSidePanel` hook with a zod schema |
+| Side panel | `Sheet` (shadcn) | `shared/components/ui/sheet.tsx` (on the installed `@radix-ui/react-dialog`); `shared/components/side-panel` holds `side-panel`, `side-panel-content` (kind line, `h2`, states, footer and action slot), `side-panel-scope` (opener and title focus refs), and the never-throwing `sidePanelSearchSchema`; `shared/hooks/useSidePanel` parses it and opens, replaces, and closes per the history rules ([ADR 0027](../../docs/adr/0027-side-panels-and-origins-are-url-search-params.md)) |
+| Panel host | `active-scene-panel` | `scene-play/components/active-scene-panel`; maps each panel type to its body (`clues-panel`, `handout-panel`, `entity-panel`, `reveal-panel`) |
 | Panel bodies | `clues-list`, profile view, `handout-preview`, `revealed-content` | extracted from their pages so page and panel render the same thing |
-| Back link | `back-link` | `shared/components/back-link`; origin resolved by a pure `resolveBackLink(from, fallback)` |
+| Heading levels | `HeadingOffsetProvider` | `shared/providers/heading-offset`; shifts the headings of an extracted body (and `RichTextView`) inside a panel; pages without a provider are unchanged |
+| Back link | `back-link` | `shared/components/back-link`; origin resolved by a pure `resolveBackLink(from, fallback, originTargets)`; the Active Scene label comes from `campaign-play/hooks/useOriginBackLink` |
 
 ## 8. UX acceptance criteria
 

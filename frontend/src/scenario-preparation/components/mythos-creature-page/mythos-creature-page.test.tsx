@@ -10,12 +10,13 @@ import { MythosCreaturePage } from './mythos-creature-page'
 
 // specs/scenario-preparation/ux.md sections 25.1 to 25.3 and 25.6; SP-UX-32, SP-UX-33, SP-UX-35 to SP-UX-41, SP-A11Y-22.
 
-const { mockUseCampaign, mockUseMythosCreature, mockUseEdit, mockUseDelete, mockUseDuplicate, editMutate, deleteMutate, duplicateMutate, refetch } = vi.hoisted(() => ({
+const { mockUseCampaign, mockUseMythosCreature, mockUseEdit, mockUseDelete, mockUseDuplicate, mockUseOriginBackLink, editMutate, deleteMutate, duplicateMutate, refetch } = vi.hoisted(() => ({
   mockUseCampaign: vi.fn(),
   mockUseMythosCreature: vi.fn(),
   mockUseEdit: vi.fn(),
   mockUseDelete: vi.fn(),
   mockUseDuplicate: vi.fn(),
+  mockUseOriginBackLink: vi.fn(),
   editMutate: vi.fn(),
   deleteMutate: vi.fn(),
   duplicateMutate: vi.fn(),
@@ -24,6 +25,7 @@ const { mockUseCampaign, mockUseMythosCreature, mockUseEdit, mockUseDelete, mock
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
+vi.mock('@/campaign-play/hooks/useOriginBackLink', () => ({ useOriginBackLink: mockUseOriginBackLink }))
 vi.mock('@/campaign-play/hooks/useRuleData', () => ({
   useSkillCatalog: () => ({ data: undefined, isError: false, refetch: vi.fn() }),
 }))
@@ -47,6 +49,7 @@ describe('MythosCreaturePage', () => {
     mockUseEdit.mockReturnValue(mutation(editMutate))
     mockUseDelete.mockReturnValue(mutation(deleteMutate))
     mockUseDuplicate.mockReturnValue(mutation(duplicateMutate))
+    mockUseOriginBackLink.mockReturnValue('The Corbitt House')
   })
 
   it('shows the profile with a Back link, the status passed by the page that created it, Edit, Duplicate, and Delete (SP-UX-32)', () => {
@@ -60,6 +63,18 @@ describe('MythosCreaturePage', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Duplicate' })).toBeInTheDocument()
+  })
+
+  it('links back to the Active Scene with ?from=active-scene (NAV-UX-7)', () => {
+    render(<MythosCreaturePage campaignId="c1" mythosCreatureId="m1" from="active-scene" />)
+
+    expect(screen.getByRole('link', { name: 'Back to The Corbitt House' })).toHaveAttribute('href', '/campaigns/c1/active-scene')
+  })
+
+  it('ignores an unknown from and links back to Non-Player Entities (NAV-UX-8)', () => {
+    render(<MythosCreaturePage campaignId="c1" mythosCreatureId="m1" from="wall" />)
+
+    expect(screen.getByRole('link', { name: 'Back to Non-Player Entities' })).toHaveAttribute('href', '/campaigns/c1/non-player-entities')
   })
 
   it('swaps the whole view for the form on Edit, keeping the saved name as the h1 and the section index (ux 25.2, SP-UX-45)', async () => {

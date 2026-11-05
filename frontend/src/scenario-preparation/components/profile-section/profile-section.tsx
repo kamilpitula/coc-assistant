@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react'
+import { createElement, type ReactNode } from 'react'
+
+import { useHeadingTag } from '@/shared/providers/heading-offset/heading-offset-context'
 
 import { Button } from '@/shared/components/ui/button'
 
@@ -21,12 +23,7 @@ interface ProfileSectionProps {
  */
 export function ProfileSection({ title, mode, onRemove, removeButtonId, id, children }: ProfileSectionProps) {
   if (mode === 'view') {
-    return (
-      <section id={id} tabIndex={id ? -1 : undefined} className="flex scroll-mt-4 flex-col gap-2 outline-none">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        {children}
-      </section>
-    )
+    return <ViewSection id={id} title={title} children={children} />
   }
 
   return (
@@ -40,5 +37,17 @@ export function ProfileSection({ title, mode, onRemove, removeButtonId, id, chil
       )}
       {children}
     </fieldset>
+  )
+}
+
+/** A view-mode section: its h2 shifts down inside an offset provider (the entity panel), and is unchanged without one. */
+function ViewSection({ id, title, children }: { id?: string; title: string; children: ReactNode }) {
+  const tag = useHeadingTag(2)
+
+  return (
+    <section id={id} tabIndex={id ? -1 : undefined} className="flex scroll-mt-4 flex-col gap-2 outline-none">
+      {createElement(tag, { className: 'text-lg font-semibold' }, title)}
+      {children}
+    </section>
   )
 }

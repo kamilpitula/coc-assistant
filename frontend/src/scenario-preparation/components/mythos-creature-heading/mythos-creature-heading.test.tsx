@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react'
 import { createRef } from 'react'
 import { describe, expect, it } from 'vitest'
 
+import { HeadingOffsetProvider } from '@/shared/providers/heading-offset/heading-offset'
+
 import { MythosCreatureHeading } from './mythos-creature-heading'
 
 // specs/scenario-preparation/ux.md section 25.1; SP-A11Y-18.
@@ -27,5 +29,15 @@ describe('MythosCreatureHeading', () => {
     ref.current?.focus()
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
+  })
+
+  it('shifts the name down inside an offset provider (NAV-UX-9, entity panel)', () => {
+    render(
+      <HeadingOffsetProvider value={3}>
+        <MythosCreatureHeading name="Ghoul" creatureKind="Mythos" />
+      </HeadingOffsetProvider>,
+    )
+
+    expect(screen.getByRole('heading', { level: 4, name: 'Ghoul' })).toBeInTheDocument()
   })
 })

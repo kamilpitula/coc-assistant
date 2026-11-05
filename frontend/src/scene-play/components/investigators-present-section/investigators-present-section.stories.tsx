@@ -4,6 +4,7 @@ import { userEvent, within } from 'storybook/test'
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import { keeperRosterAllApproved, STORY_CAMPAIGN_ID } from '@/campaign-play/test-support/rosterFixtures'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
+import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 
@@ -25,7 +26,9 @@ function SectionStory({ tokens = 'pending' as 'pending' | 'granted' }) {
   return (
     <StoryMsal tokens={tokens}>
       <StoryProviders seed={(client) => client.setQueryData(campaignQueryKeys.members(STORY_CAMPAIGN_ID), keeperRosterAllApproved)}>
-        <InvestigatorsPresentSection campaignId={STORY_CAMPAIGN_ID} scene={scene} onSaved={() => undefined} onFinishedMeanwhile={() => undefined} />
+        <SidePanelScopeProvider>
+          <InvestigatorsPresentSection campaignId={STORY_CAMPAIGN_ID} scene={scene} onSaved={() => undefined} onFinishedMeanwhile={() => undefined} />
+        </SidePanelScopeProvider>
       </StoryProviders>
     </StoryMsal>
   )
