@@ -125,6 +125,8 @@ test.describe('Revealing to Investigators', () => {
         await expect(dialog).toBeHidden()
         await expect(pageStatus(page)).toHaveText(`${PLAN} revealed to ${HARVEY} and ${LUCY}. Moved to Revealed.`)
         await expect(page.getByRole('region', { name: 'Handouts' }).getByText(PLAN, { exact: true })).toHaveCount(0)
+        await expect(page.getByRole('link', { name: 'To reveal, 3' })).toBeVisible()
+        await expect(page.getByRole('link', { name: 'Revealed, 1' })).toBeVisible()
         const lucyArticles = revealedToSection(table.lucy.page, LUCY).getByRole('article')
         await expect(lucyArticles.getByRole('heading', { level: 3 })).toHaveText([PLAN])
         await expect(revealAnnouncement(table.lucy.page)).toHaveText(`New for ${LUCY}: ${PLAN}.`)

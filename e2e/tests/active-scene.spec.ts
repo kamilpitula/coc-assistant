@@ -14,9 +14,12 @@ import {
   pageStatus,
   presentFieldset,
   presentSection,
+  referencePath,
+  revealedPath,
   revealHandoutViaApi,
   setUpTable,
   startSceneViaApi,
+  toRevealPath,
 } from '../fixtures/scene-play'
 import { sceneLinks, scenesSection } from '../fixtures/scenes'
 import { openWall, wallEntry } from '../fixtures/wall'
@@ -350,15 +353,19 @@ test.describe('Starting and finishing a Scene', () => {
         await page.setViewportSize({ width: 1366, height: 800 })
         await page.goto(`/campaigns/${campaignId}/active-scene`)
         await expect(page.getByRole('button', { name: 'Hide Keeper notes' })).toBeVisible()
+        await expect(page.getByRole('link', { name: 'To reveal, 4' })).toBeVisible()
         await page.screenshot({ path: '../docs/scene-play/screenshots/spl-006-run-1366.png' })
         await page.goto(`/campaigns/${campaignId}/active-scene/to-reveal`)
         await expect(page.getByRole('region', { name: 'Handouts' })).toBeVisible()
+        await expect(page.getByRole('link', { name: 'To reveal, 4' })).toBeVisible()
         await page.screenshot({ path: '../docs/scene-play/screenshots/spl-006-to-reveal-1366.png' })
         await page.goto(`/campaigns/${campaignId}/active-scene/reference`)
         await expect(page.getByText('Only you see these: Keeper-facing Handouts and the profiles behind Non-Player Entities.')).toBeVisible()
+        await expect(page.getByRole('link', { name: 'Keeper reference, 5' })).toBeVisible()
         await page.screenshot({ path: '../docs/scene-play/screenshots/spl-006-reference-1366.png' })
         await page.goto(`/campaigns/${campaignId}/active-scene/revealed`)
         await expect(page.getByRole('region', { name: 'Revealed', exact: true }).getByRole('heading', { level: 3, name: PREPARED.handouts[0].title })).toBeVisible()
+        await expect(page.getByRole('link', { name: 'Revealed, 1' })).toBeVisible()
         await page.screenshot({ path: '../docs/scene-play/screenshots/spl-006-revealed-1366.png' })
       })
 
@@ -367,11 +374,65 @@ test.describe('Starting and finishing a Scene', () => {
         for (const tab of ['', '/to-reveal', '/reference', '/revealed']) {
           await page.goto(`/campaigns/${campaignId}/active-scene${tab}`)
           await expect(page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
+          await expect(page.getByRole('link', { name: 'To reveal, 4' })).toBeVisible()
           const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
           expect(sideways, `no sideways scrolling on ${tab || 'run'}`).toBeLessThanOrEqual(0)
           const file = tab === '' ? 'run' : tab.slice(1)
           await page.screenshot({ path: `../docs/scene-play/screenshots/spl-006-${file}-375.png` })
         }
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('Browser back and refresh keep the sub-tab (SPL-UX-41)', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'Back')
+    await startSceneViaApi(page.request, table.keeperBearer, table.prepared.campaignId, table.prepared.sceneId, [table.harveyId])
+    const activePath = `/campaigns/${table.prepared.campaignId}/active-scene`
+
+    try {
+      await page.goto(activePath)
+      await expect(page.getByRole('link', { name: 'Run', exact: true })).toHaveAttribute('aria-current', 'page')
+      await page.getByRole('link', { name: 'To reveal, 4' }).click()
+      await expect(page).toHaveURL(`${activePath}/to-reveal`)
+      await page.getByRole('link', { name: 'Keeper reference, 5' }).click()
+      await expect(page).toHaveURL(`${activePath}/reference`)
+
+      await test.step('SPL-UX-41: back moves through the visited sub-tabs with the current link marked', async () => {
+        await page.goBack()
+        await expect(page).toHaveURL(`${activePath}/to-reveal`)
+        await expect(page.getByRole('link', { name: 'To reveal, 4' })).toHaveAttribute('aria-current', 'page')
+        await page.goBack()
+        await expect(page).toHaveURL(activePath)
+        await expect(page.getByRole('link', { name: 'Run', exact: true })).toHaveAttribute('aria-current', 'page')
+      })
+
+      await test.step('SPL-UX-41: a reload keeps the sub-tab', async () => {
+        await page.goto(`${activePath}/revealed`)
+        await page.reload()
+        await expect(page).toHaveURL(`${activePath}/revealed`)
+        await expect(page.getByRole('heading', { level: 2, name: 'Revealed' })).toBeVisible()
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('Keeper finishes the Active Scene from a sub-tab (SPL-UX-47)', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'FinishSubTab')
+    await startSceneViaApi(page.request, table.keeperBearer, table.prepared.campaignId, table.prepared.sceneId, [table.harveyId])
+
+    try {
+      await page.goto(toRevealPath(table.prepared.campaignId))
+
+      await test.step('SPL-UX-47: "Finish Scene" on To reveal finishes it and shows No Active Scene', async () => {
+        await page.getByRole('button', { name: 'Finish Scene' }).click()
+        const dialog = page.getByRole('alertdialog', { name: `Finish ${CORBITT}?` })
+        await expect(dialog).toBeVisible()
+        await dialog.getByRole('button', { name: 'Finish Scene' }).click()
+        await expect(page.getByRole('heading', { level: 1, name: 'No Active Scene' })).toBeVisible()
+        await expect(pageStatus(page)).toHaveText(`${CORBITT} finished.`)
       })
     } finally {
       await closeTable(table)
@@ -470,6 +531,23 @@ test.describe('What Players see of the Active Scene', () => {
         await page.goto(`/campaigns/${table.prepared.campaignId}/active-scene`)
         await expect(page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
       })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('A Player opening a Keeper sub-route lands on the Active Scene page with no sub-navigation (SPL-UX-48)', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'PlayerSubRoute')
+    await startSceneViaApi(page.request, table.keeperBearer, table.prepared.campaignId, table.prepared.sceneId, [table.harveyId])
+    const activePath = `/campaigns/${table.prepared.campaignId}/active-scene`
+
+    try {
+      for (const subRoute of [toRevealPath(table.prepared.campaignId), referencePath(table.prepared.campaignId), revealedPath(table.prepared.campaignId)]) {
+        await table.harvey.page.goto(subRoute)
+        await expect(table.harvey.page).toHaveURL(activePath)
+        await expect(table.harvey.page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
+        await expect(table.harvey.page.getByRole('link', { name: /^To reveal/ })).toHaveCount(0)
+      }
     } finally {
       await closeTable(table)
     }
