@@ -36,8 +36,7 @@ describe('complexity rule', () => {
   })
 })
 
-describe('import placement rules', () => {
-  it('flags an import placed after code', async () => {
+describe('import placement rules', () => {  it('flags an import placed after code', async () => {
     const code = "import { a } from 'pkg-a'\nexport const b = a\nimport { c } from 'pkg-c'\nexport const d = c\n"
     expect(await ruleIdsFor(code)).toContain('no-restricted-syntax')
   })
@@ -55,5 +54,17 @@ describe('import placement rules', () => {
   it('accepts packages first, then local imports, after a directive', async () => {
     const code = "'use client'\nimport { a } from 'pkg-a'\nimport { b } from '@/b'\nimport { c } from './c'\nexport const d = [a, b, c]\n"
     expect(await ruleIdsFor(code)).not.toContain('no-restricted-syntax')
+  })
+})
+
+describe('ADR-0028 slice direction', () => {
+  it('flags a scene-play import from scenario-preparation', async () => {
+    const code = "import { HandoutPanel } from '@/scene-play/components/handout-panel/handout-panel'\nexport const panel = HandoutPanel\n"
+    expect(await ruleIdsFor(code, 'src/scenario-preparation/components/scene-panel/scene-panel.tsx')).toContain('no-restricted-imports')
+  })
+
+  it('accepts a scene-play import from scene-play', async () => {
+    const code = "import { HandoutPanel } from '@/scene-play/components/handout-panel/handout-panel'\nexport const panel = HandoutPanel\n"
+    expect(await ruleIdsFor(code, 'src/scene-play/components/active-scene-panel/active-scene-panel.tsx')).not.toContain('no-restricted-imports')
   })
 })

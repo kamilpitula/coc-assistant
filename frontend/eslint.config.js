@@ -62,6 +62,23 @@ export default defineConfig([
     },
   },
   {
+    // ADR 0028: scenario-preparation imports no scene-play (panel bodies live in the subject's slice; hosts adapt).
+    files: ['src/scenario-preparation/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/scene-play/**'],
+              message: 'scenario-preparation/ must not import scene-play (ADR 0028). Put the shared body in this slice and let the host adapt.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // Baseline: violations that predate these rules. Shrink this list; do not grow it.
     files: [
       'src/campaign-play/components/attention-list/attention-list.tsx',

@@ -7,6 +7,7 @@ import '@/campaign-play/types/navigationState'
 import { HandoutSection } from '@/scenario-preparation/components/handout-section/handout-section'
 import { SceneItemSection } from '@/scenario-preparation/components/scene-item-section/scene-item-section'
 import { SceneLinkSection } from '@/scenario-preparation/components/scene-link-section/scene-link-section'
+import { ScenePanel } from '@/scenario-preparation/components/scene-panel/scene-panel'
 import { RemoveSceneDialog } from '@/scenario-preparation/components/remove-scene-dialog/remove-scene-dialog'
 import { SceneForm } from '@/scenario-preparation/components/scene-form/scene-form'
 import { SceneNotFound } from '@/scenario-preparation/components/scene-not-found/scene-not-found'
@@ -16,6 +17,7 @@ import { useEditScene, useRemoveScene, useScene } from '@/scenario-preparation/h
 import { SceneFinishedError, SceneNotRemovableError, SceneValidationError } from '@/scenario-preparation/services/sceneApi'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import { RichTextView } from '@/shared/components/rich-text-view/rich-text-view'
+import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 import { isEmptyRichText } from '@/shared/services/richText'
@@ -119,15 +121,16 @@ function SceneDetail({ campaignId, scenarioId, scene, sceneUpdatedAt, onRefetch 
   }
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
-      <Link
-        to="/campaigns/$campaignId/scenarios/$scenarioId"
-        params={{ campaignId, scenarioId }}
-        className={buttonVariants({ variant: 'link', className: 'self-start px-0' })}
-      >
-        <ArrowLeft aria-hidden="true" />
-        Back to the Scenario
-      </Link>
+    <SidePanelScopeProvider>
+      <div className="flex max-w-2xl flex-col gap-6">
+        <Link
+          to="/campaigns/$campaignId/scenarios/$scenarioId"
+          params={{ campaignId, scenarioId }}
+          className={buttonVariants({ variant: 'link', className: 'self-start px-0' })}
+        >
+          <ArrowLeft aria-hidden="true" />
+          Back to the Scenario
+        </Link>
       <p role="status" className="text-sm empty:hidden">
         {unlinkedMessage ?? (justSaved ? 'Scene saved.' : navigationMessage)}
       </p>
@@ -159,7 +162,9 @@ function SceneDetail({ campaignId, scenarioId, scene, sceneUpdatedAt, onRefetch 
           onRefetch={onRefetch}
         />
       )}
-    </div>
+      </div>
+      <ScenePanel campaignId={campaignId} scenarioId={scenarioId} sceneId={scene.id} headingRef={headingRef} />
+    </SidePanelScopeProvider>
   )
 }
 

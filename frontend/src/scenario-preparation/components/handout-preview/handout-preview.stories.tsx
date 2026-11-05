@@ -2,11 +2,27 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import { handoutQueryKeys } from '@/scenario-preparation/services/handoutApi'
 import type { Handout } from '@/scenario-preparation/types/Handout'
-import { paragraph, pngBlob } from '@/scene-play/test-support/revealFixtures'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
+import type { RichTextDocument } from '@/shared/types/RichText'
 
 import { HandoutPreview } from './handout-preview'
+
+/** The 1x1 PNG and the one-paragraph document this story needs, kept here so the story imports no other slice (ADR-0028). */
+const PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+
+function pngBlob(): Blob {
+  return new Blob([Uint8Array.from(atob(PNG_BASE64), (character) => character.charCodeAt(0))], { type: 'image/png' })
+}
+
+function paragraph(value: string): RichTextDocument {
+  return {
+    root: {
+      type: 'root',
+      children: [{ type: 'paragraph', version: 1, children: [{ type: 'text', version: 1, text: value, format: 0, style: '', detail: 0, mode: 'normal' }] }],
+    },
+  }
+}
 
 const OWNER = { type: 'scene', campaignId: 'story-campaign', scenarioId: 'story-scenario', sceneId: 'story-scene' } as const
 

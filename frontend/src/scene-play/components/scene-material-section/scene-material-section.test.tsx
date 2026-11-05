@@ -21,7 +21,7 @@ const { mockUseScene, mockUseReveal, revealMutate, revealReset, refetchScene } =
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/scenario-preparation/hooks/useScenes', () => ({ useScene: mockUseScene }))
 vi.mock('@/scene-play/hooks/useReveals', () => ({ useRevealToInvestigators: mockUseReveal }))
-vi.mock('@/scene-play/components/handout-preview/handout-preview', () => ({
+vi.mock('@/scenario-preparation/components/handout-preview/handout-preview', () => ({
   HandoutPreview: ({ handoutId }: { handoutId: string }) => <div>Preview of {handoutId}</div>,
 }))
 
