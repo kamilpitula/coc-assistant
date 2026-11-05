@@ -273,7 +273,7 @@ describe('ScenePage', () => {
       renderPage()
 
       expect(pageStatus()).toHaveTextContent('A shape in the cellar linked.')
-      expect(screen.getByRole('heading', { level: 3, name: 'A shape in the cellar' })).toHaveFocus()
+      expect(screen.getByRole('button', { name: 'A shape in the cellar' })).toHaveFocus()
     })
   })
 
@@ -366,7 +366,7 @@ describe('ScenePage', () => {
       const links = screen.getByRole('heading', { level: 2, name: 'Non-Player Entities' })
       expect(keeperNotes.compareDocumentPosition(handouts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(handouts.compareDocumentPosition(links) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(screen.getByRole('link', { name: 'The front door' })).toHaveAttribute('href', '/campaigns/c1/scenarios/s1/scenes/a1/handouts/h1')
+      expect(screen.getByRole('button', { name: 'The front door' })).toBeInTheDocument()
     })
 
     it('says there are no Handouts yet on a Scene without any (SP-UX-64)', () => {
@@ -390,7 +390,7 @@ describe('ScenePage', () => {
 
       renderPage()
 
-      expect(screen.getByRole('link', { name: 'The front door' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'The front door' })).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Add Handout' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /^Move / })).not.toBeInTheDocument()
     })
@@ -402,7 +402,7 @@ describe('ScenePage', () => {
       renderPage()
 
       expect(pageStatus()).toHaveTextContent('The front door added.')
-      expect(screen.getByRole('link', { name: 'The front door' })).toHaveFocus()
+      expect(screen.getByRole('button', { name: 'The front door' })).toHaveFocus()
     })
 
     it('announces "{title} deleted." and moves focus to the Handouts heading (SP-UX-71, SP-A11Y-40)', () => {

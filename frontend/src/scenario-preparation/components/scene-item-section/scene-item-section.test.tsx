@@ -43,12 +43,14 @@ describe('SceneItemSection', () => {
     expect(within(section).getByText("Players see an Item's name and description only when you reveal or give it.")).toBeInTheDocument()
   })
 
-  it('lists the Items in the order linked, each name a link to its Item page (SP-UX-97)', () => {
+  it('lists the Items in the order linked, each name an entry title link to its Item page with an Item badge (SP-UX-97, SP-UX-108)', () => {
     renderSection()
 
     const items = within(screen.getByRole('list')).getAllByRole('listitem')
     expect(items.map((item) => within(item).getAllByRole('link')[0].textContent)).toEqual(["Walter Corbitt's diary", 'The cellar key'])
     expect(within(items[0]).getByRole('link', { name: "Walter Corbitt's diary" })).toHaveAttribute('href', '/campaigns/c1/items/k1')
+    expect(within(items[0]).getByRole('link', { name: "Walter Corbitt's diary" })).toHaveAttribute('id', 'item-link-l1')
+    expect(items[0]).toHaveTextContent('Item')
   })
 
   it('says nothing is linked yet and still offers the action (SP-UX-97)', () => {

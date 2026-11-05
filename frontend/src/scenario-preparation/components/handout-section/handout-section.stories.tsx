@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { userEvent, within } from 'storybook/test'
 
 import type { HandoutSummary } from '@/scenario-preparation/types/Handout'
+import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 
@@ -29,14 +30,16 @@ function SectionStory({ handouts, canChange = true, tokens = 'pending', width }:
   return (
     <StoryMsal tokens={tokens}>
       <StoryProviders>
-        <div style={width ? { width } : undefined}>
-          <HandoutSection
-            owner={{ type: 'scene', campaignId: 'story-campaign', scenarioId: 'story-scenario', sceneId: 'story-scene' }}
-            canChange={canChange}
-            handouts={handouts}
-            ownerUpdatedAt={1}
-          />
-        </div>
+        <SidePanelScopeProvider>
+          <div style={width ? { width } : undefined}>
+            <HandoutSection
+              owner={{ type: 'scene', campaignId: 'story-campaign', scenarioId: 'story-scenario', sceneId: 'story-scene' }}
+              canChange={canChange}
+              handouts={handouts}
+              ownerUpdatedAt={1}
+            />
+          </div>
+        </SidePanelScopeProvider>
       </StoryProviders>
     </StoryMsal>
   )
