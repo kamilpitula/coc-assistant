@@ -9,6 +9,7 @@ import {
   linkEntityViaUi,
   linkHeadings,
   linkSection,
+  linkTitleButton,
   linksApiUrl,
   openLinkPage,
   picker,
@@ -130,7 +131,7 @@ test.describe('Scene links', () => {
       await expect(playerFacingNameField(page)).toHaveValue('')
     })
 
-    await test.step('SP-UX-52: a name and a formatted description link the entity and return to the Scene page', async () => {
+    await test.step('SP-UX-52: a name and a formatted description link the entity, and the title opens the panel with What Players see and the Profile', async () => {
       await playerFacingNameField(page).fill('A shape in the cellar')
       await playerFacingDescriptionEditor(page).click()
       await formattingButton(page, 'Bold').click()
@@ -142,20 +143,32 @@ test.describe('Scene links', () => {
       await expect(page).toHaveURL(new RegExp(`${scene.scenePath}$`))
       await expect(page.getByRole('status').filter({ hasText: 'A shape in the cellar linked.' })).toBeVisible()
       await expect(linkHeadings(page)).toHaveText(['A shape in the cellar'])
-      await expect(linkHeadings(page)).toBeFocused()
+      await expect(linkTitleButton(page, 'A shape in the cellar')).toBeFocused()
       await expect(linkSection(page).getByText('Mythos Creature:')).toBeVisible()
-      await expect(linkSection(page).locator('strong')).toHaveText('Grey and wet')
+
+      await linkTitleButton(page, 'A shape in the cellar').click()
+      const panel = page.getByRole('dialog', { name: 'A shape in the cellar' })
+      await expect(panel).toBeVisible()
+      await expect(panel.getByRole('heading', { name: 'What Players see' })).toBeVisible()
+      await expect(panel.locator('strong')).toHaveText('Grey and wet')
+      await expect(panel.getByText('and very still.')).toBeVisible()
+      await expect(panel.getByRole('heading', { name: 'Profile' })).toBeVisible()
+      await expect(panel.getByRole('heading', { name: 'Ghoul' })).toBeVisible()
+      await panel.getByRole('button', { name: 'Close' }).click()
     })
 
-    await test.step('SP-UX-52: the link and its formatting survive a reload', async () => {
+    await test.step('SP-UX-52: the link and its heading survive a reload', async () => {
       await page.reload()
       await expect(linkHeadings(page)).toHaveText(['A shape in the cellar'])
-      await expect(linkSection(page).locator('strong')).toHaveText('Grey and wet')
-      await expect(linkSection(page).getByText('and very still.')).toBeVisible()
+      await expect(linkSection(page).getByText('Mythos Creature:')).toBeVisible()
     })
 
-    await test.step('SP-UX-50: following the profile link shows the unchanged Monster Profile with its attacks, armor, Powers, and Sanity loss', async () => {
-      await linkSection(page).getByRole('link', { name: 'Ghoul', exact: true }).click()
+    await test.step('SP-UX-50: the profile through the panel\'s "Open full page" shows the unchanged Monster Profile with its attacks, armor, Powers, and Sanity loss', async () => {
+      await linkTitleButton(page, 'A shape in the cellar').click()
+      const panel = page.getByRole('dialog', { name: 'A shape in the cellar' })
+      await expect(panel).toBeVisible()
+      await panel.getByRole('link', { name: 'Open full page' }).click()
+      await expect(page).toHaveURL(new RegExp(`/campaigns/${scene.campaignId}/mythos-creatures/${ghoulId}$`))
       await expect(page.getByRole('heading', { level: 1, name: 'Ghoul' })).toBeVisible()
       await expect(page.getByRole('table', { name: 'Attacks' }).getByRole('row', { name: /Claw/ })).toContainText('Fighting 40%')
       await expect(page.getByRole('term').filter({ hasText: /^Armor points$/ })).toBeVisible()
@@ -195,7 +208,7 @@ test.describe('Scene links', () => {
       await submitButton(page, 'Save').click()
       await expect(page.getByRole('status').filter({ hasText: 'Something in the dark saved.' })).toBeVisible()
       await expect(linkHeadings(page)).toHaveText(['Something in the dark'])
-      await expect(linkHeadings(page)).toBeFocused()
+      await expect(linkTitleButton(page, 'Something in the dark')).toBeFocused()
     })
 
     await test.step('SP-UX-56: Unlink asks first, and Cancel keeps the link and returns focus to Unlink', async () => {
@@ -384,7 +397,7 @@ test.describe('Scene links', () => {
     await test.step('SP-UX-59: the Scene still lists only the original link, never the copy', async () => {
       await openScene(page, scene)
       await expect(linkHeadings(page)).toHaveText(['A shape in the cellar'])
-      await expect(linkSection(page).getByRole('link', { name: 'Ghoul', exact: true })).toBeVisible()
+      await expect(linkSection(page).getByText('Mythos Creature: Ghoul')).toBeVisible()
       await expect(linkSection(page).getByText('Ghoul (copy)')).toHaveCount(0)
     })
   })
@@ -398,9 +411,11 @@ test.describe('Links of played Scenes', () => {
 
     await page.goto(prepared.scenePath)
 
-    await test.step('SP-UX-57: both links are listed, without Link, Edit, or Unlink', async () => {
+    await test.step('SP-UX-57: both links are listed with panel titles, without Link, Edit, or Unlink', async () => {
       await expect(linkHeadings(page)).toHaveText(['The landlord', 'A shape in the cellar'])
-      await expect(linkSection(page).getByRole('button')).toHaveCount(0)
+      await expect(linkTitleButton(page, 'The landlord')).toBeVisible()
+      await expect(linkTitleButton(page, 'A shape in the cellar')).toBeVisible()
+      await expect(linkSection(page).getByRole('button', { name: /^Unlink / })).toHaveCount(0)
       await expect(linkSection(page).getByRole('link', { name: /^(Link a Non-Player Entity|Edit)/ })).toHaveCount(0)
     })
   })

@@ -14,8 +14,8 @@ interface HandoutPreviewProps {
 }
 
 /**
- * A Handout's current content on the Keeper's Active Scene page (specs/scene-play/ux.md section 12), loaded when first opened. It
- * differs from the Handout page only in its headings: they start at h4 under the item's h3 (SPL-A11Y-8).
+ * A Handout's current content in a side panel body (specs/navigation/ux.md section 3), loaded when first opened. It
+ * differs from the Handout page only in its headings: they start at h4 under the entry's h3 (SPL-A11Y-8).
  */
 export function HandoutPreview({ owner, handoutId }: HandoutPreviewProps) {
   const handout = useHandout(owner, handoutId, true)

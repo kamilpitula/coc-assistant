@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { useEffect, useId, useRef, useState } from 'react'
 
+import { MaterialEntry, MaterialEntryList } from '@/scenario-preparation/components/material-entry/material-entry'
 import { UnlinkItemDialog } from '@/scenario-preparation/components/unlink-item-dialog/unlink-item-dialog'
 import { useUnlinkItem } from '@/scenario-preparation/hooks/useItemLinks'
 import { SceneFinishedError } from '@/scenario-preparation/services/sceneApi'
@@ -23,11 +24,11 @@ interface SceneItemSectionProps {
   onRefetch: () => void
 }
 
-const itemLinkAnchorId = (linkId: string): string => `item-link-${linkId}`
+const itemLinkTitleId = (linkId: string): string => `item-link-${linkId}`
 
 /**
- * The Scene's "Items" section (specs/scenario-preparation/ux.md section 64.1): each linked Item's name as a link to its page, with
- * "Link an Item" and "Unlink" while the Scene is Prepared or Active.
+ * The Scene's "Items" section (specs/scenario-preparation/ux.md section 64.1): each linked Item's name as a material
+ * entry linking to its page, with "Link an Item" and "Unlink" while the Scene is Prepared or Active (PBI-SPL-005).
  */
 export function SceneItemSection({ campaignId, scenarioId, sceneId, status, links, focusLinkId, onUnlinked, onRefetch }: SceneItemSectionProps) {
   const headingId = useId()
@@ -41,10 +42,10 @@ export function SceneItemSection({ campaignId, scenarioId, sceneId, status, link
     if (!focusLinkId || focused.current) {
       return
     }
-    const anchor = sectionRef.current?.querySelector<HTMLElement>(`#${CSS.escape(itemLinkAnchorId(focusLinkId))}`)
-    if (anchor) {
+    const title = sectionRef.current?.querySelector<HTMLElement>(`#${CSS.escape(itemLinkTitleId(focusLinkId))}`)
+    if (title) {
       focused.current = true
-      anchor.focus()
+      title.focus()
     }
   }, [focusLinkId, links])
 
@@ -54,51 +55,48 @@ export function SceneItemSection({ campaignId, scenarioId, sceneId, status, link
         <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold outline-none">
           Items
         </h2>
-        {canChange && <LinkAnItemAction campaignId={campaignId} scenarioId={scenarioId} sceneId={sceneId} />}
+        {canChange && (
+          <Link
+            to="/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId/item-links/new"
+            params={{ campaignId, scenarioId, sceneId }}
+            className={buttonVariants({ variant: 'outline', size: 'sm' })}
+          >
+            Link an Item
+          </Link>
+        )}
       </div>
       <p className="text-sm text-muted-foreground">Players see an Item&apos;s name and description only when you reveal or give it.</p>
       {links.length === 0 ? (
         <p className="text-sm text-muted-foreground">No Items linked yet.</p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <MaterialEntryList as="ul">
           {links.map((link) => (
-            <li key={link.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-              <Link
-                id={itemLinkAnchorId(link.id)}
-                to="/campaigns/$campaignId/items/$itemId"
-                params={{ campaignId, itemId: link.item.id }}
-                className="min-h-6 min-w-0 text-sm font-medium break-words hover:underline"
-              >
-                {link.item.name}
-              </Link>
-              {canChange && (
-                <UnlinkControl
-                  campaignId={campaignId}
-                  scenarioId={scenarioId}
-                  sceneId={sceneId}
-                  link={link}
-                  onUnlinked={() => onUnlinked(link.item.name)}
-                  onFocusSection={() => headingRef.current?.focus()}
-                  onRefetch={onRefetch}
-                />
-              )}
-            </li>
+            <MaterialEntry
+              key={link.id}
+              subject={{
+                type: 'item',
+                link,
+                page: { to: '/campaigns/$campaignId/items/$itemId', params: { campaignId, itemId: link.item.id } },
+              }}
+              titleId={itemLinkTitleId(link.id)}
+              action={
+                canChange ? (
+                  <UnlinkControl
+                    campaignId={campaignId}
+                    scenarioId={scenarioId}
+                    sceneId={sceneId}
+                    link={link}
+                    onUnlinked={() => onUnlinked(link.item.name)}
+                    onFocusSection={() => headingRef.current?.focus()}
+                    onRefetch={onRefetch}
+                  />
+                ) : undefined
+              }
+            />
           ))}
-        </ul>
+        </MaterialEntryList>
       )}
     </section>
-  )
-}
-
-function LinkAnItemAction({ campaignId, scenarioId, sceneId }: { campaignId: string; scenarioId: string; sceneId: string }) {
-  return (
-    <Link
-      to="/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId/item-links/new"
-      params={{ campaignId, scenarioId, sceneId }}
-      className={buttonVariants({ variant: 'outline', size: 'sm' })}
-    >
-      Link an Item
-    </Link>
   )
 }
 

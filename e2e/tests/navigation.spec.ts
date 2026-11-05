@@ -405,3 +405,74 @@ test.describe('Side panel and origin back links', () => {
     }
   })
 })
+
+test.describe('Side panels from the Scene page', () => {
+  // One Keeper journey on a Prepared Scene, so the panel, the full pages, and the reload share the same setup.
+  test.describe.configure({ timeout: 240_000 })
+
+  test('The Keeper opens a Handout and a Non-Player Entity in side panels from the Scene page', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'ScenePanels')
+    const { campaignId, scenarioId, sceneId, scenePath, secret } = table.prepared
+    const handoutId = table.prepared.sceneHandoutIds[PREPARED.handouts[0].title]
+    const handoutPanel = new RegExp(`/campaigns/${campaignId}/scenarios/${scenarioId}/scenes/${sceneId}\\?panel=handout&handout=${handoutId}$`)
+
+    try {
+      await test.step('SP-UX-108: a Handout title opens its panel and "Open full page" reaches the Handout page with no origin', async () => {
+        await page.goto(scenePath)
+        await expect(page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
+        await page.getByRole('button', { name: PREPARED.handouts[0].title, exact: true }).click()
+        const panel = page.getByRole('dialog', { name: PREPARED.handouts[0].title })
+        await expect(panel).toBeVisible()
+        await expect(page).toHaveURL(handoutPanel)
+        await page.screenshot({ path: test.info().outputPath('keeper-handout-panel-from-scene.png') })
+        await page.screenshot({ path: '../docs/scene-play/screenshots/spl-005-scene-page.png' })
+        await panel.getByRole('link', { name: 'Open full page' }).click()
+        await expect(page).toHaveURL(new RegExp(`${scenePath}/handouts/${handoutId}$`))
+        await expect(page.getByRole('heading', { level: 1, name: PREPARED.handouts[0].title })).toBeVisible()
+      })
+
+      await test.step('SP-UX-108: "Back to the Scene" returns without a panel', async () => {
+        await page.getByRole('link', { name: 'Back to the Scene' }).click()
+        await expect(page).toHaveURL(new RegExp(`${scenePath}$`))
+        await expect(page.getByRole('dialog')).toBeHidden()
+        await expect(page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
+      })
+
+      await test.step('SP-UX-108: an entity title opens What Players see and the Profile, and "Open full page" reaches the profile page', async () => {
+        await page.getByRole('button', { name: PREPARED.humanNpcLinkName, exact: true }).click()
+        const panel = page.getByRole('dialog', { name: PREPARED.humanNpcLinkName })
+        await expect(panel).toBeVisible()
+        await expect(page).toHaveURL(new RegExp(`\\?panel=entity&link=[^&]+$`))
+        await expect(panel.getByRole('heading', { name: 'What Players see' })).toBeVisible()
+        await expect(panel.getByText(`Landlord ${secret}`)).toBeVisible()
+        await expect(panel.getByRole('heading', { name: 'Profile' })).toBeVisible()
+        await expect(panel.getByRole('heading', { name: PREPARED.humanNpcName })).toBeVisible()
+        await panel.getByRole('link', { name: 'Open full page' }).click()
+        await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}/human-npcs/${table.prepared.humanNpcId}$`))
+        await expect(page.getByRole('link', { name: 'Back to Non-Player Entities' })).toBeVisible()
+      })
+
+      await test.step('SP-A11Y-60: the title carries the dialog trigger and Escape returns focus to it', async () => {
+        await page.goto(scenePath)
+        const title = page.getByRole('button', { name: PREPARED.humanNpcLinkName, exact: true })
+        await expect(title).toHaveAttribute('aria-haspopup', 'dialog')
+        await title.click()
+        const panel = page.getByRole('dialog', { name: PREPARED.humanNpcLinkName })
+        await expect(panel).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(panel).toBeHidden()
+        await expect(title).toBeFocused()
+      })
+
+      await test.step('NAV-UX-5 on the Scene page: a reload reopens the panel', async () => {
+        await page.getByRole('button', { name: PREPARED.handouts[0].title, exact: true }).click()
+        await expect(page.getByRole('dialog', { name: PREPARED.handouts[0].title })).toBeVisible()
+        await page.reload()
+        await expect(page.getByRole('dialog', { name: PREPARED.handouts[0].title })).toBeVisible()
+        await expect(page).toHaveURL(handoutPanel)
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+})

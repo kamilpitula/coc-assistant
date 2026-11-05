@@ -95,7 +95,8 @@ test.describe('Scene Item links', () => {
       await expect(sceneItemSection(page).getByRole('link', { name: 'The cellar key' })).toBeFocused()
     })
 
-    await test.step('SP-UX-97: the Item name links to its page, which lists the Scene (SP-UX-96)', async () => {
+    await test.step('SP-UX-97, SP-UX-107: the Item name links to its page with an Item badge, which lists the Scene (SP-UX-96)', async () => {
+      await expect(sceneItemSection(page).getByText('Item', { exact: true })).toBeVisible()
       await sceneItemSection(page).getByRole('link', { name: 'The cellar key' }).click()
       await expect(page).toHaveURL(new RegExp(`/campaigns/${scene.campaignId}/items/${keyId}$`))
       const scenes = page.getByRole('region', { name: 'Scenes' })

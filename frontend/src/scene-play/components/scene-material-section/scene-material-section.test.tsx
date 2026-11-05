@@ -6,13 +6,15 @@ import type { Scene } from '@/scenario-preparation/types/Scene'
 import { RevealInvestigatorsRefusedError, RevealSceneFinishedError, RevealSubjectRefusedError } from '@/scene-play/services/revealApi'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 import type { KeeperReveal } from '@/scene-play/types/Reveal'
+import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 
 import { SceneMaterialSection } from './scene-material-section'
 
-// specs/scene-play/ux.md sections 12 and 13; SPL-UX-20 to SPL-UX-25, SPL-UX-35, SPL-UX-36, SPL-A11Y-8, SPL-A11Y-11.
-const { mockUseScene, mockUseReveal, revealMutate, revealReset, refetchScene } = vi.hoisted(() => ({
+// specs/scene-play/ux.md sections 12 and 13; SPL-UX-20 to SPL-UX-24, SPL-UX-35, SPL-UX-36, SPL-UX-108, SP-A11Y-60, SPL-A11Y-8, SPL-A11Y-11.
+const { mockUseScene, mockUseReveal, mockUseSidePanelOpen, revealMutate, revealReset, refetchScene } = vi.hoisted(() => ({
   mockUseScene: vi.fn(),
   mockUseReveal: vi.fn(),
+  mockUseSidePanelOpen: vi.fn(),
   revealMutate: vi.fn(),
   revealReset: vi.fn(),
   refetchScene: vi.fn(),
@@ -21,9 +23,7 @@ const { mockUseScene, mockUseReveal, revealMutate, revealReset, refetchScene } =
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/scenario-preparation/hooks/useScenes', () => ({ useScene: mockUseScene }))
 vi.mock('@/scene-play/hooks/useReveals', () => ({ useRevealToInvestigators: mockUseReveal }))
-vi.mock('@/scene-play/components/handout-preview/handout-preview', () => ({
-  HandoutPreview: ({ handoutId }: { handoutId: string }) => <div>Preview of {handoutId}</div>,
-}))
+vi.mock('@/shared/hooks/useSidePanel', () => ({ useSidePanel: () => ({ open: mockUseSidePanelOpen }) }))
 
 const text = (value: string) => ({ type: 'text', version: 1, text: value, format: 0, style: '', detail: 0, mode: 'normal' })
 const doc = (value: string) => ({ root: { type: 'root' as const, children: [{ type: 'paragraph', version: 1, children: [text(value)] }] } })
@@ -87,7 +87,11 @@ describe('SceneMaterialSection', () => {
   const onSceneFinished = vi.fn()
   const onRefetch = vi.fn()
   const renderSection = (active: KeeperActiveScene = scene()) =>
-    render(<SceneMaterialSection campaignId="c1" scene={active} onRevealed={onRevealed} onSceneFinished={onSceneFinished} onRefetch={onRefetch} />)
+    render(
+      <SidePanelScopeProvider>
+        <SceneMaterialSection campaignId="c1" scene={active} onRevealed={onRevealed} onSceneFinished={onSceneFinished} onRefetch={onRefetch} />
+      </SidePanelScopeProvider>,
+    )
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -101,16 +105,30 @@ describe('SceneMaterialSection', () => {
     expect(mockUseScene).toHaveBeenCalledWith('c1', 'p1', 's1', true)
   })
 
+  it('lists h3 button titles that open the Handout and Non-Player Entity panels, with kind/visibility and type/profile as plain text (SPL-UX-108, SP-A11Y-60)', async () => {
+    renderSection()
+
+    const handouts = within(screen.getByRole('region', { name: 'Handouts' }))
+    expect(handouts.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual(['The front door', "Corbitt's true nature"])
+    expect(handouts.getByText('Read-aloud')).toBeInTheDocument()
+    expect(handouts.getAllByText('Player-facing').length + handouts.getAllByText('Keeper-facing').length).toBe(2)
+    const entities = within(screen.getByRole('region', { name: 'Non-Player Entities' }))
+    expect(entities.getByText('Mythos Creature: Ghoul')).toBeInTheDocument()
+    expect(entities.queryByRole('link')).not.toBeInTheDocument()
+    expect(entities.queryByText('It moves in the dark.')).not.toBeInTheDocument()
+
+    await userEvent.click(handouts.getByRole('button', { name: 'The front door' }))
+    expect(mockUseSidePanelOpen).toHaveBeenCalledWith({ type: 'handout', handoutId: 'h1' }, expect.any(HTMLElement))
+    await userEvent.click(entities.getByRole('button', { name: 'A shape in the cellar' }))
+    expect(mockUseSidePanelOpen).toHaveBeenCalledWith({ type: 'entity', linkId: 'l1' }, expect.any(HTMLElement))
+  })
+
   it('lists Keeper notes (closed), Handouts, and Non-Player Entities in sections labelled by their h2, in that order (SPL-UX-20, SPL-A11Y-8)', () => {
     renderSection()
 
     expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toEqual(['Keeper notes', 'Handouts', 'Non-Player Entities'])
     expect(screen.getByRole('region', { name: 'Handouts' })).toBeInTheDocument()
     expect(screen.queryByText('Walter is in the cellar.')).not.toBeInTheDocument()
-    const handouts = within(screen.getByRole('region', { name: 'Handouts' }))
-    expect(handouts.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual(['The front door', "Corbitt's true nature"])
-    expect(handouts.getByText('Read-aloud')).toBeInTheDocument()
-    expect(handouts.getAllByText('Player-facing').length + handouts.getAllByText('Keeper-facing').length).toBe(2)
   })
 
   it('shows Keeper notes read-only after "Show Keeper notes" (SPL-UX-25)', async () => {
@@ -142,18 +160,13 @@ describe('SceneMaterialSection', () => {
     expect(screen.getAllByRole('button', { name: /^Reveal / })).toHaveLength(2)
   })
 
-  it('shows a Handout\'s current content after "Show content", named by its title (SPL-UX-25, SPL-A11Y-11)', async () => {
+  it('has no "Show content": the title opens the Handout panel instead (G2)', () => {
     renderSection()
 
-    const toggle = screen.getByRole('button', { name: 'Show content of The front door' })
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    await userEvent.click(toggle)
-
-    expect(screen.getByText('Preview of h1')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Hide content of The front door' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.queryByRole('button', { name: /^(Show|Hide) content/ })).not.toBeInTheDocument()
   })
 
-  it('shows a Non-Player Entity with its type, profile link, and Player-facing description, or the none sentence', () => {
+  it('shows a second Non-Player Entity without a description as plain profile text, never the description (G2)', () => {
     mockUseScene.mockReturnValue({
       data: { ...material, nonPlayerEntityLinks: [material.nonPlayerEntityLinks[0], { ...material.nonPlayerEntityLinks[0], id: 'l2', playerFacingName: 'A clerk', playerFacingDescription: null }] },
       isError: false,
@@ -161,9 +174,10 @@ describe('SceneMaterialSection', () => {
     })
     renderSection()
 
-    expect(screen.getAllByRole('link', { name: 'Ghoul' })[0]).toHaveAttribute('href', '/campaigns/c1/mythos-creatures/n1')
-    expect(screen.getByText('It moves in the dark.')).toBeInTheDocument()
-    expect(screen.getByText('No Player-facing description yet.')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Ghoul' })).not.toBeInTheDocument()
+    expect(screen.getAllByText('Mythos Creature: Ghoul')).toHaveLength(2)
+    expect(screen.queryByText('It moves in the dark.')).not.toBeInTheDocument()
+    expect(screen.queryByText('No Player-facing description yet.')).not.toBeInTheDocument()
   })
 
   it('says "Revealed to {names}" only once an item has been revealed, in roster order (SPL-UX-22)', () => {

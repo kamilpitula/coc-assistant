@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SceneFinishedError, SceneNotRemovableError, SceneValidationError } from '@/scenario-preparation/services/sceneApi'
 import type { Scene } from '@/scenario-preparation/types/Scene'
+import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { navigateSpy, routerState } from '@/shared/test-support/routerMock'
 import type { RichTextDocument } from '@/shared/types/RichText'
 
@@ -11,10 +12,11 @@ import { ScenePage } from './scene-page'
 
 // specs/scenario-preparation/ux.md section 14; SP-UX-20 to SP-UX-23, SP-UX-26, SP-UX-27, SP-A11Y-15, SP-A11Y-16.
 
-const { mockUseCampaign, mockUseScene, mockUseEdit, mockUseRemove, editMutate, removeMutate, unlinkMutate, unlinkItemMutate, reset, removeReset, refetch } = vi.hoisted(
+const { mockUseCampaign, mockUseScene, mockUseHandout, mockUseEdit, mockUseRemove, editMutate, removeMutate, unlinkMutate, unlinkItemMutate, reset, removeReset, refetch } = vi.hoisted(
   () => ({
     mockUseCampaign: vi.fn(),
     mockUseScene: vi.fn(),
+    mockUseHandout: vi.fn(),
     mockUseEdit: vi.fn(),
     mockUseRemove: vi.fn(),
     editMutate: vi.fn(),
@@ -35,7 +37,11 @@ vi.mock('@/scenario-preparation/hooks/useNonPlayerEntityLinks', () => ({
 vi.mock('@/scenario-preparation/hooks/useItemLinks', () => ({
   useUnlinkItem: () => ({ mutate: unlinkItemMutate, reset: vi.fn(), isPending: false, isError: false, error: null }),
 }))
-vi.mock('@/scenario-preparation/hooks/useHandouts', () => ({ useReorderHandouts: () => ({ mutate: vi.fn(), isPending: false }) }))
+vi.mock('@/scenario-preparation/hooks/useHandouts', () => ({
+  useHandout: mockUseHandout,
+  useHandoutFile: vi.fn(),
+  useReorderHandouts: () => ({ mutate: vi.fn(), isPending: false }),
+}))
 vi.mock('@/scenario-preparation/hooks/useScenes', () => ({
   useScene: mockUseScene,
   useEditScene: mockUseEdit,
@@ -96,14 +102,21 @@ const removing = (overrides: Record<string, unknown> = {}) => ({
 // The page's own status message comes first; the Handouts section has a live region of its own for moves.
 const pageStatus = () => screen.getAllByRole('status')[0]
 
-const renderPage = () => render(<ScenePage campaignId="c1" scenarioId="s1" sceneId="a1" />)
+const renderPage = () =>
+  render(
+    <SidePanelScopeProvider>
+      <ScenePage campaignId="c1" scenarioId="s1" sceneId="a1" />
+    </SidePanelScopeProvider>,
+  )
 
 describe('ScenePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     routerState.location.state = {}
+    routerState.location.search = {}
     mockUseCampaign.mockReturnValue({ data: { id: 'c1', role: 'Keeper' } })
     mockUseScene.mockReturnValue(query(prepared))
+    mockUseHandout.mockReturnValue({ data: undefined, isError: false, refetch })
     mockUseEdit.mockReturnValue(editing())
     mockUseRemove.mockReturnValue(removing())
   })
@@ -260,7 +273,7 @@ describe('ScenePage', () => {
       renderPage()
 
       expect(pageStatus()).toHaveTextContent('A shape in the cellar linked.')
-      expect(screen.getByRole('heading', { level: 3, name: 'A shape in the cellar' })).toHaveFocus()
+      expect(screen.getByRole('button', { name: 'A shape in the cellar' })).toHaveFocus()
     })
   })
 
@@ -353,7 +366,7 @@ describe('ScenePage', () => {
       const links = screen.getByRole('heading', { level: 2, name: 'Non-Player Entities' })
       expect(keeperNotes.compareDocumentPosition(handouts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(handouts.compareDocumentPosition(links) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(screen.getByRole('link', { name: 'The front door' })).toHaveAttribute('href', '/campaigns/c1/scenarios/s1/scenes/a1/handouts/h1')
+      expect(screen.getByRole('button', { name: 'The front door' })).toBeInTheDocument()
     })
 
     it('says there are no Handouts yet on a Scene without any (SP-UX-64)', () => {
@@ -377,7 +390,7 @@ describe('ScenePage', () => {
 
       renderPage()
 
-      expect(screen.getByRole('link', { name: 'The front door' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'The front door' })).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Add Handout' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /^Move / })).not.toBeInTheDocument()
     })
@@ -389,7 +402,7 @@ describe('ScenePage', () => {
       renderPage()
 
       expect(pageStatus()).toHaveTextContent('The front door added.')
-      expect(screen.getByRole('link', { name: 'The front door' })).toHaveFocus()
+      expect(screen.getByRole('button', { name: 'The front door' })).toHaveFocus()
     })
 
     it('announces "{title} deleted." and moves focus to the Handouts heading (SP-UX-71, SP-A11Y-40)', () => {
@@ -399,6 +412,43 @@ describe('ScenePage', () => {
 
       expect(pageStatus()).toHaveTextContent('The front door deleted.')
       expect(screen.getByRole('heading', { level: 2, name: 'Handouts' })).toHaveFocus()
+    })
+  })
+
+  describe('side panel', () => {
+    const panelHandout = {
+      id: 'h1',
+      kind: 'Text',
+      visibility: 'PlayerFacing',
+      title: 'The front door',
+      content: {
+        root: {
+          type: 'root',
+          children: [{ type: 'paragraph', version: 1, children: [{ type: 'text', version: 1, text: 'Come at once.', format: 0, style: '', detail: 0, mode: 'normal' }] }],
+        },
+      },
+    } as const
+
+    it('opens the Handout panel over the page from the panel search params (SP-UX-108)', () => {
+      routerState.location.search = { panel: 'handout', handout: 'h1' }
+      mockUseHandout.mockReturnValue({ data: panelHandout, isError: false, refetch })
+
+      renderPage()
+
+      expect(screen.getByRole('heading', { level: 2, name: 'The front door' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Open full page' })).toHaveAttribute('href', '/campaigns/c1/scenarios/s1/scenes/a1/handouts/h1')
+    })
+
+    it('shows the not-found page to a Player with no panel (SP-UX-26)', () => {
+      mockUseCampaign.mockReturnValue({ data: { id: 'c1', role: 'Player' } })
+      mockUseScene.mockReturnValue(query(undefined))
+      routerState.location.search = { panel: 'handout', handout: 'h1' }
+
+      renderPage()
+
+      expect(screen.getByRole('heading', { level: 1, name: "We couldn't find that Scene" })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument()
+      expect(mockUseHandout).not.toHaveBeenCalled()
     })
   })
 

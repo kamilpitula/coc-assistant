@@ -5,6 +5,7 @@ import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import { paragraph, keeperReveal, readAloudReveal } from '@/scene-play/test-support/revealFixtures'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
+import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 
@@ -55,9 +56,11 @@ function SectionStory({ scene = active, data = material, tokens = 'pending' }: S
   return (
     <StoryMsal tokens={tokens}>
       <StoryProviders seed={(client) => data && client.setQueryData(sceneQueryKeys.detail('story-campaign', scene.scenarioId, scene.sceneId), data)}>
-        <div className="flex max-w-2xl flex-col gap-6">
-          <SceneMaterialSection campaignId="story-campaign" scene={scene} onRevealed={() => undefined} onSceneFinished={() => undefined} onRefetch={() => undefined} />
-        </div>
+        <SidePanelScopeProvider>
+          <div className="flex max-w-2xl flex-col gap-6">
+            <SceneMaterialSection campaignId="story-campaign" scene={scene} onRevealed={() => undefined} onSceneFinished={() => undefined} onRefetch={() => undefined} />
+          </div>
+        </SidePanelScopeProvider>
       </StoryProviders>
     </StoryMsal>
   )

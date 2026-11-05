@@ -3,8 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { StaleHandoutOrderError } from '@/scenario-preparation/services/handoutApi'
-import { sceneOwner } from '@/scenario-preparation/test-support/handoutOwnerFixtures'
+import { itemOwner, sceneOwner } from '@/scenario-preparation/test-support/handoutOwnerFixtures'
 import type { HandoutSummary } from '@/scenario-preparation/types/Handout'
+import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 
 import { HandoutSection } from './handout-section'
 
@@ -23,7 +24,11 @@ const cellar: HandoutSummary = { id: 'h3', kind: 'ReadAloud', visibility: 'Keepe
 const reordering = (overrides: Record<string, unknown> = {}) => ({ mutate: reorderMutate, isPending: false, ...overrides })
 
 function renderSection(overrides: Partial<Parameters<typeof HandoutSection>[0]> = {}) {
-  return render(<HandoutSection owner={sceneOwner} canChange handouts={[door, truth, cellar]} ownerUpdatedAt={1} {...overrides} />)
+  return render(
+    <SidePanelScopeProvider>
+      <HandoutSection owner={sceneOwner} canChange handouts={[door, truth, cellar]} ownerUpdatedAt={1} {...overrides} />
+    </SidePanelScopeProvider>,
+  )
 }
 
 describe('HandoutSection', () => {
@@ -32,7 +37,7 @@ describe('HandoutSection', () => {
     mockUseReorder.mockReturnValue(reordering())
   })
 
-  it('lists each Handout in stored order as a link to its page with its kind and visibility as text (SP-UX-64, SP-UX-67, SP-A11Y-37)', () => {
+  it('lists each Handout in stored order as a panel title with its kind and visibility as text (SP-UX-64, SP-UX-67, SP-A11Y-37)', () => {
     renderSection()
 
     const section = screen.getByRole('region', { name: 'Handouts' })
@@ -41,19 +46,26 @@ describe('HandoutSection', () => {
       within(section).getByText('Player-facing Handouts reach Players only when you reveal them. Keeper-facing Handouts are never revealed.'),
     ).toBeInTheDocument()
     const items = within(within(section).getByRole('list')).getAllByRole('listitem')
-    expect(items.map((item) => within(item).getByRole('link', { name: /^(The front door|Corbitt|The cellar)/ }).textContent)).toEqual([
+    expect(items.map((item) => within(item).getByRole('button', { name: /^(The front door|Corbitt|The cellar)/ }).textContent)).toEqual([
       'The front door',
       "Corbitt's true nature",
       'The cellar',
     ])
-    expect(within(items[0]).getByRole('link', { name: 'The front door' })).toHaveAttribute(
-      'href',
-      '/campaigns/c1/scenarios/s1/scenes/a1/handouts/h1',
-    )
+    expect(within(items[0]).getByRole('button', { name: 'The front door' })).toHaveAttribute('id', 'handout-link-h1')
     expect(items[0]).toHaveTextContent('Read-aloud')
     expect(items[0]).toHaveTextContent('Player-facing')
     expect(items[1]).toHaveTextContent('Text')
     expect(items[1]).toHaveTextContent('Keeper-facing')
+  })
+
+  it('lists Item Handouts as links to their pages (SP-UX-107)', () => {
+    renderSection({ owner: itemOwner })
+
+    const items = within(screen.getByRole('list')).getAllByRole('listitem')
+    expect(within(items[0]).getByRole('link', { name: 'The front door' })).toHaveAttribute(
+      'href',
+      '/campaigns/c1/items/k1/handouts/h1',
+    )
   })
 
   it('says there are no Handouts yet and still offers Add Handout (SP-UX-64)', () => {
@@ -79,7 +91,7 @@ describe('HandoutSection', () => {
   it('shows the list of a Finished Scene without Add Handout or move buttons (SP-UX-73)', () => {
     renderSection({ canChange: false })
 
-    expect(screen.getByRole('link', { name: 'The front door' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'The front door' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Add Handout' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Move / })).not.toBeInTheDocument()
   })
@@ -94,7 +106,7 @@ describe('HandoutSection', () => {
   it('wraps a long title instead of overflowing (SP-A11Y-43)', () => {
     renderSection({ handouts: [{ ...door, title: 'x'.repeat(200) }] })
 
-    expect(screen.getByRole('link', { name: 'x'.repeat(200) })).toHaveClass('break-words')
+    expect(screen.getByRole('button', { name: 'x'.repeat(200) })).toHaveClass('break-words')
   })
 
   describe('moving (SP-UX-70)', () => {
@@ -114,7 +126,9 @@ describe('HandoutSection', () => {
 
       await userEvent.click(screen.getByRole('button', { name: 'Move The front door down' }))
       rerender(
-        <HandoutSection owner={sceneOwner} canChange handouts={[truth, door, cellar]} ownerUpdatedAt={2} />,
+        <SidePanelScopeProvider>
+          <HandoutSection owner={sceneOwner} canChange handouts={[truth, door, cellar]} ownerUpdatedAt={2} />,
+        </SidePanelScopeProvider>,
       )
 
       expect(screen.getByRole('status')).toHaveTextContent('The front door moved to position 2 of 3.')
@@ -152,15 +166,17 @@ describe('HandoutSection', () => {
   })
 
   describe('focus (SP-A11Y-40)', () => {
-    it('moves focus to the new Handout link once it is listed', async () => {
+    it('moves focus to the new Handout title once it is listed', async () => {
       const { rerender } = renderSection({ handouts: [door], focusHandoutId: 'h2' })
-      expect(screen.getByRole('link', { name: 'The front door' })).not.toHaveFocus()
+      expect(screen.getByRole('button', { name: 'The front door' })).not.toHaveFocus()
 
       rerender(
-        <HandoutSection owner={sceneOwner} canChange handouts={[door, truth]} ownerUpdatedAt={2} focusHandoutId="h2" />,
+        <SidePanelScopeProvider>
+          <HandoutSection owner={sceneOwner} canChange handouts={[door, truth]} ownerUpdatedAt={2} focusHandoutId="h2" />,
+        </SidePanelScopeProvider>,
       )
 
-      await waitFor(() => expect(screen.getByRole('link', { name: "Corbitt's true nature" })).toHaveFocus())
+      await waitFor(() => expect(screen.getByRole('button', { name: "Corbitt's true nature" })).toHaveFocus())
     })
 
     it('moves focus to the Handouts heading after a delete', () => {

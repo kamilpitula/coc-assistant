@@ -1,6 +1,6 @@
 ---
 id: PBI-SPL-005
-status: todo
+status: done
 blocked_by: [PBI-NAV-002]
 ---
 
@@ -26,11 +26,11 @@ Read: [scenario-preparation ux](../../../specs/scenario-preparation/ux.md) secti
 - The prototype shows Edit and Delete on Handouts for illustration only; section 72 keeps the existing move controls.
 
 ## Verification
-- [ ] SP-UX-107 to SP-UX-109 and SP-A11Y-60 hold; the existing Scene page criteria for move, link, unlink, and status messages still pass.
-- [ ] Unit tests cover the second line per subject, slot rendering, and the title opening the right panel.
-- [ ] Storybook stories for Handout, Non-Player Entity, and Item in both contexts.
-- [ ] Playwright E2E covers opening a Handout and a Non-Player Entity panel from the Scene page and "Open full page"; existing Scene page E2E specs are updated where the title no longer navigates.
-- [ ] Screenshots of the Scene page match the prototype's "Scene page" entry structure.
+- [x] SP-UX-107 to SP-UX-109 and SP-A11Y-60 hold; the existing Scene page criteria for move, link, unlink, and status messages still pass.
+- [x] Unit tests cover the second line per subject, slot rendering, and the title opening the right panel.
+- [x] Storybook stories for Handout, Non-Player Entity, and Item in both contexts.
+- [x] Playwright E2E covers opening a Handout and a Non-Player Entity panel from the Scene page and "Open full page"; existing Scene page E2E specs are updated where the title no longer navigates.
+- [x] Screenshots of the Scene page match the prototype's "Scene page" entry structure.
 
 ## Refinement Protocol
 A change to the entry updates scenario-preparation ux section 72, scene-play ux section 21.4 and 21.5, the component, its stories, and its tests together.

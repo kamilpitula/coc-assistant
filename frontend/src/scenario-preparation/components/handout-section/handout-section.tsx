@@ -1,8 +1,8 @@
 import { Link } from '@tanstack/react-router'
 import { useEffect, useId, useRef } from 'react'
 
-import { HandoutBadges } from '@/scenario-preparation/components/handout-badges/handout-badges'
 import { MoveControls } from '@/scenario-preparation/components/move-controls/move-controls'
+import { MaterialEntry, MaterialEntryList } from '@/scenario-preparation/components/material-entry/material-entry'
 import { useReorderHandouts } from '@/scenario-preparation/hooks/useHandouts'
 import { usePreparedOrderReordering } from '@/scenario-preparation/hooks/usePreparedOrderReordering'
 import { StaleHandoutOrderError } from '@/scenario-preparation/services/handoutApi'
@@ -10,7 +10,6 @@ import { describeHandoutOwner, type HandoutOwner } from '@/scenario-preparation/
 import type { HandoutSummary } from '@/scenario-preparation/types/Handout'
 import { Alert } from '@/shared/components/ui/alert'
 import { buttonVariants } from '@/shared/components/ui/button'
-import { Card } from '@/shared/components/ui/card'
 
 interface HandoutSectionProps {
   /** The Scene or Item whose Handouts these are. */
@@ -28,8 +27,10 @@ interface HandoutSectionProps {
 }
 
 /**
- * The "Handouts" section of a Scene or an Item (specs/scenario-preparation/ux.md sections 41 and 65): each Handout in stored order
- * as a link to its page with its kind and visibility, "Add Handout" and Move up / Move down while the owner can be changed.
+ * The "Handouts" section of a Scene or an Item (specs/scenario-preparation/ux.md sections 41 and 65): each Handout in
+ * stored order as a material entry with its kind and visibility, "Add Handout" and Move up / Move down while the owner
+ * can be changed. On a Scene the title opens the Handout panel; on an Item it links to the Handout page (PBI-SPL-005
+ * design record D3).
  */
 export function HandoutSection({
   owner,
@@ -53,16 +54,16 @@ export function HandoutSection({
     buttonIdPrefix: 'handout',
   })
 
-  // Focus the named Handout's link once, as soon as it is listed.
+  // Focus the named Handout's title once, as soon as it is listed.
   const focused = useRef(false)
   useEffect(() => {
     if (!focusHandoutId || focused.current) {
       return
     }
-    const link = sectionRef.current?.querySelector<HTMLElement>(`#${CSS.escape(handoutLinkId(focusHandoutId))}`)
-    if (link) {
+    const title = sectionRef.current?.querySelector<HTMLElement>(`#${CSS.escape(handoutLinkId(focusHandoutId))}`)
+    if (title) {
       focused.current = true
-      link.focus()
+      title.focus()
     }
   }, [focusHandoutId, handouts])
 
@@ -98,37 +99,32 @@ export function HandoutSection({
       {handouts.length === 0 ? (
         <p className="text-sm text-muted-foreground">No Handouts yet.</p>
       ) : (
-        <Card>
-          <ol className="list-decimal divide-y pr-2 pl-10">
-            {handouts.map((handout, index) => (
-              <li key={handout.id} className="py-1 pl-1">
-                <div className="flex items-center gap-2">
-                  <div className="flex min-w-0 flex-1 flex-col gap-1 py-1">
-                    <Link
-                      id={handoutLinkId(handout.id)}
-                      {...pages.handoutPage(handout.id)}
-                      className="min-h-6 text-sm font-medium break-words hover:underline"
-                    >
-                      {handout.title}
-                    </Link>
-                    <HandoutBadges kind={handout.kind} visibility={handout.visibility} />
-                  </div>
-                  {canChange && handouts.length > 1 && (
-                    <MoveControls
-                      itemId={handout.id}
-                      title={handout.title}
-                      isFirst={index === 0}
-                      isLast={index === handouts.length - 1}
-                      saving={reordering.pending}
-                      buttonIdPrefix="handout"
-                      onMove={reordering.move}
-                    />
-                  )}
-                </div>
-              </li>
-            ))}
-          </ol>
-        </Card>
+        <MaterialEntryList as="ol">
+          {handouts.map((handout, index) => (
+            <MaterialEntry
+              key={handout.id}
+              subject={{
+                type: 'handout',
+                handout,
+                page: owner.type === 'item' ? describeHandoutOwner(owner).handoutPage(handout.id) : undefined,
+              }}
+              titleId={handoutLinkId(handout.id)}
+              action={
+                canChange && handouts.length > 1 ? (
+                  <MoveControls
+                    itemId={handout.id}
+                    title={handout.title}
+                    isFirst={index === 0}
+                    isLast={index === handouts.length - 1}
+                    saving={reordering.pending}
+                    buttonIdPrefix="handout"
+                    onMove={reordering.move}
+                  />
+                ) : undefined
+              }
+            />
+          ))}
+        </MaterialEntryList>
       )}
     </section>
   )

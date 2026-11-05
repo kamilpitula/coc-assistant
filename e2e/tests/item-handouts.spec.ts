@@ -8,7 +8,7 @@ import {
   PNG_BYTES,
   addHandoutViaUi,
   chooseHandoutImage,
-  handoutLinks,
+  handoutTitles,
   handoutSection,
   handoutSubmitButton,
   handoutTitleField,
@@ -61,7 +61,7 @@ test.describe('Item Handouts', () => {
       await openAddHandoutPage(page)
       await expect(page.getByText("Item: Walter Corbitt's diary")).toBeVisible()
       await addHandoutViaUi(page, { title: 'The last entry', kind: 'Text', visibility: 'Player-facing', text: 'I cannot stay here any longer.' })
-      await expect(handoutLinks(page)).toHaveText(['The last entry'])
+      await expect(handoutTitles(page)).toHaveText(['The last entry'])
       const entry = handoutSection(page).getByRole('listitem').filter({ hasText: 'The last entry' })
       await expect(entry).toContainText('Text')
       await expect(entry).toContainText('Player-facing')
@@ -76,15 +76,15 @@ test.describe('Item Handouts', () => {
       await chooseHandoutImage(page, { name: 'page.png', buffer: PNG_BYTES })
       await handoutSubmitButton(page, 'Add Handout').click()
       await expect(page.getByRole('status').filter({ hasText: 'A photograph of the page added.' })).toBeVisible()
-      await expect(handoutLinks(page)).toHaveText(['The last entry', 'A photograph of the page'])
+      await expect(handoutTitles(page)).toHaveText(['The last entry', 'A photograph of the page'])
     })
 
     await test.step('SP-UX-100: Move up changes the order and keeps focus on the moved button', async () => {
       await handoutSection(page).getByRole('button', { name: 'Move A photograph of the page up' }).click()
-      await expect(handoutLinks(page)).toHaveText(['A photograph of the page', 'The last entry'])
+      await expect(handoutTitles(page)).toHaveText(['A photograph of the page', 'The last entry'])
       await expect(handoutSection(page).getByRole('button', { name: 'Move A photograph of the page down' })).toBeFocused()
       await page.reload()
-      await expect(handoutLinks(page)).toHaveText(['A photograph of the page', 'The last entry'])
+      await expect(handoutTitles(page)).toHaveText(['A photograph of the page', 'The last entry'])
     })
   })
 
@@ -94,7 +94,7 @@ test.describe('Item Handouts', () => {
     await addHandoutViaUi(page, { title: 'The last entry', kind: 'Text', visibility: 'Player-facing', text: 'I cannot stay here any longer.' })
 
     await test.step('SP-UX-100: the Handout page says "Item: {name}", shows the text, and offers Edit and Delete Handout', async () => {
-      await handoutLinks(page).filter({ hasText: 'The last entry' }).click()
+      await handoutTitles(page).filter({ hasText: 'The last entry' }).click()
       await expect(page.getByRole('heading', { level: 1, name: 'The last entry' })).toBeVisible()
       await expect(page.getByText("Item: Walter Corbitt's diary")).toBeVisible()
       await expect(page.getByText('I cannot stay here any longer.')).toBeVisible()
@@ -109,7 +109,7 @@ test.describe('Item Handouts', () => {
     })
 
     await test.step('SP-UX-100: Edit is always offered and saves a new title', async () => {
-      await handoutLinks(page).filter({ hasText: 'The last entry' }).click()
+      await handoutTitles(page).filter({ hasText: 'The last entry' }).click()
       await page.getByRole('button', { name: 'Edit', exact: true }).click()
       await handoutTitleField(page).fill('The final entry')
       await page.getByRole('button', { name: 'Save', exact: true }).click()
@@ -135,7 +135,7 @@ test.describe('Item Handouts', () => {
     const item = await prepareItem(page, 'Delete with Handouts')
     await openAddHandoutPage(page)
     await addHandoutViaUi(page, { title: 'The last entry', kind: 'Text', visibility: 'Player-facing', text: 'I cannot stay here any longer.' })
-    const handoutPath = (await handoutLinks(page).first().getAttribute('href')) ?? ''
+    const handoutPath = (await handoutTitles(page).first().getAttribute('href')) ?? ''
     const bearer = await openAndCaptureBearer(page, item.itemPath)
 
     await test.step('SP-UX-95: deleting the Item removes it with its Handouts', async () => {
@@ -157,7 +157,7 @@ test.describe('Item Handouts', () => {
     const item = await prepareItem(page, 'Handout boundaries')
     await openAddHandoutPage(page)
     await addHandoutViaUi(page, { title: 'The last entry', kind: 'Text', visibility: 'Player-facing', text: 'I cannot stay here any longer.' })
-    const handoutId = ((await handoutLinks(page).first().getAttribute('href')) ?? '').split('/').pop() ?? ''
+    const handoutId = ((await handoutTitles(page).first().getAttribute('href')) ?? '').split('/').pop() ?? ''
     const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, item.campaignId))
     const otherKeeper = await signInNewContext(browser, newAccount('Keeper'))
 

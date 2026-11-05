@@ -13,6 +13,11 @@ export function linkHeadings(page: Page): Locator {
   return linkSection(page).getByRole('heading', { level: 3 })
 }
 
+/** A link's title button, which opens its side panel. */
+export function linkTitleButton(page: Page, name: string): Locator {
+  return linkSection(page).getByRole('button', { name, exact: true })
+}
+
 /** The API URL of a Scene's links (or of one link). */
 export function linksApiUrl(apiOrigin: string, campaignId: string, scenarioId: string, sceneId: string, suffix = ''): string {
   return `${apiOrigin}/api/campaigns/${campaignId}/scenarios/${scenarioId}/scenes/${sceneId}/non-player-entity-links${suffix}`
