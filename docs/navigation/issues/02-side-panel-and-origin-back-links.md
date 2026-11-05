@@ -38,3 +38,4 @@ A change to panel types, params, or origins updates specs/navigation/ux.md secti
 
 ## Follow-ups
 - Audit the app for other dead-end journeys (Scene page profile and Handout links, Investigator review page, Item pages) and adopt sections 3 to 5 of navigation ux.
+- Site header overflows the document at 320px (shared cause with the PBI-NAV-001 site-header follow-up) still overflows the document on these pages; this PBI's NAV-A11Y-4 assertion covers the panel only.
