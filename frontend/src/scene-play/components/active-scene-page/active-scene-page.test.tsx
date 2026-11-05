@@ -320,6 +320,12 @@ describe('ActiveScenePage', () => {
     expect(returnFocusSpy).toHaveBeenCalledWith(event)
   })
 
+  it('passes the reveal flow to the side panel (SPL-UX-21)', () => {
+    render(<ActiveScenePage campaignId="c1" />)
+
+    expect(panelProps.current?.onReveal).toBe(openSpy)
+  })
+
   it('says "{title} revealed to {names}." in the status region after the Keeper reveals (SPL-UX-22)', () => {
     render(<ActiveScenePage campaignId="c1" />)
 

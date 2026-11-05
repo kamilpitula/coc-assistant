@@ -1,6 +1,8 @@
 import type { HandoutSummary } from '@/scenario-preparation/types/Handout'
+import { HANDOUT_KIND_LABELS, HANDOUT_VISIBILITY_LABELS } from '@/scenario-preparation/types/Handout'
 import type { NonPlayerEntityLink } from '@/scenario-preparation/types/Scene'
 import { joinNames, recipientsOfSubject } from '@/scene-play/services/revealPresentation'
+import type { RevealTarget } from '@/scene-play/hooks/useRevealFlow'
 import type { InvestigatorPresent } from '@/scene-play/types/ActiveScene'
 import type { KeeperReveal } from '@/scene-play/types/Reveal'
 
@@ -53,6 +55,30 @@ export function keeperReferenceSubjects(
 
 function subjectIdOf(subject: ToRevealSubject): string {
   return subject.type === 'handout' ? subject.handout.id : subject.link.id
+}
+
+/**
+ * The reveal dialog target of a subject: the Handout's kind and visibility summary, or the entity's name with the
+ * Non-Player Entity summary (specs/scene-play/ux.md section 21.7). The caller names the trigger button's id.
+ */
+export function revealTargetOf(subject: ToRevealSubject, triggerId: string): RevealTarget {
+  if (subject.type === 'handout') {
+    const { handout } = subject
+    return {
+      subjectType: 'Handout',
+      subjectId: handout.id,
+      title: handout.title,
+      summary: `${HANDOUT_KIND_LABELS[handout.kind]} . ${HANDOUT_VISIBILITY_LABELS[handout.visibility]}`,
+      triggerId,
+    }
+  }
+  return {
+    subjectType: 'NonPlayerEntity',
+    subjectId: subject.link.id,
+    title: subject.link.playerFacingName,
+    summary: 'Non-Player Entity',
+    triggerId,
+  }
 }
 
 /**

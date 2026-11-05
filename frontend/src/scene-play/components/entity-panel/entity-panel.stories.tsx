@@ -24,7 +24,7 @@ const scene: KeeperActiveScene = {
   title: 'The Corbitt House',
   location: '',
   startedAt: null,
-  investigatorsPresent: [],
+  investigatorsPresent: [{ id: 'i-a', name: 'Dr. Ames' }],
   reveals: [],
 }
 const npcLink: NonPlayerEntityLink = {
@@ -54,9 +54,10 @@ const material: Scene = {
 
 interface PanelStoryArgs {
   linkId?: string
+  reveal?: boolean
 }
 
-function PanelStory({ linkId = 'story-link-npc' }: PanelStoryArgs) {
+function PanelStory({ linkId = 'story-link-npc', reveal = false }: PanelStoryArgs) {
   return (
     <StoryMsal tokens="pending">
       <StoryProviders
@@ -69,7 +70,7 @@ function PanelStory({ linkId = 'story-link-npc' }: PanelStoryArgs) {
         }}
       >
         <SidePanelScopeProvider>
-          <EntityPanel campaignId={STORY_CAMPAIGN_ID} linkId={linkId} />
+          <EntityPanel campaignId={STORY_CAMPAIGN_ID} linkId={linkId} onReveal={reveal ? () => undefined : undefined} />
         </SidePanelScopeProvider>
       </StoryProviders>
     </StoryMsal>
@@ -87,5 +88,7 @@ type Story = StoryObj<typeof meta>
 export const HumanNpc: Story = {}
 
 export const MythosCreature: Story = { args: { linkId: 'story-link-creature' } }
+
+export const Revealable: Story = { args: { reveal: true } }
 
 export const UnknownLink: Story = { args: { linkId: 'unknown' } }

@@ -4,7 +4,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import { keeperCampaign, keeperRosterAllApproved, playerCampaign, STORY_CAMPAIGN_ID } from '@/campaign-play/test-support/rosterFixtures'
+import { handoutQueryKeys } from '@/scenario-preparation/services/handoutApi'
 import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
+import type { SceneHandoutOwner } from '@/scenario-preparation/services/handoutOwner'
+import type { Handout } from '@/scenario-preparation/types/Handout'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import { activeSceneQueryKeys } from '@/scene-play/services/activeSceneApi'
 import { paragraph } from '@/scene-play/test-support/revealFixtures'
@@ -69,6 +72,20 @@ const material: Scene = {
 
 type StoryTab = 'run' | 'to-reveal' | 'reference' | 'revealed'
 
+const handoutOwner: SceneHandoutOwner = { type: 'scene', campaignId: STORY_CAMPAIGN_ID, scenarioId: 'story-scenario', sceneId: 'story-scene' }
+const frontDoorHandout: Handout = {
+  id: 'h1',
+  kind: 'ReadAloud',
+  visibility: 'PlayerFacing',
+  title: 'The front door',
+  content: {
+    root: {
+      type: 'root',
+      children: [{ type: 'paragraph', version: 1, children: [{ type: 'text', version: 1, text: 'The door creaks open onto a cold hall.', format: 0, style: '', detail: 0, mode: 'normal' }] }],
+    },
+  },
+}
+
 const tabIds: Record<StoryTab, string> = {
   run: '/campaigns/$campaignId/active-scene/',
   'to-reveal': '/campaigns/$campaignId/active-scene/to-reveal',
@@ -83,6 +100,8 @@ interface StoryArgs {
   scene?: ActiveScene | null
   loading?: boolean
   tab?: StoryTab
+  /** Search params appended to the leaf entry, e.g. an open side panel. */
+  search?: string
 }
 
 function storyCampaignOf(role: 'Keeper' | 'Player') {
@@ -98,6 +117,7 @@ function seedPageStory(client: QueryClient, role: 'Keeper' | 'Player', scene: Ac
   client.setQueryData(activeSceneQueryKeys.detail(STORY_CAMPAIGN_ID), scene)
   if (scene?.kind === 'keeper') {
     client.setQueryData(sceneQueryKeys.detail(STORY_CAMPAIGN_ID, scene.scenarioId, scene.sceneId), material)
+    client.setQueryData(handoutQueryKeys.detail(handoutOwner, 'h1'), frontDoorHandout)
   }
 }
 
@@ -106,7 +126,7 @@ function storyLeafLocation(tab: StoryTab): { path: string; entry: string } {
   return tab === 'run' ? { path: '/', entry: '/active-scene/' } : { path: tab, entry: `/active-scene/${tab}` }
 }
 
-function PageStory({ role = 'Keeper', scene = keeperScene, loading = false, tab = 'run' }: StoryArgs) {
+function PageStory({ role = 'Keeper', scene = keeperScene, loading = false, tab = 'run', search = '' }: StoryArgs) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } })
   seedPageStory(queryClient, role, scene, loading)
 
@@ -128,7 +148,7 @@ function PageStory({ role = 'Keeper', scene = keeperScene, loading = false, tab 
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([layoutRoute.addChildren([leafRoute])]),
-    history: createMemoryHistory({ initialEntries: [location.entry] }),
+    history: createMemoryHistory({ initialEntries: [`${location.entry}${search}`] }),
   })
 
   return (
@@ -149,6 +169,8 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const KeeperRun: Story = {}
+
+export const HandoutPanelOpen: Story = { args: { search: '?panel=handout&handout=h1' } }
 
 export const KeeperToReveal: Story = { args: { tab: 'to-reveal' } }
 

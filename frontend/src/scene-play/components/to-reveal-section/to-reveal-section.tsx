@@ -2,10 +2,10 @@ import { useId } from 'react'
 
 import { MaterialEntry, MaterialEntryList } from '@/scenario-preparation/components/material-entry/material-entry'
 import { useScene } from '@/scenario-preparation/hooks/useScenes'
-import { HANDOUT_KIND_LABELS, HANDOUT_VISIBILITY_LABELS } from '@/scenario-preparation/types/Handout'
+import { RevealTrigger } from '@/scene-play/components/reveal-trigger/reveal-trigger'
 import { type RevealOpenContext, type RevealTarget } from '@/scene-play/hooks/useRevealFlow'
 import { recipientsOfSubject } from '@/scene-play/services/revealPresentation'
-import { toRevealStatus, toRevealSubjects, type ToRevealSubject } from '@/scene-play/services/subTabGrouping'
+import { revealTargetOf, toRevealStatus, toRevealSubjects, type ToRevealSubject } from '@/scene-play/services/subTabGrouping'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 import { Button } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
@@ -121,7 +121,7 @@ function SubjectGroup({
                 status === null ? undefined : <p className="text-sm break-words text-muted-foreground">{status}</p>
               }
               action={
-                <RevealAction
+                <RevealTrigger
                   triggerId={`reveal-trigger-${entry.subjectId}`}
                   title={title}
                   onReveal={() =>
@@ -137,33 +137,5 @@ function SubjectGroup({
         })}
       </MaterialEntryList>
     </section>
-  )
-}
-
-function revealTargetOf(subject: ToRevealSubject, triggerId: string): RevealTarget {
-  if (subject.type === 'handout') {
-    const { handout } = subject
-    return {
-      subjectType: 'Handout',
-      subjectId: handout.id,
-      title: handout.title,
-      summary: `${HANDOUT_KIND_LABELS[handout.kind]} \u00b7 ${HANDOUT_VISIBILITY_LABELS[handout.visibility]}`,
-      triggerId,
-    }
-  }
-  return {
-    subjectType: 'NonPlayerEntity',
-    subjectId: subject.link.id,
-    title: subject.link.playerFacingName,
-    summary: 'Non-Player Entity',
-    triggerId,
-  }
-}
-
-function RevealAction({ triggerId, title, onReveal }: { triggerId: string; title: string; onReveal: () => void }) {
-  return (
-    <Button id={triggerId} type="button" variant="outline" size="sm" aria-label={`Reveal ${title}`} onClick={onReveal}>
-      Reveal...
-    </Button>
   )
 }

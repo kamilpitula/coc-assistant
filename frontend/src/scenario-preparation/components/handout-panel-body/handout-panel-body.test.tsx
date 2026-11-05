@@ -72,6 +72,22 @@ describe('HandoutPanelBody', () => {
     expect(screen.getByRole('link', { name: 'Open full page' })).toHaveAttribute('href', '/campaigns/c1/scenarios/p1/scenes/s1/handouts/h1?from=active-scene')
   })
 
+  it('shows a status line and an action in the footer when the host passes them (SPL-UX-21)', () => {
+    render(
+      <SidePanelScopeProvider>
+        <HandoutPanelBody
+          owner={owner}
+          handoutId="h1"
+          statusLine="Revealed to Harvey Walters . not yet: Lucy Ward"
+          action={<button type="button">Reveal...</button>}
+        />
+      </SidePanelScopeProvider>,
+    )
+
+    expect(screen.getByText('Revealed to Harvey Walters . not yet: Lucy Ward')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reveal...' })).toBeInTheDocument()
+  })
+
   it('says the subject was not found for an unknown Handout, with no footer (NAV-UX-9)', () => {
     mockUseHandout.mockReturnValue(handoutQuery(null))
     show('unknown')

@@ -179,7 +179,7 @@ describe('ToRevealSection', () => {
       subjectType: 'Handout',
       subjectId: 'h1',
       title: 'The front door',
-      summary: 'Read-aloud \u00b7 Player-facing',
+      summary: 'Read-aloud . Player-facing',
       triggerId: 'reveal-trigger-h1',
     })
   })

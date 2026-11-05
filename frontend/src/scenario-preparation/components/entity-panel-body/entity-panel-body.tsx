@@ -22,6 +22,10 @@ interface EntityPanelBodyProps {
   linkId: string
   /** Where the viewer came from; the "Open full page" link carries it, and the profile page shows its origin back link. */
   from?: Origin
+  /** One context action in the footer, shown only when ready; the Active Scene passes its "Reveal..." trigger. */
+  action?: ReactNode
+  /** A status line under the title, shown only when ready; the Active Scene passes the reveal status. */
+  statusLine?: string | null
 }
 
 /**
@@ -29,7 +33,7 @@ interface EntityPanelBodyProps {
  * profile's view mode read-only, shifted down so the profile name is an h4. The host passes the Scene's ids and, when
  * it has an origin, `from`; the body loads and authorizes through the same queries as the profile pages.
  */
-export function EntityPanelBody({ campaignId, scenarioId, sceneId, linkId, from }: EntityPanelBodyProps) {
+export function EntityPanelBody({ campaignId, scenarioId, sceneId, linkId, from, action, statusLine }: EntityPanelBodyProps) {
   const material = useScene(campaignId, scenarioId, sceneId, true)
 
   if (material.isError) {
@@ -48,13 +52,25 @@ export function EntityPanelBody({ campaignId, scenarioId, sceneId, linkId, from 
   }
 
   return link.nonPlayerEntity.type === 'HumanNpc' ? (
-    <HumanNpcBody campaignId={campaignId} link={link} from={from} />
+    <HumanNpcBody campaignId={campaignId} link={link} from={from} action={action} statusLine={statusLine} />
   ) : (
-    <MythosCreatureBody campaignId={campaignId} link={link} from={from} />
+    <MythosCreatureBody campaignId={campaignId} link={link} from={from} action={action} statusLine={statusLine} />
   )
 }
 
-function HumanNpcBody({ campaignId, link, from }: { campaignId: string; link: NonPlayerEntityLink; from?: Origin }) {
+function HumanNpcBody({
+  campaignId,
+  link,
+  from,
+  action,
+  statusLine,
+}: {
+  campaignId: string
+  link: NonPlayerEntityLink
+  from?: Origin
+  action?: ReactNode
+  statusLine?: string | null
+}) {
   const profile = useHumanNpc(campaignId, link.nonPlayerEntity.id, true)
 
   if (profile.data === null) {
@@ -67,10 +83,22 @@ function HumanNpcBody({ campaignId, link, from }: { campaignId: string; link: No
     return <SidePanelContent kindLabel="Non-Player Entity" title={null} state="loading" />
   }
 
-  return <EntityReady campaignId={campaignId} link={link} from={from} profile={<HumanNpcView humanNpc={profile.data} />} />
+  return <EntityReady campaignId={campaignId} link={link} from={from} action={action} statusLine={statusLine} profile={<HumanNpcView humanNpc={profile.data} />} />
 }
 
-function MythosCreatureBody({ campaignId, link, from }: { campaignId: string; link: NonPlayerEntityLink; from?: Origin }) {
+function MythosCreatureBody({
+  campaignId,
+  link,
+  from,
+  action,
+  statusLine,
+}: {
+  campaignId: string
+  link: NonPlayerEntityLink
+  from?: Origin
+  action?: ReactNode
+  statusLine?: string | null
+}) {
   const profile = useMythosCreature(campaignId, link.nonPlayerEntity.id, true)
 
   if (profile.data === null) {
@@ -83,10 +111,24 @@ function MythosCreatureBody({ campaignId, link, from }: { campaignId: string; li
     return <SidePanelContent kindLabel="Non-Player Entity" title={null} state="loading" />
   }
 
-  return <EntityReady campaignId={campaignId} link={link} from={from} profile={<MythosCreatureView mythosCreature={profile.data} />} />
+  return <EntityReady campaignId={campaignId} link={link} from={from} action={action} statusLine={statusLine} profile={<MythosCreatureView mythosCreature={profile.data} />} />
 }
 
-function EntityReady({ campaignId, link, from, profile }: { campaignId: string; link: NonPlayerEntityLink; from?: Origin; profile: ReactNode }) {
+function EntityReady({
+  campaignId,
+  link,
+  from,
+  action,
+  statusLine,
+  profile,
+}: {
+  campaignId: string
+  link: NonPlayerEntityLink
+  from?: Origin
+  action?: ReactNode
+  statusLine?: string | null
+  profile: ReactNode
+}) {
   const seenId = useId()
   const profileId = useId()
   const paths = NON_PLAYER_ENTITY_PROFILE_PATHS[link.nonPlayerEntity.type]
@@ -97,6 +139,7 @@ function EntityReady({ campaignId, link, from, profile }: { campaignId: string; 
       kindLabel="Non-Player Entity"
       title={link.playerFacingName}
       state="ready"
+      action={action}
       footer={
         <Link
           to={paths.to}
@@ -109,6 +152,7 @@ function EntityReady({ campaignId, link, from, profile }: { campaignId: string; 
         </Link>
       }
     >
+      {statusLine === null || statusLine === undefined ? null : <p className="text-sm break-words text-muted-foreground">{statusLine}</p>}
       <section aria-labelledby={seenId} className="flex flex-col gap-2">
         <h3 id={seenId} className="text-lg font-semibold">
           What Players see

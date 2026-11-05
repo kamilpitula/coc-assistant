@@ -5,7 +5,7 @@ import type { NonPlayerEntityLink } from '@/scenario-preparation/types/Scene'
 import type { InvestigatorPresent } from '@/scene-play/types/ActiveScene'
 import type { KeeperReveal } from '@/scene-play/types/Reveal'
 
-import { isRevealedToEveryonePresent, keeperReferenceSubjects, toRevealStatus, toRevealSubjects } from './subTabGrouping'
+import { isRevealedToEveryonePresent, keeperReferenceSubjects, revealTargetOf, toRevealStatus, toRevealSubjects } from './subTabGrouping'
 
 // specs/scene-play/ux.md section 21.4: the rule that moves a subject off "To reveal".
 function reveal(subjectId: string, recipientIds: string[]): KeeperReveal {
@@ -86,6 +86,28 @@ describe('toRevealStatus', () => {
     const reveals = [{ ...reveal('h1', ['harvey']), recipients: [harvey, departed] }]
 
     expect(toRevealStatus('h1', reveals, [harvey])).toBe('Revealed to Harvey Walters and Lucy Ward')
+  })
+})
+
+describe('revealTargetOf', () => {
+  it('targets a Handout with its kind and visibility summary (SPL-UX-21)', () => {
+    expect(revealTargetOf({ type: 'handout', handout: handout('h1', 'PlayerFacing', 'The front door') }, 'reveal-trigger-h1')).toEqual({
+      subjectType: 'Handout',
+      subjectId: 'h1',
+      title: 'The front door',
+      summary: 'Text . Player-facing',
+      triggerId: 'reveal-trigger-h1',
+    })
+  })
+
+  it('targets an entity link with the Non-Player Entity summary (SPL-UX-21)', () => {
+    expect(revealTargetOf({ type: 'entity', link: link('l1', 'The landlord') }, 'panel-reveal-trigger-l1')).toEqual({
+      subjectType: 'NonPlayerEntity',
+      subjectId: 'l1',
+      title: 'The landlord',
+      summary: 'Non-Player Entity',
+      triggerId: 'panel-reveal-trigger-l1',
+    })
   })
 })
 

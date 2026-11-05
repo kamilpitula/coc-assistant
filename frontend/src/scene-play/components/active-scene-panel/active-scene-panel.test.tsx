@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ActiveScene } from '@/scene-play/types/ActiveScene'
 import type { Clues } from '@/scene-play/types/Reveal'
+import type { RevealOpenContext, RevealTarget } from '@/scene-play/hooks/useRevealFlow'
 import { keeperReveal, textReveal } from '@/scene-play/test-support/revealFixtures'
 import { knottHumanNpc } from '@/scenario-preparation/test-support/humanNpcFixtures'
 import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
@@ -70,13 +71,13 @@ const material = {
 const query = (data: unknown) => ({ data, isError: false, isFetchedAfterMount: true, refetch: vi.fn() })
 const close = vi.fn()
 
-function show(panel: OpenPanel | null) {
+function show(panel: OpenPanel | null, onReveal?: (target: RevealTarget, context: RevealOpenContext) => void) {
   mockUseSidePanel.mockReturnValue({ panel, open: vi.fn(), close })
   const headingRef = { current: null }
 
   render(
     <SidePanelScopeProvider>
-      <ActiveScenePanel campaignId="c1" headingRef={headingRef} />
+      <ActiveScenePanel campaignId="c1" headingRef={headingRef} onReveal={onReveal} />
     </SidePanelScopeProvider>,
   )
   return { headingRef }
@@ -148,5 +149,25 @@ describe('ActiveScenePanel', () => {
 
     expect(screen.getByRole('heading', { level: 2, name: 'A letter from Knott' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Open full page' })).not.toBeInTheDocument()
+  })
+
+  it('passes the reveal flow to the handout body (SPL-UX-21)', () => {
+    mockUseActive.mockReturnValue(query({ ...keeperScene, investigatorsPresent: [{ id: 'i1', name: 'Harvey Walters' }] }))
+    mockUseHandout.mockReturnValue(query(textHandout))
+    mockUseScene.mockReturnValue(
+      query({ ...material, handouts: [{ id: 'h1', kind: 'Text', visibility: 'PlayerFacing', title: 'A letter from Knott' }] }),
+    )
+    show({ type: 'handout', handoutId: 'h1' }, vi.fn())
+
+    expect(screen.getByRole('button', { name: 'Reveal A letter from Knott' })).toBeInTheDocument()
+  })
+
+  it('passes the reveal flow to the entity body (SPL-UX-21)', () => {
+    mockUseActive.mockReturnValue(query({ ...keeperScene, investigatorsPresent: [{ id: 'i1', name: 'Harvey Walters' }] }))
+    mockUseScene.mockReturnValue(query(material))
+    mockUseHumanNpc.mockReturnValue(query(knottHumanNpc))
+    show({ type: 'entity', linkId: 'l1' }, vi.fn())
+
+    expect(screen.getByRole('button', { name: 'Reveal The man by the gate' })).toBeInTheDocument()
   })
 })

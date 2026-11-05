@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ActiveScene, KeeperActiveScene } from '@/scene-play/types/ActiveScene'
+import type { KeeperReveal } from '@/scene-play/types/Reveal'
 import { ghoulMythosCreature } from '@/scenario-preparation/test-support/mythosCreatureFixtures'
 import { thugHumanNpc } from '@/scenario-preparation/test-support/humanNpcFixtures'
 import type { NonPlayerEntityLink, Scene } from '@/scenario-preparation/types/Scene'
@@ -13,11 +14,12 @@ import { EntityPanel } from './entity-panel'
 
 // specs/navigation/ux.md section 3 (refinements G2, G5, G6, G8): the entity panel reads the link from the Keeper's Active
 // Scene, shows what Players see and the read-only profile shifted down, and links to the profile with ?from=active-scene.
-const { mockUseActive, mockUseScene, mockUseHumanNpc, mockUseMythosCreature, refetch } = vi.hoisted(() => ({
+const { mockUseActive, mockUseScene, mockUseHumanNpc, mockUseMythosCreature, onReveal, refetch } = vi.hoisted(() => ({
   mockUseActive: vi.fn(),
   mockUseScene: vi.fn(),
   mockUseHumanNpc: vi.fn(),
   mockUseMythosCreature: vi.fn(),
+  onReveal: vi.fn(),
   refetch: vi.fn(),
 }))
 
@@ -75,10 +77,30 @@ const activeQuery = (data: ActiveScene | null | undefined) => ({ data, isError: 
 const materialQuery = (data: Scene | null | undefined, overrides: Record<string, unknown> = {}) => ({ data, isError: false, refetch, ...overrides })
 const profileQuery = (data: unknown, overrides: Record<string, unknown> = {}) => ({ data, isError: false, refetch, ...overrides })
 
-function show(linkId = 'l1') {
+const investigatorsPresent = [
+  { id: 'i1', name: 'Harvey Walters' },
+  { id: 'i2', name: 'Lucy Ward' },
+]
+
+function linkReveal(recipientIds: string[]): KeeperReveal {
+  return {
+    revealId: `r-l1-${recipientIds.join('-')}`,
+    revealedAt: '2026-10-28T19:52:00Z',
+    subjectType: 'NonPlayerEntity',
+    title: 'The man by the gate',
+    handoutKind: null,
+    content: null,
+    file: null,
+    imageDescription: null,
+    subjectId: 'l1',
+    recipients: investigatorsPresent.filter((investigator) => recipientIds.includes(investigator.id)),
+  }
+}
+
+function show(linkId = 'l1', reveal?: typeof onReveal) {
   return render(
     <SidePanelScopeProvider>
-      <EntityPanel campaignId="c1" linkId={linkId} />
+      <EntityPanel campaignId="c1" linkId={linkId} onReveal={reveal} />
     </SidePanelScopeProvider>,
   )
 }
@@ -199,5 +221,49 @@ describe('EntityPanel', () => {
 
     expect(screen.getByText("We couldn't find that.")).toBeInTheDocument()
     expect(mockUseScene).not.toHaveBeenCalled()
+  })
+
+  it('shows "Reveal..." in the footer for a link that has not reached everyone present (SPL-UX-21)', async () => {
+    mockUseActive.mockReturnValue(activeQuery({ ...scene, investigatorsPresent, reveals: [] }))
+    show('l1', onReveal)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reveal The man by the gate' }))
+
+    const headingId = screen.getByRole('heading', { level: 2 }).id
+    expect(onReveal).toHaveBeenCalledWith(
+      {
+        subjectType: 'NonPlayerEntity',
+        subjectId: 'l1',
+        title: 'The man by the gate',
+        summary: 'Non-Player Entity',
+        triggerId: 'panel-reveal-trigger-l1',
+      },
+      { alreadyRevealedIds: [], fallbackIds: ['panel-reveal-trigger-l1', headingId] },
+    )
+  })
+
+  it('shows the reveal status and keeps the trigger after a partial reveal (SPL-UX-21)', async () => {
+    mockUseActive.mockReturnValue(activeQuery({ ...scene, investigatorsPresent, reveals: [linkReveal(['i1'])] }))
+    show('l1', onReveal)
+
+    expect(screen.getByText('Revealed to Harvey Walters . not yet: Lucy Ward')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reveal The man by the gate' }))
+    expect(onReveal).toHaveBeenCalledWith(expect.anything(), { alreadyRevealedIds: ['i1'], fallbackIds: expect.any(Array) })
+  })
+
+  it('shows the status but no trigger once everyone received the link (SPL-UX-21)', () => {
+    mockUseActive.mockReturnValue(activeQuery({ ...scene, investigatorsPresent, reveals: [linkReveal(['i1', 'i2'])] }))
+    show('l1', onReveal)
+
+    expect(screen.getByText('Revealed to Harvey Walters and Lucy Ward')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reveal The man by the gate' })).not.toBeInTheDocument()
+  })
+
+  it('shows no trigger without a reveal flow (SPL-UX-21)', () => {
+    mockUseActive.mockReturnValue(activeQuery({ ...scene, investigatorsPresent, reveals: [] }))
+    show()
+
+    expect(screen.queryByRole('button', { name: 'Reveal The man by the gate' })).not.toBeInTheDocument()
   })
 })

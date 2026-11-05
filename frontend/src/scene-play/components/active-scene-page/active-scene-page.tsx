@@ -117,7 +117,7 @@ export function ActiveScenePage({ campaignId }: ActiveScenePageProps) {
           onPresentSaved={() => setMessage('Investigators present saved.')}
           onFinishedMeanwhile={() => void active.refetch()}
         />
-        <ActiveScenePanel campaignId={campaignId} headingRef={headingRef} />
+        <ActiveScenePanel campaignId={campaignId} headingRef={headingRef} onReveal={flow.open} />
       </div>
     </SidePanelScopeProvider>
   )
