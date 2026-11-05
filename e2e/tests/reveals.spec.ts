@@ -410,7 +410,7 @@ test.describe('Clues', () => {
         await expect(panel.getByRole('heading', { level: 4, name: FRONT_DOOR })).toBeVisible()
         await panel.getByRole('link', { name: 'Open full page' }).click()
         await expect(page.getByRole('heading', { level: 1, name: `${LUCY}'s Clues` })).toBeVisible()
-        await expect(page.getByRole('link', { name: 'Back to The Corbitt House' })).toBeVisible()
+        await expect(page.getByRole('link', { name: `Back to ${PREPARED.secondSceneTitle}` })).toBeVisible()
       })
 
       await test.step('SPL-UX-34: a Player opening a Keeper Clues URL is told the Investigator was not found', async () => {

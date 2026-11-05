@@ -230,6 +230,7 @@ test.describe('Side panel and origin back links', () => {
         await expect(panel.getByRole('heading', { level: 3, name: CORBITT })).toBeVisible()
         await expect(panel.getByRole('heading', { level: 4, name: PREPARED.handouts[0].title })).toBeVisible()
         await page.screenshot({ path: test.info().outputPath('keeper-clues-panel.png') })
+        await page.screenshot({ path: '../docs/navigation/screenshots/nav-002-clues-panel.png' })
       })
 
       await test.step('NAV-A11Y-2: focus moves to the panel heading and Escape returns it to the opening button', async () => {
@@ -242,8 +243,10 @@ test.describe('Side panel and origin back links', () => {
 
       await test.step('browser back closes the panel with the heading and scroll unchanged', async () => {
         await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+        const cluesButton = presentSection(page).getByRole('button', { name: `${LUCY}'s Clues` })
+        await cluesButton.scrollIntoViewIfNeeded()
         const scrollBefore = await page.evaluate(() => window.scrollY)
-        await presentSection(page).getByRole('button', { name: `${LUCY}'s Clues` }).click()
+        await cluesButton.click()
         await expect(page.getByRole('dialog', { name: `${LUCY}'s Clues` })).toBeVisible()
         await page.goBack()
         await expect(page.getByRole('dialog')).toBeHidden()
@@ -296,6 +299,7 @@ test.describe('Side panel and origin back links', () => {
         await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}/investigators/${table.lucyId}/clues\\?from=active-scene$`))
         await expect(page.getByRole('heading', { level: 1, name: `${LUCY}'s Clues` })).toBeVisible()
         await page.screenshot({ path: test.info().outputPath('keeper-clues-page-from-active-scene.png') })
+        await page.screenshot({ path: '../docs/navigation/screenshots/nav-002-clues-page-from.png' })
         await page.getByRole('link', { name: `Back to ${CORBITT}` }).click()
         await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}/active-scene$`))
         await expect(page.getByRole('dialog')).toBeHidden()
@@ -352,7 +356,7 @@ test.describe('Side panel and origin back links', () => {
   test('Profile and Scene Handout pages remember the Active Scene origin', async ({ page, browser }) => {
     const table = await setUpTable(page, browser, 'ProfileOrigin')
     const { campaignId } = table.prepared
-    await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId])
+    await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
     const created = await page.request.post(mythosCreaturesApiUrl(API_ORIGIN, campaignId), {
       headers: { Authorization: table.keeperBearer },
       data: { name: 'Panel Ghoul' },
