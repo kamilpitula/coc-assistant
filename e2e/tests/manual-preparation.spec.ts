@@ -7,8 +7,8 @@ import { createApprovedInvestigatorViaApi, finishActiveSceneViaApi, startSceneVi
 import { itemsSection, sceneItemNames } from '../fixtures/items'
 import { nonPlayerEntitiesSection } from '../fixtures/non-player-entities'
 import { PREPARED, prepareScenarioViaApi, type PreparedScenario } from '../fixtures/prepared-scenario'
-import { handoutLinks, handoutSection } from '../fixtures/scene-handouts'
-import { linkHeadings, linkSection } from '../fixtures/scene-links'
+import { handoutSection, handoutTitles, openHandoutPageFromScene } from '../fixtures/scene-handouts'
+import { linkHeadings, linkSection, linkTitleButton } from '../fixtures/scene-links'
 import { scenariosSection } from '../fixtures/scenarios'
 import { sceneLinks, scenesSection } from '../fixtures/scenes'
 
@@ -46,17 +46,20 @@ test.describe('Manual Scenario preparation', () => {
       await expect(scenesSection(page).getByText('Prepared', { exact: true })).toHaveCount(2)
     })
 
-    await test.step('SP-UX-50: the Scene page lists both Non-Player Entity links with the profile they point to', async () => {
+    await test.step('SP-UX-50: the Scene page lists both Non-Player Entity links with the profile they point to as text', async () => {
       await sceneLinks(page).filter({ hasText: PREPARED.firstSceneTitle }).click()
       await expect(page.getByRole('heading', { level: 1, name: PREPARED.firstSceneTitle })).toBeVisible()
       await expect(linkHeadings(page)).toHaveText([PREPARED.humanNpcLinkName, PREPARED.creatureLinkName])
-      await expect(linkSection(page).getByRole('link', { name: PREPARED.humanNpcName })).toBeVisible()
-      await expect(linkSection(page).getByRole('link', { name: PREPARED.creatureName })).toBeVisible()
-      await expect(linkSection(page).getByText('No Player-facing description yet.')).toBeVisible()
+      await expect(linkSection(page).getByText(`Human NPC: ${PREPARED.humanNpcName}`)).toBeVisible()
+      await expect(linkSection(page).getByText(`Mythos Creature: ${PREPARED.creatureName}`)).toBeVisible()
+      await linkTitleButton(page, PREPARED.humanNpcLinkName).click()
+      const panel = page.getByRole('dialog', { name: PREPARED.humanNpcLinkName })
+      await expect(panel.getByText(`Landlord ${prepared.secret}`)).toBeVisible()
+      await panel.getByRole('button', { name: 'Close' }).click()
     })
 
     await test.step('SP-UX-64, SP-UX-67: the Handouts are listed in stored order with their kind and visibility as text', async () => {
-      await expect(handoutLinks(page)).toHaveText(PREPARED.handouts.map((handout) => handout.title))
+      await expect(handoutTitles(page)).toHaveText(PREPARED.handouts.map((handout) => handout.title))
       for (const handout of PREPARED.handouts) {
         const row = handoutSection(page).getByRole('listitem').filter({ hasText: handout.title })
         await expect(row).toContainText(handout.kindText)
@@ -68,8 +71,8 @@ test.describe('Manual Scenario preparation', () => {
       await expect(sceneItemNames(page)).toHaveText([PREPARED.itemName])
     })
 
-    await test.step('SP-UX-81: the Keeper-facing Map shows its image with name and size', async () => {
-      await handoutLinks(page).filter({ hasText: 'Arkham map' }).click()
+    await test.step('SP-UX-81: the title opens the Handout panel, "Open full page" shows the Keeper-facing Map image with name and size', async () => {
+      await openHandoutPageFromScene(page, 'Arkham map')
       await expect(page.getByRole('heading', { level: 2, name: 'Map' })).toBeVisible()
       await expect(page.getByRole('img', { name: 'Arkham map' })).toBeVisible()
       await expect(page.getByText(`${PREPARED.mapFileName}, 1 KB`)).toBeVisible()

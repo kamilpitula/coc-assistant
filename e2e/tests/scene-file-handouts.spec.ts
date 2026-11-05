@@ -9,13 +9,14 @@ import {
   PNG_BYTES,
   chooseHandoutImage,
   fileField,
-  handoutLinks,
   handoutSection,
   handoutSubmitButton,
   handoutTitleField,
   handoutsApiUrl,
+  handoutTitles,
   kindRadio,
   openAddHandoutPage,
+  openHandoutPageFromScene,
   padded,
   visibilityRadio,
 } from '../fixtures/scene-handouts'
@@ -119,14 +120,14 @@ test.describe('Scene file Handouts', () => {
     await test.step('SP-UX-78: submitting returns to the Scene page with "Arkham added." and lists the Map as Player-facing', async () => {
       await handoutSubmitButton(page, 'Add Handout').click()
       await expect(page.getByRole('status').filter({ hasText: 'Arkham added.' })).toBeVisible()
-      await expect(handoutLinks(page)).toHaveText(['Arkham'])
+      await expect(handoutTitles(page)).toHaveText(['Arkham'])
       const item = handoutSection(page).getByRole('listitem').filter({ hasText: 'Arkham' })
       await expect(item).toContainText('Map')
       await expect(item).toContainText('Player-facing')
     })
 
-    await test.step('SP-UX-78, SP-UX-81: the Handout page shows the image under "Map" after a reload', async () => {
-      await handoutLinks(page).filter({ hasText: 'Arkham' }).click()
+    await test.step('SP-UX-78, SP-UX-81: the title opens the Handout panel, "Open full page" shows the image under "Map" after a reload', async () => {
+      await openHandoutPageFromScene(page, 'Arkham')
       await page.reload()
       await expect(page.getByRole('heading', { level: 2, name: 'Map' })).toBeVisible()
       const image = page.getByRole('img', { name: 'Arkham' })
@@ -171,7 +172,7 @@ test.describe('Scene file Handouts', () => {
       await description.fill('A plan of the cellar')
       await handoutSubmitButton(page, 'Add Handout').click()
       await expect(page.getByRole('status').filter({ hasText: 'Cellar plan added.' })).toBeVisible()
-      await handoutLinks(page).filter({ hasText: 'Cellar plan' }).click()
+      await openHandoutPageFromScene(page, 'Cellar plan')
       await page.reload()
       await expect(page.getByRole('img', { name: 'A plan of the cellar' })).toBeVisible()
       await expect(page.getByText('Image description: A plan of the cellar')).toBeVisible()
@@ -297,7 +298,7 @@ test.describe('Scene file Handouts', () => {
 
     await test.step('SP-UX-85: the Handout keeps its place in the order', async () => {
       await page.goto(scene.scenePath)
-      await expect(handoutLinks(page)).toHaveText(['First', 'Corbitt House'])
+      await expect(handoutTitles(page)).toHaveText(['First', 'Corbitt House'])
     })
   })
 

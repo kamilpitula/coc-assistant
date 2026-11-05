@@ -1,23 +1,17 @@
-import { Link } from '@tanstack/react-router'
-import { useId, useState } from 'react'
+import { useId } from 'react'
 
-import { HandoutBadges } from '@/scenario-preparation/components/handout-badges/handout-badges'
+import { MaterialEntry, MaterialEntryList } from '@/scenario-preparation/components/material-entry/material-entry'
 import { useScene } from '@/scenario-preparation/hooks/useScenes'
-import { NON_PLAYER_ENTITY_PROFILE_PATHS, NON_PLAYER_ENTITY_TYPE_LABELS } from '@/scenario-preparation/types/NonPlayerEntity'
 import { HANDOUT_KIND_LABELS, HANDOUT_VISIBILITY_LABELS, type HandoutSummary } from '@/scenario-preparation/types/Handout'
 import type { NonPlayerEntityLink } from '@/scenario-preparation/types/Scene'
-import { HandoutPreview } from '@/scenario-preparation/components/handout-preview/handout-preview'
 import { KeeperNotesSection } from '@/scene-play/components/keeper-notes-section/keeper-notes-section'
 import { RevealDialog } from '@/scene-play/components/reveal-dialog/reveal-dialog'
 import { useRevealFlow, type RevealTarget } from '@/scene-play/hooks/useRevealFlow'
 import { joinNames, recipientsOfSubject } from '@/scene-play/services/revealPresentation'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 import type { KeeperReveal } from '@/scene-play/types/Reveal'
-import { RichTextView } from '@/shared/components/rich-text-view/rich-text-view'
 import { Button } from '@/shared/components/ui/button'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible'
 import { Skeleton } from '@/shared/components/ui/skeleton'
-import { isEmptyRichText } from '@/shared/services/richText'
 
 interface SceneMaterialSectionProps {
   campaignId: string
@@ -32,8 +26,9 @@ interface SceneMaterialSectionProps {
 
 /**
  * The Keeper's Keeper notes, Handouts, and Non-Player Entities on the Active Scene page, from the existing Keeper Scene read, with
- * "Reveal..." on what is Player-facing (specs/scene-play/ux.md sections 12 and 13; PBI-SPL-002 D4). While that read loads these
- * sections show a Skeleton; if it fails they say so with "Try again", and the rest of the page is unaffected.
+ * "Reveal..." on what is Player-facing (specs/scene-play/ux.md sections 12 and 13; PBI-SPL-002 D4). Each Handout and Non-Player Entity is
+ * a material entry whose title opens its side panel; the profile and description live in the panel (PBI-SPL-005 design record D4).
+ * While that read loads these sections show a Skeleton; if it fails they say so with "Try again", and the rest of the page is unaffected.
  */
 export function SceneMaterialSection({ campaignId, scene, onRevealed, onSceneFinished, onRefetch }: SceneMaterialSectionProps) {
   const material = useScene(campaignId, scene.scenarioId, scene.sceneId, true)
@@ -64,8 +59,8 @@ export function SceneMaterialSection({ campaignId, scene, onRevealed, onSceneFin
   return (
     <>
       <KeeperNotesSection notes={keeperNotes} />
-      <HandoutsSection campaignId={campaignId} scene={scene} handouts={handouts} onReveal={flow.open} />
-      <NonPlayerEntitiesSection campaignId={campaignId} scene={scene} links={nonPlayerEntityLinks} onReveal={flow.open} />
+      <HandoutsSection scene={scene} handouts={handouts} onReveal={flow.open} />
+      <NonPlayerEntitiesSection scene={scene} links={nonPlayerEntityLinks} onReveal={flow.open} />
       <RevealDialog
         open={flow.target !== null}
         title={flow.target?.title ?? ''}
@@ -89,12 +84,11 @@ function RevealedTo({ reveals, subjectId, scene }: { reveals: KeeperReveal[]; su
 }
 
 interface SectionProps {
-  campaignId: string
   scene: KeeperActiveScene
   onReveal: (target: RevealTarget) => void
 }
 
-function HandoutsSection({ campaignId, scene, handouts, onReveal }: SectionProps & { handouts: HandoutSummary[] }) {
+function HandoutsSection({ scene, handouts, onReveal }: SectionProps & { handouts: HandoutSummary[] }) {
   const headingId = useId()
 
   return (
@@ -106,62 +100,39 @@ function HandoutsSection({ campaignId, scene, handouts, onReveal }: SectionProps
       {handouts.length === 0 ? (
         <p className="text-sm text-muted-foreground">No Handouts in this Scene.</p>
       ) : (
-        <ol className="flex flex-col gap-4">
+        <MaterialEntryList as="ol">
           {handouts.map((handout) => (
-            <HandoutItem key={handout.id} campaignId={campaignId} scene={scene} handout={handout} onReveal={onReveal} />
+            <MaterialEntry
+              key={handout.id}
+              subject={{ type: 'handout', handout }}
+              titleId={`handout-link-${handout.id}`}
+              status={<RevealedTo reveals={scene.reveals} subjectId={handout.id} scene={scene} />}
+              action={
+                handout.visibility === 'PlayerFacing' ? (
+                  <RevealAction
+                    triggerId={`reveal-trigger-${handout.id}`}
+                    title={handout.title}
+                    onReveal={() =>
+                      onReveal({
+                        subjectType: 'Handout',
+                        subjectId: handout.id,
+                        title: handout.title,
+                        summary: `${HANDOUT_KIND_LABELS[handout.kind]} \u00b7 ${HANDOUT_VISIBILITY_LABELS[handout.visibility]}`,
+                        triggerId: `reveal-trigger-${handout.id}`,
+                      })
+                    }
+                  />
+                ) : undefined
+              }
+            />
           ))}
-        </ol>
+        </MaterialEntryList>
       )}
     </section>
   )
 }
 
-function HandoutItem({ campaignId, scene, handout, onReveal }: SectionProps & { handout: HandoutSummary }) {
-  const [open, setOpen] = useState(false)
-  const triggerId = `reveal-trigger-${handout.id}`
-
-  return (
-    <Collapsible open={open} onOpenChange={setOpen} asChild>
-      <li className="flex flex-col gap-2 border-t pt-3">
-        <h3 className="text-base font-semibold break-words">{handout.title}</h3>
-        <HandoutBadges kind={handout.kind} visibility={handout.visibility} />
-        <RevealedTo reveals={scene.reveals} subjectId={handout.id} scene={scene} />
-        <div className="flex flex-wrap items-center gap-3">
-          <CollapsibleTrigger asChild>
-            <Button type="button" variant="outline" size="sm" aria-label={`${open ? 'Hide' : 'Show'} content of ${handout.title}`}>
-              {open ? 'Hide content' : 'Show content'}
-            </Button>
-          </CollapsibleTrigger>
-          {handout.visibility === 'PlayerFacing' && (
-            <Button
-              id={triggerId}
-              type="button"
-              variant="outline"
-              size="sm"
-              aria-label={`Reveal ${handout.title}`}
-              onClick={() =>
-                onReveal({
-                  subjectType: 'Handout',
-                  subjectId: handout.id,
-                  title: handout.title,
-                  summary: `${HANDOUT_KIND_LABELS[handout.kind]} \u00b7 ${HANDOUT_VISIBILITY_LABELS[handout.visibility]}`,
-                  triggerId,
-                })
-              }
-            >
-              Reveal...
-            </Button>
-          )}
-        </div>
-        <CollapsibleContent>
-          <HandoutPreview owner={{ type: 'scene', campaignId, scenarioId: scene.scenarioId, sceneId: scene.sceneId }} handoutId={handout.id} />
-        </CollapsibleContent>
-      </li>
-    </Collapsible>
-  )
-}
-
-function NonPlayerEntitiesSection({ campaignId, scene, links, onReveal }: SectionProps & { links: NonPlayerEntityLink[] }) {
+function NonPlayerEntitiesSection({ scene, links, onReveal }: SectionProps & { links: NonPlayerEntityLink[] }) {
   const headingId = useId()
 
   return (
@@ -173,60 +144,40 @@ function NonPlayerEntitiesSection({ campaignId, scene, links, onReveal }: Sectio
       {links.length === 0 ? (
         <p className="text-sm text-muted-foreground">No Non-Player Entities in this Scene.</p>
       ) : (
-        <ul className="flex flex-col gap-4">
+        <MaterialEntryList as="ul">
           {links.map((link) => (
-            <LinkItem key={link.id} campaignId={campaignId} scene={scene} link={link} onReveal={onReveal} />
+            <MaterialEntry
+              key={link.id}
+              subject={{ type: 'entity', link }}
+              titleId={`entity-link-${link.id}`}
+              status={<RevealedTo reveals={scene.reveals} subjectId={link.id} scene={scene} />}
+              action={
+                <RevealAction
+                  triggerId={`reveal-trigger-${link.id}`}
+                  title={link.playerFacingName}
+                  onReveal={() =>
+                    onReveal({
+                      subjectType: 'NonPlayerEntity',
+                      subjectId: link.id,
+                      title: link.playerFacingName,
+                      summary: 'Non-Player Entity',
+                      triggerId: `reveal-trigger-${link.id}`,
+                    })
+                  }
+                />
+              }
+            />
           ))}
-        </ul>
+        </MaterialEntryList>
       )}
     </section>
   )
 }
 
-function LinkItem({ campaignId, scene, link, onReveal }: SectionProps & { link: NonPlayerEntityLink }) {
-  const profilePath = NON_PLAYER_ENTITY_PROFILE_PATHS[link.nonPlayerEntity.type]
-  const hasDescription = link.playerFacingDescription !== null && !isEmptyRichText(link.playerFacingDescription)
-  const triggerId = `reveal-trigger-${link.id}`
-
+function RevealAction({ triggerId, title, onReveal }: { triggerId: string; title: string; onReveal: () => void }) {
   return (
-    <li className="flex flex-col gap-2 border-t pt-3">
-      <h3 className="text-base font-semibold break-words">{link.playerFacingName}</h3>
-      <p className="text-sm break-words text-muted-foreground">
-        {NON_PLAYER_ENTITY_TYPE_LABELS[link.nonPlayerEntity.type]}:{' '}
-        <Link
-          to={profilePath.to}
-          params={{ campaignId, [profilePath.idParam]: link.nonPlayerEntity.id } as never}
-          className="font-medium text-foreground underline underline-offset-4"
-        >
-          {link.nonPlayerEntity.name}
-        </Link>
-      </p>
-      {hasDescription ? (
-        <RichTextView document={link.playerFacingDescription!} headingOffset={1} />
-      ) : (
-        <p className="text-sm text-muted-foreground">No Player-facing description yet.</p>
-      )}
-      <RevealedTo reveals={scene.reveals} subjectId={link.id} scene={scene} />
-      <div>
-        <Button
-          id={triggerId}
-          type="button"
-          variant="outline"
-          size="sm"
-          aria-label={`Reveal ${link.playerFacingName}`}
-          onClick={() =>
-            onReveal({
-              subjectType: 'NonPlayerEntity',
-              subjectId: link.id,
-              title: link.playerFacingName,
-              summary: 'Non-Player Entity',
-              triggerId,
-            })
-          }
-        >
-          Reveal...
-        </Button>
-      </div>
-    </li>
+    <Button id={triggerId} type="button" variant="outline" size="sm" aria-label={`Reveal ${title}`} onClick={onReveal}>
+      Reveal...
+    </Button>
   )
 }

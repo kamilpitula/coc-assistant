@@ -8,14 +8,15 @@ import { createScenarioViaUi } from '../fixtures/scenarios'
 import {
   addHandoutViaUi,
   fillHandoutForm,
-  handoutLinks,
   handoutSection,
   handoutSubmitButton,
   handoutTextEditor,
   handoutTitleField,
   handoutsApiUrl,
+  handoutTitles,
   kindRadio,
   openAddHandoutPage,
+  openHandoutPageFromScene,
   textDocument,
   visibilityRadio,
 } from '../fixtures/scene-handouts'
@@ -122,14 +123,14 @@ test.describe('Scene Handouts', () => {
       await expect(page.getByRole('status').filter({ hasText: 'The front door added.' })).toBeVisible()
       await page.unroute('**/handouts')
       await expect(page).toHaveURL(new RegExp(`${scene.scenePath}$`))
-      await expect(handoutLinks(page)).toHaveText(['The front door'])
-      await expect(handoutLinks(page)).toBeFocused()
+      await expect(handoutTitles(page)).toHaveText(['The front door'])
+      await expect(handoutTitles(page)).toBeFocused()
     })
 
     await test.step('SP-UX-65: a second Read-aloud Handout with the other visibility is listed after the first', async () => {
       await openAddHandoutPage(page)
       await addHandoutViaUi(page, { title: 'The secret door', kind: 'Read-aloud', visibility: 'Keeper-facing', text: 'A seam in the wall.' })
-      await expect(handoutLinks(page)).toHaveText(['The front door', 'The secret door'])
+      await expect(handoutTitles(page)).toHaveText(['The front door', 'The secret door'])
     })
 
     await test.step('SP-UX-64, SP-UX-67: each Handout shows its kind and its visibility as text', async () => {
@@ -140,9 +141,8 @@ test.describe('Scene Handouts', () => {
       await expect(items.filter({ hasText: 'The secret door' })).toContainText('Keeper-facing')
     })
 
-    await test.step('SP-UX-65, SP-UX-68: the Handout page shows its text and formatting in the Read-aloud panel after a reload', async () => {
-      await handoutLinks(page).filter({ hasText: 'The front door' }).click()
-      await expect(page.getByRole('heading', { level: 1, name: 'The front door' })).toBeVisible()
+    await test.step('SP-UX-65, SP-UX-68: the title opens the Handout panel, "Open full page" shows its text and formatting in the Read-aloud panel after a reload', async () => {
+      await openHandoutPageFromScene(page, 'The front door')
       await page.reload()
       const panel = page.getByRole('region', { name: 'Read-aloud' })
       await expect(panel.getByRole('heading', { level: 2, name: 'Read-aloud' })).toBeVisible()
@@ -155,7 +155,7 @@ test.describe('Scene Handouts', () => {
     await test.step('the way back returns to the Scene page, which still lists both Handouts', async () => {
       await page.getByRole('link', { name: 'Back to the Scene' }).click()
       await expect(page).toHaveURL(new RegExp(`${scene.scenePath}$`))
-      await expect(handoutLinks(page)).toHaveText(['The front door', 'The secret door'])
+      await expect(handoutTitles(page)).toHaveText(['The front door', 'The secret door'])
     })
   })
 
@@ -174,25 +174,24 @@ test.describe('Scene Handouts', () => {
     const handoutPath = `${scene.scenePath}/handouts/${letterId}`
 
     await test.step('SP-UX-70: moving "The cellar" up reorders the list, announces it, and keeps focus; the order survives a reload', async () => {
-      await expect(handoutLinks(page)).toHaveText(['The front door', 'A letter', 'The cellar'])
+      await expect(handoutTitles(page)).toHaveText(['The front door', 'A letter', 'The cellar'])
       await handoutSection(page).getByRole('button', { name: 'Move The cellar up' }).click()
-      await expect(handoutLinks(page)).toHaveText(['The front door', 'The cellar', 'A letter'])
+      await expect(handoutTitles(page)).toHaveText(['The front door', 'The cellar', 'A letter'])
       await expect(handoutSection(page).getByRole('status')).toHaveText('The cellar moved to position 2 of 3.')
       await expect(handoutSection(page).getByRole('button', { name: 'Move The cellar up' })).toBeFocused()
       await page.reload()
-      await expect(handoutLinks(page)).toHaveText(['The front door', 'The cellar', 'A letter'])
+      await expect(handoutTitles(page)).toHaveText(['The front door', 'The cellar', 'A letter'])
     })
 
     await test.step('SP-UX-70: moving "The front door" down swaps it with the next Handout', async () => {
       await handoutSection(page).getByRole('button', { name: 'Move The front door down' }).click()
-      await expect(handoutLinks(page)).toHaveText(['The cellar', 'The front door', 'A letter'])
+      await expect(handoutTitles(page)).toHaveText(['The cellar', 'The front door', 'A letter'])
       await expect(handoutSection(page).getByRole('status')).toHaveText('The front door moved to position 2 of 3.')
     })
 
-    await test.step('SP-UX-69: Edit opens the form prefilled and Cancel discards the changes, returning focus to Edit', async () => {
-      await handoutLinks(page).filter({ hasText: 'A letter' }).click()
+    await test.step('SP-UX-69: the title opens the Handout panel, "Open full page" opens the form prefilled and Cancel discards the changes, returning focus to Edit', async () => {
+      await openHandoutPageFromScene(page, 'A letter')
       await expect(page).toHaveURL(new RegExp(`${handoutPath}$`))
-      await expect(page.getByRole('heading', { level: 1, name: 'A letter' })).toBeVisible()
       await expect(page.getByRole('heading', { level: 2, name: 'Text' })).toBeVisible()
       await expect(page.getByRole('region', { name: 'Read-aloud' })).toHaveCount(0)
       await page.getByRole('button', { name: 'Edit', exact: true }).click()
@@ -234,7 +233,7 @@ test.describe('Scene Handouts', () => {
       await page.getByRole('alertdialog').getByRole('button', { name: 'Delete Handout' }).click()
       await expect(page).toHaveURL(new RegExp(`${scene.scenePath}$`))
       await expect(page.getByRole('status').filter({ hasText: 'Corbitt letter deleted.' })).toBeVisible()
-      await expect(handoutLinks(page)).toHaveText(['The cellar', 'The front door'])
+      await expect(handoutTitles(page)).toHaveText(['The cellar', 'The front door'])
       await expect(handoutSection(page).getByRole('heading', { level: 2, name: 'Handouts' })).toBeFocused()
     })
   })
@@ -337,7 +336,7 @@ test.describe('Scene Handouts', () => {
         await expect(page.getByRole('heading', { level: 1, name: "We couldn't find that Handout" })).toBeVisible()
         await page.getByRole('link', { name: 'Back to the Scene' }).click()
         await expect(page).toHaveURL(new RegExp(`${scene.scenePath}$`))
-        await expect(handoutLinks(page)).toHaveText(['The secret'])
+        await expect(handoutTitles(page)).toHaveText(['The secret'])
       })
     } finally {
       await player.context.close()

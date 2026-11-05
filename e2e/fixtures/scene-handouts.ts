@@ -8,9 +8,18 @@ export function handoutSection(page: Page): Locator {
   return page.getByRole('region', { name: 'Handouts', exact: true })
 }
 
-/** The titles linked from the Handouts section, in stored order. */
-export function handoutLinks(page: Page): Locator {
-  return handoutSection(page).getByRole('listitem').getByRole('link')
+/** The Handout titles listed in the section, in stored order. On the Scene page each title is a button that opens the side panel; on an Item page each title links to its Handout page. The shared `handout-link-{id}` title id is the contract both rely on. */
+export function handoutTitles(page: Page): Locator {
+  return handoutSection(page).locator('[id^="handout-link-"]')
+}
+
+/** Opens the Handout page from the Scene page that is already open: the title opens the side panel, then "Open full page". */
+export async function openHandoutPageFromScene(page: Page, title: string): Promise<void> {
+  await handoutSection(page).getByRole('button', { name: title, exact: true }).click()
+  const panel = page.getByRole('dialog', { name: title })
+  await expect(panel).toBeVisible()
+  await panel.getByRole('link', { name: 'Open full page' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible()
 }
 
 /** The API URL of a Scene's Handouts (or of one Handout, or of the order resource). */

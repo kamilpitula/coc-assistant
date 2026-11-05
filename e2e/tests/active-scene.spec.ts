@@ -77,7 +77,7 @@ test.describe('Starting and finishing a Scene', () => {
         expect(await page.locator('body').innerText(), 'the Keeper notes stay collapsed until shown').not.toContain('Scene notes')
       })
 
-      await test.step('SPL-UX-9, SPL-UX-20, SPL-UX-25: the Keeper notes, Handouts, and Non-Player Entities are listed, and Reveal... is offered on Player-facing material only', async () => {
+      await test.step('SPL-UX-9, SPL-UX-20: the Keeper notes, Handouts, and Non-Player Entities are listed, and Reveal... is offered on Player-facing material only', async () => {
         await expect(page.getByRole('button', { name: 'Show Keeper notes' })).toBeVisible()
         const handouts = page.getByRole('region', { name: 'Handouts' })
         await expect(handouts.getByRole('heading', { level: 3 })).toHaveText(PREPARED.handouts.map((handout) => handout.title))
@@ -88,8 +88,29 @@ test.describe('Starting and finishing a Scene', () => {
         await expect(entities.getByRole('heading', { level: 3 })).toHaveText([PREPARED.humanNpcLinkName, PREPARED.creatureLinkName])
         await page.getByRole('button', { name: 'Show Keeper notes' }).click()
         await expect(page.getByText(`Scene notes ${prepared.secret}`)).toBeVisible()
-        await handouts.getByRole('button', { name: `Show content of ${PREPARED.handouts[1].title}` }).click()
-        await expect(handouts.getByText(`${PREPARED.handouts[1].title} ${prepared.secret}`, { exact: true })).toBeVisible()
+      })
+
+      await test.step('SPL-UX-25 as amended: a Handout title opens its content in the side panel', async () => {
+        const handouts = page.getByRole('region', { name: 'Handouts' })
+        await handouts.getByRole('button', { name: PREPARED.handouts[1].title, exact: true }).click()
+        const panel = page.getByRole('dialog', { name: PREPARED.handouts[1].title })
+        await expect(panel).toBeVisible()
+        await expect(panel.getByText(`${PREPARED.handouts[1].title} ${prepared.secret}`, { exact: true })).toBeVisible()
+        await page.screenshot({ path: test.info().outputPath('keeper-handout-panel.png') })
+        await page.screenshot({ path: '../docs/scene-play/screenshots/spl-005-active-scene.png' })
+        await panel.getByRole('button', { name: 'Close' }).click()
+        await expect(panel).toBeHidden()
+      })
+
+      await test.step('SP-UX-108: an entity title opens What Players see and the Profile', async () => {
+        const entities = page.getByRole('region', { name: 'Non-Player Entities' })
+        await entities.getByRole('button', { name: PREPARED.creatureLinkName, exact: true }).click()
+        const panel = page.getByRole('dialog', { name: PREPARED.creatureLinkName })
+        await expect(panel.getByRole('heading', { name: 'What Players see' })).toBeVisible()
+        await expect(panel.getByRole('heading', { name: 'Profile' })).toBeVisible()
+        await expect(panel.getByRole('heading', { name: PREPARED.creatureName })).toBeVisible()
+        await panel.getByRole('button', { name: 'Close' }).click()
+        await expect(panel).toBeHidden()
       })
 
       await test.step('SPL-UX-16: the Wall has a Public entry naming the Scene, which a Player sees', async () => {
