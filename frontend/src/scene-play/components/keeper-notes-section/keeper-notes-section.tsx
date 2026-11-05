@@ -12,12 +12,12 @@ interface KeeperNotesSectionProps {
 }
 
 /**
- * The Scene's Keeper notes on the Keeper's Active Scene page (specs/scene-play/ux.md section 12): read-only and closed until
- * "Show Keeper notes". The notes never reach a Player.
+ * The Scene's Keeper notes on the Keeper's Active Scene page (specs/scene-play/ux.md section 21.3): read-only and open
+ * until "Hide Keeper notes". The notes never reach a Player.
  */
 export function KeeperNotesSection({ notes }: KeeperNotesSectionProps) {
   const headingId = useId()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
   const hasNotes = notes !== null && !isEmptyRichText(notes)
 
   return (

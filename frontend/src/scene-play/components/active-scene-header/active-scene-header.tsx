@@ -4,79 +4,61 @@ import { useRef, useState, type Ref } from 'react'
 import { SceneStatusBadge } from '@/scenario-preparation/components/scene-status-badge/scene-status-badge'
 import { SceneTimes } from '@/scenario-preparation/components/scene-times/scene-times'
 import { FinishSceneDialog } from '@/scene-play/components/finish-scene-dialog/finish-scene-dialog'
-import { RevealedInSceneSection } from '@/scene-play/components/revealed-in-scene-section/revealed-in-scene-section'
-import { SceneMaterialSection } from '@/scene-play/components/scene-material-section/scene-material-section'
-import { InvestigatorsPresentSection } from '@/scene-play/components/investigators-present-section/investigators-present-section'
 import { useFinishActiveScene } from '@/scene-play/hooks/useActiveScene'
 import { NoActiveSceneError } from '@/scene-play/services/activeSceneApi'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 import { Button } from '@/shared/components/ui/button'
 
-interface ActiveSceneKeeperViewProps {
+interface ActiveSceneHeaderProps {
   campaignId: string
   scene: KeeperActiveScene
+  /** The sub-tabs other than Run hide the Scenario and location line (specs/scene-play/ux.md section 21.2). */
+  compact: boolean
   headingRef: Ref<HTMLHeadingElement>
   /** The Scene was finished here: the page shows "{title} finished." and the no-Active-Scene state. */
   onFinished: (title: string) => void
   /** The Scene had been finished elsewhere: the page says so and refetches. */
   onAlreadyFinished: () => void
-  onPresentSaved: () => void
-  /** A Reveal was made: the page shows "{title} revealed to {names}.". */
-  onRevealed: (message: string) => void
-  /** The Scene was finished while the reveal dialog was open, and the dialog was closed. */
-  onSceneFinished: () => void
-  onRefetch: () => void
 }
 
 /**
- * The Active Scene for its Keeper (specs/scene-play/ux.md section 3): title, status, start time, Scenario, location, who is
- * present, and "Finish Scene" (section 3), then the Keeper notes, Handouts, and Non-Player Entities with "Reveal...", and what was
- * revealed in this Scene (sections 12 and 13).
+ * The Keeper's scene header on the Active Scene (specs/scene-play/ux.md section 21.2): the title with "Finish Scene"
+ * beside it, the status line, and on Run only the Scenario with "Open in Scenario" and the location. "Finish Scene"
+ * is on every sub-tab; its dialog and outcomes are section 3's.
  */
-export function ActiveSceneKeeperView({
-  campaignId,
-  scene,
-  headingRef,
-  onFinished,
-  onAlreadyFinished,
-  onPresentSaved,
-  onRevealed,
-  onSceneFinished,
-  onRefetch,
-}: ActiveSceneKeeperViewProps) {
+export function ActiveSceneHeader({ campaignId, scene, compact, headingRef, onFinished, onAlreadyFinished }: ActiveSceneHeaderProps) {
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
-      <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold break-words outline-none">
           {scene.title}
         </h1>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <SceneStatusBadge status="Active" />
-          <SceneTimes startedAt={scene.startedAt} finishedAt={null} />
-        </div>
-        <p className="flex flex-wrap items-baseline gap-x-3 text-sm text-muted-foreground">
-          <span className="break-words">Scenario: {scene.scenarioTitle}</span>
-          <Link
-            to="/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId"
-            params={{ campaignId, scenarioId: scene.scenarioId, sceneId: scene.sceneId }}
-            className="text-foreground underline"
-          >
-            Open in Scenario
-          </Link>
-        </p>
-      </div>
-      {scene.location !== '' && (
-        <dl className="flex flex-wrap gap-x-3 text-sm">
-          <dt className="font-medium">Location</dt>
-          <dd className="break-words">{scene.location}</dd>
-        </dl>
-      )}
-      <div>
         <FinishControl campaignId={campaignId} title={scene.title} onFinished={onFinished} onAlreadyFinished={onAlreadyFinished} />
       </div>
-      <InvestigatorsPresentSection campaignId={campaignId} scene={scene} onSaved={onPresentSaved} onFinishedMeanwhile={onRefetch} />
-      <SceneMaterialSection campaignId={campaignId} scene={scene} onRevealed={onRevealed} onSceneFinished={onSceneFinished} onRefetch={onRefetch} />
-      <RevealedInSceneSection campaignId={campaignId} reveals={scene.reveals} />
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <SceneStatusBadge status="Active" />
+        <SceneTimes startedAt={scene.startedAt} finishedAt={null} />
+      </div>
+      {!compact && (
+        <>
+          <p className="flex flex-wrap items-baseline gap-x-3 text-sm text-muted-foreground">
+            <span className="break-words">Scenario: {scene.scenarioTitle}</span>
+            <Link
+              to="/campaigns/$campaignId/scenarios/$scenarioId/scenes/$sceneId"
+              params={{ campaignId, scenarioId: scene.scenarioId, sceneId: scene.sceneId }}
+              className="text-foreground underline"
+            >
+              Open in Scenario
+            </Link>
+          </p>
+          {scene.location !== '' && (
+            <dl className="flex flex-wrap gap-x-3 text-sm">
+              <dt className="font-medium">Location</dt>
+              <dd className="break-words">{scene.location}</dd>
+            </dl>
+          )}
+        </>
+      )}
     </div>
   )
 }

@@ -14,15 +14,14 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Closed: Story = {}
+export const Open: Story = {}
 
-export const Open: Story = {
+export const Closed: Story = {
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Show Keeper notes' }))
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Hide Keeper notes' }))
   },
 }
 
 export const NoNotes: Story = {
   args: { notes: null },
-  play: Open.play,
 }

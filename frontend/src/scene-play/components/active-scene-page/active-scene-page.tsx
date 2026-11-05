@@ -1,33 +1,47 @@
-import { useRouterState } from '@tanstack/react-router'
+import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
-import { ActiveSceneKeeperView } from '@/scene-play/components/active-scene-keeper-view/active-scene-keeper-view'
+import { ActiveSceneHeader } from '@/scene-play/components/active-scene-header/active-scene-header'
+import { ActiveSceneNav, type ActiveSceneSubTabCounts } from '@/scene-play/components/active-scene-nav/active-scene-nav'
 import { ActiveScenePanel } from '@/scene-play/components/active-scene-panel/active-scene-panel'
 import { ActiveScenePlayerView } from '@/scene-play/components/active-scene-player-view/active-scene-player-view'
 import { NoActiveScene } from '@/scene-play/components/no-active-scene/no-active-scene'
+import { RevealDialog } from '@/scene-play/components/reveal-dialog/reveal-dialog'
 import { useActiveScene } from '@/scene-play/hooks/useActiveScene'
 import { useActiveSceneAnnouncement } from '@/scene-play/hooks/useActiveSceneAnnouncement'
 import { usePlayerRevealAnnouncement } from '@/scene-play/hooks/usePlayerRevealAnnouncement'
-import type { ActiveScene } from '@/scene-play/types/ActiveScene'
+import { useRevealFlow, type RevealTarget } from '@/scene-play/hooks/useRevealFlow'
+import { useScene } from '@/scenario-preparation/hooks/useScenes'
+import type { Scene } from '@/scenario-preparation/types/Scene'
+import { activeSceneSubTabOf, type ActiveSceneSubTab } from '@/scene-play/services/activeSceneSubTab'
+import { recipientsOfSubject } from '@/scene-play/services/revealPresentation'
+import { keeperReferenceSubjects, toRevealSubjects } from '@/scene-play/services/subTabGrouping'
+import type { ActiveScene, KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { Button } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
+
+import { ActiveSceneTabContext } from './active-scene-tab-context'
 
 interface ActiveScenePageProps {
   campaignId: string
 }
 
 /**
- * The Active Scene page (specs/scene-play/ux.md sections 3 and 4): the Keeper's run view, a Player's view, or the
- * no-Active-Scene state. The layout route renders the Campaign header and handles not-found, so the Campaign is already cached here.
- * Players hear changes in a polite live region; the Keeper, the only actor, hears none.
+ * The Active Scene page (specs/scene-play/ux.md sections 3, 4, and 21): the layout route for the Keeper's sub-tabs and
+ * the Player's view. The Keeper gets the scene header, the sub-navigation with live counts, and the sub-tab body through
+ * the Outlet; a Player gets no sub-navigation and lands on `/active-scene` from a Keeper sub-route, as does every role
+ * when no Scene is Active. The layout owns the reveal dialog shared by the sub-tabs, the status message, and the side panel.
  */
 export function ActiveScenePage({ campaignId }: ActiveScenePageProps) {
   const campaign = useCampaign(campaignId)
   const isKeeper = campaign.data?.role === 'Keeper'
   const active = useActiveScene(campaignId)
+  const leafRouteId = useRouterState({ select: (state) => state.matches.at(-1)?.routeId })
+  const subTab = activeSceneSubTabOf(leafRouteId) ?? 'run'
+  const navigate = useNavigate()
   const navigationMessage = useRouterState({ select: (state) => state.location.state.statusMessage })
   const announcement = useActiveSceneAnnouncement(isKeeper ? undefined : active.data, active.isFetchedAfterMount)
   const revealAnnouncement = usePlayerRevealAnnouncement(active.data, isKeeper, active.isFetchedAfterMount)
@@ -35,13 +49,37 @@ export function ActiveScenePage({ campaignId }: ActiveScenePageProps) {
   const focusHeadingPending = useRef(false)
   const headingRef = useRef<HTMLHeadingElement>(null)
 
+  const scene = active.data ?? null
+  const keeperScene = scene?.kind === 'keeper' ? scene : null
+  const flow = useRevealFlow(campaignId, keeperScene?.investigatorsPresent, {
+    onRevealed: (revealMessage) => {
+      // A Scene finished between the Reveal and its refetch shows the no-Active-Scene state with the h1 focused.
+      focusHeadingPending.current = true
+      setMessage(revealMessage)
+    },
+    onSceneFinished: () => {
+      focusHeadingPending.current = true
+      setMessage(null)
+      void active.refetch()
+    },
+    onRefetch: () => void active.refetch(),
+  })
+
   // The h1 of the next state is mounted after the state change, so focus moves in an effect (SPL-A11Y-3).
   useEffect(() => {
     if (focusHeadingPending.current && active.data === null) {
       headingRef.current?.focus()
       focusHeadingPending.current = false
     }
-  }, [message, active.data])
+  }, [message, active.data, subTab])
+
+  // Keeper sub-routes need a Keeper and a Scene; anything else lands on Run (21.1, SPL-UX-48).
+  const redirect = needsSubTabRedirect(subTab, campaign.data !== undefined, isKeeper, active.data)
+  useEffect(() => {
+    if (redirect) {
+      void navigate({ to: '/campaigns/$campaignId/active-scene', params: { campaignId }, replace: true })
+    }
+  }, [redirect, navigate, campaignId])
 
   if (active.isError) {
     return <LoadFailed onRetry={() => void active.refetch()} />
@@ -55,7 +93,7 @@ export function ActiveScenePage({ campaignId }: ActiveScenePageProps) {
     <SidePanelScopeProvider>
       <div className="flex flex-col gap-6">
         <p role="status" className="text-sm empty:hidden">
-          {message ?? (announcement.sequence > 0 ? announcement.message : navigationMessage)}
+          {pageStatusMessage(message, announcement, navigationMessage)}
         </p>
         <p aria-live="polite" className="sr-only">
           {revealAnnouncement.message}
@@ -63,8 +101,10 @@ export function ActiveScenePage({ campaignId }: ActiveScenePageProps) {
         <ActiveSceneBody
           campaignId={campaignId}
           isKeeper={isKeeper}
-          scene={active.data}
+          scene={scene}
+          subTab={subTab}
           headingRef={headingRef}
+          flow={flow}
           onFinished={(title) => {
             focusHeadingPending.current = true
             setMessage(`${title} finished.`)
@@ -75,22 +115,44 @@ export function ActiveScenePage({ campaignId }: ActiveScenePageProps) {
             void active.refetch()
           }}
           onPresentSaved={() => setMessage('Investigators present saved.')}
-          onRevealed={(revealMessage) => {
-            // If the Scene finished meanwhile, the refetch shows "No Active Scene", the Reveal's trigger is gone, and focus goes to the h1.
-            focusHeadingPending.current = true
-            setMessage(revealMessage)
-          }}
-          onSceneFinished={() => {
-            focusHeadingPending.current = true
-            setMessage(null)
-            void active.refetch()
-          }}
-          onRefetch={() => void active.refetch()}
+          onFinishedMeanwhile={() => void active.refetch()}
         />
         <ActiveScenePanel campaignId={campaignId} headingRef={headingRef} />
       </div>
     </SidePanelScopeProvider>
   )
+}
+
+/** A Keeper sub-route without a Keeper or a Scene lands on Run, replacing history (SPL-UX-48). */
+function needsSubTabRedirect(subTab: ActiveSceneSubTab, roleKnown: boolean, isKeeper: boolean, scene: ActiveScene | null | undefined): boolean {
+  if (subTab === 'run' || !roleKnown || scene === undefined) {
+    return false
+  }
+  return !isKeeper || scene === null
+}
+
+/** The status line: the latest local message wins, then the newest announcement, then the navigation message. */
+function pageStatusMessage(
+  message: string | null,
+  announcement: { sequence: number; message: string },
+  navigationMessage: string | undefined,
+): string | undefined {
+  return message ?? (announcement.sequence > 0 ? announcement.message : navigationMessage)
+}
+
+/** The reveal dialog's text: the open target's, or blank while no dialog is open. */
+function dialogText(target: RevealTarget | null): { title: string; summary: string } {
+  return { title: target?.title ?? '', summary: target?.summary ?? '' }
+}
+
+/** The nav counts for a Keeper Scene: subjects still to reveal, Keeper-only subjects, and all Reveals. */
+function keeperSubTabCounts(material: Scene, scene: KeeperActiveScene): ActiveSceneSubTabCounts {
+  const reference = keeperReferenceSubjects(material.handouts, material.nonPlayerEntityLinks)
+  return {
+    toReveal: toRevealSubjects(material.handouts, material.nonPlayerEntityLinks, scene.reveals, scene.investigatorsPresent).length,
+    reference: reference.handouts.length + reference.links.length,
+    revealed: scene.reveals.length,
+  }
 }
 
 function LoadFailed({ onRetry }: { onRetry: () => void }) {
@@ -118,35 +180,76 @@ interface ActiveSceneBodyProps {
   campaignId: string
   isKeeper: boolean
   scene: ActiveScene | null
+  subTab: ActiveSceneSubTab
   headingRef: RefObject<HTMLHeadingElement | null>
+  flow: ReturnType<typeof useRevealFlow>
   onFinished: (title: string) => void
   onAlreadyFinished: () => void
   onPresentSaved: () => void
-  onRevealed: (message: string) => void
-  onSceneFinished: () => void
-  onRefetch: () => void
+  onFinishedMeanwhile: () => void
 }
 
-function ActiveSceneBody({ campaignId, isKeeper, scene, headingRef, onFinished, onAlreadyFinished, onPresentSaved, onRevealed, onSceneFinished, onRefetch }: ActiveSceneBodyProps) {
+function ActiveSceneBody({ campaignId, isKeeper, scene, subTab, headingRef, flow, onFinished, onAlreadyFinished, onPresentSaved, onFinishedMeanwhile }: ActiveSceneBodyProps) {
   if (scene === null) {
     return <NoActiveScene campaignId={campaignId} isKeeper={isKeeper} headingRef={headingRef} />
   }
 
-  if (scene.kind === 'keeper') {
-    return (
-      <ActiveSceneKeeperView
-        campaignId={campaignId}
-        scene={scene}
-        headingRef={headingRef}
-        onFinished={onFinished}
-        onAlreadyFinished={onAlreadyFinished}
-        onPresentSaved={onPresentSaved}
-        onRevealed={onRevealed}
-        onSceneFinished={onSceneFinished}
-        onRefetch={onRefetch}
-      />
-    )
+  if (scene.kind !== 'keeper') {
+    return <ActiveScenePlayerView campaignId={campaignId} scene={scene} headingRef={headingRef} />
   }
 
-  return <ActiveScenePlayerView campaignId={campaignId} scene={scene} headingRef={headingRef} />
+  return (
+    <KeeperSubTabs
+      campaignId={campaignId}
+      scene={scene}
+      subTab={subTab}
+      headingRef={headingRef}
+      flow={flow}
+      onFinished={onFinished}
+      onAlreadyFinished={onAlreadyFinished}
+      onPresentSaved={onPresentSaved}
+      onFinishedMeanwhile={onFinishedMeanwhile}
+    />
+  )
+}
+
+interface KeeperSubTabsProps {
+  campaignId: string
+  scene: KeeperActiveScene
+  subTab: ActiveSceneSubTab
+  headingRef: RefObject<HTMLHeadingElement | null>
+  flow: ReturnType<typeof useRevealFlow>
+  onFinished: (title: string) => void
+  onAlreadyFinished: () => void
+  onPresentSaved: () => void
+  onFinishedMeanwhile: () => void
+}
+
+function KeeperSubTabs({ campaignId, scene, subTab, headingRef, flow, onFinished, onAlreadyFinished, onPresentSaved, onFinishedMeanwhile }: KeeperSubTabsProps) {
+  const material = useScene(campaignId, scene.scenarioId, scene.sceneId, true)
+  const counts = material.data ? keeperSubTabCounts(material.data, scene) : null
+  const dialog = dialogText(flow.target)
+  const alreadyRevealedIds = flow.target === null ? new Set<string>() : new Set(recipientsOfSubject(scene.reveals, flow.target.subjectId, scene.investigatorsPresent).map((recipient) => recipient.id))
+
+  return (
+    <>
+      <ActiveSceneHeader campaignId={campaignId} scene={scene} compact={subTab !== 'run'} headingRef={headingRef} onFinished={onFinished} onAlreadyFinished={onAlreadyFinished} />
+      <ActiveSceneNav campaignId={campaignId} current={subTab} counts={counts} />
+      <ActiveSceneTabContext.Provider value={{ campaignId, scene, onReveal: flow.open, onPresentSaved, onFinishedMeanwhile }}>
+        <Outlet />
+      </ActiveSceneTabContext.Provider>
+      <RevealDialog
+        open={flow.target !== null}
+        title={dialog.title}
+        summary={dialog.summary}
+        investigators={scene.investigatorsPresent}
+        alreadyRevealedIds={alreadyRevealedIds}
+        pending={flow.pending}
+        refusal={flow.refusal ? { message: flow.refusal } : null}
+        onConfirm={flow.confirm}
+        onCancel={flow.cancel}
+        onCloseAutoFocus={flow.returnFocus}
+      />
+    </>
+  )
 }

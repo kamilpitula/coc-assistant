@@ -39,7 +39,7 @@ export function revealRefusalFor(error: unknown, title: string): string | null {
 }
 
 interface RevealFlowCallbacks {
-  /** The page's status message: "{title} revealed to {names}.". */
+  /** The page's status message: "{title} revealed to {names}." plus " Moved to Revealed." when the subject completed. */
   onRevealed: (message: string) => void
   /** The Scene was finished meanwhile and the dialog was closed: the page refetches and focuses its heading. */
   onSceneFinished: () => void
@@ -47,19 +47,29 @@ interface RevealFlowCallbacks {
   onRefetch: () => void
 }
 
+/** What the dialog opener knows: the fallback focus chain and the completion baseline (specs/scene-play/ux.md 21.7). */
+export interface RevealOpenContext {
+  /** Investigators that already received the target when the dialog opened. */
+  alreadyRevealedIds: string[]
+  /** Element ids to try in order when the trigger is gone: next title, previous title, sub-tab h2. */
+  fallbackIds: string[]
+}
+
 /**
- * The Keeper's reveal dialog flow (specs/scene-play/ux.md section 13): which subject is being revealed, the Reveal in flight, the
+ * The Keeper's reveal dialog flow (specs/scene-play/ux.md sections 13 and 21.7): which subject is being revealed, the Reveal in flight, the
  * refusal to show, and where focus goes when the dialog closes. A 409 leads to the no-Active-Scene state when the dialog is closed;
  * a 400 refetches the Scene and keeps the dialog open.
  */
-export function useRevealFlow(campaignId: string, present: InvestigatorPresent[], callbacks: RevealFlowCallbacks) {
+export function useRevealFlow(campaignId: string, present: InvestigatorPresent[] = [], callbacks: RevealFlowCallbacks) {
   const reveal = useRevealToInvestigators(campaignId)
   const [target, setTarget] = useState<RevealTarget | null>(null)
   const triggerId = useRef<string | null>(null)
+  const context = useRef<RevealOpenContext>({ alreadyRevealedIds: [], fallbackIds: [] })
 
-  const open = (next: RevealTarget) => {
+  const open = (next: RevealTarget, nextContext: RevealOpenContext = { alreadyRevealedIds: [], fallbackIds: [] }) => {
     reveal.reset()
     triggerId.current = next.triggerId
+    context.current = nextContext
     setTarget(next)
   }
 
@@ -78,12 +88,14 @@ export function useRevealFlow(campaignId: string, present: InvestigatorPresent[]
       return
     }
     const names = joinNames(present.filter((investigator) => investigatorIds.includes(investigator.id)).map((investigator) => investigator.name))
+    const received = new Set([...context.current.alreadyRevealedIds, ...investigatorIds])
+    const completed = present.every((investigator) => received.has(investigator.id))
     reveal.mutate(
       { subjectType: target.subjectType, subjectId: target.subjectId, investigatorIds },
       {
         onSuccess: () => {
           setTarget(null)
-          callbacks.onRevealed(`${target.title} revealed to ${names}.`)
+          callbacks.onRevealed(completed ? `${target.title} revealed to ${names}. Moved to Revealed.` : `${target.title} revealed to ${names}.`)
         },
         onError: (error) => {
           if (error instanceof RevealSubjectRefusedError || error instanceof RevealInvestigatorsRefusedError) {
@@ -94,11 +106,19 @@ export function useRevealFlow(campaignId: string, present: InvestigatorPresent[]
     )
   }
 
-  /** Focus returns to the "Reveal..." button that opened the dialog, unless the Scene is gone. */
+  /**
+   * Focus returns to the "Reveal..." button that opened the dialog; when the subject left its list the trigger is gone, so focus
+   * moves to the next entry's title, then the previous one, then the sub-tab h2, and never lands on body (SPL-A11Y-17).
+   */
   const returnFocus = (event: Event) => {
     event.preventDefault()
-    if (triggerId.current) {
-      document.getElementById(triggerId.current)?.focus()
+    const ids = [triggerId.current, ...context.current.fallbackIds].filter((id): id is string => id !== null)
+    for (const id of ids) {
+      const element = document.getElementById(id)
+      if (element) {
+        element.focus()
+        return
+      }
     }
   }
 
