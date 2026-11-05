@@ -8,6 +8,7 @@ import { useCluesRead } from '@/scene-play/hooks/useCluesRead'
 import { UNNAMED_INVESTIGATOR } from '@/scene-play/services/revealPresentation'
 import type { Clues } from '@/scene-play/types/Reveal'
 import { BackLink } from '@/shared/components/back-link/back-link'
+import type { BackLinkTarget } from '@/shared/components/back-link/backLinkOrigin'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 
@@ -73,7 +74,9 @@ function NoClues({ campaignId, from }: { campaignId: string; from?: string }) {
 
 function CluesBackLink({ campaignId, investigatorId, name, from }: { campaignId: string; investigatorId?: string; name?: string; from?: string }) {
   const originLabel = useOriginBackLink(campaignId)
-  const fallback =
+  // Annotated so each branch checks fresh against the target (a bare ternary normalizes the union with an
+  // `investigatorId?: undefined` member, which the index signature rejects); both branches carry only strings.
+  const fallback: BackLinkTarget =
     investigatorId === undefined
       ? { label: 'your Campaign', to: '/campaigns/$campaignId' as const, params: { campaignId } }
       : { label: name ?? UNNAMED_INVESTIGATOR, to: '/campaigns/$campaignId/investigators/$investigatorId' as const, params: { campaignId, investigatorId } }

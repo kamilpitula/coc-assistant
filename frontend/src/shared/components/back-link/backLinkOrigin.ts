@@ -5,7 +5,7 @@ export const ORIGINS = ['active-scene'] as const
 
 export type Origin = (typeof ORIGINS)[number]
 
-const originSchema = z.enum(ORIGINS).catch(undefined)
+const originSchema = z.enum(ORIGINS).optional().catch(undefined)
 
 /**
  * The search params of a page with an origin back link: `from` names where the viewer came from. Unknown or missing
@@ -21,7 +21,7 @@ export type OriginSearch = z.infer<typeof originSearchSchema>
 export interface BackLinkTarget {
   label: string
   to: string
-  params?: Record<string, string>
+  params?: Record<string, string | undefined>
   search?: Record<string, string>
 }
 

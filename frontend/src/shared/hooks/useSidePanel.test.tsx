@@ -1,7 +1,8 @@
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, type MouseEvent } from 'vitest'
+import type { MouseEvent } from 'react'
+import { describe, expect, it } from 'vitest'
 
 import { useSidePanel } from './useSidePanel'
 import { sidePanelSearchSchema } from '@/shared/components/side-panel/sidePanelParams'

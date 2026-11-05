@@ -1,14 +1,15 @@
 import { ArrowLeft } from 'lucide-react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
-import { useOriginBackLink } from '@/campaign-play/hooks/useOriginBackLink'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 
 import { BackLink } from './back-link'
 
 function BackLinkStory({ from }: { from?: string }) {
-  const originLabel = useOriginBackLink('story-campaign')
+  // The origin label is hardcoded: the shared story never imports a slice hook (the Active Scene title comes from
+  // `campaign-play/hooks/useOriginBackLink` in the real pages). It matches that hook's degraded value.
+  const originLabel = 'the Active Scene'
 
   return (
     <StoryMsal tokens="pending">

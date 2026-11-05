@@ -1,7 +1,7 @@
-import { toPanelSearch, type OpenPanel } from './sidePanelParams'
+import { sidePanelSearchSchema, toPanelSearch, type OpenPanel } from './sidePanelParams'
 
-/** The search param keys a panel owns; closing without the marker strips exactly these. */
-const SIDE_PANEL_SEARCH_KEYS = ['panel', 'investigator', 'link', 'handout', 'reveal'] as const
+/** The search param keys a panel owns, derived from the schema so a panel key needs one edit; closing without the marker strips exactly these. */
+const SIDE_PANEL_SEARCH_KEYS = Object.keys(sidePanelSearchSchema.shape) as (keyof typeof sidePanelSearchSchema.shape)[]
 
 /**
  * The navigation state a panel open or close carries: the app's status message plus the marker that says this entry

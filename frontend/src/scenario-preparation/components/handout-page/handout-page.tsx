@@ -17,6 +17,7 @@ import { SceneFinishedError } from '@/scenario-preparation/services/sceneApi'
 import { isFileHandout, type Handout } from '@/scenario-preparation/types/Handout'
 import type { HandoutOwnerContext } from '@/scenario-preparation/types/HandoutOwnerContext'
 import { BackLink } from '@/shared/components/back-link/back-link'
+import type { BackLinkTarget } from '@/shared/components/back-link/backLinkOrigin'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 
@@ -149,11 +150,16 @@ function HandoutDetail({ owner, context, handout, edit, from }: HandoutDetailPro
 
 function HandoutBackLink({ owner, context, from }: { owner: HandoutOwner; context: HandoutOwnerContext; from?: string }) {
   const originLabel = useOriginBackLink(owner.campaignId)
+  const ownerPage = describeHandoutOwner(owner).ownerPage
+  // Annotated like the Clues fallback: the owner page is a union of two page shapes, and the origin target joins the
+  // generic only through the shared target type. The params are re-spread into a fresh literal: the declared
+  // page-param interfaces carry no index signature.
+  const fallback: BackLinkTarget = { ...ownerPage, label: `the ${context.ownerLabel}`, params: { ...ownerPage.params } }
 
   return (
     <BackLink
       from={from}
-      fallback={{ ...describeHandoutOwner(owner).ownerPage, label: `the ${context.ownerLabel}` }}
+      fallback={fallback}
       originTargets={{
         'active-scene': { label: originLabel, to: '/campaigns/$campaignId/active-scene' as const, params: { campaignId: owner.campaignId } },
       }}

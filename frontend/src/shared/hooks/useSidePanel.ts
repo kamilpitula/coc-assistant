@@ -9,6 +9,10 @@ import { useSidePanelScope } from '@/shared/components/side-panel/side-panel-sco
  * comes from the host route's `validateSearch` params, opening pushes an entry with the history-state marker (or
  * replaces the open panel's entry), and closing goes back with the marker or replaces without it. Neither direction
  * resets the scroll or remounts the page, and the current navigation state (e.g. a status message) is carried forward.
+ *
+ * The hook stays on the current route by design (it runs on every panel host route), so `to` is omitted and only the
+ * search is rewritten. Without `to` this router version infers the search option as `never` (a typing quirk, not a
+ * runtime constraint: any search object navigates), so the search values are cast at these two boundaries only.
  */
 export function useSidePanel() {
   const navigate = useNavigate()
@@ -21,7 +25,7 @@ export function useSidePanel() {
     triggerRef.current = trigger ?? null
     const navigation = openPanelNavigation(next, router.state.location.state, panel !== null)
     void navigate({
-      search: (previous) => ({ ...previous, ...navigation.search }),
+      search: ((previous: Record<string, unknown>) => ({ ...previous, ...navigation.search })) as never,
       state: navigation.state,
       replace: navigation.replace,
       resetScroll: false,
@@ -33,7 +37,7 @@ export function useSidePanel() {
     if (navigation.back) {
       router.history.back()
     } else {
-      void navigate({ search: navigation.search, state: navigation.state, replace: navigation.replace, resetScroll: false })
+      void navigate({ search: navigation.search as never, state: navigation.state, replace: navigation.replace, resetScroll: false })
     }
   }
 
