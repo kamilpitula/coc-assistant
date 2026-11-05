@@ -88,6 +88,14 @@ step below and create no branch or commit unless asked. The convention is
 - **Work only in your own worktree.** `isolation: worktree` puts you on a
   branch in a separate checkout. Never touch the human's working tree, and
   never stash, reset, or edit their uncommitted changes.
+- **Run long commands in the foreground.** Installs (`npm ci`), test suites,
+  and E2E runs run in the foreground with a long timeout. Never end your turn
+  to wait for a background job; ending the turn ends your run and forces a
+  report before the check finishes.
+- **Worktree guard.** Your git commands may target only your own worktree.
+  The guard refuses shell variables as arguments, `cd` into another
+  worktree, `git -C <other>`, and `--work-tree`. Use literal paths and one
+  simple command per call.
 - **Escalate machine and server settings.** Changing machine or
   database-server settings (`sp_configure`, services, killing processes)
   needs an escalation to the human first. The one reviewed exception is the
@@ -212,7 +220,13 @@ change is not tactical.
 ## 4. Verify - full suite, not just what you just wrote
 
 Run the project's full test suite, build, and linter for every touched
-area. For backend changes that includes
+area, using the per-area commands in `.claude/agents/verifier.md`
+(Commands to run). For the frontend, type-check with `npm run typecheck`
+from `frontend/`; `npx tsc --noEmit` there checks no files and always
+passes. Do not pipe a check into `head` or `tail` and read `$?`; that is the
+pipe's exit code. For E2E in a fresh worktree, run `npm run build:backend`
+in `e2e/` first (`docs/e2e/authenticated-harness.md`). Backend changes also
+need
 `dotnet format backend/CocAssistant.slnx --verify-no-changes --no-restore`,
 the same command CI runs. Fix the actual cause of any failure and re-run;
 never adjust a check to pass. If you cannot get it clean, say so plainly.
@@ -240,6 +254,10 @@ disputed finding goes back to the human through the Orchestrator; never
 drop one silently.
 
 ## 6. Report
+
+Before reporting, run `git switch --detach` in your worktree. Your commits
+stay on the branch, and the next agent (or the human) can switch to it
+instead of hitting "already checked out".
 
 Always end with a structured summary; it is what the Orchestrator, the
 Verifier, and the human read instead of the transcript.

@@ -38,6 +38,30 @@ export default defineConfig([
     },
   },
   {
+    // ADR 0027: shared code imports no slice (campaign-play, scene-play, ...).
+    files: ['src/shared/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              // Add a new slice folder here.
+              group: [
+                '@/campaign-list/**',
+                '@/campaign-play/**',
+                '@/scenario-preparation/**',
+                '@/scene-play/**',
+                '@/routes/**',
+              ],
+              message: 'shared/ must not import a feature slice (ADR 0027). Pass the value in as a prop.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // Baseline: violations that predate these rules. Shrink this list; do not grow it.
     files: [
       'src/campaign-play/components/attention-list/attention-list.tsx',
