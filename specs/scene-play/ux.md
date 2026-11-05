@@ -315,6 +315,8 @@ Stories cover:
 ## 12. Keeper view additions (`active-scene-keeper-view`)
 
 > **Superseded by section 21 (PBI-SPL-006).** Kept as the record of PBI-SPL-002; the data, empty, and Revealed rules below are reused by section 21 where it says so.
+>
+> **Since PBI-SPL-005** the Handout and Non-Player Entity items below are material entries ([scenario-preparation ux](../scenario-preparation/ux.md) section 72): the title opens a side panel, "Show content" and the inline description and profile link are gone, and "Revealed to {names}" sits in the status slot.
 
 ```
 (header, Finish Scene, and Investigators present as section 3; each name followed by a "Clues" link)
@@ -503,7 +505,7 @@ Stories cover:
 - **SPL-UX-22** Confirming shows "{title} revealed to {names}.", adds "Revealed to {names}" to the item and an entry to "Revealed in this Scene", and returns focus to "Reveal...". If the Scene was finished meanwhile, the page shows "No Active Scene" with that status message.
 - **SPL-UX-23** Confirming with nothing checked shows "Choose at least one Investigator." and reveals nothing. "Cancel" reveals nothing.
 - **SPL-UX-24** Each refusal shows its section 17 message. A Scene finished meanwhile leads to "No Active Scene".
-- **SPL-UX-25** "Show Keeper notes" shows the notes. "Show content" shows a Handout's current content.
+- **SPL-UX-25** "Show Keeper notes" shows the notes. "Show content" shows a Handout's current content. (Amended by PBI-SPL-005: "Show content" is removed; a Handout's title opens its current content in the `handout` side panel, and a Non-Player Entity's title opens its description and profile in the `entity` side panel.)
 - **SPL-UX-26** A Player whose Investigator received a Reveal sees it under "Revealed to {name}", newest first, with its title, kind, and time.
 - **SPL-UX-27** Revealed content renders by kind:
   - Read-aloud shows in the read-aloud panel.

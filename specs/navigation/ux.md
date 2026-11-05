@@ -92,6 +92,7 @@ Arkham Nights
   - **Footer only when ready:** "Open full page" appears only in the ready state, not while loading, on failure, or when not found.
   - **Silent:** the panel announces nothing. While it is open, the page's own live regions are outside the modal and hidden from screen readers; nothing is re-announced on close.
   - **When panels render:** a panel on the Active Scene renders once the Active Scene query has loaded. `handout`, `entity`, and `reveal` need the Keeper's Active Scene; without it (a Player, or no Scene Active) they show "We couldn't find that." and send no request. `clues` works whether or not a Scene is Active.
+  - **Scene page host (PBI-SPL-005):** the Keeper's Scene page hosts `handout` and `entity` panels for its own Scene, whatever its status, once the Scene has loaded. Their "Open full page" carries no `from`. `clues` and `reveal` params open no panel there. A Player gets the Scene not-found page and no panel.
 
 ## 4. Back link with an origin (`back-link`)
 
@@ -149,7 +150,8 @@ New features follow this table. A feature that needs a new origin adds it to the
 | Campaign tabs | `campaign-header` (changed) | adds the Active Scene link and `live-badge` |
 | Live badge | `Badge` + dot | `shared/components/live-badge` |
 | Side panel | `Sheet` (shadcn) | `shared/components/ui/sheet.tsx` (on the installed `@radix-ui/react-dialog`); `shared/components/side-panel` holds `side-panel`, `side-panel-content` (kind line, `h2`, states, footer and action slot), `side-panel-scope` (opener and title focus refs), and the never-throwing `sidePanelSearchSchema`; `shared/hooks/useSidePanel` parses it and opens, replaces, and closes per the history rules ([ADR 0027](../../docs/adr/0027-side-panels-and-origins-are-url-search-params.md)) |
-| Panel host | `active-scene-panel` | `scene-play/components/active-scene-panel`; maps each panel type to its body (`clues-panel`, `handout-panel`, `entity-panel`, `reveal-panel`) |
+| Panel host | `active-scene-panel`, `scene-panel` | `scene-play/components/active-scene-panel` maps each panel type to its body (`clues-panel`, `handout-panel`, `entity-panel`, `reveal-panel`); `scenario-preparation/components/scene-panel` (PBI-SPL-005) maps `handout` and `entity` for the Scene page |
+| Scene-scoped panel bodies | `handout-panel-body`, `entity-panel-body` | `scenario-preparation/components`; take explicit Scene ids and an optional `from`; the `scene-play` `handout-panel` and `entity-panel` adapt the Active Scene to them ([ADR 0028](../../docs/adr/0028-panel-bodies-live-in-the-subject-slice-and-hosts-adapt.md)) |
 | Panel bodies | `clues-list`, profile view, `handout-preview`, `revealed-content` | extracted from their pages so page and panel render the same thing |
 | Heading levels | `HeadingOffsetProvider` | `shared/providers/heading-offset`; shifts the headings of an extracted body (and `RichTextView`) inside a panel; pages without a provider are unchanged |
 | Back link | `back-link` | `shared/components/back-link`; origin resolved by a pure `resolveBackLink(from, fallback, originTargets)`; the Active Scene label comes from `campaign-play/hooks/useOriginBackLink` |
@@ -176,5 +178,5 @@ New features follow this table. A feature that needs a new origin adds it to the
 
 ## 10. Open decisions and research gaps
 
-- **Rollout beyond the Active Scene:** other dead-end journeys (for example the Scene page's links to profiles and Handouts, and the Investigator review page) adopt sections 3 to 5 in follow-up PBIs after an audit.
+- **Rollout beyond the Active Scene:** other dead-end journeys (for example the Investigator review page) adopt sections 3 to 5 in follow-up PBIs after an audit. The Scene page adopted panels for Handouts and Non-Player Entities in PBI-SPL-005.
 - **More origins:** each new `from` value is added to section 4 when a feature needs it; there is no generic "previous page" value.

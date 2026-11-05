@@ -907,7 +907,7 @@ Stories cover:
 
 ## 37. Scene link UX acceptance criteria
 
-- **SP-UX-50** The Scene page shows "Non-Player Entities" after Keeper notes, listing each link's Player-facing name, its type and profile name (a link to the profile page), and its description or "No Player-facing description yet."; with no links, "No Non-Player Entities linked yet.".
+- **SP-UX-50** The Scene page shows "Non-Player Entities" after Keeper notes, listing each link's Player-facing name, its type and profile name (a link to the profile page), and its description or "No Player-facing description yet."; with no links, "No Non-Player Entities linked yet.". (Amended by PBI-SPL-005, section 72: the profile name is plain text and the description shows in the `entity` side panel opened from the title.)
 - **SP-UX-51** On a Prepared or Active Scene, "Link a Non-Player Entity" opens the link page, whose picker offers only this Campaign's Human NPCs and Mythos Creatures, by name with their type; search and the type filter narrow it and announce "{n} shown."; "Clear filters" restores it.
 - **SP-UX-52** Choosing an entity, entering a Player-facing name and optionally a description, and selecting "Link" returns to the Scene page with "{name} linked." and the link; the link and its formatting survive a reload.
 - **SP-UX-53** Submitting without an entity, with an empty name, with a name over 200 characters, or with a description over 204,800 bytes shows its message from section 35, focuses the first invalid field, and saves nothing; a server refusal shows its message at the field.
@@ -927,7 +927,7 @@ Stories cover:
 - **SP-A11Y-30** Each page has exactly one `h1`. The section is a `section` labelled by its `h2`, each link's Player-facing name is an `h3` in a `ul`, and description headings are only `h4` and `h5` (1.3.1, 2.4.6).
 - **SP-A11Y-31** The picker is a `fieldset` with the legend "Non-Player Entity"; the search has a visible label; the type filter is a `fieldset` with a legend; each radio is named by the profile name and described by its type and "Already in this Scene" (1.3.1, 4.1.2).
 - **SP-A11Y-32** "{n} shown." is announced through a polite live region (debounced 500 ms), never on first load; status messages use `role=status`; failures and refusals use `role=alert` (4.1.3).
-- **SP-A11Y-33** Focus moves to the link's `h3` after Link or Save, to the section `h2` after Unlink, back to "Unlink" when the dialog is cancelled, to the search field after "Clear filters", and to the first invalid field after a refused submit; it is never lost to `body` (2.4.3).
+- **SP-A11Y-33** Focus moves to the link's `h3` after Link or Save, to the section `h2` after Unlink, back to "Unlink" when the dialog is cancelled, to the search field after "Clear filters", and to the first invalid field after a refused submit; it is never lost to `body` (2.4.3). (Amended by PBI-SPL-005: after Link or Save, focus moves to the title button inside the link's `h3`.)
 - **SP-A11Y-34** "Edit" and "Unlink" include the Player-facing name in their accessible names; every control is at least 24 by 24 CSS pixels with a visible focus ring (2.4.6, 2.4.7, 2.5.8).
 - **SP-A11Y-35** Errors are text next to their field; fields have `aria-invalid="true"` and `aria-describedby`, and the picker's error is connected to its fieldset (3.3.1, 3.3.2).
 - **SP-A11Y-36** At 320px and at 200% zoom the section, the picker, and both pages fit without horizontal scrolling; long names wrap (1.4.10).
@@ -1114,7 +1114,7 @@ Stories cover:
 
 ## 47. Handout UX acceptance criteria
 
-- **SP-UX-64** The Scene page shows "Handouts" after Keeper notes, listing each Handout in stored order as a link with its kind and visibility as text; with none, it shows "No Handouts yet.".
+- **SP-UX-64** The Scene page shows "Handouts" after Keeper notes, listing each Handout in stored order as a link with its kind and visibility as text; with none, it shows "No Handouts yet.". (Amended by PBI-SPL-005, section 72: on the Scene page the title is a button that opens the `handout` side panel.)
 - **SP-UX-65** On a Prepared or Active Scene, "Add Handout" opens the add page. A valid submit returns to the Scene page with "{title} added.", the Handout is listed last, and its text and formatting show on its page after a reload.
 - **SP-UX-66** An empty or over-200-character title, no kind ("Choose a kind."), no visibility, empty text, or text over 204,800 bytes shows its message from section 45, focuses the first invalid field, and saves nothing. A server refusal shows its message at the field.
 - **SP-UX-67** The add page preselects neither a kind nor a visibility. Every Handout shows "Player-facing" or "Keeper-facing" in the list and on its page.
@@ -1133,7 +1133,7 @@ Stories cover:
 - **SP-A11Y-37** Each page has exactly one `h1`. The section is a `section` labelled by its `h2`, and the list is an `ol`. On the Handout page the content is under an `h2` ("Read-aloud" or "Text"), and the text's headings are only `h3` and `h4` (1.3.1, 2.4.6).
 - **SP-A11Y-38** Kind and visibility are text in badges, with `aria-hidden` icons. Read-aloud is identified by its visible "Read-aloud" heading, not by color. Panel text has a contrast of at least 4.5:1 and the rule at least 3:1 (1.3.1, 1.4.1, 1.4.3, 1.4.11).
 - **SP-A11Y-39** Kind and "Who can see it" are each a `fieldset` with a `legend`, holding a `radiogroup`. Each radio is named by its label and described by its sentence. A group error is text connected to its fieldset with `aria-describedby`. The text field follows SP-A11Y-12 (1.3.1, 3.3.1, 3.3.2, 4.1.2).
-- **SP-A11Y-40** Focus moves to the new Handout's link after Add; to Title on "Edit", and to "Edit" after Save or Cancel; to the Handouts `h2` after Delete; back to "Delete Handout" when the dialog is cancelled; to the `h1` after a refused delete or a save refused as Finished, once the refetch removes the control; to the first invalid field after a refused submit; and after moves as in SP-A11Y-15. It is never lost to `body` (2.4.3).
+- **SP-A11Y-40** Focus moves to the new Handout's link after Add; to Title on "Edit", and to "Edit" after Save or Cancel; to the Handouts `h2` after Delete; back to "Delete Handout" when the dialog is cancelled; to the `h1` after a refused delete or a save refused as Finished, once the refetch removes the control; to the first invalid field after a refused submit; and after moves as in SP-A11Y-15. It is never lost to `body` (2.4.3). (Amended by PBI-SPL-005: after Add, focus moves to the new Handout's title, a button on the Scene page and a link on the Item page.)
 - **SP-A11Y-41** "{title} added.", "Handout saved.", and "{title} deleted." are announced through `role=status` without moving focus. Moves use the section's polite live region, and nothing is announced on first load. Failures and refusals use `role=alert` (4.1.3).
 - **SP-A11Y-42** The move buttons include the title in their accessible names. Every control is at least 24 by 24 CSS pixels and has a visible focus ring (2.4.6, 2.4.7, 2.5.8).
 - **SP-A11Y-43** At 320px and at 200% zoom, the section, the Handout page, the read-aloud panel, and the form fit without horizontal scrolling, and long titles wrap (1.4.10).
@@ -1743,9 +1743,10 @@ One entry for a Scene's Handouts, Non-Player Entity links, and Items, used on th
   - Scene page, Non-Player Entity link: "Edit" and "Unlink" (section 32), unchanged.
   - Scene page, Item: "Unlink" (section 64.1), unchanged.
   - Active Scene: "Reveal..." or nothing (scene-play ux section 21).
-- **List:** entries are `li` rows in one bordered list, separated by a top border; the list keeps its existing `ol` or `ul`.
+- **List:** entries are `li` rows in one bordered list, separated by a top border; the list keeps its existing `ol` or `ul`, without visible numbers (the Handout `ol` drops its decimal markers so both contexts look the same; move announcements still name the position).
+- **Item page Handouts (section 65):** the same entry with the title as a link to the Handout page, because the Item page hosts no side panel; the focus target `id` stays on that link.
 - **What moves off the Scene page list:** the Non-Player Entity description (now in the `entity` panel) and the Handout title link (now the panel, whose "Open full page" leads to the Handout page with its Edit and Delete). Items keep their title link to the Item page until PBI-SPL-003 adds an `item` panel.
-- **Panels from the Scene page** have no "Reveal..." and open full pages without `from`; their structural back links already return to the Scene page.
+- **Panels from the Scene page** have no "Reveal..." and open full pages without `from`, so those pages show their structural back link: the Handout page returns to the Scene page; the Human NPC and Mythos Creature pages return to "Non-Player Entities", as they do from the Scene page today. No new origin is added.
 
 ### 72.1 UX acceptance criteria
 
