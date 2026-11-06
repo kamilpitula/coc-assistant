@@ -80,6 +80,7 @@ export function revealsToEveryonePresent(reveals: KeeperReveal[], investigatorsP
 }
 
 /** The Reveal identity of a subject: the Item's id for an Item, the Handout's id for an Item Handout. */
+// subjectIdOf stays an exhaustive switch while revealTargetOf groups the two Handout-shaped variants on purpose: same dialog target, different ids. This is a documented DRY exception.
 export function subjectIdOf(subject: ToRevealSubject): string {
   switch (subject.type) {
     case 'handout':

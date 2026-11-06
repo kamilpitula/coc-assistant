@@ -397,6 +397,7 @@ Players see it as it is now. A Reveal can't be undone.   (hint)
   - The Active Scene is refetched. If the Scene was finished meanwhile, the page shows section 4.3 and keeps the status message, and focus moves to the `h1` because the trigger is gone. The Reveal was made.
 - **Refusals** (`role=alert` inside the dialog):
   - **409:** "This Scene has been finished, so nothing more can be revealed." Closing the dialog shows the refetched no-Active-Scene state, with focus on the `h1`.
+  - **409 (race):** "{title} wasn't revealed: the Scene or the Item changed meanwhile." The Scene is refetched and the dialog stays open.
   - **400 at `subject`:** "This can't be revealed any more. It may have been changed or removed." The Scene is refetched.
   - **400 at `investigatorIds`:** "One of these Investigators is no longer present. Check the list and try again." The Active Scene is refetched, and the list updates and keeps choices by id.
   - **Any other failure:** "We couldn't reveal {title}. Try again."
