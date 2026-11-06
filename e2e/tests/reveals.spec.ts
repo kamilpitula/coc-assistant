@@ -14,14 +14,17 @@ import {
   LUCY,
   pageStatus,
   presentSection,
+  referencePath,
   revealAnnouncement,
   revealButton,
   revealDialog,
   revealedInScene,
+  revealedPath,
   revealedToSection,
   revealHandoutViaApi,
   setUpTable,
   startSceneViaApi,
+  toRevealPath,
   type Table,
 } from '../fixtures/scene-play'
 
@@ -80,7 +83,7 @@ test.describe('Revealing to Investigators', () => {
       await table.lucy.page.goto(activeScenePath(campaignId))
       await expect(table.harvey.page.getByText(`The Keeper hasn't revealed anything to ${HARVEY} yet.`)).toBeVisible()
       await expect(table.lucy.page.getByText(`The Keeper hasn't revealed anything to ${LUCY} yet.`)).toBeVisible()
-      await page.goto(activeScenePath(campaignId))
+      await page.goto(toRevealPath(campaignId))
 
       await test.step('SPL-UX-21: "Reveal..." opens "Reveal The front door" with everyone present checked', async () => {
         const dialog = await openReveal(page, FRONT_DOOR)
@@ -90,18 +93,21 @@ test.describe('Revealing to Investigators', () => {
         await expect(dialog.getByRole('checkbox', { name: HARVEY })).toBeFocused()
       })
 
-      await test.step('SPL-UX-22: revealing to Harvey alone says so, marks the item, lists the Reveal, and returns focus to "Reveal..."', async () => {
+      await test.step('SPL-UX-22: revealing to Harvey alone says so, marks the item, and returns focus to "Reveal..."', async () => {
         const dialog = revealDialog(page, FRONT_DOOR)
         await dialog.getByRole('checkbox', { name: LUCY }).uncheck()
         await dialog.getByRole('button', { name: 'Reveal', exact: true }).click()
         await expect(dialog).toBeHidden()
         await expect(pageStatus(page)).toHaveText(`${FRONT_DOOR} revealed to ${HARVEY}.`)
-        await expect(page.getByText(`Revealed to ${HARVEY}`, { exact: true })).toBeVisible()
-        const entry = revealedInScene(page).getByRole('listitem')
-        await expect(entry).toHaveCount(1)
-        await expect(entry.getByRole('heading', { level: 3 })).toHaveText(FRONT_DOOR)
-        await expect(entry).toContainText(`to ${HARVEY}`)
+        const entry = page.getByRole('region', { name: 'Handouts' }).getByRole('listitem').filter({ hasText: FRONT_DOOR })
+        await expect(entry).toContainText(`Revealed to ${HARVEY} . not yet: ${LUCY}`)
         await expect(revealButton(page, FRONT_DOOR)).toBeFocused()
+      })
+
+      await test.step('SPL-UX-43: with Lucy still missing it, the Revealed sub-tab stays empty', async () => {
+        await page.goto(revealedPath(campaignId))
+        await expect(revealedInScene(page).getByText('Nothing has been revealed in this Scene yet.')).toBeVisible()
+        await page.goto(toRevealPath(campaignId))
       })
 
       await test.step('SPL-UX-26, SPL-UX-28: Harvey sees it without reloading, with its title and kind, and hears it announced', async () => {
@@ -117,6 +123,10 @@ test.describe('Revealing to Investigators', () => {
         const dialog = await openReveal(page, PLAN)
         await dialog.getByRole('button', { name: 'Reveal', exact: true }).click()
         await expect(dialog).toBeHidden()
+        await expect(pageStatus(page)).toHaveText(`${PLAN} revealed to ${HARVEY} and ${LUCY}. Moved to Revealed.`)
+        await expect(page.getByRole('region', { name: 'Handouts' }).getByText(PLAN, { exact: true })).toHaveCount(0)
+        await expect(page.getByRole('link', { name: 'To reveal, 3' })).toBeVisible()
+        await expect(page.getByRole('link', { name: 'Revealed, 1' })).toBeVisible()
         const lucyArticles = revealedToSection(table.lucy.page, LUCY).getByRole('article')
         await expect(lucyArticles.getByRole('heading', { level: 3 })).toHaveText([PLAN])
         await expect(revealAnnouncement(table.lucy.page)).toHaveText(`New for ${LUCY}: ${PLAN}.`)
@@ -138,7 +148,7 @@ test.describe('Revealing to Investigators', () => {
     await startCorbitt(page, table, [table.harveyId, table.lucyId])
 
     try {
-      await page.goto(activeScenePath(table.prepared.campaignId))
+      await page.goto(toRevealPath(table.prepared.campaignId))
 
       await test.step('SPL-UX-21: after revealing to Harvey, the dialog marks him "(already revealed)" and checks only Lucy', async () => {
         const first = await openReveal(page, FRONT_DOOR)
@@ -160,7 +170,8 @@ test.describe('Revealing to Investigators', () => {
         await dialog.getByRole('button', { name: 'Cancel' }).click()
         await expect(dialog).toBeHidden()
         await expect(revealButton(page, FRONT_DOOR)).toBeFocused()
-        await expect(revealedInScene(page).getByRole('listitem')).toHaveCount(1)
+        await page.goto(revealedPath(table.prepared.campaignId))
+        await expect(revealedInScene(page).getByText('Nothing has been revealed in this Scene yet.')).toBeVisible()
       })
     } finally {
       await closeTable(table)
@@ -172,14 +183,20 @@ test.describe('Revealing to Investigators', () => {
     await startCorbitt(page, table, [table.harveyId])
 
     try {
-      await page.goto(activeScenePath(table.prepared.campaignId))
-
-      await test.step('SPL-UX-20: the Keeper-facing Handout is listed but offers no "Reveal...", while the Player-facing one does', async () => {
+      await test.step('SPL-UX-20: To reveal offers "Reveal..." on the Player-facing Handout but lists no Keeper-facing one', async () => {
+        await page.goto(toRevealPath(table.prepared.campaignId))
         const handouts = page.getByRole('region', { name: 'Handouts', exact: true })
-        await expect(handouts.getByRole('heading', { level: 3, name: SECRET_DOOR })).toBeVisible()
-        await expect(handouts.getByRole('listitem').filter({ hasText: SECRET_DOOR })).toContainText('Keeper-facing')
+        await expect(handouts.getByRole('heading', { level: 4, name: SECRET_DOOR })).toHaveCount(0)
         await expect(revealButton(page, SECRET_DOOR)).toHaveCount(0)
         await expect(revealButton(page, FRONT_DOOR)).toBeVisible()
+      })
+
+      await test.step('SPL-UX-45: Keeper reference lists the Keeper-facing Handout with no "Reveal..."', async () => {
+        await page.goto(referencePath(table.prepared.campaignId))
+        const handouts = page.getByRole('region', { name: 'Handouts', exact: true })
+        await expect(handouts.getByRole('heading', { level: 4, name: SECRET_DOOR })).toBeVisible()
+        await expect(handouts.getByRole('listitem').filter({ hasText: SECRET_DOOR })).toContainText('Keeper-facing')
+        await expect(revealButton(page, SECRET_DOOR)).toHaveCount(0)
       })
     } finally {
       await closeTable(table)
@@ -220,10 +237,14 @@ test.describe('Revealing to Investigators', () => {
       })
 
       await test.step('the Keeper still sees the Reveal as it was made', async () => {
-        await page.goto(activeScenePath(campaignId))
+        await page.goto(revealedPath(campaignId))
         await expect(revealedInScene(page).getByRole('heading', { level: 3, name: FRONT_DOOR })).toBeVisible()
         await revealedInScene(page).getByRole('button', { name: `Show what was revealed: ${FRONT_DOOR}` }).click()
-        await expect(revealedInScene(page).getByText(`${FRONT_DOOR} ${secret}`)).toBeVisible()
+        const panel = page.getByRole('dialog', { name: FRONT_DOOR })
+        await expect(panel).toBeVisible()
+        await expect(panel.getByText(`${FRONT_DOOR} ${secret}`)).toBeVisible()
+        await panel.getByRole('button', { name: 'Close' }).click()
+        await expect(panel).toBeHidden()
       })
     } finally {
       await closeTable(table)
@@ -236,7 +257,7 @@ test.describe('Revealing to Investigators', () => {
     await startCorbitt(page, table, [table.harveyId, table.lucyId])
 
     try {
-      await page.goto(activeScenePath(campaignId))
+      await page.goto(toRevealPath(campaignId))
 
       await test.step('SPL-UX-22: the Keeper reveals "The landlord" to Harvey from the Non-Player Entities section', async () => {
         const dialog = await openReveal(page, PREPARED.humanNpcLinkName)
@@ -352,7 +373,7 @@ test.describe('Revealing to Investigators', () => {
           data: { subject: { type: 'Handout', id: handoutId(table, FRONT_DOOR) }, investigatorIds: [table.harveyId] },
         })
         expect(response.status(), 'a Player reveal').toBe(404)
-        await page.goto(activeScenePath(campaignId))
+        await page.goto(revealedPath(campaignId))
         await expect(revealedInScene(page).getByText('Nothing has been revealed in this Scene yet.')).toBeVisible()
       })
     } finally {

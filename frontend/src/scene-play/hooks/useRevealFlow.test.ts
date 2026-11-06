@@ -5,7 +5,7 @@ import { RevealInvestigatorsRefusedError, RevealSceneFinishedError, RevealSubjec
 
 import { revealFailureMessage, revealRefusalFor, REVEAL_REFUSALS, useRevealFlow, type RevealTarget } from './useRevealFlow'
 
-// specs/scene-play/ux.md section 13; SPL-UX-22, SPL-UX-24, SPL-UX-36.
+// specs/scene-play/ux.md sections 13 and 21.7; SPL-UX-21, SPL-UX-22, SPL-UX-24, SPL-UX-36, SPL-UX-43, SPL-A11Y-17.
 const { mockUseReveal, mutate, reset } = vi.hoisted(() => ({ mockUseReveal: vi.fn(), mutate: vi.fn(), reset: vi.fn() }))
 vi.mock('@/scene-play/hooks/useReveals', () => ({ useRevealToInvestigators: mockUseReveal }))
 
@@ -61,8 +61,28 @@ describe('useRevealFlow', () => {
     act(() => result.current.confirm(['i1', 'i2']))
 
     expect(mutate).toHaveBeenCalledWith({ subjectType: 'Handout', subjectId: 'h1', investigatorIds: ['i1', 'i2'] }, expect.anything())
-    expect(callbacks.onRevealed).toHaveBeenCalledWith('The front door revealed to Harvey Walters and Lucy Ward.')
+    expect(callbacks.onRevealed).toHaveBeenCalledWith('The front door revealed to Harvey Walters and Lucy Ward. Moved to Revealed.')
     expect(result.current.target).toBeNull()
+  })
+
+  it('says "Moved to Revealed." when the chosen Investigators complete the subject (SPL-UX-43)', () => {
+    mutate.mockImplementation((_input: unknown, handlers: { onSuccess: () => void }) => handlers.onSuccess())
+    const { result } = setup()
+    act(() => result.current.open(target, { alreadyRevealedIds: ['i1'], fallbackIds: [] }))
+
+    act(() => result.current.confirm(['i2']))
+
+    expect(callbacks.onRevealed).toHaveBeenCalledWith('The front door revealed to Lucy Ward. Moved to Revealed.')
+  })
+
+  it('omits the suffix while someone present is still missing it', () => {
+    mutate.mockImplementation((_input: unknown, handlers: { onSuccess: () => void }) => handlers.onSuccess())
+    const { result } = setup()
+    act(() => result.current.open(target, { alreadyRevealedIds: [], fallbackIds: [] }))
+
+    act(() => result.current.confirm(['i1']))
+
+    expect(callbacks.onRevealed).toHaveBeenCalledWith('The front door revealed to Harvey Walters.')
   })
 
   it('does nothing when confirmed with no target', () => {
@@ -114,6 +134,24 @@ describe('useRevealFlow', () => {
     act(() => result.current.cancel())
     expect(callbacks.onSceneFinished).toHaveBeenCalledTimes(1)
     expect(reset).toHaveBeenCalled()
+  })
+
+  it.each([
+    { gone: ['reveal-trigger-h1'], expected: 'next-title' },
+    { gone: ['reveal-trigger-h1', 'next-title'], expected: 'prev-title' },
+    { gone: ['reveal-trigger-h1', 'next-title', 'prev-title'], expected: 'sub-tab' },
+  ])('falls back to the next title, then the previous one, then the sub-tab h2 when the trigger is gone (SPL-A11Y-17)', ({ gone, expected }) => {
+    document.body.innerHTML =
+      '<button id="reveal-trigger-h1">Reveal</button><h2 id="sub-tab" tabindex="-1">To reveal</h2><button id="prev-title">Prev</button><button id="next-title">Next</button>'
+    for (const id of gone) {
+      document.getElementById(id)?.remove()
+    }
+    const { result } = setup()
+    act(() => result.current.open(target, { alreadyRevealedIds: [], fallbackIds: ['next-title', 'prev-title', 'sub-tab'] }))
+
+    act(() => result.current.returnFocus(new Event('focus')))
+
+    expect(document.activeElement?.id).toBe(expected)
   })
 
   it('reports the in-flight state', () => {

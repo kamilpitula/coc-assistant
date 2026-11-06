@@ -3,8 +3,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { keeperCampaign, playerCampaign, STORY_CAMPAIGN_ID } from '@/campaign-play/test-support/rosterFixtures'
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import { handoutQueryKeys } from '@/scenario-preparation/services/handoutApi'
+import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
 import type { SceneHandoutOwner } from '@/scenario-preparation/services/handoutOwner'
 import type { Handout } from '@/scenario-preparation/types/Handout'
+import type { Scene } from '@/scenario-preparation/types/Scene'
 import { activeSceneQueryKeys } from '@/scene-play/services/activeSceneApi'
 import type { ActiveScene, KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
@@ -38,8 +40,20 @@ const keeperScene: KeeperActiveScene = {
   title: 'The Corbitt House',
   location: '',
   startedAt: null,
-  investigatorsPresent: [],
+  investigatorsPresent: [{ id: 'i-a', name: 'Dr. Ames' }],
   reveals: [],
+}
+const material: Scene = {
+  id: 'story-scene',
+  title: 'The Corbitt House',
+  status: 'Active',
+  startedAt: null,
+  finishedAt: null,
+  location: '',
+  keeperNotes: null,
+  nonPlayerEntityLinks: [],
+  itemLinks: [],
+  handouts: [{ id: 'story-handout', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door' }],
 }
 const playerScene: ActiveScene = { kind: 'present-player', title: 'The Corbitt House', location: '', investigatorsPresent: [], reveals: [] }
 
@@ -47,9 +61,10 @@ interface PanelStoryArgs {
   role?: 'Keeper' | 'Player'
   data?: Handout | null
   loading?: boolean
+  reveal?: boolean
 }
 
-function PanelStory({ role = 'Keeper', data = handout, loading = false }: PanelStoryArgs) {
+function PanelStory({ role = 'Keeper', data = handout, loading = false, reveal = false }: PanelStoryArgs) {
   return (
     <StoryMsal tokens="pending">
       <StoryProviders
@@ -60,11 +75,12 @@ function PanelStory({ role = 'Keeper', data = handout, loading = false }: PanelS
           }
           if (role === 'Keeper' && data !== undefined) {
             client.setQueryData(handoutQueryKeys.detail(owner, 'story-handout'), data)
+            client.setQueryData(sceneQueryKeys.detail(STORY_CAMPAIGN_ID, 'story-scenario', 'story-scene'), material)
           }
         }}
       >
         <SidePanelScopeProvider>
-          <HandoutPanel campaignId={STORY_CAMPAIGN_ID} handoutId="story-handout" />
+          <HandoutPanel campaignId={STORY_CAMPAIGN_ID} handoutId="story-handout" onReveal={reveal ? () => undefined : undefined} />
         </SidePanelScopeProvider>
       </StoryProviders>
     </StoryMsal>
@@ -80,6 +96,8 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Ready: Story = {}
+
+export const Revealable: Story = { args: { reveal: true } }
 
 export const UnknownHandout: Story = { args: { data: null } }
 

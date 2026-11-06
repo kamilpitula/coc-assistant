@@ -22,6 +22,7 @@ export const routerState = {
       focusHandoutsHeading?: boolean
     },
   },
+  matches: [] as { routeId: string }[],
 }
 
 function resolvePath(to: string, params: Record<string, string> = {}): string {
@@ -57,6 +58,7 @@ function MockLink({ to, params, search, children, className, onClick, 'aria-curr
 
 export const routerMock = {
   Link: MockLink,
+  Outlet: () => createElement('div', { 'data-testid': 'child-route' }),
   useNavigate: () => navigateSpy,
   useRouter: () => ({ history: { back: backSpy } }),
   useRouterState: ({ select }: { select: (state: typeof routerState) => unknown }) => select(routerState),

@@ -215,6 +215,11 @@ export async function closeTable(table: Table): Promise<void> {
 /** The Keeper's Active Scene page of the Campaign. */
 export const activeScenePath = (campaignId: string): string => `/campaigns/${campaignId}/active-scene`
 
+/** The Keeper's sub-tab pages of the Active Scene (specs/scene-play/ux.md section 21.1). */
+export const toRevealPath = (campaignId: string): string => `${activeScenePath(campaignId)}/to-reveal`
+export const referencePath = (campaignId: string): string => `${activeScenePath(campaignId)}/reference`
+export const revealedPath = (campaignId: string): string => `${activeScenePath(campaignId)}/revealed`
+
 /** Adds a Player-facing Image or Map Handout with an optional image description to the Scene as the Keeper, and returns its id. */
 export async function addPlayerFacingImageViaApi(
   request: APIRequestContext,
@@ -267,9 +272,9 @@ export function revealedToSection(page: Page, name: string): Locator {
   return page.getByRole('region', { name: `Revealed to ${name}`, exact: true })
 }
 
-/** The Keeper's "Revealed in this Scene" section. */
+/** The Keeper's "Revealed" sub-tab section. */
 export function revealedInScene(page: Page): Locator {
-  return page.getByRole('region', { name: 'Revealed in this Scene', exact: true })
+  return page.getByRole('region', { name: 'Revealed', exact: true })
 }
 
 /** The polite live region that announces a Reveal arriving. */

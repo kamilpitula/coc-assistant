@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ActiveScene, KeeperActiveScene } from '@/scene-play/types/ActiveScene'
-import type { Handout } from '@/scenario-preparation/types/Handout'
+import type { KeeperReveal } from '@/scene-play/types/Reveal'
+import type { Handout, HandoutSummary } from '@/scenario-preparation/types/Handout'
 import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { routerState } from '@/shared/test-support/routerMock'
 
@@ -11,15 +12,18 @@ import { HandoutPanel } from './handout-panel'
 
 // specs/navigation/ux.md section 3 (refinements G2, G5, G6, G8): the handout panel reads the Handout of the Keeper's Active
 // Scene, shows its badges and current content from h3, and links to the full page with ?from=active-scene.
-const { mockUseActive, mockUseHandout, refetch } = vi.hoisted(() => ({
+const { mockUseActive, mockUseHandout, mockUseScene, onReveal, refetch } = vi.hoisted(() => ({
   mockUseActive: vi.fn(),
   mockUseHandout: vi.fn(),
+  mockUseScene: vi.fn(),
+  onReveal: vi.fn(),
   refetch: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/scene-play/hooks/useActiveScene', () => ({ useActiveScene: mockUseActive }))
 vi.mock('@/scenario-preparation/hooks/useHandouts', () => ({ useHandout: mockUseHandout, useHandoutFile: vi.fn() }))
+vi.mock('@/scenario-preparation/hooks/useScenes', () => ({ useScene: mockUseScene }))
 
 const text = (value: string) => ({ type: 'text', version: 1, text: value, format: 0, style: '', detail: 0, mode: 'normal' })
 const content = {
@@ -45,11 +49,32 @@ const scene: KeeperActiveScene = {
 }
 const activeQuery = (data: ActiveScene | null | undefined) => ({ data, isError: false, isFetchedAfterMount: true, refetch: vi.fn() })
 const handoutQuery = (data: Handout | null | undefined, overrides: Record<string, unknown> = {}) => ({ data, isError: false, refetch, ...overrides })
+const materialQuery = (handouts: HandoutSummary[]) => ({ data: { handouts }, isError: false, refetch })
 
-function show(handoutId = 'h1') {
+const investigatorsPresent = [
+  { id: 'i1', name: 'Harvey Walters' },
+  { id: 'i2', name: 'Lucy Ward' },
+]
+
+function handoutReveal(recipientIds: string[]): KeeperReveal {
+  return {
+    revealId: `r-h1-${recipientIds.join('-')}`,
+    revealedAt: '2026-10-28T19:52:00Z',
+    subjectType: 'Handout',
+    title: 'A letter from Knott',
+    handoutKind: 'Text',
+    content: null,
+    file: null,
+    imageDescription: null,
+    subjectId: 'h1',
+    recipients: investigatorsPresent.filter((investigator) => recipientIds.includes(investigator.id)),
+  }
+}
+
+function show(handoutId = 'h1', reveal?: typeof onReveal) {
   return render(
     <SidePanelScopeProvider>
-      <HandoutPanel campaignId="c1" handoutId={handoutId} />
+      <HandoutPanel campaignId="c1" handoutId={handoutId} onReveal={reveal} />
     </SidePanelScopeProvider>,
   )
 }
@@ -60,6 +85,7 @@ describe('HandoutPanel', () => {
     routerState.location.state = {}
     mockUseActive.mockReturnValue(activeQuery(scene))
     mockUseHandout.mockReturnValue(handoutQuery(handout))
+    mockUseScene.mockReturnValue(materialQuery([{ id: 'h1', kind: 'Text', visibility: 'PlayerFacing', title: 'A letter from Knott' }]))
   })
 
   it('shows the kind line, the title, the badges, and the content from h3, with the full-page link (NAV-UX-4, NAV-UX-7)', () => {
@@ -119,5 +145,57 @@ describe('HandoutPanel', () => {
 
     expect(screen.getByText("We couldn't find that.")).toBeInTheDocument()
     expect(mockUseHandout).not.toHaveBeenCalled()
+  })
+
+  it('shows "Reveal..." in the footer for a Player-facing Handout that has not reached everyone present (SPL-UX-21)', async () => {
+    mockUseActive.mockReturnValue(activeQuery({ ...scene, investigatorsPresent, reveals: [] }))
+    show('h1', onReveal)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reveal A letter from Knott' }))
+
+    const headingId = screen.getByRole('heading', { level: 2 }).id
+    expect(onReveal).toHaveBeenCalledWith(
+      {
+        subjectType: 'Handout',
+        subjectId: 'h1',
+        title: 'A letter from Knott',
+        summary: 'Text . Player-facing',
+        triggerId: 'panel-reveal-trigger-h1',
+      },
+      { alreadyRevealedIds: [], fallbackIds: ['panel-reveal-trigger-h1', headingId] },
+    )
+  })
+
+  it('shows the reveal status and keeps the trigger after a partial reveal (SPL-UX-21)', async () => {
+    mockUseActive.mockReturnValue(activeQuery({ ...scene, investigatorsPresent, reveals: [handoutReveal(['i1'])] }))
+    show('h1', onReveal)
+
+    expect(screen.getByText('Revealed to Harvey Walters . not yet: Lucy Ward')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reveal A letter from Knott' }))
+    expect(onReveal).toHaveBeenCalledWith(expect.anything(), { alreadyRevealedIds: ['i1'], fallbackIds: expect.any(Array) })
+  })
+
+  it('shows the status but no trigger once everyone received the Handout (SPL-UX-21)', () => {
+    mockUseActive.mockReturnValue(activeQuery({ ...scene, investigatorsPresent, reveals: [handoutReveal(['i1', 'i2'])] }))
+    show('h1', onReveal)
+
+    expect(screen.getByText('Revealed to Harvey Walters and Lucy Ward')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reveal A letter from Knott' })).not.toBeInTheDocument()
+  })
+
+  it('shows no trigger for a Keeper-facing Handout (SPL-UX-21)', () => {
+    mockUseActive.mockReturnValue(activeQuery({ ...scene, investigatorsPresent, reveals: [] }))
+    mockUseScene.mockReturnValue(materialQuery([{ id: 'h1', kind: 'Text', visibility: 'KeeperFacing', title: 'A letter from Knott' }]))
+    show('h1', onReveal)
+
+    expect(screen.queryByRole('button', { name: 'Reveal A letter from Knott' })).not.toBeInTheDocument()
+  })
+
+  it('shows no trigger without a reveal flow (SPL-UX-21)', () => {
+    mockUseActive.mockReturnValue(activeQuery({ ...scene, investigatorsPresent, reveals: [] }))
+    show()
+
+    expect(screen.queryByRole('button', { name: 'Reveal A letter from Knott' })).not.toBeInTheDocument()
   })
 })

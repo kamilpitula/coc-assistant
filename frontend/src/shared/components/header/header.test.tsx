@@ -65,6 +65,14 @@ describe('Header', () => {
     expect(screen.getByText('CoC Assistant')).toBeInTheDocument()
   })
 
+  it('wraps the auth actions under the brand on narrow screens instead of scrolling sideways (SPL-A11Y-18)', () => {
+    signedIn(keeperOne)
+    render(<Header />)
+
+    expect(screen.getByRole('banner')).toHaveClass('flex-wrap')
+    expect(screen.getByRole('link', { name: /campaigns/i }).parentElement).toHaveClass('flex-wrap')
+  })
+
   it('renders Sign In and Sign Up buttons that trigger loginRedirect when signed out', async () => {
     signedOut()
     const user = userEvent.setup()

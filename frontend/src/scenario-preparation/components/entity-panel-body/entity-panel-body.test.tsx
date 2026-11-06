@@ -105,6 +105,24 @@ describe('EntityPanelBody', () => {
     expect(screen.getByRole('link', { name: 'Open full page' })).toHaveAttribute('href', '/campaigns/c1/mythos-creatures/m1')
   })
 
+  it('shows a status line and an action in the footer when the host passes them (SPL-UX-21)', () => {
+    render(
+      <SidePanelScopeProvider>
+        <EntityPanelBody
+          campaignId="c1"
+          scenarioId="p1"
+          sceneId="s1"
+          linkId="l1"
+          statusLine="Revealed to Harvey Walters . not yet: Lucy Ward"
+          action={<button type="button">Reveal...</button>}
+        />
+      </SidePanelScopeProvider>,
+    )
+
+    expect(screen.getByText('Revealed to Harvey Walters . not yet: Lucy Ward')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reveal...' })).toBeInTheDocument()
+  })
+
   it("reads the link from the given Scene and the profile by its type", () => {
     show()
 

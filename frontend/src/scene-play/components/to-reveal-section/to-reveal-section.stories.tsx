@@ -1,15 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { userEvent, within } from 'storybook/test'
 
 import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
 import type { Scene } from '@/scenario-preparation/types/Scene'
-import { paragraph, keeperReveal, readAloudReveal } from '@/scene-play/test-support/revealFixtures'
+import { paragraph } from '@/scene-play/test-support/revealFixtures'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
+import type { KeeperReveal } from '@/scene-play/types/Reveal'
 import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 
-import { SceneMaterialSection } from './scene-material-section'
+import { ToRevealSection } from './to-reveal-section'
 
 const active: KeeperActiveScene = {
   kind: 'keeper',
@@ -46,6 +46,20 @@ const material: Scene = {
   ],
 }
 
+const reveal = (overrides: Partial<KeeperReveal> = {}): KeeperReveal => ({
+  revealId: 'r1',
+  revealedAt: '2026-10-28T19:52:00Z',
+  subjectType: 'Handout',
+  title: 'The front door',
+  handoutKind: 'ReadAloud',
+  content: null,
+  file: null,
+  imageDescription: null,
+  subjectId: 'h1',
+  recipients: [{ id: 'i1', name: 'Harvey Walters' }],
+  ...overrides,
+})
+
 interface StoryArgs {
   scene?: KeeperActiveScene
   data?: Scene | null
@@ -58,7 +72,7 @@ function SectionStory({ scene = active, data = material, tokens = 'pending' }: S
       <StoryProviders seed={(client) => data && client.setQueryData(sceneQueryKeys.detail('story-campaign', scene.scenarioId, scene.sceneId), data)}>
         <SidePanelScopeProvider>
           <div className="flex max-w-2xl flex-col gap-6">
-            <SceneMaterialSection campaignId="story-campaign" scene={scene} onRevealed={() => undefined} onSceneFinished={() => undefined} onRefetch={() => undefined} />
+            <ToRevealSection campaignId="story-campaign" scene={scene} onReveal={() => undefined} />
           </div>
         </SidePanelScopeProvider>
       </StoryProviders>
@@ -67,27 +81,32 @@ function SectionStory({ scene = active, data = material, tokens = 'pending' }: S
 }
 
 const meta = {
-  title: 'ScenePlay/SceneMaterialSection',
+  title: 'ScenePlay/ToRevealSection',
   component: SectionStory,
 } satisfies Meta<typeof SectionStory>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const MixedVisibilities: Story = {}
+export const PartiallyRevealed: Story = { args: { scene: { ...active, reveals: [reveal()] } } }
 
-export const Empty: Story = { args: { data: { ...material, keeperNotes: null, handouts: [], nonPlayerEntityLinks: [] } } }
-
-export const Revealed: Story = { args: { scene: { ...active, reveals: [keeperReveal(readAloudReveal, 'h1', ['Harvey Walters'])] } } }
-
-export const LoadError: Story = { args: { data: null, tokens: 'failing' } }
-
-export const RevealDialogOpen: Story = {
-  play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Reveal The front door' }))
+export const Empty: Story = {
+  args: {
+    scene: {
+      ...active,
+      reveals: [
+        reveal({ subjectId: 'h1', recipients: [{ id: 'i1', name: 'Harvey Walters' }, { id: 'i2', name: 'Lucy Ward' }] }),
+        reveal({
+          revealId: 'r2',
+          subjectId: 'l1',
+          subjectType: 'NonPlayerEntity',
+          title: 'A shape in the cellar',
+          handoutKind: null,
+          recipients: [{ id: 'i1', name: 'Harvey Walters' }, { id: 'i2', name: 'Lucy Ward' }],
+        }),
+      ],
+    },
   },
 }
 
-export const At320px: Story = {
-  decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
-}
+export const LoadError: Story = { args: { data: null, tokens: 'failing' } }
