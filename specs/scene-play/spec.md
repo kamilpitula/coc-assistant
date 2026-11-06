@@ -7,29 +7,37 @@ Scene Play lets a Keeper run a prepared Scene at the table and lets Players expe
 
 ### Architecture
 - **Domain relationships:** A Campaign has at most one Active Scene. An Active or Finished Scene has a set of Investigators present and a list of Reveals. A Reveal has a subject (a Handout, a Non-Player Entity link, or an Item), a snapshot of the subject's Player-facing content as it was when revealed, the Investigators it reached, and a time. A Reveal of an Image, Document, or Map Handout snapshots the stored file's key, name, media type, size, and, for an Image or Map, its image description, and reads the file through a Scenario Preparation port; Scene Play never copies, overwrites, or deletes it ([ADR 0021](../../docs/adr/0021-handout-files-are-immutable-blobs-behind-a-storage-port.md)). An Investigator's Clues are every Reveal that reached it. An Item is held by at most one Investigator or by no one. An Item's Player-facing content is its name and Player-facing description ([scenario-preparation spec](../scenario-preparation/spec.md), Constraints).
-- **Ownership:** The Scene aggregate, its status, and its content stay in Scenario Preparation. Scene Play owns the use cases, the API, and the rules for the Investigators present, Reveals, Clues, and who holds an Item, and triggers Scene status transitions. The Investigators present and the Reveals are stored as child entities of the Scene aggregate in Scenario Preparation's database, and Scene Play reaches them through consumer-owned ports onto Scenario Preparation's `SceneLifecycleService`, so that finishing, starting, and choosing who is present are one transaction ([ADR 0024](../../docs/adr/0024-scene-play-runs-the-scene-aggregate-through-a-provider-command-service.md)). At most one Scene per Campaign is Active, enforced by a filtered unique index and a Scene version ([ADR 0025](../../docs/adr/0025-one-active-scene-per-campaign-through-a-filtered-index-and-a-scene-version.md)). The design is in the [PBI-SPL-001 design record](../../docs/scene-play/issues/01-start-and-finish-a-scene.design.md). Scenario Preparation reads who holds an Item through a consumer-owned port, so that it can refuse to delete a held Item or its Handouts ([ADR 0022](../../docs/adr/0022-items-are-guarded-by-play-usage-read-through-ports.md)); PBI-SPL-003 provides the port's adapter.
+- **Ownership:** The Scene aggregate, its status, and its content stay in Scenario Preparation. Scene Play owns the use cases, the API, and the rules for the Investigators present, Reveals, Clues, and who holds an Item, and triggers Scene status transitions. The Investigators present and the Reveals are stored as child entities of the Scene aggregate in Scenario Preparation's database, and Scene Play reaches them through consumer-owned ports onto Scenario Preparation's `SceneLifecycleService`, so that finishing, starting, and choosing who is present are one transaction ([ADR 0024](../../docs/adr/0024-scene-play-runs-the-scene-aggregate-through-a-provider-command-service.md)). At most one Scene per Campaign is Active, enforced by a filtered unique index and a Scene version ([ADR 0025](../../docs/adr/0025-one-active-scene-per-campaign-through-a-filtered-index-and-a-scene-version.md)). The design is in the [PBI-SPL-001 design record](../../docs/scene-play/issues/01-start-and-finish-a-scene.design.md). Who holds an Item is stored on the Item in Scenario Preparation's database. It changes only through a Scenario Preparation provider service that Scene Play calls, in the same transaction as the give's Reveal ([ADR 0029](../../docs/adr/0029-item-holders-live-on-the-item-and-change-through-a-provider-service.md)). Scenario Preparation reads it to refuse deleting a held Item or its Handouts ([ADR 0022](../../docs/adr/0022-items-are-guarded-by-play-usage-read-through-ports.md)). The design is in the [PBI-SPL-003 design record](../../docs/scene-play/issues/03-give-and-take-back-items.design.md).
 - **API Contracts:** Campaign members only; non-members and Campaigns that do not exist get 404 on every call. Keeper-only calls return 404 to a Player.
   - `POST /api/campaigns/{campaignId}/scenes/{sceneId}/start` - Keeper only. Body `{presentInvestigatorIds, finishActiveScene}`. Starts a Prepared Scene of any Scenario of the Campaign with the given Investigators present. 409 when the Scene is not Prepared, and 409 when another Scene is Active unless `finishActiveScene` is true, in which case the Active Scene is finished and the new one started in one transaction. 400 when `presentInvestigatorIds` is empty or names an Investigator that is not Approved in the Campaign.
   - `POST /api/campaigns/{campaignId}/active-scene/finish` - Keeper only. Finishes the Active Scene; 409 when there is none.
   - `PUT /api/campaigns/{campaignId}/active-scene/present-investigators` - Keeper only. Replaces the Investigators present with the same validation as starting.
   - `GET /api/campaigns/{campaignId}/active-scene` - 204 when no Scene is Active. The Keeper gets the full Active Scene with its Investigators present and Reveals. A Player whose Investigator is present gets the title, location, Investigators present by name, and the Reveals that reached their Investigator. A Player whose Investigator is not present gets only `{title, isPresent: false}`. The exact shapes, the error order, and the present-list validation are in the [PBI-SPL-001 design record](../../docs/scene-play/issues/01-start-and-finish-a-scene.design.md), Single-option decisions; the Reveal views in `reveals` are in the [PBI-SPL-002 design record](../../docs/scene-play/issues/02-reveal-to-investigators-and-clues.design.md), D5. A Player's Reveal view never carries the subject id or the recipients.
-  - `POST /api/campaigns/{campaignId}/active-scene/reveals` - Keeper only. Body `{subject: {type, id}, investigatorIds?}` where `type` is `Handout`, `NonPlayerEntity`, or `Item` and the subject belongs to the Active Scene (an Item belongs to it when the Scene links the Item). Before an Item or an Item's Handout can be revealed, an Item with a Reveal must also count as in play (ADR 0022). `investigatorIds` defaults to every Investigator present and may only name Investigators present. Returns the created Reveal as the Keeper sees it. 409 when no Scene was Active before the Reveal (nothing is revealed); 400 for a Keeper-facing Handout, a subject not on the Active Scene, or an empty, duplicate, or not-present `investigatorIds`. Until PBI-SPL-003, `type` `Item` is refused with 400 (PBI-SPL-002 design record, D5).
+  - `POST /api/campaigns/{campaignId}/active-scene/reveals` - Keeper only. Body `{subject: {type, id}, investigatorIds?}` where `type` is `Handout`, `NonPlayerEntity`, or `Item` and the subject belongs to the Active Scene (an Item belongs to it when the Scene links the Item, and a Handout of an Item belongs to it when the Scene links that Item). Before an Item or an Item's Handout can be revealed, an Item with a Reveal must also count as in play (ADR 0022). `investigatorIds` defaults to every Investigator present and may only name Investigators present. Returns the created Reveal as the Keeper sees it. 409 when no Scene was Active before the Reveal (nothing is revealed); 400 for a Keeper-facing Handout, a subject not on the Active Scene, or an empty, duplicate, or not-present `investigatorIds`. An Item Reveal snapshots the Item's name and Player-facing description.
   - `GET /api/campaigns/{campaignId}/reveals/{revealId}/file` - the Keeper, or a Player whose Approved Investigator the Reveal reached; streams the file snapshotted by the Reveal; 404 for anyone else and for a Reveal without a file ([ADR 0026](../../docs/adr/0026-revealed-files-are-served-by-scene-play-from-the-reveal-snapshot.md)).
   - `GET /api/campaigns/{campaignId}/investigators/mine/clues` - Player only; the caller's Investigator's name and Clues across the Campaign's Scenes, newest first, each with its Scene; 404 for a Player without an Approved Investigator.
   - `GET /api/campaigns/{campaignId}/investigators/{investigatorId}/clues` - Keeper only; the same for an Approved Investigator of the Campaign.
-  - `POST /api/campaigns/{campaignId}/items/{itemId}/give` - Keeper only. Body `{investigatorId}`; the Investigator becomes the holder and receives a Reveal of the Item.
-  - `POST /api/campaigns/{campaignId}/items/{itemId}/take-back` - Keeper only; the Item is held by no one. The former holder keeps the Clue.
-  - `GET /api/campaigns/{campaignId}/investigators/mine/items` - Player only; the Items the caller's Investigator holds.
+  - `POST /api/campaigns/{campaignId}/items/{itemId}/give` - Keeper only. Body `{investigatorId}`.
+    - Needs an Active Scene that links the Item, and the Investigator present.
+    - The Investigator becomes the holder and receives a Reveal of the Item in the Active Scene.
+    - Giving an Item someone else holds moves it; the former holder keeps the Clue.
+    - Errors: 404 for an Item not in the Campaign; 409 when no Scene is Active (nothing is given) or the Item changed meanwhile; 400 at `itemId` when the Active Scene doesn't link it; 400 at `investigatorId` when the Investigator isn't present or already holds it.
+    - Returns the created Reveal as the Keeper sees it ([PBI-SPL-003 design record](../../docs/scene-play/issues/03-give-and-take-back-items.design.md)).
+  - `POST /api/campaigns/{campaignId}/items/{itemId}/take-back` - Keeper only; the Item is held by no one, and the former holder keeps the Clue.
+    - Needs no Active Scene and no Investigator present, and creates no Reveal.
+    - Answers 204 also when no one held the Item; 404 for an Item not in the Campaign.
+  - `GET /api/campaigns/{campaignId}/investigators/mine/items` - Player only; the Items the caller's Investigator holds, newest first, each as it was when given (the give Reveal's snapshot). 404 for a Player without an Approved Investigator.
+  - `GET /api/campaigns/{campaignId}/investigators/{investigatorId}/items` - Keeper only; the same for an Approved Investigator of the Campaign, with each Item's id.
   - `GET /api/campaigns/{campaignId}/scene-history` - Active and Finished Scenes of every Scenario in the order they were started, each with its Scenario title, Scene title, and start and finish times. The Keeper gets every Reveal; a Player gets, per Scene, only the Reveals that reached their Investigator. Prepared Scenes never appear.
 - **Campaign Wall:** Starting a Scene and finishing a Scene each create a Public Wall Entry authored by the Keeper that names only the Scene title, through the Campaign Play Wall Entry behavior ([campaign-play spec](../campaign-play/spec.md), Wall Entry API). Reveals and Item changes create no Wall Entries.
 - **Live updates:** Extends the closed topic set of the Campaign hub ([ADR 0009](../../docs/adr/0009-live-updates-through-campaign-hub-with-invalidation-topics.md)); the publication policy decides each audience:
   - `activeScene` to `campaign:{campaignId}` when a Scene starts or finishes or the Investigators present change.
   - `sceneHistory` to `campaign:{campaignId}` when a Scene finishes.
-  - `myClues` to `account:{accountId}` of each Player whose Investigator a Reveal reached.
+  - `myClues` to `account:{accountId}` of each Player whose Investigator a Reveal reached, including the Investigator given an Item.
   - `sceneReveals` to `campaign:{campaignId}:keeper` when a Reveal is made or an Item changes holder.
-  - `myItems` to `account:{accountId}` of the Player whose Investigator receives or loses an Item.
+  - `myItems` to `account:{accountId}` of each Player whose Investigator gains or loses an Item.
   - `scenes` to `campaign:{campaignId}:keeper` when Scene content, the prepared order, links, or Items change.
-- **UX specification:** [ux.md](ux.md) covers starting, the Active Scene page, and the overview card (PBI-SPL-001), and Reveals, revealed content, and the Clues pages (PBI-SPL-002). The Active Scene redesign (PBI-SPL-006, PBI-SPL-007) is section 21: the Keeper's page is split into Run, To reveal, Keeper reference, and Revealed, with the Campaign Wall on Run, following the app-wide [navigation](../navigation/spec.md) pattern. Each later PBI with UI goes through the UX designer skill before it is built and extends it. Views: an Active Scene page for the Keeper (run controls) and for Players (what reached their Investigator, with a Map shown prominently and Read-aloud Handouts styled as read-aloud text), a Scene History page for every Campaign Member, an Investigator's Clues and Items, and an Active Scene card on the Campaign overview ([campaign-overview spec](../campaign-overview/spec.md)).
+- **UX specification:** [ux.md](ux.md) covers starting, the Active Scene page, and the overview card (PBI-SPL-001), and Reveals, revealed content, and the Clues pages (PBI-SPL-002). Items in play (PBI-SPL-003: giving, taking back, and revealing Items, and the Investigator's Items) are section 22. The Active Scene redesign (PBI-SPL-006, PBI-SPL-007) is section 21: the Keeper's page is split into Run, To reveal, Keeper reference, and Revealed, with the Campaign Wall on Run, following the app-wide [navigation](../navigation/spec.md) pattern. Each later PBI with UI goes through the UX designer skill before it is built and extends it. Views: an Active Scene page for the Keeper (run controls) and for Players (what reached their Investigator, with a Map shown prominently and Read-aloud Handouts styled as read-aloud text), a Scene History page for every Campaign Member, an Investigator's Clues and Items, and an Active Scene card on the Campaign overview ([campaign-overview spec](../campaign-overview/spec.md)).
 - **Dependencies:** Depends on Scenario Preparation for Scenes, Handouts, Non-Player Entity links, Items, and Scene status transitions; on Campaign Play for membership, Investigator approval, the Campaign Wall, and the Campaign hub; on Identity and Access for authentication.
 
 ### Constraints
@@ -43,6 +51,8 @@ Scene Play lets a Keeper run a prepared Scene at the table and lets Players expe
 - A Finished Scene may contain material that was never revealed; it stays Keeper-only.
 - Only the Keeper starts or finishes a Scene, changes the Investigators present, reveals, gives an Item, or takes it back. All are enforced server-side.
 - The Keeper sees every Investigator's Clues.
+- Giving an Item needs an Active Scene that links the Item and the Investigator present; taking it back needs neither (Refinement Protocol, 2026-11-06). Giving a held Item to another Investigator moves it, and giving it to its current holder is refused.
+- Giving reveals only the Item's name and Player-facing description, never its Handouts or Keeper notes. An Item's Player-facing Handouts reach Players only through their own Reveals.
 - Roll Requests, Combat, interactive maps, and Sanity rolls during play are outside this feature in v1. Each needs its rules in [docs/game-rules](../../docs/game-rules/README.md) first: skill rolls and difficulty levels during play, combat resolution, and Sanity rolls during play are listed there as not yet covered. Roll Request results will be Roll Records.
 
 ## Contract
@@ -156,6 +166,28 @@ Scenario: Keeper takes an Item back
   When the Keeper takes it back
   Then the Item is held by no one
   And Harvey's Player still has the Item's Clue
+
+Scenario: Giving a held Item to another Investigator moves it
+  Given "Harvey Walters" holds the Item "Walter Corbitt's diary"
+  And "Lucy Ward" is present in the Active Scene that links it
+  When the Keeper gives it to "Lucy Ward"
+  Then Lucy holds the Item and Harvey no longer does
+  And Harvey's Player still has the Item's Clue
+
+Scenario: Taking an Item back needs no Active Scene
+  Given "Harvey Walters" holds the Item "Walter Corbitt's diary" and no Scene is Active
+  When the Keeper takes it back
+  Then the Item is held by no one
+
+Scenario: An Item can only be given to an Investigator present
+  Given "The Corbitt House" is Active with only "Harvey Walters" present and links the Item "Walter Corbitt's diary"
+  When the Keeper gives the Item to "Lucy Ward"
+  Then the give is refused with 400 and no one holds the Item
+
+Scenario: Keeper reveals an Item's Handout
+  Given the Active Scene links the Item "Walter Corbitt's diary" with the Player-facing Handout "The last entry"
+  When the Keeper reveals "The last entry" to every Investigator present
+  Then the Players see "The last entry" and nobody holds the Item
 
 Scenario: Players see the Scene History filtered to their Clues
   Given "Meeting Knott" is Finished and "Harvey Walters" received one of its two Reveals

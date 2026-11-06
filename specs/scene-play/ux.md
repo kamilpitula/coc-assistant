@@ -309,7 +309,7 @@ Stories cover:
   - In "Investigators present", each name is followed by the link "Clues", with the accessible name "{name}'s Clues".
   - The Investigator review page of an Approved Investigator has the link "Clues".
 - The Clues pages keep the Campaign header with Overview as the current tab.
-- Items are not revealed in this PBI (PBI-SPL-003).
+- Items are not revealed in this PBI (PBI-SPL-003). (Superseded by section 22.)
 - **Since PBI-NAV-002** both "Clues" entry points on the Active Scene open the `clues` side panel ([navigation ux](../navigation/ux.md) section 3); the other entry points still navigate.
 
 ## 12. Keeper view additions (`active-scene-keeper-view`)
@@ -615,7 +615,7 @@ Handouts                                      (h3)
 Non-Player Entities                           (h3)
   The landlord                  (button)              [Reveal...]
   Human NPC: Mr. Knott
-Items                                         (h3, from PBI-SPL-003)
+Items                                         (h3, from PBI-SPL-003; section 22.1)
 ```
 
 - **What is listed:** Player-facing Handouts (stored order), Non-Player Entity links (link order), and from PBI-SPL-003 Items, each while the union of its Reveals' recipients does not include every Investigator present. The rule lives in one pure function, `isRevealedToEveryonePresent(subjectId, reveals, investigatorsPresent)`.
@@ -626,9 +626,9 @@ Items                                         (h3, from PBI-SPL-003)
 
 ### 21.5 Keeper reference
 
-- **What is listed:** Keeper-facing Handouts (stored order), then every Non-Player Entity link (link order), whatever has been revealed. From PBI-SPL-003, Items add their Keeper-facing material here.
-- **Entries:** the material entry in play context with no action; the title opens the `handout` or `entity` side panel.
-- **Hint:** "Only you see these: Keeper-facing Handouts and the profiles behind Non-Player Entities."
+- **What is listed:** Keeper-facing Handouts (stored order), then every Non-Player Entity link (link order), whatever has been revealed. From PBI-SPL-003, Items add their Keeper-facing material here, with "Give..." and "Take back" (section 22.2).
+- **Entries:** the material entry in play context with no action, except Items (section 22.2); the title opens the `handout`, `entity`, or `item` side panel.
+- **Hint:** "Only you see these: Keeper-facing Handouts and the profiles behind Non-Player Entities." (From PBI-SPL-003, section 22.2: "Only you see these: Keeper-facing Handouts, the profiles behind Non-Player Entities, and Items' Keeper notes.")
 - **Empty:** "Nothing Keeper-only in this Scene."
 
 ### 21.6 Revealed
@@ -693,7 +693,7 @@ Wall                                (h2)          Open the Wall
 - **SPL-UX-42** To reveal lists Player-facing material until it has reached every Investigator present; partly revealed entries show "Revealed to {names} . not yet: {names}".
 - **SPL-UX-43** Revealing a subject to the last Investigator present moves it from To reveal to Revealed, updates both counts, and says "Moved to Revealed.".
 - **SPL-UX-44** Adding an Investigator present returns every subject they haven't received to To reveal.
-- **SPL-UX-45** Keeper reference lists Keeper-facing Handouts and every Non-Player Entity, and offers no "Reveal...".
+- **SPL-UX-45** Keeper reference lists Keeper-facing Handouts and every Non-Player Entity, and offers no "Reveal...". (Amended by PBI-SPL-003: it also lists every linked Item and the Item's Keeper-facing Handouts, and offers "Give..." and "Take back" on Items, never "Reveal...".)
 - **SPL-UX-46** Titles, "Clues", and "Show what was revealed" open side panels ([navigation ux](../navigation/ux.md) section 3); the page beneath keeps its state.
 - **SPL-UX-47** "Finish Scene" is available on every sub-tab; Location and "Open in Scenario" show on Run only.
 - **SPL-UX-48** A Player sees no sub-navigation, and a Player opening a Keeper sub-route lands on `/active-scene`.
@@ -706,3 +706,199 @@ Wall                                (h2)          Open the Wall
 - **SPL-A11Y-16** Each sub-tab has the page `h1` and one `h2`; type groups are `h3` (1.3.1, 2.4.6).
 - **SPL-A11Y-17** Focus after a Reveal follows 21.7 and never lands on `body` (2.4.3).
 - **SPL-A11Y-18** At 320px and 200% zoom, the sub-navigation scrolls inside itself and Run is one column; the page body never scrolls sideways (1.4.10).
+
+## 22. Items in play (PBI-SPL-003)
+
+Selected at the PBI-SPL-003 UX gate (2026-11-06): **Keeper option A, Give and Take back on the material entry**, with **Player option P1, Items on the Clues page and panel and on the Player's Active Scene**. There was no prototype. Design record: [docs/scene-play/issues/03-give-and-take-back-items.design.md](../../docs/scene-play/issues/03-give-and-take-back-items.design.md).
+
+Alternatives considered:
+- **B, holder actions only in the `item` panel:** rejected. It adds a step for every give at the table, and it breaks the one-footer-action rule ([navigation ux](../navigation/ux.md) section 3).
+- **C, giving from the Investigator's side (the `clues` panel with an Item picker):** rejected. The give happens away from the material it concerns.
+- **P2, a separate Items page and `items` panel:** rejected. It adds a route, a panel type, and an entry point.
+
+Rules (spec Constraints):
+- **Giving** needs an Active Scene that links the Item and the Investigator present. It reveals the Item's name and Player-facing description to the new holder.
+- **Taking back** needs neither an Active Scene nor anyone present.
+- **A held Item given to someone else** moves; the former holder keeps the Clue.
+- **Revealing:** an Item's Player-facing Handouts are revealed on their own, like Scene Handouts.
+
+### 22.1 To reveal: Items
+
+```
+Items                                         (h3)
+  Walter Corbitt's diary        (button)      [Reveal...] [Give...]
+  Item
+  Revealed to Harvey Walters . not yet: Lucy Ward . Held by Harvey Walters
+  The last entry                (button)      [Reveal...]
+  Text . Player-facing . Item: Walter Corbitt's diary
+```
+
+- **What is listed:** the Items the Scene links, in link order. Each Item is followed by its Player-facing Handouts in stored order. Every entry stays listed until it has reached every Investigator present (`isRevealedToEveryonePresent`, section 21.4). A give's Reveal counts as a Reveal to the holder.
+- **Item entry:** the material entry ([scenario-preparation ux](../scenario-preparation/ux.md) section 72), with:
+  - **Title:** opens the `item` side panel (22.5).
+  - **Second line:** the badge "Item".
+  - **Status slot:** the reveal status line of section 21.4, then "Held by {name}" while someone holds it, joined by " . ".
+  - **Actions:** "Reveal..." (accessible name "Reveal {name}"), which opens the section 13 dialog unchanged, and "Give..." (accessible name "Give {name}").
+- **Item Handout entry:**
+  - **Second line:** `handout-badges`, then the muted text "Item: {name}".
+  - **Title:** opens the `handout` panel.
+  - **Action:** "Reveal..." (section 13).
+- **Below 640px:** the two actions wrap under the text.
+
+### 22.2 Keeper reference: Items
+
+- **What is listed:** after the Keeper-facing Handouts and the Non-Player Entity links, the `h3` "Items" lists every Item the Scene links, in link order, whatever has been revealed. Each Item is followed by its Keeper-facing Handouts, which show "Item: {name}" and have no action.
+- **Item entry:**
+  - **Status slot:** "Held by {name}" or "Held by no one".
+  - **Actions:** "Give..." (accessible name "Give {name}"), and "Take back" (accessible name "Take back {name}") while someone holds it.
+  - There is never "Reveal..." (SPL-UX-45).
+- **Hint:** "Only you see these: Keeper-facing Handouts, the profiles behind Non-Player Entities, and Items' Keeper notes."
+- **Count:** the sub-navigation count includes these entries.
+
+### 22.3 Give dialog (`give-item-dialog`, `Dialog`)
+
+```
+Give Walter Corbitt's diary           (dialog title)
+Item
+Give to                               (fieldset legend)
+Walter Corbitt's diary becomes theirs, and they receive it as a Clue. Taking it back later doesn't remove the Clue.   (hint)
+ ( ) Harvey Walters  (holds it)       (disabled)
+ ( ) Lucy Ward
+[Give]  Cancel
+```
+
+- **Choices:** radios over the Investigators present, in roster order. Nothing is chosen at first. The current holder shows "(holds it)" as muted text inside the label and is disabled.
+- **Held by someone else:** when someone holds the Item, the hint adds " {holder} holds it now and keeps the Clue.".
+- **Validation:** with nothing chosen, "Choose an Investigator." shows under the legend, the fieldset gets `aria-invalid`, and focus moves to the first enabled radio.
+- **Busy:** the button reads "Giving...", both buttons are disabled, and Escape and the overlay do not close the dialog.
+- **Success:**
+  - The dialog closes.
+  - The page's `role=status` paragraph says "{name} given to {investigator}.". When the Item has now reached every Investigator present, it adds " Moved to Revealed.".
+  - The Active Scene and the Scene are refetched.
+  - Focus follows section 21.7.
+- **Refusals** (`role=alert` inside the dialog):
+  - **409:** "{name} wasn't given: the Scene or the Item changed meanwhile." The page is refetched; a finished Scene leads to section 4.3, with focus on the `h1`.
+  - **400 at `itemId`:** "{name} is no longer part of this Scene." The Scene is refetched.
+  - **400 at `investigatorId`:** "That Investigator is no longer present or already holds {name}. Check the list and try again." The list is refetched and keeps the choice by id.
+  - **404:** "We couldn't find {name}. It may have been deleted."
+  - **Any other failure:** "We couldn't give {name}. Try again."
+- **Cancel:** returns focus to "Give...".
+
+### 22.4 Take back (`take-back-item-dialog`, `AlertDialog`)
+
+- **Dialog:**
+  - title "Take {name} back from {holder}?";
+  - description "{holder} keeps it among their Clues.";
+  - buttons "Cancel" and "Take back" ("Taking back..." while busy, both disabled).
+- **Offered:** on Keeper reference (22.2), on the Keeper's Clues page, and in the `clues` panel (22.7). It works with no Active Scene.
+- **Success:**
+  - The status is "{name} taken back from {holder}.".
+  - Focus moves to that entry's "Give..." on Keeper reference, or to the "Items {name} holds" heading on the Clues page and panel.
+- **Failure:** "We couldn't take {name} back. Try again." (`role=alert`). A 404 shows "We couldn't find {name}. It may have been deleted.".
+- **Taken back elsewhere:** taking back an Item that no one holds any more succeeds silently, and the refetch shows "Held by no one".
+- **Cancel:** returns focus to "Take back".
+
+### 22.5 Item side panel (`item`)
+
+- **Header:** the kind line "Item"; the `h2` is the Item's name.
+- **Body:**
+  - "What Players see" (`h3`): the Player-facing description, rendered from `h4`.
+  - "Held by {name}." or "Held by no one.", in muted text.
+  - "Handouts" (`h3`): the Item's Handouts in stored order, as titles with `handout-badges`, text only, or "No Handouts.".
+  - "Keeper notes" (`h3`), or "No Keeper notes yet.".
+- **Footer:**
+  - "Open full page" leads to `/campaigns/$campaignId/items/$itemId?from=active-scene`.
+  - On the Active Scene, the context action is "Reveal..." while the Item is listed in To reveal; otherwise there is none.
+- **Scene page:** the Scene page hosts the same panel for its linked Items, with no "Reveal..." and with "Open full page" without `from` (scenario-preparation ux section 72).
+- **States:** as [navigation ux](../navigation/ux.md) section 3.
+
+### 22.6 Item page
+
+- The muted line reads "Held by {name}." or "Held by no one." ([scenario-preparation ux](../scenario-preparation/ux.md) section 63.1). The name comes from the Approved Investigators; an unknown name is "Unnamed Investigator".
+- With `?from=active-scene`, the back link is "Back to {Active Scene title}"; otherwise it is "Back to Items".
+
+### 22.7 The Investigator's Items (`held-items-section`)
+
+```
+Items Harvey Walters holds            (h2; h3 in the panel)
+  Walter Corbitt's diary              (h3; h4 in the panel)
+  Given 28 Oct 2026, 19:58            (muted)
+  [Show]                              (accessible name "Show Walter Corbitt's diary")
+  [Take back]                         (Keeper only)
+```
+
+- **Where:**
+  - On the Player's Active Scene (section 4.1), after "Revealed to {name}".
+  - On the Clues page and in the `clues` panel, before the Scene groups, for both roles.
+- **Each Item:**
+  - It shows as it was when given (the give Reveal's snapshot), newest first.
+  - It is a `Collapsible` that starts closed. "Show" or "Hide" reveals the description through `revealed-content`.
+  - On the Active Scene, the time shows as "Given {time}".
+- **Keeper variant:** adds "Take back" (22.4) on each Item.
+- **Empty:** "{name} doesn't hold any Items."
+- **Loading and error:** a Skeleton with `aria-busy="true"`. On failure, "We couldn't load the Items." with "Try again"; the Clues below are unaffected.
+- **Live:**
+  - **Player:** `myItems` refetches. A refetch after the first load announces, in the page's polite live region:
+    - "{name} now holds {item}." for one gain;
+    - "{item} was taken back from {name}." for one loss;
+    - "{n} Items changed for {name}." for several changes.
+  - **Keeper:** refetches silently on `sceneReveals`.
+  - **Silence:** nothing is announced on the first load or on an unchanged refetch, and focus does not move.
+- **Who sees what:** a Player sees only their own Investigator's Items, with no "Give..." or "Take back".
+
+### 22.8 Item Reveals in revealed content and Clues
+
+- An Item Reveal's meta line names "Item" (for example "Item . Revealed 19:58"), and `revealed-content` renders its description like a Non-Player Entity's (section 14).
+- On "Revealed" (section 21.6), an Item Reveal reads "Item . {time} . to {names}".
+
+### 22.9 Content
+
+| Key | Copy |
+|---|---|
+| Groups and hints | Items / Item: {name} / Only you see these: Keeper-facing Handouts, the profiles behind Non-Player Entities, and Items' Keeper notes. |
+| Status | Held by {name} / Held by no one / Held by {name}. / Held by no one. |
+| Actions | Give... / Take back / Reveal... |
+| Give dialog | Give {name} / Item / Give to / {name} becomes theirs, and they receive it as a Clue. Taking it back later doesn't remove the Clue. / {holder} holds it now and keeps the Clue. / (holds it) / Give / Giving... / Cancel / Choose an Investigator. |
+| Give refusals | {name} wasn't given: the Scene or the Item changed meanwhile. / {name} is no longer part of this Scene. / That Investigator is no longer present or already holds {name}. Check the list and try again. / We couldn't find {name}. It may have been deleted. / We couldn't give {name}. Try again. |
+| Take back | Take {name} back from {holder}? / {holder} keeps it among their Clues. / Take back / Taking back... / We couldn't take {name} back. Try again. |
+| Status messages | {name} given to {investigator}. / {name} taken back from {holder}. / Moved to Revealed. |
+| Panel | Item / What Players see / Handouts / No Handouts. / Keeper notes / No Keeper notes yet. / Open full page |
+| Investigator's Items | Items {name} holds / Given {time} / Show / Hide / {name} doesn't hold any Items. / We couldn't load the Items. / Try again |
+| Announcements | {name} now holds {item}. / {item} was taken back from {name}. / {n} Items changed for {name}. |
+
+### 22.10 Component mapping
+
+| Element | Component |
+|---|---|
+| Lists | `to-reveal-section` and `keeper-reference-section` gain an Items group; `subTabGrouping.ts` adds `item` and `itemHandout` subjects |
+| Dialogs | New `give-item-dialog` (`Dialog`, radio group) and `take-back-item-dialog` (`AlertDialog`) |
+| Panel | New `item-panel-body` in `scenario-preparation/components` (ADR 0028), hosted by `scene-play` `item-panel` and `scenario-preparation` `scene-panel`; `handout-panel-body` accepts an Item owner |
+| Investigator's Items | New `held-items-section` (Player and Keeper variants), used by `clues-page`, `clues-panel`, and `active-scene-player-view` |
+| Services and hooks | `itemHolderApi.ts` (strict zod), `useGiveItem`, `useTakeBackItem`, `useHeldItems`, `useHeldItemsAnnouncement` |
+| Live | `myItems` added to `campaign-play/services/liveTopics.ts`; `sceneReveals` also refreshes the Scene and Item reads |
+
+Stories cover:
+- **`give-item-dialog`:** default, held by someone else, the none-chosen error, busy, and each refusal.
+- **`take-back-item-dialog`:** default, busy, and failure.
+- **`item-panel-body`:** held, not held, no Handouts, loading, error, and not found.
+- **`held-items-section`:** Player, Keeper, empty, loading, and error.
+
+### 22.11 UX acceptance criteria
+
+- **SPL-UX-51** To reveal lists linked Items and their Player-facing Handouts until each has reached every Investigator present. "Reveal..." on an Item reveals only its name and Player-facing description.
+- **SPL-UX-52** "Give..." gives the Item to one Investigator present. The holder's Player sees it under "Items {name} holds" and among the Clues without reloading.
+- **SPL-UX-53** Giving a held Item to another Investigator moves it. Both Players' Items update, and the former holder keeps the Clue.
+- **SPL-UX-54** "Take back" removes the Item from the Player's Items without reloading. The Clue stays.
+- **SPL-UX-55** The Keeper can take an Item back from the Clues page while no Scene is Active.
+- **SPL-UX-56** Keeper reference lists every linked Item with its holder and the Item's Keeper-facing Handouts, without "Reveal...".
+- **SPL-UX-57** A Player sees no "Give..." or "Take back" and never sees another Investigator's Items.
+- **SPL-UX-58** Each refusal shows its 22.3 or 22.4 message, and nothing changes.
+- **SPL-UX-59** While a give or take back is in flight, its button reads "Giving..." or "Taking back..." and is disabled, and a second activation does nothing.
+- **SPL-UX-60** The `item` panel shows what Players see, the holder, the Handouts, and the Keeper notes. Its "Open full page" leads to the Item page, which shows "Back to {Active Scene title}".
+
+### 22.12 Accessibility acceptance criteria (WCAG 2.2 AA)
+
+- **SPL-A11Y-19** The give dialog has an accessible name. Its radio group has a `legend`, and the hint and error are connected with `aria-describedby`. Focus starts on the first enabled radio and returns as in 22.3 and 21.7 (1.3.1, 2.4.3, 3.3.1, 4.1.2).
+- **SPL-A11Y-20** "Held by", "(holds it)", and "Item" are text, never color alone. Give and take-back results use `role=status`, and refusals use `role=alert` (1.4.1, 4.1.3).
+- **SPL-A11Y-21** An Item arriving or leaving is announced politely, never on first load, and focus does not move (4.1.3).
+- **SPL-A11Y-22** Every new control is keyboard operable with a visible focus ring and is at least 24 by 24 CSS px. At 320px and 200% zoom, the entry actions wrap and the dialogs fit without horizontal scrolling (2.1.1, 2.4.7, 2.5.8, 1.4.10).

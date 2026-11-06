@@ -92,7 +92,7 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
     - a required Player-facing rich-text description with visible text;
     - optional rich-text Keeper notes;
     - optional Handouts, ordered per [ADR 0014](../../docs/adr/0014-order-preparation-records-by-stored-position-with-tie-break.md).
-  - It is held by at most one Investigator or by no one. Scene Play changes the holder, and Scenario Preparation reads it through a port ([ADR 0022](../../docs/adr/0022-items-are-guarded-by-play-usage-read-through-ports.md)).
+  - It is held by at most one Investigator or by no one. Scene Play changes the holder through a provider service, and the holder is stored on the Item ([ADR 0022](../../docs/adr/0022-items-are-guarded-by-play-usage-read-through-ports.md), [ADR 0029](../../docs/adr/0029-item-holders-live-on-the-item-and-change-through-a-provider-service.md)).
   - A Scene links an Item at most once, and the link has no fields of its own.
   - The Item and its Handouts stay editable whatever the status of the Scenes that link it.
 - **[DEPRECATED 2026-10-17]**

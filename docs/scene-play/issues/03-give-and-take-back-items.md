@@ -33,5 +33,6 @@ Read: `CONTEXT.md` (Item, Reveal, Clue).
 
 ## Refinement Protocol
 Before implementation, decide and record in the spec whether giving or taking back an Item requires an Active Scene and an Investigator present; the grilling session on 2026-10-17 left this open.
+- Resolved 2026-11-06: giving needs an Active Scene that links the Item and the Investigator present; taking back needs neither. See `specs/scene-play/spec.md`, Constraints, and the [design record](03-give-and-take-back-items.design.md).
 
 ## Follow-ups
