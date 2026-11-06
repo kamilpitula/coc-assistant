@@ -11,8 +11,8 @@ interface RevealedSectionProps {
 }
 
 /**
- * The "Revealed" sub-tab body (specs/scene-play/ux.md section 21.6): every Reveal in this Scene, newest first. "Show
- * what was revealed" opens the `reveal` side panel instead of expanding inline; the page beneath keeps its state.
+ * The "Revealed" sub-tab body (specs/scene-play/ux.md section 21.6): every fully revealed subject's Reveals, newest
+ * first. "Show what was revealed" opens the `reveal` side panel instead of expanding inline; the page beneath keeps its state.
  */
 export function RevealedSection({ reveals }: RevealedSectionProps) {
   const headingId = useId()
@@ -23,7 +23,7 @@ export function RevealedSection({ reveals }: RevealedSectionProps) {
         <h2 id={headingId} tabIndex={-1} className="text-lg font-semibold outline-none">
           Revealed
         </h2>
-        <p className="text-sm text-muted-foreground">Every Reveal in this Scene, newest first.</p>
+        <p className="text-sm text-muted-foreground">Every fully revealed subject&apos;s Reveals, newest first.</p>
       </div>
       {reveals.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nothing has been revealed in this Scene yet.</p>

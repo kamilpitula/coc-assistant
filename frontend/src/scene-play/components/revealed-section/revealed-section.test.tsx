@@ -39,7 +39,7 @@ describe('RevealedSection', () => {
 
     const section = screen.getByRole('region', { name: 'Revealed' })
     expect(within(section).getByRole('heading', { level: 2, name: 'Revealed' })).toBeInTheDocument()
-    expect(section).toHaveTextContent('Every Reveal in this Scene, newest first.')
+    expect(section).toHaveTextContent("Every fully revealed subject's Reveals, newest first.")
     expect(within(section).getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual([
       'A letter from Knott',
       'The front door',

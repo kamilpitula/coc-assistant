@@ -633,7 +633,7 @@ Items                                         (h3, from PBI-SPL-003)
 
 ### 21.6 Revealed
 
-- Section 12's "Revealed in this Scene" list, newest first, with the `h2` "Revealed" and the hint "Every Reveal in this Scene, newest first.".
+- Section 12's "Revealed in this Scene" list, newest first, with the `h2` "Revealed" and the hint "Every fully revealed subject's Reveals, newest first.".
 - "Show what was revealed" (accessible name "Show what was revealed: {title}") opens the `reveal` side panel instead of expanding inline.
 - **Empty:** "Nothing has been revealed in this Scene yet."
 
@@ -683,7 +683,7 @@ Wall                                (h2)          Open the Wall
 | To reveal empty | "Everything Player-facing has reached every Investigator present." |
 | Reference hint | "Only you see these: Keeper-facing Handouts and the profiles behind Non-Player Entities." |
 | Reference empty | "Nothing Keeper-only in this Scene." |
-| Revealed hint | "Every Reveal in this Scene, newest first." |
+| Revealed hint | "Every fully revealed subject's Reveals, newest first." |
 | Reveal status suffix | " Moved to Revealed." |
 
 ### 21.12 UX acceptance criteria
