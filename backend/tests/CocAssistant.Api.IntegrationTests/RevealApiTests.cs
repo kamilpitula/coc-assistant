@@ -524,6 +524,66 @@ public class RevealApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
         Assert.Equal("sceneReveals|sceneReveals", await TopicsUntilActiveSceneAsync(keeperHub, table.CampaignId));
     }
 
+    [Fact]
+    public async Task Given_a_give_wins_the_race_When_revealing_an_Item_Then_it_is_409_and_nothing_is_revealed()
+    {
+        var table = await TableAsync("20");
+
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            var itemId = (await CreateItemAsync(table.Client, table.CampaignId, table.KeeperOid, $"Race diary {attempt}")).GetProperty("id").GetGuid();
+            await LinkItemAsync(table.Client, (table.CampaignId, table.ScenarioId, table.CorbittHouse), table.KeeperOid, itemId);
+            var before = await RevealRowsAsync();
+            var reveal = RevealAsync(table, new { subject = Subject("Item", itemId) });
+            var give = table.Client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{table.CampaignId}/items/{itemId}/give", table.KeeperOid, new { investigatorId = table.HarveyId }));
+            var responses = await Task.WhenAll(reveal, give);
+            Assert.DoesNotContain(HttpStatusCode.InternalServerError, responses.Select(response => response.StatusCode));
+            if (responses[0].StatusCode == HttpStatusCode.Conflict)
+            {
+                Assert.Equal("Another change won the race. Fetch again and try again.", (await JsonAsync(responses[0])).GetProperty("title").GetString());
+                // The +1 is the winning give's own reveal; the refused reveal added nothing.
+                Assert.Equal(before + 1, await RevealRowsAsync());
+                return;
+            }
+        }
+
+        Assert.Fail("The give never beat the Item reveal to the write in 20 races.");
+    }
+
+    [Fact]
+    public async Task Given_a_give_wins_the_race_When_revealing_an_Item_Handout_Then_it_is_409_and_nothing_is_revealed()
+    {
+        var table = await TableAsync("21");
+
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            var itemId = (await CreateItemAsync(table.Client, table.CampaignId, table.KeeperOid, $"Race diary {attempt}")).GetProperty("id").GetGuid();
+            var handoutId = await AddItemHandoutAsync(table, itemId, $"Race entry {attempt}");
+            await LinkItemAsync(table.Client, (table.CampaignId, table.ScenarioId, table.CorbittHouse), table.KeeperOid, itemId);
+            var before = await RevealRowsAsync();
+            var reveal = RevealAsync(table, new { subject = Subject("Handout", handoutId) });
+            var give = table.Client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{table.CampaignId}/items/{itemId}/give", table.KeeperOid, new { investigatorId = table.LucyId }));
+            var responses = await Task.WhenAll(reveal, give);
+            Assert.DoesNotContain(HttpStatusCode.InternalServerError, responses.Select(response => response.StatusCode));
+            if (responses[0].StatusCode == HttpStatusCode.Conflict)
+            {
+                Assert.Equal("Another change won the race. Fetch again and try again.", (await JsonAsync(responses[0])).GetProperty("title").GetString());
+                // The +1 is the winning give's own reveal; the refused reveal added nothing.
+                Assert.Equal(before + 1, await RevealRowsAsync());
+                return;
+            }
+        }
+
+        Assert.Fail("The give never beat the Item Handout reveal to the write in 20 races.");
+    }
+
+    private static async Task<Guid> AddItemHandoutAsync(Table table, Guid itemId, string title)
+    {
+        var response = await table.Client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{table.CampaignId}/items/{itemId}/handouts", table.KeeperOid, new { kind = "Text", visibility = "PlayerFacing", title, content = PreparedScenarioSeed.Json(Rich("The last entry")) }));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        return (await JsonAsync(response)).GetProperty("id").GetGuid();
+    }
+
     // The activeScene signal is sent after the reveals and in order on every connection, so everything a client heard before it is what the reveals sent.
     private static async Task<string> TopicsUntilActiveSceneAsync(CampaignHubTestClient client, Guid campaignId)
     {

@@ -70,6 +70,16 @@ public class ItemHolderCommandServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Given_no_active_scene_and_a_missing_item_When_giving_Then_it_is_not_found()
+    {
+        await SceneAsync();
+
+        var result = await GiveAsync(Guid.NewGuid(), Harvey);
+
+        Assert.Equal(ItemGiveOutcome.ItemNotFound, result.Outcome);
+    }
+
+    [Fact]
     public async Task Given_an_item_of_another_campaign_When_giving_Then_it_is_not_found()
     {
         var (_, sceneId) = await SceneAsync();

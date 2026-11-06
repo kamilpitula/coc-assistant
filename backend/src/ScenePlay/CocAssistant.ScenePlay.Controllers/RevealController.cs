@@ -66,6 +66,7 @@ public class RevealController : ScenePlayControllerBase
             RevealSceneOutcome.NoRecipient => Invalid(RevealProblems.InvestigatorIdsKey, RevealProblems.NoRecipientMessage),
             RevealSceneOutcome.DuplicateRecipient => Invalid(RevealProblems.InvestigatorIdsKey, RevealProblems.DuplicateRecipientMessage),
             RevealSceneOutcome.RecipientNotPresent => Invalid(RevealProblems.InvestigatorIdsKey, RevealProblems.RecipientNotPresentMessage),
+            RevealSceneOutcome.Conflict => Problem(statusCode: StatusCodes.Status409Conflict, title: ItemHolderProblems.ConflictTitle),
             _ => NotFound(),
         };
 

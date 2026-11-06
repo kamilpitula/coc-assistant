@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 
 import { itemQueryKeys } from '@/scenario-preparation/services/itemApi'
 import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
@@ -41,6 +41,17 @@ export interface GiveItemInput {
 }
 
 /**
+ * A give or take-back changes who holds the Item everywhere it is named (Item panel, Scene, Clues), so the held
+ * Items, the Active Scene, the Items, and the Scenes are refetched.
+ */
+export function invalidateItemHolderReads(queryClient: QueryClient, campaignId: string) {
+  void queryClient.invalidateQueries({ queryKey: heldItemsQueryKeys.all(campaignId) })
+  void queryClient.invalidateQueries({ queryKey: activeSceneQueryKeys.detail(campaignId) })
+  void queryClient.invalidateQueries({ queryKey: itemQueryKeys.all(campaignId) })
+  void queryClient.invalidateQueries({ queryKey: sceneQueryKeys.inCampaign(campaignId) })
+}
+
+/**
  * Gives an Item to an Investigator. The holder shows everywhere it is named (Item panel, Scene, Clues),
  * so the held Items, the Active Scene, the Items, and the Scenes are refetched.
  */
@@ -50,12 +61,7 @@ export function useGiveItem(campaignId: string) {
 
   return useMutation({
     mutationFn: async (input: GiveItemInput) => giveItem(await getAccessToken(), campaignId, input.itemId, input.investigatorId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: heldItemsQueryKeys.all(campaignId) })
-      void queryClient.invalidateQueries({ queryKey: activeSceneQueryKeys.detail(campaignId) })
-      void queryClient.invalidateQueries({ queryKey: itemQueryKeys.all(campaignId) })
-      void queryClient.invalidateQueries({ queryKey: sceneQueryKeys.inCampaign(campaignId) })
-    },
+    onSuccess: () => invalidateItemHolderReads(queryClient, campaignId),
   })
 }
 
@@ -69,11 +75,6 @@ export function useTakeBackItem(campaignId: string) {
 
   return useMutation({
     mutationFn: async (itemId: string) => takeBackItem(await getAccessToken(), campaignId, itemId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: heldItemsQueryKeys.all(campaignId) })
-      void queryClient.invalidateQueries({ queryKey: activeSceneQueryKeys.detail(campaignId) })
-      void queryClient.invalidateQueries({ queryKey: itemQueryKeys.all(campaignId) })
-      void queryClient.invalidateQueries({ queryKey: sceneQueryKeys.inCampaign(campaignId) })
-    },
+    onSuccess: () => invalidateItemHolderReads(queryClient, campaignId),
   })
 }

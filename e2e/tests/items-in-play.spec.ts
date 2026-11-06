@@ -75,6 +75,14 @@ function heldSection(page: Page, name: string): Locator {
   return page.getByRole('region', { name: `Items ${name} holds`, exact: true })
 }
 
+/**
+ * A Clue article on a Clues page, scoped to its Scene group: the page also renders the Item in the "Items {name}
+ * holds" section, so an unscoped article locator is ambiguous.
+ */
+function clueArticle(page: Page, title: string): Locator {
+  return page.getByRole('region', { name: PREPARED.firstSceneTitle, exact: true }).getByRole('article', { name: title, exact: true })
+}
+
 test.describe('Giving and taking back Items', () => {
   test('Keeper gives an Item to an Investigator, who sees it live among Items and Clues', async ({ page, browser }) => {
     const table = await setUpTable(page, browser, 'GiveItem')
@@ -111,7 +119,7 @@ test.describe('Giving and taking back Items', () => {
 
         await table.harvey.page.goto(PLAYER_CLUES(campaignId))
         await expect(heldSection(table.harvey.page, HARVEY)).toBeVisible()
-        await expect(table.harvey.page.getByRole('article', { name: ITEM }).first()).toBeVisible()
+        await expect(clueArticle(table.harvey.page, ITEM)).toBeVisible()
       })
 
       await test.step('SPL-UX-57: Lucy receives nothing, and only Harvey hears myItems and myClues', async () => {
@@ -149,7 +157,7 @@ test.describe('Giving and taking back Items', () => {
 
       await test.step('SPL-UX-54: Harvey keeps the Clue', async () => {
         await table.harvey.page.goto(PLAYER_CLUES(campaignId))
-        await expect(table.harvey.page.getByRole('article', { name: ITEM }).first()).toBeVisible()
+        await expect(clueArticle(table.harvey.page, ITEM)).toBeVisible()
       })
     } finally {
       await closeTable(table)
@@ -183,9 +191,9 @@ test.describe('Giving and taking back Items', () => {
         await expect(table.harvey.page.getByText(`${HARVEY} doesn't hold any Items.`)).toBeVisible()
 
         await table.harvey.page.goto(PLAYER_CLUES(campaignId))
-        await expect(table.harvey.page.getByRole('article', { name: ITEM }).first()).toBeVisible()
+        await expect(clueArticle(table.harvey.page, ITEM)).toBeVisible()
         await table.lucy.page.goto(PLAYER_CLUES(campaignId))
-        await expect(table.lucy.page.getByRole('article', { name: ITEM }).first()).toBeVisible()
+        await expect(clueArticle(table.lucy.page, ITEM)).toBeVisible()
       })
     } finally {
       await closeTable(table)

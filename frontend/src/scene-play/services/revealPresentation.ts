@@ -78,7 +78,8 @@ export function newHeldItemsAnnouncement(
     return `${name} now holds ${gained[0].name}.`
   }
   if (gained.length === 0 && lost.length === 1) {
-    return `${lost[0][1]} was taken back from ${name}.`
+    const [, lostName] = lost[0]
+    return `${lostName} was taken back from ${name}.`
   }
   return `${gained.length + lost.length} Items changed for ${name}.`
 }

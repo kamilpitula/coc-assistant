@@ -34,7 +34,7 @@ public sealed record ClueRecord(SceneRevealRecord Reveal, Guid SceneId, string S
 /// <summary>The snapshotted file of a Reveal with its blob key and the Investigators the Reveal reached.</summary>
 public sealed record RevealFileRecord(string FileKey, string Name, string MediaType, long SizeBytes, IReadOnlyList<Guid> RecipientIds);
 
-/// <summary>How revealing ended in the provider; the refusals are the domain's, in its order.</summary>
+/// <summary>How revealing ended in the provider; the refusals are the domain's, in its order. Conflict is a write that won the race after the read.</summary>
 public enum RevealOutcome
 {
     Revealed,
@@ -45,6 +45,7 @@ public enum RevealOutcome
     NoRecipient,
     DuplicateRecipient,
     RecipientNotPresent,
+    Conflict,
 }
 
 /// <summary>The Reveal when <see cref="RevealOutcome.Revealed"/>, otherwise null.</summary>

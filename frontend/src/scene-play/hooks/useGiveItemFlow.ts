@@ -1,7 +1,6 @@
-import { useRef, useState } from 'react'
-
 import type { GiveItemContext, GiveItemRequest } from '@/scene-play/components/give-item-dialog/give-item-dialog'
 import { useGiveItem } from '@/scene-play/hooks/useHeldItems'
+import { useItemDialogFlow } from '@/scene-play/hooks/useItemDialogFlow'
 import { GiveItemConflictError, GiveItemNotFoundError, GiveItemRefusedError } from '@/scene-play/services/itemHolderApi'
 import { joinNames, recipientsOfSubject } from '@/scene-play/services/revealPresentation'
 import type { InvestigatorPresent } from '@/scene-play/types/ActiveScene'
@@ -45,21 +44,12 @@ export function useGiveItemFlow(
   callbacks: GiveItemFlowCallbacks,
 ) {
   const give = useGiveItem(campaignId)
-  const [request, setRequest] = useState<GiveItemRequest | null>(null)
-  const triggerId = useRef<string | null>(null)
-  const context = useRef<GiveItemContext>({ fallbackIds: [] })
+  const dialog = useItemDialogFlow<GiveItemRequest>(() => give.reset())
+  const { request } = dialog
 
-  const open = (next: GiveItemRequest, nextContext: GiveItemContext = { fallbackIds: [] }) => {
-    give.reset()
-    triggerId.current = next.triggerId
-    context.current = nextContext
-    setRequest(next)
-  }
+  const open = (next: GiveItemRequest, nextContext: GiveItemContext = { fallbackIds: [] }) => dialog.open(next, nextContext)
 
-  const cancel = () => {
-    give.reset()
-    setRequest(null)
-  }
+  const cancel = () => dialog.cancel()
 
   const confirm = (investigatorId: string) => {
     if (!request) {
@@ -73,7 +63,7 @@ export function useGiveItemFlow(
       { itemId: request.itemId, investigatorId },
       {
         onSuccess: () => {
-          setRequest(null)
+          dialog.dismiss()
           callbacks.onGiven(completed ? `${itemName} given to ${names}. Moved to Revealed.` : `${itemName} given to ${names}.`)
         },
         onError: (error) => {
@@ -90,17 +80,7 @@ export function useGiveItemFlow(
    * focus moves to the next entry's title, then the previous one, then the sub-tab h2, and never lands on body
    * (SPL-A11Y-17).
    */
-  const returnFocus = (event: Event) => {
-    event.preventDefault()
-    const ids = [triggerId.current, ...context.current.fallbackIds].filter((id): id is string => id !== null)
-    for (const id of ids) {
-      const element = document.getElementById(id)
-      if (element) {
-        element.focus()
-        return
-      }
-    }
-  }
+  const returnFocus = (event: Event) => dialog.returnFocus(event)
 
   return { request, open, cancel, confirm, returnFocus, pending: give.isPending, refusal: request ? giveRefusalFor(give.error, request.itemName) : null }
 }

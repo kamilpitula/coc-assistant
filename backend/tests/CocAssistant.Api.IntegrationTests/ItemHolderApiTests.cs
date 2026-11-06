@@ -191,12 +191,23 @@ public class ItemHolderApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifet
     }
 
     [Fact]
-    public async Task Given_no_Active_Scene_When_giving_Then_it_is_409_even_for_a_missing_Item()
+    public async Task Given_no_Item_When_giving_Then_it_is_404_even_with_no_Active_Scene()
     {
         var table = await TableAsync("7");
         Assert.Equal(HttpStatusCode.NoContent, (await table.Client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{table.CampaignId}/active-scene/finish", table.KeeperOid))).StatusCode);
 
         var response = await GiveAsync(table, Guid.NewGuid(), table.HarveyId);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_no_Active_Scene_When_giving_an_existing_Item_Then_it_is_409()
+    {
+        var table = await TableAsync("17");
+        Assert.Equal(HttpStatusCode.NoContent, (await table.Client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{table.CampaignId}/active-scene/finish", table.KeeperOid))).StatusCode);
+
+        var response = await GiveAsync(table, table.ItemId, table.HarveyId);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Equal("No Scene is Active.", await ProblemTitleAsync(response));

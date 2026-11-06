@@ -1,6 +1,6 @@
 namespace CocAssistant.ScenePlay.Application;
 
-/// <summary>How revealing ended. NotFound is for a caller who is not the Keeper; the other refusals are the provider's, in its order.</summary>
+/// <summary>How revealing ended. NotFound is for a caller who is not the Keeper; the other refusals are the provider's, in its order. Conflict is a write that won the race after the read.</summary>
 public enum RevealSceneOutcome
 {
     Revealed,
@@ -12,6 +12,7 @@ public enum RevealSceneOutcome
     NoRecipient,
     DuplicateRecipient,
     RecipientNotPresent,
+    Conflict,
 }
 
 /// <summary>The created Reveal as the Keeper sees it, when <see cref="RevealSceneOutcome.Revealed"/>; otherwise null.</summary>

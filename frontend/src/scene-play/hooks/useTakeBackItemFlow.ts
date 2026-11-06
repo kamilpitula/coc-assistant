@@ -1,7 +1,6 @@
-import { useRef, useState } from 'react'
-
 import type { TakeBackItemContext, TakeBackItemRequest } from '@/scene-play/components/take-back-item-dialog/take-back-item-dialog'
 import { useTakeBackItem } from '@/scene-play/hooks/useHeldItems'
+import { useItemDialogFlow } from '@/scene-play/hooks/useItemDialogFlow'
 import { TakeBackConflictError, TakeBackItemNotFoundError } from '@/scene-play/services/itemHolderApi'
 
 /** The message the dialog shows for a failed take-back, or null when there is no error. */
@@ -29,21 +28,12 @@ interface TakeBackItemFlowCallbacks {
  */
 export function useTakeBackItemFlow(campaignId: string, callbacks: TakeBackItemFlowCallbacks) {
   const takeBack = useTakeBackItem(campaignId)
-  const [request, setRequest] = useState<TakeBackItemRequest | null>(null)
-  const triggerId = useRef<string | null>(null)
-  const context = useRef<TakeBackItemContext>({ fallbackIds: [] })
+  const dialog = useItemDialogFlow<TakeBackItemRequest>(() => takeBack.reset())
+  const { request } = dialog
 
-  const open = (next: TakeBackItemRequest, nextContext: TakeBackItemContext = { fallbackIds: [] }) => {
-    takeBack.reset()
-    triggerId.current = next.triggerId
-    context.current = nextContext
-    setRequest(next)
-  }
+  const open = (next: TakeBackItemRequest, nextContext: TakeBackItemContext = { fallbackIds: [] }) => dialog.open(next, nextContext)
 
-  const cancel = () => {
-    takeBack.reset()
-    setRequest(null)
-  }
+  const cancel = () => dialog.cancel()
 
   const confirm = () => {
     if (!request) {
@@ -52,7 +42,7 @@ export function useTakeBackItemFlow(campaignId: string, callbacks: TakeBackItemF
     const { itemId, itemName, holderName } = request
     takeBack.mutate(itemId, {
       onSuccess: () => {
-        setRequest(null)
+        dialog.dismiss()
         callbacks.onTakenBack(`${itemName} taken back from ${holderName}.`)
       },
       onError: (error) => {
@@ -67,17 +57,7 @@ export function useTakeBackItemFlow(campaignId: string, callbacks: TakeBackItemF
    * Focus returns to the "Take back" button that opened the dialog; when the Item left its list the trigger is gone, so
    * focus moves to the entry's "Give..." and then the sub-tab h2, and never lands on body.
    */
-  const returnFocus = (event: Event) => {
-    event.preventDefault()
-    const ids = [triggerId.current, ...context.current.fallbackIds].filter((id): id is string => id !== null)
-    for (const id of ids) {
-      const element = document.getElementById(id)
-      if (element) {
-        element.focus()
-        return
-      }
-    }
-  }
+  const returnFocus = (event: Event) => dialog.returnFocus(event)
 
   return { request, open, cancel, confirm, returnFocus, pending: takeBack.isPending, refusal: request ? takeBackRefusalFor(takeBack.error, request.itemName) : null }
 }

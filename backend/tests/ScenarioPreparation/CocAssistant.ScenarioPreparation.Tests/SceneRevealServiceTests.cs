@@ -29,10 +29,15 @@ public class SceneRevealServiceTests : IDisposable
         Assert.Equal(SceneStartOutcome.Started, result.Outcome);
     }
 
-    private async Task<SceneRevealResult> RevealAsync(RevealSubjectType type, Guid subjectId, Guid[]? recipients = null, ISceneRepository? repository = null)
+    private async Task<SceneRevealResult> RevealAsync(
+        RevealSubjectType type,
+        Guid subjectId,
+        Guid[]? recipients = null,
+        ISceneRepository? repository = null,
+        IItemRepository? items = null)
     {
         using var context = _builder.Fixture.CreateContext();
-        var service = new SceneRevealService(repository ?? new EfSceneRepository(context), new EfItemRepository(context), _builder.TimeProvider);
+        var service = new SceneRevealService(repository ?? new EfSceneRepository(context), items ?? new EfItemRepository(context), _builder.TimeProvider);
         _builder.TimeProvider.Advance(TimeSpan.FromMinutes(1));
         return await service.RevealAsync(_builder.CampaignId, type, subjectId, recipients, CancellationToken.None);
     }
@@ -122,6 +127,61 @@ public class SceneRevealServiceTests : IDisposable
         Assert.Equal(SceneRevealOutcome.Revealed, result.Outcome);
         using var context = _builder.Fixture.CreateContext();
         Assert.Equal(1, (await new EfItemRepository(context).FindByIdAsync(_builder.CampaignId, item.Id, CancellationToken.None))!.Version);
+    }
+
+    [Fact]
+    public async Task Given_a_delete_wins_the_race_When_revealing_an_Item_Then_it_is_a_conflict_and_nothing_is_revealed()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var item = await _builder.CreateItemAsync(_builder.CampaignId);
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
+        await StartAsync(sceneId);
+        using var context = _builder.Fixture.CreateContext();
+        var racing = new RecordingSceneRepository(new EfSceneRepository(context))
+        {
+            BeforeSave = async () =>
+            {
+                using var other = _builder.Fixture.CreateContext();
+                var rival = await other.Items.SingleAsync(candidate => candidate.Id == item.Id);
+                other.Items.Remove(rival);
+                await other.SaveChangesAsync();
+            },
+        };
+
+        var result = await RevealAsync(RevealSubjectType.Item, item.Id, [Harvey], racing, new EfItemRepository(context));
+
+        Assert.Equal(SceneRevealOutcome.Conflict, result.Outcome);
+        Assert.Null(result.Reveal);
+        using var read = _builder.Fixture.CreateContext();
+        Assert.Equal(0, await read.Set<Reveal>().CountAsync());
+    }
+
+    [Fact]
+    public async Task Given_a_delete_wins_the_race_When_revealing_an_Item_Handout_Then_it_is_a_conflict_and_nothing_is_revealed()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var item = await _builder.CreateItemAsync(_builder.CampaignId);
+        var handout = await _builder.AddItemHandoutAsync(_builder.CampaignId, item.Id);
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
+        await StartAsync(sceneId);
+        using var context = _builder.Fixture.CreateContext();
+        var racing = new RecordingSceneRepository(new EfSceneRepository(context))
+        {
+            BeforeSave = async () =>
+            {
+                using var other = _builder.Fixture.CreateContext();
+                var rival = await other.Items.SingleAsync(candidate => candidate.Id == item.Id);
+                other.Items.Remove(rival);
+                await other.SaveChangesAsync();
+            },
+        };
+
+        var result = await RevealAsync(RevealSubjectType.Handout, handout.Id, [Harvey], racing, new EfItemRepository(context));
+
+        Assert.Equal(SceneRevealOutcome.Conflict, result.Outcome);
+        Assert.Null(result.Reveal);
+        using var read = _builder.Fixture.CreateContext();
+        Assert.Equal(0, await read.Set<Reveal>().CountAsync());
     }
 
     [Fact]

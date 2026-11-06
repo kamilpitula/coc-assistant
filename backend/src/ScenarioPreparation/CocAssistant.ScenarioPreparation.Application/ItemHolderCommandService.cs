@@ -22,6 +22,12 @@ public class ItemHolderCommandService
     /// <summary>Gives a linked Item of the Active Scene to a present Investigator; moves it when someone else holds it.</summary>
     public async Task<ItemGiveResult> GiveAsync(Guid campaignId, Guid itemId, Guid investigatorId, CancellationToken cancellationToken)
     {
+        var item = await _items.FindByIdAsync(campaignId, itemId, cancellationToken);
+        if (item is null)
+        {
+            return new ItemGiveResult(ItemGiveOutcome.ItemNotFound, null, null);
+        }
+
         var scene = await _scenes.FindActiveAsync(campaignId, cancellationToken);
         if (scene is null)
         {
@@ -29,13 +35,9 @@ public class ItemHolderCommandService
         }
 
         var linked = await _items.ListLinkedForSceneAsync(campaignId, scene.Id, cancellationToken);
-        var item = linked.FirstOrDefault(candidate => candidate.Id == itemId);
-        if (item is null)
+        if (linked.All(candidate => candidate.Id != itemId))
         {
-            var exists = await _items.FindByIdAsync(campaignId, itemId, cancellationToken);
-            return exists is null
-                ? new ItemGiveResult(ItemGiveOutcome.ItemNotFound, null, null)
-                : new ItemGiveResult(ItemGiveOutcome.NotLinked, null, null);
+            return new ItemGiveResult(ItemGiveOutcome.NotLinked, null, null);
         }
 
         var give = scene.GiveItem(item, investigatorId, _timeProvider.GetUtcNow());
@@ -70,11 +72,12 @@ public class ItemHolderCommandService
         }
 
         var formerHolderId = item.HolderInvestigatorId;
-        item.TakeBack();
         if (formerHolderId is null)
         {
             return new ItemTakeBackResult(ItemTakeBackOutcome.NotHeld, null);
         }
+
+        item.TakeBack();
 
         try
         {

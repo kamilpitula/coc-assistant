@@ -101,6 +101,7 @@ public class RevealServiceTests
     [InlineData(RevealOutcome.NoRecipient, RevealSceneOutcome.NoRecipient)]
     [InlineData(RevealOutcome.DuplicateRecipient, RevealSceneOutcome.DuplicateRecipient)]
     [InlineData(RevealOutcome.RecipientNotPresent, RevealSceneOutcome.RecipientNotPresent)]
+    [InlineData(RevealOutcome.Conflict, RevealSceneOutcome.Conflict)]
     public async Task Given_a_refused_reveal_When_revealing_Then_the_outcome_is_returned_and_nothing_is_signalled(RevealOutcome refusal, RevealSceneOutcome expected)
     {
         _reveals.RevealResult = new RevealRecordResult(refusal, null);

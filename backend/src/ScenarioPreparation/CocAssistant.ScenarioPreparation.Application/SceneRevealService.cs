@@ -39,7 +39,15 @@ public class SceneRevealService
         }
 
         result.OwningItem?.MarkInPlay();
-        await _scenes.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _scenes.SaveChangesAsync(cancellationToken);
+        }
+        catch (SceneConcurrencyException)
+        {
+            return new SceneRevealResult(SceneRevealOutcome.Conflict, null);
+        }
+
         return new SceneRevealResult(SceneRevealOutcome.Revealed, RevealViews.ToView(result.Reveal!));
     }
 
