@@ -149,7 +149,7 @@ test.describe('Campaign tabs with the Active Scene tab', () => {
         await harveyPage.screenshot({ path: test.info().outputPath('player-1366.png') })
       })
 
-      await test.step('NAV-A11Y-4: the Campaign header fits 320px and the site header holds the rest', async () => {
+      await test.step('NAV-A11Y-4: the Campaign header fits 320px and the site header wraps instead of scrolling sideways', async () => {
         await page.setViewportSize({ width: 320, height: 700 })
         // Load the page at the narrow viewport so the mount effect positions the current tab, as for a real narrow load.
         await page.reload()
@@ -170,7 +170,7 @@ test.describe('Campaign tabs with the Active Scene tab', () => {
           expect(campaignBox.x + campaignBox.width).toBeLessThanOrEqual(320 + 1)
           expect(mainBox.x + mainBox.width).toBeLessThanOrEqual(320 + 1)
         }
-        await expect(await siteHeader.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true)
+        await expect(await siteHeader.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(false)
         await expect(await campaignNav(page).evaluate((nav) => nav.scrollWidth > nav.clientWidth)).toBe(true)
       })
 
