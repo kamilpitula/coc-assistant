@@ -21,13 +21,15 @@ const itemSceneSchema = z.strictObject({
   status: sceneStatusSchema,
 })
 
-// The holder is always null until PBI-SPL-003 lets an Investigator hold an Item; that PBI widens this schema.
+// The holder names only its Investigator; the name is resolved on the client from the Approved Investigators (PBI-SPL-003).
+const itemHolderSchema = z.strictObject({ investigatorId: z.string() })
+
 const itemSchema = z.strictObject({
   id: z.string(),
   name: z.string(),
   playerFacingDescription: richTextSchema,
   keeperNotes: richTextSchema.nullable(),
-  holder: z.null(),
+  holder: itemHolderSchema.nullable(),
   handouts: z.array(handoutSummarySchema),
   scenes: z.array(itemSceneSchema),
 })

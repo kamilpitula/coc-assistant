@@ -11,23 +11,28 @@ import { ItemPage } from './item-page'
 
 // specs/scenario-preparation/ux.md sections 63 and 65; SP-UX-93 to SP-UX-96, SP-UX-100 to SP-UX-103, SP-A11Y-51, SP-A11Y-53 to SP-A11Y-55.
 
-const { mockUseCampaign, mockUseItem, mockUseEdit, mockUseDelete, mockUseReorder, editMutate, deleteMutate, editReset, deleteReset, refetchItem } = vi.hoisted(
+const { mockUseCampaign, mockUseItem, mockUseEdit, mockUseDelete, mockUseReorder, mockUseHolderNames, mockUseOriginBackLink, editMutate, deleteMutate, editReset, deleteReset, refetchItem, refetchNames } = vi.hoisted(
   () => ({
     mockUseCampaign: vi.fn(),
     mockUseItem: vi.fn(),
     mockUseEdit: vi.fn(),
     mockUseDelete: vi.fn(),
     mockUseReorder: vi.fn(),
+    mockUseHolderNames: vi.fn(),
+    mockUseOriginBackLink: vi.fn(),
     editMutate: vi.fn(),
     deleteMutate: vi.fn(),
     editReset: vi.fn(),
     deleteReset: vi.fn(),
     refetchItem: vi.fn(),
+    refetchNames: vi.fn(),
   }),
 )
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
+vi.mock('@/campaign-play/hooks/useOriginBackLink', () => ({ useOriginBackLink: mockUseOriginBackLink }))
+vi.mock('@/campaign-play/hooks/useApprovedInvestigatorNames', () => ({ useApprovedInvestigatorNames: mockUseHolderNames }))
 vi.mock('@/scenario-preparation/hooks/useItems', () => ({ useItem: mockUseItem, useEditItem: mockUseEdit, useDeleteItem: mockUseDelete }))
 vi.mock('@/scenario-preparation/hooks/useHandouts', () => ({ useReorderHandouts: mockUseReorder }))
 
@@ -65,9 +70,16 @@ const itemQuery = (data: Item | null | undefined, overrides: Record<string, unkn
 const editing = (overrides: Record<string, unknown> = {}) => ({ mutate: editMutate, reset: editReset, isPending: false, isError: false, error: null, ...overrides })
 const deleting = (overrides: Record<string, unknown> = {}) => ({ mutate: deleteMutate, reset: deleteReset, isPending: false, isError: false, error: null, ...overrides })
 
-const renderPage = () => render(<ItemPage campaignId="c1" itemId="k1" />)
+const renderPage = (from?: 'active-scene') => render(<ItemPage campaignId="c1" itemId="k1" from={from} />)
 // The Handouts section has its own status region for moves; the page's status paragraph comes first.
 const pageStatus = () => screen.getAllByRole('status')[0]
+
+const holderNamesQuery = (names: Map<string, string> | undefined, overrides: Record<string, unknown> = {}) => ({
+  names,
+  isError: false,
+  refetch: refetchNames,
+  ...overrides,
+})
 
 describe('ItemPage', () => {
   beforeEach(() => {
@@ -78,6 +90,8 @@ describe('ItemPage', () => {
     mockUseEdit.mockReturnValue(editing())
     mockUseDelete.mockReturnValue(deleting())
     mockUseReorder.mockReturnValue({ mutate: vi.fn(), isPending: false })
+    mockUseHolderNames.mockReturnValue(holderNamesQuery(new Map([['i1', 'Harvey Walters']])))
+    mockUseOriginBackLink.mockReturnValue('The Corbitt House')
   })
 
   describe('view', () => {
@@ -88,6 +102,36 @@ describe('ItemPage', () => {
       expect(screen.getByRole('heading', { level: 1, name: "Walter Corbitt's diary" })).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Back to Items' })).toHaveAttribute('href', '/campaigns/c1/items')
       expect(screen.getByText('Held by no one.')).toBeInTheDocument()
+    })
+
+    it('names the holder from the Approved Investigators, or "Unnamed Investigator" for an unknown one (SPL-UX-60)', () => {
+      mockUseItem.mockReturnValue(itemQuery({ ...diary, holder: { investigatorId: 'i1' } }))
+      renderPage()
+
+      expect(screen.getByText('Held by Harvey Walters.')).toBeInTheDocument()
+      expect(mockUseHolderNames).toHaveBeenCalledWith('c1')
+    })
+
+    it('calls a holder outside the Approved Investigators "Unnamed Investigator" (SPL-UX-60)', () => {
+      mockUseItem.mockReturnValue(itemQuery({ ...diary, holder: { investigatorId: 'i9' } }))
+      mockUseHolderNames.mockReturnValue(holderNamesQuery(new Map()))
+      renderPage()
+
+      expect(screen.getByText('Held by Unnamed Investigator.')).toBeInTheDocument()
+    })
+
+    it('waits for the holder names before showing the page', () => {
+      mockUseHolderNames.mockReturnValue(holderNamesQuery(undefined))
+      renderPage()
+
+      expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+      expect(document.querySelector('[aria-busy="true"]')).not.toBeNull()
+    })
+
+    it('links back to the Active Scene from the panel origin, and to Items otherwise (SPL-UX-60)', () => {
+      renderPage('active-scene')
+
+      expect(screen.getByRole('link', { name: 'Back to The Corbitt House' })).toHaveAttribute('href', '/campaigns/c1/active-scene')
     })
 
     it('shows the sections in order: description, Keeper notes, Handouts, Scenes, then Edit and Delete Item (SP-UX-93)', () => {

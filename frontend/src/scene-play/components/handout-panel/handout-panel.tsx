@@ -1,6 +1,11 @@
+import type { ReactNode } from 'react'
+
 import { HandoutPanelBody } from '@/scenario-preparation/components/handout-panel-body/handout-panel-body'
-import type { SceneHandoutOwner } from '@/scenario-preparation/services/handoutOwner'
+import type { HandoutOwner } from '@/scenario-preparation/services/handoutOwner'
 import { useScene } from '@/scenario-preparation/hooks/useScenes'
+import type { HandoutSummary } from '@/scenario-preparation/types/Handout'
+import type { ItemLink } from '@/scenario-preparation/types/Item'
+import type { Scene } from '@/scenario-preparation/types/Scene'
 import { RevealTrigger } from '@/scene-play/components/reveal-trigger/reveal-trigger'
 import { useActiveScene } from '@/scene-play/hooks/useActiveScene'
 import type { RevealOpenContext, RevealTarget } from '@/scene-play/hooks/useRevealFlow'
@@ -50,32 +55,63 @@ function HandoutPanelReady({
 }) {
   const material = useScene(campaignId, scene.scenarioId, scene.sceneId, true)
   const { titleId } = useSidePanelScope()
-  const handout = material.data?.handouts.find((candidate) => candidate.id === handoutId) ?? null
-  const completed = handout === null || isRevealedToEveryonePresent(handoutId, scene.reveals, scene.investigatorsPresent)
+  const located = material.data === undefined || material.data === null ? null : locateHandout(material.data, handoutId)
+  const found = located?.found ?? null
+  const itemLink = located?.itemLink ?? null
+  const completed = found === null || isRevealedToEveryonePresent(handoutId, scene.reveals, scene.investigatorsPresent)
   const triggerId = `panel-reveal-trigger-${handoutId}`
-  const action =
-    handout !== null && handout.visibility === 'PlayerFacing' && onReveal !== undefined && !completed ? (
-      <RevealTrigger
-        triggerId={triggerId}
-        title={handout.title}
-        onReveal={() =>
-          onReveal(revealTargetOf({ type: 'handout', handout }, triggerId), {
-            alreadyRevealedIds: recipientsOfSubject(scene.reveals, handoutId, scene.investigatorsPresent).map((recipient) => recipient.id),
-            // The panel stays open, so a vanished trigger falls back to the panel h2 (21.7 covers entries; a panel has no list).
-            fallbackIds: [triggerId, titleId],
-          })
-        }
-      />
-    ) : undefined
+  const action = revealActionOf({ found, itemLink, completed, onReveal, triggerId, titleId, scene, handoutId })
 
-  const owner: SceneHandoutOwner = { type: 'scene', campaignId, scenarioId: scene.scenarioId, sceneId: scene.sceneId }
+  const owner: HandoutOwner =
+    itemLink === null ? { type: 'scene', campaignId, scenarioId: scene.scenarioId, sceneId: scene.sceneId } : { type: 'item', campaignId, itemId: itemLink.item.id }
   return (
     <HandoutPanelBody
       owner={owner}
       handoutId={handoutId}
       from="active-scene"
       action={action}
-      statusLine={handout === null ? null : toRevealStatus(handoutId, scene.reveals, scene.investigatorsPresent)}
+      statusLine={found === null ? null : toRevealStatus(handoutId, scene.reveals, scene.investigatorsPresent)}
+    />
+  )
+}
+
+/** Where the panel's Handout lives: directly on the Scene, or on one of its linked Items. */
+function locateHandout(material: Scene, handoutId: string): { found: HandoutSummary | null; itemLink: ItemLink | null } {
+  const handout = material.handouts.find((candidate) => candidate.id === handoutId) ?? null
+  if (handout !== null) {
+    return { found: handout, itemLink: null }
+  }
+  const itemLink = material.itemLinks.find((candidate) => candidate.item.handouts.some((entry) => entry.id === handoutId)) ?? null
+  return { found: itemLink?.item.handouts.find((entry) => entry.id === handoutId) ?? null, itemLink }
+}
+
+interface RevealActionOptions {
+  found: HandoutSummary | null
+  itemLink: ItemLink | null
+  completed: boolean
+  onReveal: HandoutPanelProps['onReveal']
+  triggerId: string
+  titleId: string
+  scene: KeeperActiveScene
+  handoutId: string
+}
+
+/** The panel's "Reveal..." trigger for a Player-facing Handout that has not reached everyone present. */
+function revealActionOf({ found, itemLink, completed, onReveal, triggerId, titleId, scene, handoutId }: RevealActionOptions): ReactNode {
+  if (found === null || found.visibility !== 'PlayerFacing' || onReveal === undefined || completed) {
+    return undefined
+  }
+  return (
+    <RevealTrigger
+      triggerId={triggerId}
+      title={found.title}
+      onReveal={() =>
+        onReveal(revealTargetOf(itemLink === null ? { type: 'handout', handout: found } : { type: 'itemHandout', link: itemLink, handout: found }, triggerId), {
+          alreadyRevealedIds: recipientsOfSubject(scene.reveals, handoutId, scene.investigatorsPresent).map((recipient) => recipient.id),
+          // The panel stays open, so a vanished trigger falls back to the panel h2 (21.7 covers entries; a panel has no list).
+          fallbackIds: [triggerId, titleId],
+        })
+      }
     />
   )
 }

@@ -53,6 +53,8 @@ const value: ActiveSceneTabContextValue = {
   campaignId: 'c1',
   scene,
   onReveal: vi.fn(),
+  onGive: vi.fn(),
+  onTakeBack: vi.fn(),
   onPresentSaved: vi.fn(),
   onFinishedMeanwhile: vi.fn(),
 }
@@ -72,10 +74,10 @@ describe('ActiveSceneTabs', () => {
     expect(runProps).toEqual({ campaignId: 'c1', scene, onPresentSaved: value.onPresentSaved, onFinishedMeanwhile: value.onFinishedMeanwhile })
 
     renderTab('to-reveal')
-    expect(toRevealProps).toEqual({ campaignId: 'c1', scene, onReveal: value.onReveal })
+    expect(toRevealProps).toEqual({ campaignId: 'c1', scene, onReveal: value.onReveal, onGive: value.onGive })
 
     renderTab('reference')
-    expect(referenceProps).toEqual({ campaignId: 'c1', scene })
+    expect(referenceProps).toEqual({ campaignId: 'c1', scene, onGive: value.onGive, onTakeBack: value.onTakeBack })
 
     renderTab('revealed')
     expect(revealedProps).toEqual({ reveals: scene.reveals })

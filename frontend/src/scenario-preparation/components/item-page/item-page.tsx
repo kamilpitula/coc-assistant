@@ -2,7 +2,10 @@ import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
+import { useApprovedInvestigatorNames } from '@/campaign-play/hooks/useApprovedInvestigatorNames'
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
+import { useOriginBackLink } from '@/campaign-play/hooks/useOriginBackLink'
+import { UNNAMED_INVESTIGATOR } from '@/campaign-play/services/rosterRows'
 import '@/campaign-play/types/navigationState'
 import { DeleteItemDialog } from '@/scenario-preparation/components/delete-item-dialog/delete-item-dialog'
 import { HandoutSection } from '@/scenario-preparation/components/handout-section/handout-section'
@@ -11,7 +14,10 @@ import { ItemNotFound } from '@/scenario-preparation/components/item-not-found/i
 import { ItemScenesSection } from '@/scenario-preparation/components/item-scenes-section/item-scenes-section'
 import { useDeleteItem, useEditItem, useItem } from '@/scenario-preparation/hooks/useItems'
 import { ItemNotDeletableError, ItemNotFoundError, ItemValidationError } from '@/scenario-preparation/services/itemApi'
+import { holderStatusOf, NO_HOLDER_STATUS } from '@/scenario-preparation/services/itemHolderStatus'
 import type { Item } from '@/scenario-preparation/types/Item'
+import { BackLink } from '@/shared/components/back-link/back-link'
+import type { Origin } from '@/shared/components/back-link/backLinkOrigin'
 import { RichTextView } from '@/shared/components/rich-text-view/rich-text-view'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
@@ -20,17 +26,21 @@ import { isEmptyRichText } from '@/shared/services/richText'
 interface ItemPageProps {
   campaignId: string
   itemId: string
+  /** Where the viewer came from; the back link returns there instead of to Items. */
+  from?: Origin
 }
 
 /**
  * One Item for its Keeper: a view with "Edit" and "Delete Item", or the whole-Item form (specs/scenario-preparation/ux.md section 63).
  * A Player, an unknown id, and another Campaign's id all get the not-found page; a Player's client makes no request.
+ * From PBI-SPL-003 the muted line names the holder (specs/scene-play/ux.md 22.6), and `from` carries the panel origin.
  */
-export function ItemPage({ campaignId, itemId }: ItemPageProps) {
+export function ItemPage({ campaignId, itemId, from }: ItemPageProps) {
   const campaign = useCampaign(campaignId)
   const isKeeper = campaign.data?.role === 'Keeper'
   const item = useItem(campaignId, itemId, isKeeper)
   const edit = useEditItem(campaignId, itemId)
+  const holderNames = useApprovedInvestigatorNames(campaignId)
 
   if (!isKeeper || item.data === null || edit.error instanceof ItemNotFoundError) {
     return <ItemNotFound campaignId={campaignId} />
@@ -47,7 +57,7 @@ export function ItemPage({ campaignId, itemId }: ItemPageProps) {
     )
   }
 
-  if (!item.data) {
+  if (!item.data || holderNames.names === undefined) {
     return (
       <div aria-busy="true" className="flex max-w-2xl flex-col gap-3">
         <Skeleton className="h-8 w-64" />
@@ -62,6 +72,8 @@ export function ItemPage({ campaignId, itemId }: ItemPageProps) {
       campaignId={campaignId}
       item={item.data}
       itemUpdatedAt={item.dataUpdatedAt}
+      holderNames={holderNames.names}
+      from={from}
       edit={edit}
       onRefetch={() => void item.refetch()}
     />
@@ -72,11 +84,13 @@ interface ItemDetailProps {
   campaignId: string
   item: Item
   itemUpdatedAt: number
+  holderNames: Map<string, string>
+  from?: Origin
   edit: ReturnType<typeof useEditItem>
   onRefetch: () => void
 }
 
-function ItemDetail({ campaignId, item, itemUpdatedAt, edit, onRefetch }: ItemDetailProps) {
+function ItemDetail({ campaignId, item, itemUpdatedAt, holderNames, from, edit, onRefetch }: ItemDetailProps) {
   const navigationMessage = useRouterState({ select: (state) => state.location.state.statusMessage })
   const focusHandoutId = useRouterState({ select: (state) => state.location.state.focusHandoutId })
   const focusHandoutsHeading = useRouterState({ select: (state) => state.location.state.focusHandoutsHeading })
@@ -111,10 +125,7 @@ function ItemDetail({ campaignId, item, itemUpdatedAt, edit, onRefetch }: ItemDe
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <Link to="/campaigns/$campaignId/items" params={{ campaignId }} className={buttonVariants({ variant: 'link', className: 'self-start px-0' })}>
-        <ArrowLeft aria-hidden="true" />
-        Back to Items
-      </Link>
+      <ItemBackLink campaignId={campaignId} from={from} />
       <p role="status" className="text-sm empty:hidden">
         {justSaved ? 'Item saved.' : navigationMessage}
       </p>
@@ -122,7 +133,7 @@ function ItemDetail({ campaignId, item, itemUpdatedAt, edit, onRefetch }: ItemDe
         <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold break-words outline-none">
           {item.name}
         </h1>
-        <p className="text-sm text-muted-foreground">Held by no one.</p>
+        <p className="text-sm text-muted-foreground">{`${holderStatusOf(item.holder, item.holder === null ? null : (holderNames.get(item.holder.investigatorId) ?? UNNAMED_INVESTIGATOR)) ?? NO_HOLDER_STATUS}.`}</p>
       </div>
       {isEditing ? (
         <EditItemForm item={item} edit={edit} onDone={stopEditing} />
@@ -140,6 +151,24 @@ function ItemDetail({ campaignId, item, itemUpdatedAt, edit, onRefetch }: ItemDe
         />
       )}
     </div>
+  )
+}
+
+function ItemBackLink({ campaignId, from }: { campaignId: string; from?: Origin }) {
+  const originLabel = useOriginBackLink(campaignId)
+
+  return (
+    <BackLink
+      from={from}
+      fallback={{ label: 'Items', to: '/campaigns/$campaignId/items' as const, params: { campaignId } }}
+      originTargets={{ 'active-scene': { label: originLabel, to: '/campaigns/$campaignId/active-scene' as const, params: { campaignId } } }}
+      render={(target) => (
+        <Link to={target.to} params={target.params} className={buttonVariants({ variant: 'link', className: 'self-start px-0' })}>
+          <ArrowLeft aria-hidden="true" />
+          Back to {target.label}
+        </Link>
+      )}
+    />
   )
 }
 

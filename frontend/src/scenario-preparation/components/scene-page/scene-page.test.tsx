@@ -281,8 +281,8 @@ describe('ScenePage', () => {
     const withItems: Scene = {
       ...prepared,
       itemLinks: [
-        { id: 'i1', item: { id: 'k1', name: "Walter Corbitt's diary" } },
-        { id: 'i2', item: { id: 'k2', name: 'The cellar key' } },
+        { id: 'i1', item: { id: 'k1', name: "Walter Corbitt's diary", holder: null, handouts: [] } },
+        { id: 'i2', item: { id: 'k2', name: 'The cellar key', holder: null, handouts: [] } },
       ],
     }
 
@@ -296,7 +296,7 @@ describe('ScenePage', () => {
       const edit = screen.getByRole('button', { name: 'Edit' })
       expect(entities.compareDocumentPosition(items) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(items.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(screen.getByRole('link', { name: "Walter Corbitt's diary" })).toHaveAttribute('href', '/campaigns/c1/items/k1')
+      expect(screen.getByRole('button', { name: "Walter Corbitt's diary" })).toHaveAttribute('id', 'item-link-i1')
     })
 
     it('says no Items are linked yet and offers Link an Item on a Scene without any (SP-UX-97)', () => {
@@ -311,7 +311,7 @@ describe('ScenePage', () => {
 
       renderPage()
 
-      expect(screen.getByRole('link', { name: "Walter Corbitt's diary" })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: "Walter Corbitt's diary" })).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Link an Item' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /^Unlink / })).not.toBeInTheDocument()
     })
@@ -343,7 +343,7 @@ describe('ScenePage', () => {
       renderPage()
 
       expect(pageStatus()).toHaveTextContent('The cellar key linked.')
-      expect(screen.getByRole('link', { name: 'The cellar key' })).toHaveFocus()
+      expect(screen.getByRole('button', { name: 'The cellar key' })).toHaveFocus()
     })
   })
 

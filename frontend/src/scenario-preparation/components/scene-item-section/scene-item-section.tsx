@@ -27,8 +27,9 @@ interface SceneItemSectionProps {
 const itemLinkTitleId = (linkId: string): string => `item-link-${linkId}`
 
 /**
- * The Scene's "Items" section (specs/scenario-preparation/ux.md section 64.1): each linked Item's name as a material
- * entry linking to its page, with "Link an Item" and "Unlink" while the Scene is Prepared or Active (PBI-SPL-005).
+ * The Scene's "Items" section (specs/scenario-preparation/ux.md section 64.1, specs/scene-play/ux.md 22.5): each linked
+ * Item's name as a material entry opening its panel, with "Link an Item" and "Unlink" while the Scene is Prepared or
+ * Active (PBI-SPL-005).
  */
 export function SceneItemSection({ campaignId, scenarioId, sceneId, status, links, focusLinkId, onUnlinked, onRefetch }: SceneItemSectionProps) {
   const headingId = useId()
@@ -73,11 +74,7 @@ export function SceneItemSection({ campaignId, scenarioId, sceneId, status, link
           {links.map((link) => (
             <MaterialEntry
               key={link.id}
-              subject={{
-                type: 'item',
-                link,
-                page: { to: '/campaigns/$campaignId/items/$itemId', params: { campaignId, itemId: link.item.id } },
-              }}
+              subject={{ type: 'item', link }}
               titleId={itemLinkTitleId(link.id)}
               action={
                 canChange ? (

@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
+import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
+import type { CampaignMember } from '@/campaign-play/types/CampaignMember'
 import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
+import type { ItemLink } from '@/scenario-preparation/types/Item'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import { paragraph } from '@/scene-play/test-support/revealFixtures'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
@@ -60,6 +63,28 @@ const reveal = (overrides: Partial<KeeperReveal> = {}): KeeperReveal => ({
   ...overrides,
 })
 
+const members: CampaignMember[] = [
+  { memberId: 'k', displayName: 'Eleanor Hart', role: 'Keeper', isYou: false, investigator: null },
+  { memberId: 'a', displayName: 'Ana Ruiz', role: 'Player', isYou: false, investigator: { visibility: 'Visible', id: 'i1', name: 'Harvey Walters', status: 'Approved' } },
+  { memberId: 'b', displayName: 'Ben Cole', role: 'Player', isYou: false, investigator: { visibility: 'Visible', id: 'i2', name: 'Lucy Ward', status: 'Approved' } },
+]
+
+const itemLinks: ItemLink[] = [
+  {
+    id: 'il1',
+    item: {
+      id: 'item1',
+      name: "Walter Corbitt's diary",
+      holder: { investigatorId: 'i1' },
+      handouts: [{ id: 'ih1', kind: 'Text', visibility: 'PlayerFacing', title: 'The last entry' }],
+    },
+  },
+  {
+    id: 'il2',
+    item: { id: 'item2', name: 'A brass key', holder: null, handouts: [] },
+  },
+]
+
 interface StoryArgs {
   scene?: KeeperActiveScene
   data?: Scene | null
@@ -69,10 +94,17 @@ interface StoryArgs {
 function SectionStory({ scene = active, data = material, tokens = 'pending' }: StoryArgs) {
   return (
     <StoryMsal tokens={tokens}>
-      <StoryProviders seed={(client) => data && client.setQueryData(sceneQueryKeys.detail('story-campaign', scene.scenarioId, scene.sceneId), data)}>
+      <StoryProviders
+        seed={(client) => {
+          client.setQueryData(campaignQueryKeys.members('story-campaign'), members)
+          if (data) {
+            client.setQueryData(sceneQueryKeys.detail('story-campaign', scene.scenarioId, scene.sceneId), data)
+          }
+        }}
+      >
         <SidePanelScopeProvider>
           <div className="flex max-w-2xl flex-col gap-6">
-            <ToRevealSection campaignId="story-campaign" scene={scene} onReveal={() => undefined} />
+            <ToRevealSection campaignId="story-campaign" scene={scene} onReveal={() => undefined} onGive={() => undefined} />
           </div>
         </SidePanelScopeProvider>
       </StoryProviders>
@@ -110,3 +142,6 @@ export const Empty: Story = {
 }
 
 export const LoadError: Story = { args: { data: null, tokens: 'failing' } }
+
+/** Linked Items join To reveal with their holder status and a "Give..." action (SPL-UX-51, SPL-UX-52). */
+export const WithItems: Story = { args: { data: { ...material, itemLinks } } }

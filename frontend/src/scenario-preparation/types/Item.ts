@@ -2,10 +2,17 @@ import type { HandoutSummary } from '@/scenario-preparation/types/Handout'
 import type { SceneStatus } from '@/scenario-preparation/types/Scene'
 import type { RichTextDocument } from '@/shared/types/RichText'
 
-/** The Item a Scene link refers to, with its live name (Keeper-only). */
+/** The Investigator who holds an Item; the name is resolved on the client from the Approved Investigators. */
+export interface ItemHolder {
+  investigatorId: string
+}
+
+/** The Item a Scene link refers to, with its live name, its holder (null while no one holds it), and its Handouts (Keeper-only). */
 export interface ItemReference {
   id: string
   name: string
+  holder: ItemHolder | null
+  handouts: HandoutSummary[]
 }
 
 /**
@@ -34,16 +41,15 @@ export interface ItemScene {
 }
 
 /**
- * An Item: the name Players see, the required Player-facing description, optional Keeper notes, its Handouts in stored order, and
- * the Scenes that link it in Scenario order then Scene order. `holder` is always null until PBI-SPL-003 lets an Investigator
- * hold an Item.
+ * An Item: the name Players see, the required Player-facing description, optional Keeper notes, its holder (null while no one holds
+ * it), its Handouts in stored order, and the Scenes that link it in Scenario order then Scene order.
  */
 export interface Item {
   id: string
   name: string
   playerFacingDescription: RichTextDocument
   keeperNotes: RichTextDocument | null
-  holder: null
+  holder: ItemHolder | null
   handouts: HandoutSummary[]
   scenes: ItemScene[]
 }

@@ -1,7 +1,7 @@
 import { HandoutDocument } from '@/scenario-preparation/components/handout-document/handout-document'
 import { HandoutImage } from '@/scenario-preparation/components/handout-image/handout-image'
 import { useHandout, useHandoutFile } from '@/scenario-preparation/hooks/useHandouts'
-import type { SceneHandoutOwner } from '@/scenario-preparation/services/handoutOwner'
+import type { HandoutOwner } from '@/scenario-preparation/services/handoutOwner'
 import { isFileHandout, type FileHandout, type Handout } from '@/scenario-preparation/types/Handout'
 import { ReadAloudText } from '@/shared/components/read-aloud-text/read-aloud-text'
 import { RichTextView } from '@/shared/components/rich-text-view/rich-text-view'
@@ -9,7 +9,7 @@ import { Button } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 
 interface HandoutPreviewProps {
-  owner: SceneHandoutOwner
+  owner: HandoutOwner
   handoutId: string
 }
 
@@ -40,7 +40,7 @@ export function HandoutPreview({ owner, handoutId }: HandoutPreviewProps) {
   return <PreviewContent owner={owner} handout={handout.data} />
 }
 
-function PreviewContent({ owner, handout }: { owner: SceneHandoutOwner; handout: Handout }) {
+function PreviewContent({ owner, handout }: { owner: HandoutOwner; handout: Handout }) {
   if (isFileHandout(handout)) {
     return <FilePreview owner={owner} handout={handout} />
   }
@@ -48,7 +48,7 @@ function PreviewContent({ owner, handout }: { owner: SceneHandoutOwner; handout:
   return handout.kind === 'ReadAloud' ? <ReadAloudText document={handout.content} showHeading={false} /> : <RichTextView document={handout.content} headingOffset={1} />
 }
 
-function FilePreview({ owner, handout }: { owner: SceneHandoutOwner; handout: FileHandout }) {
+function FilePreview({ owner, handout }: { owner: HandoutOwner; handout: FileHandout }) {
   const file = useHandoutFile(owner, handout.id, true)
 
   return handout.kind === 'Document' ? (

@@ -14,6 +14,7 @@ describe('sidePanelSearchSchema', () => {
     expect(sidePanelSearchSchema.parse({ panel: 'entity', link: 'link-1' })).toEqual({ panel: 'entity', link: 'link-1' })
     expect(sidePanelSearchSchema.parse({ panel: 'handout', handout: 'h-1' })).toEqual({ panel: 'handout', handout: 'h-1' })
     expect(sidePanelSearchSchema.parse({ panel: 'reveal', reveal: 'r-1' })).toEqual({ panel: 'reveal', reveal: 'r-1' })
+    expect(sidePanelSearchSchema.parse({ panel: 'item', item: 'k-1' })).toEqual({ panel: 'item', item: 'k-1' })
   })
 
   it('accepts a clues panel without an investigator for a Player', () => {
@@ -37,6 +38,7 @@ describe('toOpenPanel', () => {
       { type: 'entity', linkId: 'link-1' },
       { type: 'handout', handoutId: 'h-1' },
       { type: 'reveal', revealId: 'r-1' },
+      { type: 'item', itemId: 'k-1' },
     ]
     for (const panel of panels) {
       expect(toOpenPanel(sidePanelSearchSchema.parse(toPanelSearch(panel)))).toEqual(panel)
@@ -54,9 +56,10 @@ describe('toOpenPanel', () => {
     expect(toOpenPanel({ panel: 'entity' })).toBeNull()
     expect(toOpenPanel({ panel: 'handout' })).toBeNull()
     expect(toOpenPanel({ panel: 'reveal' })).toBeNull()
+    expect(toOpenPanel({ panel: 'item' })).toBeNull()
   })
 
-  it('lists the four panel types', () => {
-    expect([...PANEL_TYPES]).toEqual(['clues', 'entity', 'handout', 'reveal'])
+  it('lists the five panel types', () => {
+    expect([...PANEL_TYPES]).toEqual(['clues', 'entity', 'handout', 'reveal', 'item'])
   })
 })

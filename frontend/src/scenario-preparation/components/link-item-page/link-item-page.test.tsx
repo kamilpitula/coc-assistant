@@ -39,7 +39,7 @@ const scene: Scene = {
   startedAt: null,
   finishedAt: null,
   nonPlayerEntityLinks: [],
-  itemLinks: [{ id: 'l1', item: { id: 'k1', name: "Walter Corbitt's diary" } }],
+  itemLinks: [{ id: 'l1', item: { id: 'k1', name: "Walter Corbitt's diary", holder: null, handouts: [] } }],
   handouts: [],
 }
 

@@ -18,8 +18,8 @@ const link: NonPlayerEntityLink = {
   playerFacingName: 'The man by the gate',
   playerFacingDescription: null,
 }
-const itemLink: ItemLink = { id: 'i1', item: { id: 't1', name: 'A brass key' } }
-const itemPage = { to: '/campaigns/$campaignId/items/$itemId', params: { campaignId: 'story-campaign', itemId: 't1' } } as const
+const itemLink: ItemLink = { id: 'i1', item: { id: 't1', name: 'A brass key', holder: null, handouts: [] } }
+const itemHandout: HandoutSummary = { id: 'h2', kind: 'Text', visibility: 'PlayerFacing', title: 'A folded note' }
 
 interface EntryStoryArgs {
   subject: MaterialEntrySubject
@@ -62,6 +62,8 @@ function titleOf(subject: MaterialEntrySubject): string {
       return subject.link.playerFacingName
     case 'item':
       return subject.link.item.name
+    case 'itemHandout':
+      return subject.handout.title
   }
 }
 
@@ -101,7 +103,11 @@ export const HandoutOnScenePage: Story = { args: { subject: { type: 'handout', h
 
 export const NonPlayerEntityOnScenePage: Story = { args: { subject: { type: 'entity', link }, titleId: 'entity-link-l1' } }
 
-export const ItemOnScenePage: Story = { args: { subject: { type: 'item', link: itemLink, page: itemPage }, titleId: 'item-link-i1' } }
+export const ItemOnScenePage: Story = { args: { subject: { type: 'item', link: itemLink }, titleId: 'item-link-i1' } }
+
+export const ItemHandoutOnScenePage: Story = {
+  args: { subject: { type: 'itemHandout', link: itemLink, handout: itemHandout }, titleId: 'handout-link-h2' },
+}
 
 export const HandoutOnItemPage: Story = {
   args: {

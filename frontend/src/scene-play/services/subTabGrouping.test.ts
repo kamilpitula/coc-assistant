@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest'
 
 import type { HandoutSummary } from '@/scenario-preparation/types/Handout'
+import type { ItemHolder, ItemLink } from '@/scenario-preparation/types/Item'
 import type { NonPlayerEntityLink } from '@/scenario-preparation/types/Scene'
 import type { InvestigatorPresent } from '@/scene-play/types/ActiveScene'
 import type { KeeperReveal } from '@/scene-play/types/Reveal'
 
-import { isRevealedToEveryonePresent, keeperReferenceSubjects, revealsToEveryonePresent, revealTargetOf, toRevealStatus, toRevealSubjects } from './subTabGrouping'
+import {
+  isRevealedToEveryonePresent,
+  keeperReferenceSubjects,
+  revealsToEveryonePresent,
+  revealTargetOf,
+  toRevealStatus,
+  toRevealSubjects,
+} from './subTabGrouping'
 
 // specs/scene-play/ux.md section 21.4: the rule that moves a subject off "To reveal".
 function reveal(subjectId: string, recipientIds: string[]): KeeperReveal {
@@ -109,6 +117,31 @@ describe('revealTargetOf', () => {
       triggerId: 'panel-reveal-trigger-l1',
     })
   })
+
+  it('targets an Item with the Item summary (SPL-UX-51)', () => {
+    const diary = itemLink('l1', "Walter Corbitt's diary", null, [])
+
+    expect(revealTargetOf({ type: 'item', link: diary }, 'reveal-trigger-l1')).toEqual({
+      subjectType: 'Item',
+      subjectId: 'item-l1',
+      title: "Walter Corbitt's diary",
+      summary: 'Item',
+      triggerId: 'reveal-trigger-l1',
+    })
+  })
+
+  it('targets an Item Handout like a Handout of the same kind and visibility', () => {
+    const diary = itemLink('l1', "Walter Corbitt's diary", null, [])
+    const entry = handout('h-entry', 'PlayerFacing', 'The last entry')
+
+    expect(revealTargetOf({ type: 'itemHandout', link: diary, handout: entry }, 'reveal-trigger-h-entry')).toEqual({
+      subjectType: 'Handout',
+      subjectId: 'h-entry',
+      title: 'The last entry',
+      summary: 'Text . Player-facing',
+      triggerId: 'reveal-trigger-h-entry',
+    })
+  })
 })
 
 // specs/scene-play/ux.md sections 21.4 and 21.5: what each sub-tab lists, and in which order.
@@ -125,6 +158,10 @@ function link(id: string, playerFacingName: string): NonPlayerEntityLink {
   }
 }
 
+function itemLink(id: string, name: string, holder: ItemHolder | null, handouts: HandoutSummary[]): ItemLink {
+  return { id, item: { id: `item-${id}`, name, holder, handouts } }
+}
+
 describe('toRevealSubjects', () => {
   const secret = handout('h-secret', 'KeeperFacing', 'The secret door')
   const front = handout('h-front', 'PlayerFacing', 'The front door')
@@ -133,7 +170,7 @@ describe('toRevealSubjects', () => {
   const shape = link('n-shape', 'A shape in the cellar')
 
   it('lists Player-facing Handouts in stored order, then entity links in link order (SPL-UX-42)', () => {
-    expect(toRevealSubjects([front, secret, clipping], [landlord, shape], [], [harvey, lucy])).toEqual([
+    expect(toRevealSubjects([front, secret, clipping], [landlord, shape], [], [], [harvey, lucy])).toEqual([
       { type: 'handout', handout: front },
       { type: 'handout', handout: clipping },
       { type: 'entity', link: landlord },
@@ -144,7 +181,7 @@ describe('toRevealSubjects', () => {
   it('drops a subject once it reached every Investigator present, and keeps partly revealed ones (SPL-UX-43)', () => {
     const reveals = [reveal('h-front', ['harvey', 'lucy']), reveal('h-clipping', ['harvey'])]
 
-    expect(toRevealSubjects([front, secret, clipping], [landlord, shape], reveals, [harvey, lucy])).toEqual([
+    expect(toRevealSubjects([front, secret, clipping], [landlord, shape], [], reveals, [harvey, lucy])).toEqual([
       { type: 'handout', handout: clipping },
       { type: 'entity', link: landlord },
       { type: 'entity', link: shape },
@@ -154,7 +191,48 @@ describe('toRevealSubjects', () => {
   it('is empty when everything Player-facing reached everyone present', () => {
     const reveals = [reveal('h-front', ['harvey', 'lucy']), reveal('n-landlord', ['harvey', 'lucy'])]
 
-    expect(toRevealSubjects([front], [landlord], reveals, [harvey, lucy])).toEqual([])
+    expect(toRevealSubjects([front], [landlord], [], reveals, [harvey, lucy])).toEqual([])
+  })
+})
+
+describe('toRevealSubjects with Items (SPL-UX-51)', () => {
+  const lastEntry = handout('h-entry', 'PlayerFacing', 'The last entry')
+  const hiddenPhoto = handout('h-photo', 'KeeperFacing', 'Torn photo')
+  const diary = itemLink('l-diary', "Walter Corbitt's diary", { investigatorId: 'harvey' }, [lastEntry, hiddenPhoto])
+  const key = itemLink('l-key', 'The cellar key', null, [])
+
+  it('lists linked Items after the entity links, each followed by its Player-facing Handouts in stored order', () => {
+    const front = handout('h-front', 'PlayerFacing', 'The front door')
+    const landlord = link('n-landlord', 'The landlord')
+
+    expect(toRevealSubjects([front], [landlord], [diary, key], [], [harvey, lucy])).toEqual([
+      { type: 'handout', handout: front },
+      { type: 'entity', link: landlord },
+      { type: 'item', link: diary },
+      { type: 'itemHandout', link: diary, handout: lastEntry },
+      { type: 'item', link: key },
+    ])
+  })
+
+  it('counts a give Reveal as a Reveal of the Item to its holder', () => {
+    const reveals = [reveal('item-l-diary', ['harvey'])]
+
+    expect(toRevealSubjects([], [], [diary], reveals, [harvey, lucy])).toEqual([
+      { type: 'item', link: diary },
+      { type: 'itemHandout', link: diary, handout: lastEntry },
+    ])
+  })
+
+  it('drops an Item once it reached every Investigator present, but keeps its unrevealed Handout', () => {
+    const reveals = [reveal('item-l-diary', ['harvey', 'lucy']), reveal('h-entry', ['harvey'])]
+
+    expect(toRevealSubjects([], [], [diary], reveals, [harvey, lucy])).toEqual([{ type: 'itemHandout', link: diary, handout: lastEntry }])
+  })
+
+  it('drops an Item Handout once it reached every Investigator present', () => {
+    const reveals = [reveal('h-entry', ['harvey', 'lucy'])]
+
+    expect(toRevealSubjects([], [], [diary], reveals, [harvey, lucy])).toEqual([{ type: 'item', link: diary }])
   })
 })
 
@@ -190,12 +268,21 @@ describe('keeperReferenceSubjects', () => {
     const front = handout('h-front', 'PlayerFacing', 'The front door')
     const landlord = link('n-landlord', 'The landlord')
 
-    expect(keeperReferenceSubjects([secret, front], [landlord])).toEqual({ handouts: [secret], links: [landlord] })
+    expect(keeperReferenceSubjects([secret, front], [landlord], [])).toEqual({ handouts: [secret], links: [landlord], items: [] })
+  })
+
+  it('lists every linked Item after the entity links, whatever was revealed (SPL-UX-56)', () => {
+    const front = handout('h-front', 'PlayerFacing', 'The front door')
+    const landlord = link('n-landlord', 'The landlord')
+    const diary = itemLink('l-diary', "Walter Corbitt's diary", { investigatorId: 'harvey' }, [])
+    const key = itemLink('l-key', 'The cellar key', null, [])
+
+    expect(keeperReferenceSubjects([front], [landlord], [diary, key])).toEqual({ handouts: [], links: [landlord], items: [diary, key] })
   })
 
   it('is empty when the Scene has nothing Keeper-only', () => {
     const front = handout('h-front', 'PlayerFacing', 'The front door')
 
-    expect(keeperReferenceSubjects([front], [])).toEqual({ handouts: [], links: [] })
+    expect(keeperReferenceSubjects([front], [], [])).toEqual({ handouts: [], links: [], items: [] })
   })
 })

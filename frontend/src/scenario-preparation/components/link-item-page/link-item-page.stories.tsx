@@ -28,7 +28,7 @@ const prepared: Scene = {
   startedAt: null,
   finishedAt: null,
   nonPlayerEntityLinks: [],
-  itemLinks: [{ id: 'link-1', item: { id: 'diary', name: "Walter Corbitt's diary" } }],
+  itemLinks: [{ id: 'link-1', item: { id: 'diary', name: "Walter Corbitt's diary", holder: null, handouts: [] } }],
   handouts: [],
 }
 

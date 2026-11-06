@@ -7,7 +7,7 @@ import { richTextSchema } from '@/scenario-preparation/services/sceneApi'
 const playerRevealShape = {
   revealId: z.string(),
   revealedAt: z.string(),
-  subjectType: z.enum(['Handout', 'NonPlayerEntity']),
+  subjectType: z.enum(['Handout', 'NonPlayerEntity', 'Item']),
   title: z.string(),
   handoutKind: z.enum(['ReadAloud', 'Text', 'Image', 'Document', 'Map']).nullable(),
   content: richTextSchema.nullable(),

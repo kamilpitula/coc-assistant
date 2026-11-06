@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
+import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
+import type { CampaignMember } from '@/campaign-play/types/CampaignMember'
 import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
+import type { ItemLink } from '@/scenario-preparation/types/Item'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import { paragraph } from '@/scene-play/test-support/revealFixtures'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
@@ -45,6 +48,27 @@ const material: Scene = {
   ],
 }
 
+const members: CampaignMember[] = [
+  { memberId: 'k', displayName: 'Eleanor Hart', role: 'Keeper', isYou: false, investigator: null },
+  { memberId: 'a', displayName: 'Ana Ruiz', role: 'Player', isYou: false, investigator: { visibility: 'Visible', id: 'i1', name: 'Harvey Walters', status: 'Approved' } },
+]
+
+const itemLinks: ItemLink[] = [
+  {
+    id: 'il1',
+    item: {
+      id: 'item1',
+      name: "Walter Corbitt's diary",
+      holder: { investigatorId: 'i1' },
+      handouts: [{ id: 'ih2', kind: 'Text', visibility: 'KeeperFacing', title: 'The missing page' }],
+    },
+  },
+  {
+    id: 'il2',
+    item: { id: 'item2', name: 'A brass key', holder: null, handouts: [] },
+  },
+]
+
 interface StoryArgs {
   data?: Scene | null
   tokens?: 'pending' | 'failing'
@@ -53,10 +77,17 @@ interface StoryArgs {
 function SectionStory({ data = material, tokens = 'pending' }: StoryArgs) {
   return (
     <StoryMsal tokens={tokens}>
-      <StoryProviders seed={(client) => data && client.setQueryData(sceneQueryKeys.detail('story-campaign', active.scenarioId, active.sceneId), data)}>
+      <StoryProviders
+        seed={(client) => {
+          client.setQueryData(campaignQueryKeys.members('story-campaign'), members)
+          if (data) {
+            client.setQueryData(sceneQueryKeys.detail('story-campaign', active.scenarioId, active.sceneId), data)
+          }
+        }}
+      >
         <SidePanelScopeProvider>
           <div className="flex max-w-2xl flex-col gap-6">
-            <KeeperReferenceSection campaignId="story-campaign" scene={active} />
+            <KeeperReferenceSection campaignId="story-campaign" scene={active} onGive={() => undefined} onTakeBack={() => undefined} />
           </div>
         </SidePanelScopeProvider>
       </StoryProviders>
@@ -77,3 +108,6 @@ export const Default: Story = {}
 export const Empty: Story = { args: { data: { ...material, handouts: material.handouts.filter((handout) => handout.visibility === 'PlayerFacing'), nonPlayerEntityLinks: [] } } }
 
 export const LoadError: Story = { args: { data: null, tokens: 'failing' } }
+
+/** Linked Items join Keeper reference with their holder and "Give..."/"Take back" (SPL-UX-56). */
+export const WithItems: Story = { args: { data: { ...material, itemLinks } } }

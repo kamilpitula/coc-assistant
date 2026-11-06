@@ -27,8 +27,8 @@ const link: NonPlayerEntityLink = {
   playerFacingName: 'The man by the gate',
   playerFacingDescription: null,
 }
-const itemLink: ItemLink = { id: 'i1', item: { id: 't1', name: 'A brass key' } }
-const itemPage = { to: '/campaigns/$campaignId/items/$itemId', params: { campaignId: 'c1', itemId: 't1' } } as const
+const itemLink: ItemLink = { id: 'i1', item: { id: 't1', name: 'A brass key', holder: null, handouts: [] } }
+const itemHandout: HandoutSummary = { id: 'h2', kind: 'Text', visibility: 'PlayerFacing', title: 'A folded note' }
 
 function showEntry(ui: ReactElement) {
   return render(ui)
@@ -72,9 +72,17 @@ describe('MaterialEntry', () => {
   })
 
   it('shows an Item subject with the "Item" badge', () => {
-    showEntry(<MaterialEntry subject={{ type: 'item', link: itemLink, page: itemPage }} titleId="item-link-i1" />)
+    showEntry(<MaterialEntry subject={{ type: 'item', link: itemLink }} titleId="item-link-i1" />)
 
     expect(screen.getByText('Item')).toBeInTheDocument()
+  })
+
+  it('shows an Item Handout subject with its badges and the owning Item (SPL-UX-51)', () => {
+    showEntry(<MaterialEntry subject={{ type: 'itemHandout', link: itemLink, handout: itemHandout }} titleId="handout-link-h2" />)
+
+    expect(screen.getByText('Text')).toBeInTheDocument()
+    expect(screen.getByText('Player-facing')).toBeInTheDocument()
+    expect(screen.getByText('Item: A brass key')).toBeInTheDocument()
   })
 
   it('renders a panel title as a button with aria-haspopup="dialog" that opens the handout panel with its trigger (SP-A11Y-60)', async () => {
@@ -100,14 +108,27 @@ describe('MaterialEntry', () => {
     expect(mockOpen).toHaveBeenCalledWith({ type: 'entity', linkId: 'l1' }, title)
   })
 
-  it('renders a subject with a page as a link with the given id and no button', () => {
-    showEntry(<MaterialEntry subject={{ type: 'item', link: itemLink, page: itemPage }} titleId="item-link-i1" />)
+  it('opens the item panel from an Item title (SPL-UX-51)', async () => {
+    const user = userEvent.setup()
+    showEntry(<MaterialEntry subject={{ type: 'item', link: itemLink }} titleId="item-link-i1" />)
 
-    const title = screen.getByRole('link', { name: 'A brass key' })
+    const title = screen.getByRole('button', { name: 'A brass key' })
     expect(title).toHaveAttribute('id', 'item-link-i1')
-    expect(title).toHaveAttribute('href', '/campaigns/c1/items/t1')
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
-    expect(mockOpen).not.toHaveBeenCalled()
+    expect(title).toHaveAttribute('aria-haspopup', 'dialog')
+
+    await user.click(title)
+    expect(mockOpen).toHaveBeenCalledWith({ type: 'item', itemId: 't1' }, title)
+  })
+
+  it('opens the handout panel from an Item Handout title (SPL-UX-51)', async () => {
+    const user = userEvent.setup()
+    showEntry(<MaterialEntry subject={{ type: 'itemHandout', link: itemLink, handout: itemHandout }} titleId="handout-link-h2" />)
+
+    const title = screen.getByRole('button', { name: 'A folded note' })
+    expect(title).toHaveAttribute('id', 'handout-link-h2')
+
+    await user.click(title)
+    expect(mockOpen).toHaveBeenCalledWith({ type: 'handout', handoutId: 'h2' }, title)
   })
 
   it('renders the status and action slots when given and omits them otherwise', () => {

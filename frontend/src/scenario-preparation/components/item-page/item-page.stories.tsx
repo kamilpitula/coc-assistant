@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { userEvent, within } from 'storybook/test'
 
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
-import { keeperCampaign, playerCampaign, STORY_CAMPAIGN_ID } from '@/campaign-play/test-support/rosterFixtures'
+import { keeperCampaign, keeperRosterAllApproved, playerCampaign, STORY_CAMPAIGN_ID } from '@/campaign-play/test-support/rosterFixtures'
 import { itemQueryKeys } from '@/scenario-preparation/services/itemApi'
 import type { Item } from '@/scenario-preparation/types/Item'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
@@ -54,6 +54,7 @@ function PageStory({ role = 'Keeper', item, tokens = 'pending' }: StoryArgs) {
       <StoryProviders
         seed={(client) => {
           client.setQueryData(campaignQueryKeys.detail(STORY_CAMPAIGN_ID), role === 'Keeper' ? keeperCampaign : playerCampaign)
+          client.setQueryData(campaignQueryKeys.members(STORY_CAMPAIGN_ID), keeperRosterAllApproved)
           if (item !== undefined) {
             client.setQueryData(itemQueryKeys.detail(STORY_CAMPAIGN_ID, ITEM_ID), item)
           }

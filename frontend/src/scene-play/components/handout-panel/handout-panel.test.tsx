@@ -49,7 +49,11 @@ const scene: KeeperActiveScene = {
 }
 const activeQuery = (data: ActiveScene | null | undefined) => ({ data, isError: false, isFetchedAfterMount: true, refetch: vi.fn() })
 const handoutQuery = (data: Handout | null | undefined, overrides: Record<string, unknown> = {}) => ({ data, isError: false, refetch, ...overrides })
-const materialQuery = (handouts: HandoutSummary[]) => ({ data: { handouts }, isError: false, refetch })
+const materialQuery = (handouts: HandoutSummary[], itemLinks: { id: string; item: { id: string; name: string; holder: null; handouts: HandoutSummary[] } }[] = []) => ({
+  data: { handouts, itemLinks },
+  isError: false,
+  refetch,
+})
 
 const investigatorsPresent = [
   { id: 'i1', name: 'Harvey Walters' },
@@ -104,6 +108,30 @@ describe('HandoutPanel', () => {
     show()
 
     expect(mockUseHandout).toHaveBeenCalledWith({ type: 'scene', campaignId: 'c1', scenarioId: 'p1', sceneId: 's1' }, 'h1', true)
+  })
+
+  it("loads an Item's Handout through the Item owner, with the Item's full-page link (SPL-UX-51)", async () => {
+    const entry: HandoutSummary = { id: 'h1', kind: 'Text', visibility: 'PlayerFacing', title: 'The last entry' }
+    mockUseScene.mockReturnValue(
+      materialQuery([], [{ id: 'l1', item: { id: 'k1', name: "Walter Corbitt's diary", holder: null, handouts: [entry] } }]),
+    )
+    mockUseActive.mockReturnValue(activeQuery({ ...scene, investigatorsPresent, reveals: [] }))
+    show('h1', onReveal)
+
+    expect(mockUseHandout).toHaveBeenCalledWith({ type: 'item', campaignId: 'c1', itemId: 'k1' }, 'h1', true)
+    expect(screen.getByRole('link', { name: 'Open full page' })).toHaveAttribute('href', '/campaigns/c1/items/k1/handouts/h1?from=active-scene')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reveal The last entry' }))
+    expect(onReveal).toHaveBeenCalledWith(
+      {
+        subjectType: 'Handout',
+        subjectId: 'h1',
+        title: 'The last entry',
+        summary: 'Text . Player-facing',
+        triggerId: 'panel-reveal-trigger-h1',
+      },
+      { alreadyRevealedIds: [], fallbackIds: expect.any(Array) },
+    )
   })
 
   it('says the subject was not found for an unknown Handout, with no footer (NAV-UX-9)', () => {

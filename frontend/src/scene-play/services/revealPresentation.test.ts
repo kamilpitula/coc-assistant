@@ -33,9 +33,10 @@ describe('joinNames', () => {
 })
 
 describe('revealKindLabel', () => {
-  it('names the Handout kind, or "Non-Player Entity" when there is none', () => {
+  it('names the Handout kind, an Item, or "Non-Player Entity" when there is no kind (SPL-UX-51)', () => {
     expect(revealKindLabel(reveal('1'))).toBe('Read-aloud')
     expect(revealKindLabel(reveal('2', { subjectType: 'NonPlayerEntity', handoutKind: null }))).toBe('Non-Player Entity')
+    expect(revealKindLabel(reveal('3', { subjectType: 'Item', handoutKind: null }))).toBe('Item')
   })
 })
 

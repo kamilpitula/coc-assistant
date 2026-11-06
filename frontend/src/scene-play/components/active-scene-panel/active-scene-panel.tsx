@@ -3,6 +3,7 @@ import type { ReactNode, RefObject } from 'react'
 import { CluesPanel } from '@/scene-play/components/clues-panel/clues-panel'
 import { EntityPanel } from '@/scene-play/components/entity-panel/entity-panel'
 import { HandoutPanel } from '@/scene-play/components/handout-panel/handout-panel'
+import { ItemPanel } from '@/scene-play/components/item-panel/item-panel'
 import { RevealPanel } from '@/scene-play/components/reveal-panel/reveal-panel'
 import { useActiveScene } from '@/scene-play/hooks/useActiveScene'
 import type { RevealOpenContext, RevealTarget } from '@/scene-play/hooks/useRevealFlow'
@@ -50,6 +51,8 @@ const PANEL_BODIES: Record<
   handout: (campaignId, panel, onReveal) =>
     panel.type === 'handout' ? <HandoutPanel campaignId={campaignId} handoutId={panel.handoutId} onReveal={onReveal} /> : null,
   reveal: (campaignId, panel) => (panel.type === 'reveal' ? <RevealPanel campaignId={campaignId} revealId={panel.revealId} /> : null),
+  item: (campaignId, panel, onReveal) =>
+    panel.type === 'item' ? <ItemPanel campaignId={campaignId} itemId={panel.itemId} onReveal={onReveal} /> : null,
 }
 
 function panelBody(campaignId: string, panel: OpenPanel | null, onReveal: ActiveScenePanelProps['onReveal']) {

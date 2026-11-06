@@ -1,8 +1,8 @@
 import type { HandoutKind } from '@/scenario-preparation/types/Handout'
 import type { RichTextDocument } from '@/shared/types/RichText'
 
-/** What a Reveal shows. An Item cannot be revealed until PBI-SPL-003. */
-export type RevealSubjectType = 'Handout' | 'NonPlayerEntity'
+/** What a Reveal shows: a Handout, a Non-Player Entity, or an Item (PBI-SPL-003). */
+export type RevealSubjectType = 'Handout' | 'NonPlayerEntity' | 'Item'
 
 /** The details of a revealed file; the bytes come from the Reveal's file endpoint. */
 export interface RevealFileDetails {

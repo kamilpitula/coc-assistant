@@ -1,8 +1,9 @@
+import { UNNAMED_INVESTIGATOR } from '@/campaign-play/services/rosterRows'
 import { HANDOUT_KIND_LABELS } from '@/scenario-preparation/types/Handout'
 import type { InvestigatorPresent } from '@/scene-play/types/ActiveScene'
 import type { KeeperReveal, PlayerReveal } from '@/scene-play/types/Reveal'
 
-export const UNNAMED_INVESTIGATOR = 'Unnamed Investigator'
+export { UNNAMED_INVESTIGATOR }
 
 /** "A", "A and B", or "A, B, and C" (specs/scene-play/ux.md section 17). A missing name is "Unnamed Investigator". */
 export function joinNames(names: (string | null)[]): string {
@@ -13,9 +14,12 @@ export function joinNames(names: (string | null)[]): string {
   return `${shown.slice(0, -1).join(', ')}, and ${shown[shown.length - 1]}`
 }
 
-/** What a Reveal shows: its Handout kind as the Keeper knows it, or "Non-Player Entity" (section 14). */
+/** What a Reveal shows: its Handout kind as the Keeper knows it, "Item", or "Non-Player Entity" (section 14, PBI-SPL-003). */
 export function revealKindLabel(reveal: PlayerReveal): string {
-  return reveal.handoutKind ? HANDOUT_KIND_LABELS[reveal.handoutKind] : 'Non-Player Entity'
+  if (reveal.handoutKind) {
+    return HANDOUT_KIND_LABELS[reveal.handoutKind]
+  }
+  return reveal.subjectType === 'Item' ? 'Item' : 'Non-Player Entity'
 }
 
 /**
