@@ -100,7 +100,6 @@ public class ItemHandoutServiceTests : IDisposable
             "OtherKeeper" => (_builder.CampaignId, ScenarioPreparationTestBuilder.OtherKeeperAccountId),
             _ => (Guid.NewGuid(), Keeper),
         };
-        _builder.ItemHolders.Calls.Clear();
         using var context = _builder.Fixture.CreateContext();
         var recording = new RecordingItemRepository(new EfItemRepository(context));
         var service = _builder.CreateHandoutService(context, items: recording);
@@ -122,7 +121,6 @@ public class ItemHandoutServiceTests : IDisposable
         Assert.Equal(HandoutWriteOutcome.NotFound, fileCreated.Outcome);
         Assert.Equal(HandoutFileOpenOutcome.NotFound, opened.Outcome);
         Assert.Empty(recording.Calls);
-        Assert.Empty(_builder.ItemHolders.Calls);
         Assert.Equal(0, _builder.FileStore.CallCount);
         Assert.Single(await StoredHandoutsAsync(item.Id));
     }
@@ -186,7 +184,7 @@ public class ItemHandoutServiceTests : IDisposable
     {
         var item = await _builder.CreateItemAsync(_builder.CampaignId);
         var handout = await _builder.AddItemHandoutAsync(_builder.CampaignId, item.Id);
-        _builder.ItemHolders.Hold(item.Id, Guid.NewGuid());
+        await _builder.HoldItemAsync(item.Id, Guid.NewGuid());
 
         Assert.Equal(HandoutRemoveOutcome.InPlay, await RemoveAsync(item.Id, handout.Id));
         Assert.Single(await StoredHandoutsAsync(item.Id));
@@ -234,7 +232,7 @@ public class ItemHandoutServiceTests : IDisposable
     {
         var item = await _builder.CreateItemAsync(_builder.CampaignId);
         var (handout, _) = await _builder.AddItemImageHandoutAsync(_builder.CampaignId, item.Id);
-        _builder.ItemHolders.Hold(item.Id, Guid.NewGuid());
+        await _builder.HoldItemAsync(item.Id, Guid.NewGuid());
 
         var result = await ReplaceImageAsync(item.Id, handout.Id);
 

@@ -1,7 +1,8 @@
 namespace CocAssistant.ScenarioPreparation.Domain;
 
 /// <summary>
-/// A Keeper's showing of one Handout or Non-Player Entity link of an Active Scene to chosen Investigators present
+/// A Keeper's showing of one Handout (of a Scene or of a linked Item), Non-Player Entity link, or Item of an Active Scene to
+/// chosen Investigators present
 /// (CONTEXT.md, Reveal). It holds a snapshot of what was shown, taken when it was made, and is never updated afterwards, so a
 /// later edit of the source changes nothing a Player received (ADR 0019). The subject id has no foreign key and is never sent to
 /// Players. A child of its Scene, created only by <see cref="Scene.Reveal"/> (PBI-SPL-002 D1).
@@ -71,5 +72,15 @@ public class Reveal
         new(sceneId, RevealSubjectType.NonPlayerEntity, link.Id, link.PlayerFacingName, now, recipientIds)
         {
             Content = link.PlayerFacingDescription,
+        };
+
+    /// <summary>
+    /// Snapshots an Item's name and Player-facing description (specs/scene-play/spec.md). The name fits the title length (ADR 0029).
+    /// Giving never reveals Handouts; an Item's Player-facing Handouts are revealed on their own.
+    /// </summary>
+    internal static Reveal FromItem(Guid sceneId, Item item, IEnumerable<Guid> recipientIds, DateTimeOffset now) =>
+        new(sceneId, RevealSubjectType.Item, item.Id, item.Name, now, recipientIds)
+        {
+            Content = item.PlayerFacingDescription,
         };
 }

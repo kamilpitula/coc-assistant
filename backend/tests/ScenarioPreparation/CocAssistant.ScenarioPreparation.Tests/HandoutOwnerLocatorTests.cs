@@ -71,7 +71,6 @@ public class HandoutOwnerLocatorTests : IDisposable
         Assert.Null(await locator.FindAsync(campaignId, accountId, new ItemHandoutOwnerReference(item.Id), CancellationToken.None));
         Assert.Empty(scenes.Calls);
         Assert.Empty(items.Calls);
-        Assert.Empty(_builder.ItemHolders.Calls);
     }
 
     [Fact]
@@ -121,7 +120,7 @@ public class HandoutOwnerLocatorTests : IDisposable
     {
         var item = await _builder.CreateItemAsync(_builder.CampaignId);
         var handout = await _builder.AddItemHandoutAsync(_builder.CampaignId, item.Id);
-        _builder.ItemHolders.Hold(item.Id, Guid.NewGuid());
+        await _builder.HoldItemAsync(item.Id, Guid.NewGuid());
 
         var owner = await FindAsync(new ItemHandoutOwnerReference(item.Id));
 

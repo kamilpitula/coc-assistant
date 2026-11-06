@@ -23,8 +23,6 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
 
     public FakeHandoutFileStore FileStore { get; } = new();
 
-    public FakeItemHolders ItemHolders { get; } = new();
-
     public RecordingLogger<ItemService> ItemLogger { get; } = new();
 
     public RecordingLogger<HandoutService> HandoutLogger { get; } = new();
@@ -61,11 +59,11 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
     public ItemLinkService CreateItemLinkService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
         new(Keepers, repository ?? new EfSceneRepository(context), new EfItemDirectory(context), TimeProvider);
 
-    public ItemService CreateItemService(ScenarioPreparationDbContext context, IItemRepository? repository = null, IItemUsage? usage = null, IItemHolders? holders = null) =>
-        new(Keepers, repository ?? new EfItemRepository(context), new EfItemDirectory(context), usage ?? new EfItemUsage(context), holders ?? ItemHolders, CreateLinkedSceneGuard(context), FileStore, TimeProvider, ItemLogger);
+    public ItemService CreateItemService(ScenarioPreparationDbContext context, IItemRepository? repository = null, IItemUsage? usage = null) =>
+        new(Keepers, repository ?? new EfItemRepository(context), new EfItemDirectory(context), usage ?? new EfItemUsage(context), CreateLinkedSceneGuard(context), FileStore, TimeProvider, ItemLogger);
 
     public HandoutOwnerLocator CreateHandoutOwnerLocator(ScenarioPreparationDbContext context, ISceneRepository? scenes = null, IItemRepository? items = null) =>
-        new(Keepers, scenes ?? new EfSceneRepository(context), items ?? new EfItemRepository(context), new EfItemUsage(context), ItemHolders);
+        new(Keepers, scenes ?? new EfSceneRepository(context), items ?? new EfItemRepository(context), new EfItemUsage(context));
 
     public HandoutService CreateHandoutService(ScenarioPreparationDbContext context, ISceneRepository? repository = null, IItemRepository? items = null) =>
         new(CreateHandoutOwnerLocator(context, repository, items), FileStore, TimeProvider, HandoutLogger);
@@ -246,6 +244,25 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
     {
         using var context = Fixture.CreateContext();
         return await CreateSceneService(context).ListAsync(campaignId, callerAccountId, scenarioId, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Gives the stored Item to an Investigator through a real give Reveal, then unlinks and finishes the Scene, as the provider
+    /// service will (ADR 0029). The Item stays held with no played link; its give Reveal keeps it played.
+    /// </summary>
+    public async Task HoldItemAsync(Guid itemId, Guid investigatorId)
+    {
+        var scenario = await CreateScenarioAsync(CampaignId, "The Haunting");
+        var sceneId = (await CreateSceneAsync(CampaignId, scenario.Id, "The Corbitt House")).Id;
+        var link = await LinkItemAsync(CampaignId, scenario.Id, sceneId, itemId);
+        using var context = Fixture.CreateContext();
+        var scene = (await new EfSceneRepository(context).FindForPlayAsync(CampaignId, sceneId, CancellationToken.None))!;
+        Assert.Equal(SceneTransitionOutcome.Transitioned, scene.Start(TimeProvider.GetUtcNow(), [investigatorId], [investigatorId]));
+        var item = await context.Items.SingleAsync(candidate => candidate.Id == itemId);
+        Assert.Equal(GiveItemOutcome.Given, scene.GiveItem(item, investigatorId, TimeProvider.GetUtcNow()).Outcome);
+        Assert.Equal(ItemLinkOutcome.Unlinked, scene.UnlinkItem(link.Id));
+        Assert.Equal(SceneTransitionOutcome.Transitioned, scene.Finish(TimeProvider.GetUtcNow().Add(TimeSpan.FromMinutes(30))));
+        await context.SaveChangesAsync();
     }
 
     /// <summary>Plays a stored Scene to the given status through the domain transitions, as Scene Play will.</summary>

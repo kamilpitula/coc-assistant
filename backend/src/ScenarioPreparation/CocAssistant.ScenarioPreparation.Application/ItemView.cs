@@ -1,5 +1,8 @@
 namespace CocAssistant.ScenarioPreparation.Application;
 
+/// <summary>The Investigator who holds an Item.</summary>
+public sealed record ItemHolder(Guid InvestigatorId);
+
 /// <summary>
 /// An Item with its Player-facing description and Keeper notes (the stored Lexical JSON texts), its holder (null while no one holds
 /// it), its Handout summaries in stored order, and the Scenes that link it in Scenario order then Scene order.

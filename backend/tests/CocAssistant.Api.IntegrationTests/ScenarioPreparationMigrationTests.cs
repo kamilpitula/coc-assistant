@@ -7,13 +7,14 @@ public class ScenarioPreparationMigrationTests : IAsyncLifetime
         SqlServerTestConnection.ForDatabase("CocAssistantScenarioPreparationMigrationTests");
 
     private ScenarioPreparationDbContext _dbContext = null!;
+    private DbContextOptions<ScenarioPreparationDbContext> _options = null!;
 
     public async Task InitializeAsync()
     {
-        var options = new DbContextOptionsBuilder<ScenarioPreparationDbContext>()
+        _options = new DbContextOptionsBuilder<ScenarioPreparationDbContext>()
             .UseSqlServer(ConnectionString, sql => sql.MigrationsHistoryTable("__ScenarioPreparationMigrationsHistory"))
             .Options;
-        _dbContext = new ScenarioPreparationDbContext(options);
+        _dbContext = new ScenarioPreparationDbContext(_options);
         await _dbContext.Database.EnsureDeletedAsync();
     }
 
@@ -142,6 +143,61 @@ public class ScenarioPreparationMigrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Given_a_new_database_When_migrating_to_latest_Then_a_given_item_is_stored_with_its_holder_and_give_reveal()
+    {
+        var (itemId, holderId, revealId) = await GiveAsync();
+
+        var stored = await new EfItemRepository(_dbContext).FindByIdAsync(CampaignId, itemId, CancellationToken.None);
+        var held = await new EfItemRepository(_dbContext).ListHeldAsync(CampaignId, holderId, CancellationToken.None);
+
+        Assert.Equal((holderId, revealId), (stored!.HolderInvestigatorId, stored.HolderRevealId));
+        var entry = Assert.Single(held);
+        Assert.Equal((itemId, revealId), (entry.Item.Id, entry.GiveReveal.Id));
+    }
+
+    [Fact]
+    public async Task Given_a_new_database_When_inserting_items_Then_the_database_refuses_a_holder_without_its_give_reveal_and_vice_versa()
+    {
+        await _dbContext.Database.MigrateAsync();
+        var campaignId = Guid.NewGuid();
+        var holderId = Guid.NewGuid();
+        const string columns = "INSERT INTO Items (Id, CampaignId, Name, PlayerFacingDescription, CreatedAt, {0}) VALUES (NEWID(), {1}, 'Key', 'A key', SYSUTCDATETIME(), {2})";
+        var holderWithoutReveal = string.Format(columns, "HolderInvestigatorId", "{0}", "{1}");
+        var revealWithoutHolder = string.Format(columns, "HolderRevealId", "{0}", "NEWID()");
+
+        await Assert.ThrowsAsync<SqlException>(() => _dbContext.Database.ExecuteSqlRawAsync(holderWithoutReveal, campaignId, holderId));
+        await Assert.ThrowsAsync<SqlException>(() => _dbContext.Database.ExecuteSqlRawAsync(revealWithoutHolder, campaignId));
+        await _dbContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO Items (Id, CampaignId, Name, PlayerFacingDescription, CreatedAt) VALUES (NEWID(), {0}, 'Key', 'A key', SYSUTCDATETIME())",
+            campaignId);
+        Assert.Equal(1, await _dbContext.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM Items").SingleAsync());
+    }
+
+    [Fact]
+    public async Task Given_a_held_item_When_deleting_its_give_reveal_Then_the_database_refuses()
+    {
+        var (itemId, _, _) = await GiveAsync();
+
+        await Assert.ThrowsAsync<SqlException>(() => _dbContext.Set<Reveal>().ExecuteDeleteAsync());
+
+        var stored = await new EfItemRepository(_dbContext).FindByIdAsync(CampaignId, itemId, CancellationToken.None);
+        Assert.NotNull(stored!.HolderInvestigatorId);
+    }
+
+    [Fact]
+    public async Task Given_an_item_updated_concurrently_When_saving_Then_the_second_save_fails()
+    {
+        var seed = await SeedAsync();
+        using var other = new ScenarioPreparationDbContext(_options);
+        var stale = await other.Items.SingleAsync(candidate => candidate.Id == seed.ItemId);
+        var revealId = await GiveOnAsync(_dbContext, seed.SceneId, seed.ItemId, seed.HolderId);
+        Assert.NotEqual(Guid.Empty, revealId);
+        stale.Edit("Map", Text, null);
+
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => other.SaveChangesAsync());
+    }
+
+    [Fact]
     public async Task Given_an_item_with_a_scene_link_and_a_handout_When_deleting_the_item_Then_the_database_cascades_to_both_and_keeps_the_scene()
     {
         await _dbContext.Database.MigrateAsync();
@@ -163,5 +219,48 @@ public class ScenarioPreparationMigrationTests : IAsyncLifetime
             await _dbContext.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM ItemLinks").SingleAsync(),
             await _dbContext.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM Handouts").SingleAsync(),
             await _dbContext.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM Scenes").SingleAsync()));
+    }
+
+    private static readonly Guid CampaignId = Guid.NewGuid();
+
+    private const string Text = "{\"root\":{\"type\":\"root\",\"children\":[{\"type\":\"paragraph\",\"children\":[{\"type\":\"text\",\"text\":\"A key\"}]}]}}";
+
+    private async Task<(Guid ItemId, Guid HolderId, Guid RevealId)> GiveAsync()
+    {
+        var seed = await SeedAsync();
+        var revealId = await GiveOnAsync(_dbContext, seed.SceneId, seed.ItemId, seed.HolderId);
+        return (seed.ItemId, seed.HolderId, revealId);
+    }
+
+    private async Task<(Guid SceneId, Guid ItemId, Guid HolderId)> SeedAsync()
+    {
+        await _dbContext.Database.MigrateAsync();
+        var now = DateTimeOffset.UtcNow;
+        var holderId = Guid.NewGuid();
+        var scenario = Scenario.Create(CampaignId, "The Haunting", null, 1, now).Scenario!;
+        var scene = Scene.Create(scenario, "The Corbitt House", null, null, 1, now).Scene!;
+        var item = Item.Create(CampaignId, "Key", Text, null, now).Item!;
+        scene.LinkItem(item.Id, true, now);
+        _dbContext.Scenarios.Add(scenario);
+        _dbContext.Scenes.Add(scene);
+        _dbContext.Items.Add(item);
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+
+        return (scene.Id, item.Id, holderId);
+    }
+
+    private async Task<Guid> GiveOnAsync(ScenarioPreparationDbContext context, Guid sceneId, Guid itemId, Guid holderId)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var play = (await new EfSceneRepository(context).FindForPlayAsync(CampaignId, sceneId, CancellationToken.None))!;
+        Assert.Equal(SceneTransitionOutcome.Transitioned, play.Start(now, [holderId], [holderId]));
+        var held = await context.Items.SingleAsync(candidate => candidate.Id == itemId);
+        var give = play.GiveItem(held, holderId, now);
+        Assert.Equal(GiveItemOutcome.Given, give.Outcome);
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        return give.Reveal!.Id;
     }
 }

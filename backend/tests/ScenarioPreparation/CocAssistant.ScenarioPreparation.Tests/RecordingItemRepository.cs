@@ -30,6 +30,18 @@ public sealed class RecordingItemRepository : IItemRepository
         return _inner.FindByIdAsync(campaignId, itemId, cancellationToken);
     }
 
+    public Task<IReadOnlyList<Item>> ListLinkedForSceneAsync(Guid campaignId, Guid sceneId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(ListLinkedForSceneAsync));
+        return _inner.ListLinkedForSceneAsync(campaignId, sceneId, cancellationToken);
+    }
+
+    public Task<IReadOnlyList<HeldItem>> ListHeldAsync(Guid campaignId, Guid investigatorId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(ListHeldAsync));
+        return _inner.ListHeldAsync(campaignId, investigatorId, cancellationToken);
+    }
+
     /// <summary>When set, runs just before the inner save, so a test can play a Scene start that wins the race.</summary>
     public Func<Task>? BeforeSave { get; set; }
 
@@ -59,10 +71,10 @@ public sealed class RecordingItemUsage : IItemUsage
 
     public List<string> Calls { get; } = [];
 
-    public Task<bool> IsLinkedToPlayedSceneAsync(Guid campaignId, Guid itemId, CancellationToken cancellationToken)
+    public Task<bool> IsPlayedAsync(Guid campaignId, Guid itemId, CancellationToken cancellationToken)
     {
-        Calls.Add(nameof(IsLinkedToPlayedSceneAsync));
-        return _inner.IsLinkedToPlayedSceneAsync(campaignId, itemId, cancellationToken);
+        Calls.Add(nameof(IsPlayedAsync));
+        return _inner.IsPlayedAsync(campaignId, itemId, cancellationToken);
     }
 
     public Task<IReadOnlyList<ItemScene>> ListLinkedScenesAsync(Guid campaignId, Guid itemId, CancellationToken cancellationToken)

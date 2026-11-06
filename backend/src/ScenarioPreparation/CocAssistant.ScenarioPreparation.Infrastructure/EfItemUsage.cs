@@ -1,8 +1,9 @@
 namespace CocAssistant.ScenarioPreparation.Infrastructure;
 
 /// <summary>
-/// Answers whether an Item has a link on an Active or Finished Scene of its Campaign, and which Scenes link it, as queries over
-/// the link table (ADR 0022). Prepared Scenes do not count as played: their links go with the Item.
+/// Answers whether an Item is in play (ADR 0022, ADR 0029): a link on an Active or Finished Scene of its Campaign, or a Reveal
+/// of the Item or of one of its Handouts. Prepared Scenes do not count as played: their links go with the Item. Who holds the
+/// Item is stored on the Item itself and OR-ed in by callers.
 /// </summary>
 public class EfItemUsage : IItemUsage
 {
@@ -13,13 +14,27 @@ public class EfItemUsage : IItemUsage
         _dbContext = dbContext;
     }
 
-    public Task<bool> IsLinkedToPlayedSceneAsync(Guid campaignId, Guid itemId, CancellationToken cancellationToken) =>
-        _dbContext.ItemLinks
+    public async Task<bool> IsPlayedAsync(Guid campaignId, Guid itemId, CancellationToken cancellationToken)
+    {
+        if (await _dbContext.ItemLinks
             .AsNoTracking()
             .Where(link => link.ItemId == itemId)
             .AnyAsync(
                 link => _dbContext.Scenes.Any(scene => scene.Id == link.SceneId && scene.CampaignId == campaignId && scene.Status != SceneStatus.Prepared),
+                cancellationToken))
+        {
+            return true;
+        }
+
+        var handoutIds = _dbContext.Set<Handout>().Where(handout => handout.ItemId == itemId).Select(handout => handout.Id);
+        return await _dbContext.Set<Reveal>()
+            .AsNoTracking()
+            .Where(reveal => _dbContext.Scenes.Any(scene => scene.Id == reveal.SceneId && scene.CampaignId == campaignId))
+            .AnyAsync(
+                reveal => (reveal.SubjectType == RevealSubjectType.Item && reveal.SubjectId == itemId)
+                    || (reveal.SubjectType == RevealSubjectType.Handout && handoutIds.Contains(reveal.SubjectId)),
                 cancellationToken);
+    }
 
     public async Task<IReadOnlyList<ItemScene>> ListLinkedScenesAsync(Guid campaignId, Guid itemId, CancellationToken cancellationToken)
     {

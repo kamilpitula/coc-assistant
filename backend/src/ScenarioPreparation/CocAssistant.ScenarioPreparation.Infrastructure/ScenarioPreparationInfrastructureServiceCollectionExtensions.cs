@@ -18,8 +18,6 @@ public static class ScenarioPreparationInfrastructureServiceCollectionExtensions
         services.AddScoped<IItemRepository, EfItemRepository>();
         services.AddScoped<IItemDirectory, EfItemDirectory>();
         services.AddScoped<IItemUsage, EfItemUsage>();
-        // Scene Play owns who holds an Item; PBI-SPL-003 replaces this placeholder with its adapter (ADR 0022).
-        services.AddScoped<IItemHolders, NoItemHolders>();
         services.AddScoped<ICampaignKeepers, CampaignPlayCampaignKeepers>();
         services.AddSingleton<INonPlayerEntityRuleData, CampaignPlayNonPlayerEntityRuleData>();
         // Resolved on first use, not at registration, so EF design-time tooling works without storage settings.

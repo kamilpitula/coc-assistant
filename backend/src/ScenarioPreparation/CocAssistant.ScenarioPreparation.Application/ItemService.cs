@@ -3,7 +3,7 @@ namespace CocAssistant.ScenarioPreparation.Application;
 /// <summary>
 /// Lists, reads, creates, edits, and deletes a Campaign's Items for its Keeper (specs/scenario-preparation/spec.md). The Keeper
 /// check runs first on every operation, so a Player, another Campaign's Keeper, a missing Campaign, or an Item of another
-/// Campaign all end as NotFound before any Item, usage, or holder is read (ADR 0013). An Item in play is never deleted (ADR 0022).
+/// Campaign all end as NotFound before any Item or usage is read (ADR 0013). An Item in play is never deleted (ADR 0022, ADR 0029).
 /// </summary>
 public class ItemService
 {
@@ -11,7 +11,6 @@ public class ItemService
     private readonly IItemRepository _items;
     private readonly IItemDirectory _directory;
     private readonly IItemUsage _usage;
-    private readonly IItemHolders _holders;
     private readonly LinkedSceneGuard _linkedSceneGuard;
     private readonly IHandoutFileStore _fileStore;
     private readonly TimeProvider _timeProvider;
@@ -22,7 +21,6 @@ public class ItemService
         IItemRepository items,
         IItemDirectory directory,
         IItemUsage usage,
-        IItemHolders holders,
         LinkedSceneGuard linkedSceneGuard,
         IHandoutFileStore fileStore,
         TimeProvider timeProvider,
@@ -32,7 +30,6 @@ public class ItemService
         _items = items;
         _directory = directory;
         _usage = usage;
-        _holders = holders;
         _linkedSceneGuard = linkedSceneGuard;
         _fileStore = fileStore;
         _timeProvider = timeProvider;
@@ -74,7 +71,7 @@ public class ItemService
 
         _items.Add(creation.Item);
         await _items.SaveChangesAsync(cancellationToken);
-        return new ItemWriteResult(ItemWriteOutcome.Saved, ToView(creation.Item, null, []));
+        return new ItemWriteResult(ItemWriteOutcome.Saved, ToView(creation.Item, []));
     }
 
     /// <summary>Replaces the name, Player-facing description, and Keeper notes, whatever the status of the Scenes that link the Item.</summary>
@@ -104,8 +101,10 @@ public class ItemService
     }
 
     /// <summary>
-    /// Deletes an Item and, with it, its Prepared links and its Handouts; the Handouts' files are deleted after the commit. An Item
-    /// linked to an Active or Finished Scene, or held by an Investigator, is refused (the played Scene first).
+    /// Deletes an Item and, with it, its Prepared links and its Handouts; the Handouts' files are deleted after the commit. A held
+    /// Item is refused as held; otherwise a played or revealed Item is refused as played (a give leaves an Item Reveal, so a held
+    /// Item always reports held). The delete checks the Item's version, so a give, Reveal, or blob-deleting write that wins the
+    /// race is answered from the re-read Item (ADR 0029).
     /// </summary>
     public async Task<ItemDeleteOutcome> DeleteAsync(Guid campaignId, Guid callerAccountId, Guid itemId, CancellationToken cancellationToken)
     {
@@ -115,14 +114,14 @@ public class ItemService
             return ItemDeleteOutcome.NotFound;
         }
 
-        if (await _usage.IsLinkedToPlayedSceneAsync(campaignId, itemId, cancellationToken))
-        {
-            return ItemDeleteOutcome.LinkedToPlayedScene;
-        }
-
-        if (await _holders.FindHolderAsync(campaignId, itemId, cancellationToken) is not null)
+        if (item.HolderInvestigatorId is not null)
         {
             return ItemDeleteOutcome.Held;
+        }
+
+        if (await _usage.IsPlayedAsync(campaignId, itemId, cancellationToken))
+        {
+            return ItemDeleteOutcome.LinkedToPlayedScene;
         }
 
         var fileKeys = item.Handouts.Select(handout => handout.FileKey).OfType<string>().ToList();
@@ -136,7 +135,8 @@ public class ItemService
         }
         catch (SceneConcurrencyException)
         {
-            return ItemDeleteOutcome.LinkedToPlayedScene;
+            var current = await _items.FindByIdAsync(campaignId, itemId, cancellationToken);
+            return current?.HolderInvestigatorId is not null ? ItemDeleteOutcome.Held : ItemDeleteOutcome.LinkedToPlayedScene;
         }
 
         foreach (var fileKey in fileKeys)
@@ -155,11 +155,10 @@ public class ItemService
     private async Task<ItemView> ToViewAsync(Item item, CancellationToken cancellationToken) =>
         ToView(
             item,
-            await _holders.FindHolderAsync(item.CampaignId, item.Id, cancellationToken),
             await _usage.ListLinkedScenesAsync(item.CampaignId, item.Id, cancellationToken));
 
-    private static ItemView ToView(Item item, ItemHolder? holder, IReadOnlyList<ItemScene> scenes) =>
-        new(item.Id, item.Name, item.PlayerFacingDescription, item.KeeperNotes, holder, item.Handouts.Select(HandoutViews.ToSummary).ToList(), scenes);
+    private static ItemView ToView(Item item, IReadOnlyList<ItemScene> scenes) =>
+        new(item.Id, item.Name, item.PlayerFacingDescription, item.KeeperNotes, item.HolderInvestigatorId is null ? null : new ItemHolder(item.HolderInvestigatorId.Value), item.Handouts.Select(HandoutViews.ToSummary).ToList(), scenes);
 
     private static ItemWriteOutcome ToWriteOutcome(ItemFieldsOutcome outcome) => outcome switch
     {

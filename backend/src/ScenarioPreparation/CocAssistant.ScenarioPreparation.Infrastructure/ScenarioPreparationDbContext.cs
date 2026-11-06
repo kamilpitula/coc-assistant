@@ -140,11 +140,13 @@ public class ScenarioPreparationDbContext : DbContext
                 "(FileKey IS NULL AND FileName IS NULL AND FileMediaType IS NULL AND FileSizeBytes IS NULL) "
                 + "OR (FileKey IS NOT NULL AND FileName IS NOT NULL AND FileMediaType IS NOT NULL AND FileSizeBytes IS NOT NULL)"));
 
-            // A Handout snapshot has a kind and exactly one of content and file; a Non-Player Entity snapshot has neither a kind, a file, nor an image description.
+            // A Handout snapshot has a kind and exactly one of content and file; a Non-Player Entity or Item snapshot has neither a
+            // kind, a file, nor an image description. An Item snapshot always has content: the Player-facing description (ADR 0029).
             builder.ToTable(table => table.HasCheckConstraint(
                 "CK_Reveals_Subject",
                 "(SubjectType = 'Handout' AND HandoutKind IS NOT NULL AND ((Content IS NOT NULL AND FileKey IS NULL) OR (Content IS NULL AND FileKey IS NOT NULL))) "
-                + "OR (SubjectType = 'NonPlayerEntity' AND HandoutKind IS NULL AND FileKey IS NULL AND ImageDescription IS NULL)"));
+                + "OR (SubjectType = 'NonPlayerEntity' AND HandoutKind IS NULL AND FileKey IS NULL AND ImageDescription IS NULL) "
+                + "OR (SubjectType = 'Item' AND HandoutKind IS NULL AND FileKey IS NULL AND ImageDescription IS NULL AND Content IS NOT NULL)"));
 
             // Serves the Scene's newest-first read.
             builder.HasIndex(reveal => new { reveal.SceneId, reveal.RevealedAt });
@@ -198,8 +200,8 @@ public class ScenarioPreparationDbContext : DbContext
             builder.HasIndex("MythosCreatureId");
         });
 
-        // An Item is its own aggregate and table, referencing its Campaign by id only (ADR 0013, ADR 0022). It has no holder column:
-        // who holds an Item is read through a port.
+        // An Item is its own aggregate and table, referencing its Campaign by id only (ADR 0013, ADR 0022). Who holds it is stored
+        // on the Item and changes only through the provider service (ADR 0029): both holder columns are set, or neither is.
         modelBuilder.Entity<Item>(builder =>
         {
             builder.HasKey(item => item.Id);
@@ -211,9 +213,23 @@ public class ScenarioPreparationDbContext : DbContext
             builder.Property(item => item.CreatedAt).IsRequired().HasConversion(
                 createdAt => createdAt.UtcDateTime,
                 stored => new DateTimeOffset(DateTime.SpecifyKind(stored, DateTimeKind.Utc)));
+            builder.Property(item => item.HolderInvestigatorId);
+            builder.Property(item => item.HolderRevealId);
+            builder.HasOne<Reveal>().WithMany().HasForeignKey(item => item.HolderRevealId).OnDelete(DeleteBehavior.NoAction);
+
+            // The optimistic token that stops a give or Reveal racing a delete, and a blob-deleting write racing either (ADR 0029).
+            builder.Property(item => item.Version).IsConcurrencyToken();
+
+            // Both holder columns are set, or neither is.
+            builder.ToTable(table => table.HasCheckConstraint(
+                "CK_Items_Holder",
+                "(HolderInvestigatorId IS NULL AND HolderRevealId IS NULL) OR (HolderInvestigatorId IS NOT NULL AND HolderRevealId IS NOT NULL)"));
 
             // Serves the Campaign list read.
             builder.HasIndex(item => item.CampaignId);
+
+            // Serves the held-Items read of one Investigator.
+            builder.HasIndex(item => new { item.CampaignId, item.HolderInvestigatorId });
         });
 
         // An Item link is a child of its Scene in its own table (ADR 0022). Its Scene and Item keys are in-context foreign keys that

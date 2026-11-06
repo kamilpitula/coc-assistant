@@ -166,14 +166,16 @@ public class Scene
     }
 
     /// <summary>
-    /// Reveals a Player-facing Handout or a Non-Player Entity link of this Active Scene to the given Investigators present, or to
-    /// all of them when <paramref name="recipientIds"/> is null. Checks run in this order: Active, revealable subject type, subject
-    /// on this Scene, subject Player-facing, then the recipients under the present-list rules. The Reveal adds rows only and never
-    /// touches <see cref="Version"/> (PBI-SPL-002 D2). A refused Reveal changes nothing.
+    /// Reveals a Player-facing Handout (of this Scene or of a linked Item), a Non-Player Entity link, or a linked Item of this
+    /// Active Scene to the given Investigators present, or to all of them when <paramref name="recipientIds"/> is null. Checks run
+    /// in this order: Active, revealable subject type, subject on this Scene, subject Player-facing, then the recipients under the
+    /// present-list rules. An Item Reveal snapshots its name and Player-facing description (ADR 0029). The Reveal adds rows only and
+    /// never touches <see cref="Version"/> (PBI-SPL-002 D2). A refused Reveal changes nothing. The owning Item of an Item or Item
+    /// Handout Reveal is returned, so the caller can mark it in play.
     /// </summary>
-    public RevealResult Reveal(RevealSubject subject, IReadOnlyCollection<Guid>? recipientIds, DateTimeOffset now)
+    public RevealResult Reveal(RevealSubject subject, IReadOnlyCollection<Guid>? recipientIds, DateTimeOffset now, IReadOnlyCollection<Item>? linkedItems = null)
     {
-        var subjectCheck = SceneRevealChecks.CheckSubject(Status, subject, _handouts, _nonPlayerEntityLinks);
+        var subjectCheck = SceneRevealChecks.CheckSubject(Status, subject, _handouts, _nonPlayerEntityLinks, linkedItems ?? []);
         if (subjectCheck.Outcome != RevealOutcome.Revealed)
         {
             return new RevealResult(subjectCheck.Outcome, null);
@@ -188,9 +190,45 @@ public class Scene
 
         var reveal = subjectCheck.Handout is not null
             ? Domain.Reveal.FromHandout(Id, subjectCheck.Handout, recipients, now)
-            : Domain.Reveal.FromNonPlayerEntityLink(Id, subjectCheck.Link!, recipients, now);
+            : subjectCheck.Link is not null
+                ? Domain.Reveal.FromNonPlayerEntityLink(Id, subjectCheck.Link!, recipients, now)
+                : Domain.Reveal.FromItem(Id, subjectCheck.OwningItem!, recipients, now);
         _reveals.Add(reveal);
-        return new RevealResult(RevealOutcome.Revealed, reveal);
+        return new RevealResult(RevealOutcome.Revealed, reveal, subjectCheck.OwningItem);
+    }
+
+    /// <summary>
+    /// Gives a linked Item of this Active Scene to an Investigator present: one Item Reveal to the new holder only, committed with
+    /// the holder change in the same save (ADR 0029). Checks run in this order: Active, the Item linked, the Investigator present,
+    /// then whether they already hold it. Giving a held Item to someone else moves it; the former holder, if any, is returned and
+    /// keeps the Clue. A refused give changes nothing.
+    /// </summary>
+    public GiveItemResult GiveItem(Item item, Guid investigatorId, DateTimeOffset now)
+    {
+        if (Status != SceneStatus.Active)
+        {
+            return new GiveItemResult(GiveItemOutcome.NotActive, null, null);
+        }
+
+        if (_itemLinks.All(link => link.ItemId != item.Id))
+        {
+            return new GiveItemResult(GiveItemOutcome.SubjectNotFound, null, null);
+        }
+
+        if (!InvestigatorsPresent.Contains(investigatorId))
+        {
+            return new GiveItemResult(GiveItemOutcome.RecipientNotPresent, null, null);
+        }
+
+        if (item.HolderInvestigatorId == investigatorId)
+        {
+            return new GiveItemResult(GiveItemOutcome.AlreadyHolder, null, null);
+        }
+
+        var reveal = Domain.Reveal.FromItem(Id, item, [investigatorId], now);
+        _reveals.Add(reveal);
+        var formerHolder = item.GiveTo(investigatorId, reveal.Id);
+        return new GiveItemResult(GiveItemOutcome.Given, reveal, formerHolder);
     }
 
     /// <summary>

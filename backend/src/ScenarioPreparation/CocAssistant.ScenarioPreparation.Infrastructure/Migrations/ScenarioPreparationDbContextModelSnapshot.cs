@@ -143,6 +143,12 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("HolderInvestigatorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("HolderRevealId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("KeeperNotes")
                         .HasColumnType("nvarchar(max)");
 
@@ -155,11 +161,22 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CampaignId");
 
-                    b.ToTable("Items");
+                    b.HasIndex("HolderRevealId");
+
+                    b.HasIndex("CampaignId", "HolderInvestigatorId");
+
+                    b.ToTable("Items", t =>
+                        {
+                            t.HasCheckConstraint("CK_Items_Holder", "(HolderInvestigatorId IS NULL AND HolderRevealId IS NULL) OR (HolderInvestigatorId IS NOT NULL AND HolderRevealId IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.ItemLink", b =>
@@ -310,7 +327,7 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("CK_Reveals_File", "(FileKey IS NULL AND FileName IS NULL AND FileMediaType IS NULL AND FileSizeBytes IS NULL) OR (FileKey IS NOT NULL AND FileName IS NOT NULL AND FileMediaType IS NOT NULL AND FileSizeBytes IS NOT NULL)");
 
-                            t.HasCheckConstraint("CK_Reveals_Subject", "(SubjectType = 'Handout' AND HandoutKind IS NOT NULL AND ((Content IS NOT NULL AND FileKey IS NULL) OR (Content IS NULL AND FileKey IS NOT NULL))) OR (SubjectType = 'NonPlayerEntity' AND HandoutKind IS NULL AND FileKey IS NULL AND ImageDescription IS NULL)");
+                            t.HasCheckConstraint("CK_Reveals_Subject", "(SubjectType = 'Handout' AND HandoutKind IS NOT NULL AND ((Content IS NOT NULL AND FileKey IS NULL) OR (Content IS NULL AND FileKey IS NOT NULL))) OR (SubjectType = 'NonPlayerEntity' AND HandoutKind IS NULL AND FileKey IS NULL AND ImageDescription IS NULL) OR (SubjectType = 'Item' AND HandoutKind IS NULL AND FileKey IS NULL AND ImageDescription IS NULL AND Content IS NOT NULL)");
                         });
                 });
 
@@ -436,6 +453,14 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                         .HasForeignKey("SceneId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Item", b =>
+                {
+                    b.HasOne("CocAssistant.ScenarioPreparation.Domain.Reveal", null)
+                        .WithMany()
+                        .HasForeignKey("HolderRevealId")
+                        .OnDelete(DeleteBehavior.NoAction);
                 });
 
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.ItemLink", b =>
