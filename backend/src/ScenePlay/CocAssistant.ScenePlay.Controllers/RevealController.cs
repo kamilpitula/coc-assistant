@@ -16,7 +16,7 @@ public class RevealController : ScenePlayControllerBase
         _reveals = reveals;
     }
 
-    /// <summary>Reveals a Player-facing Handout or a Non-Player Entity link of the Active Scene; returns the created Reveal as the Keeper sees it.</summary>
+    /// <summary>Reveals Player-facing material of the Active Scene: a Handout, a Non-Player Entity link, or an Item. Returns the created Reveal as the Keeper sees it.</summary>
     [HttpPost("active-scene/reveals")]
     public async Task<ActionResult<KeeperRevealResponse>> Reveal(Guid campaignId, RevealRequest request, CancellationToken cancellationToken)
     {
@@ -28,7 +28,7 @@ public class RevealController : ScenePlayControllerBase
 
         var kind = ParseKind(request.Subject?.Type);
         var result = await _reveals.RevealAsync(campaignId, accountId.Value, kind, request.Subject?.Id ?? Guid.Empty, request.InvestigatorIds, cancellationToken);
-        return result.Reveal is not null ? Ok(RevealMapping.ToResponse(result.Reveal)) : Failure(result.Outcome, kind);
+        return result.Reveal is not null ? Ok(RevealMapping.ToResponse(result.Reveal)) : Failure(result.Outcome);
     }
 
     /// <summary>The Reveal's snapshotted file as an attachment with its stored media type; 404 for anyone who did not receive it; 503 when storage fails.</summary>
@@ -56,11 +56,11 @@ public class RevealController : ScenePlayControllerBase
             ? kind
             : RevealSubjectKind.Unknown;
 
-    private ActionResult Failure(RevealSceneOutcome outcome, RevealSubjectKind kind) =>
+    private ActionResult Failure(RevealSceneOutcome outcome) =>
         outcome switch
         {
             RevealSceneOutcome.NoActiveScene => Problem(statusCode: StatusCodes.Status409Conflict, title: ActiveSceneProblems.NoActiveSceneTitle),
-            RevealSceneOutcome.SubjectNotRevealable => Invalid(RevealProblems.SubjectTypeKey, kind == RevealSubjectKind.Item ? RevealProblems.ItemMessage : RevealProblems.UnknownTypeMessage),
+            RevealSceneOutcome.SubjectNotRevealable => Invalid(RevealProblems.SubjectTypeKey, RevealProblems.UnknownTypeMessage),
             RevealSceneOutcome.SubjectNotFound => Invalid(RevealProblems.SubjectIdKey, RevealProblems.SubjectNotFoundMessage),
             RevealSceneOutcome.SubjectKeeperFacing => Invalid(RevealProblems.SubjectIdKey, RevealProblems.KeeperFacingMessage),
             RevealSceneOutcome.NoRecipient => Invalid(RevealProblems.InvestigatorIdsKey, RevealProblems.NoRecipientMessage),

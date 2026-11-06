@@ -6,7 +6,9 @@ namespace CocAssistant.Api.IntegrationTests;
 /// gets 401; a Player gets the row's status (404 for Keeper-only rows, 200 with the non-present shape for the read); another
 /// Campaign's Keeper and the Keeper addressing a missing Campaign get 404. A refused call changes no Scene, no present Investigator,
 /// and no Wall Entry, and no response carries prepared text. The Reveal rows (PBI-SPL-002) answer a Player 404, because the matrix
-/// Player is not a recipient and has no Approved Investigator; a refused call adds no Reveal or recipient.
+/// Player is not a recipient and has no Approved Investigator; a refused call adds no Reveal or recipient. The Item holder
+/// rows (PBI-SPL-003) answer a Player 404 for the same reason, because the matrix Player holds nothing and has no Approved
+/// Investigator; a refused call changes no Item and adds no Reveal.
 /// </summary>
 public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
 {
@@ -28,9 +30,9 @@ public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactor
         public string Key => $"{Method} {Template}";
     }
 
-    private sealed record Seeded(Guid CampaignId, Guid PreparedSceneId, Guid RevealId, Guid InvestigatorId);
+    private sealed record Seeded(Guid CampaignId, Guid PreparedSceneId, Guid RevealId, Guid InvestigatorId, Guid ItemId);
 
-    private sealed record Addresses(Guid CampaignId, Guid SceneId, Guid RevealId, Guid InvestigatorId);
+    private sealed record Addresses(Guid CampaignId, Guid SceneId, Guid RevealId, Guid InvestigatorId, Guid ItemId);
 
     [Fact]
     public void Given_the_registered_endpoints_When_comparing_with_the_matrix_Then_every_endpoint_has_a_row_and_every_row_an_endpoint()
@@ -99,8 +101,8 @@ public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactor
 
         foreach (var row in Rows())
         {
-            var target = address(new Addresses(seeded.CampaignId, seeded.PreparedSceneId, seeded.RevealId, seeded.InvestigatorId));
-            using var request = new HttpRequestMessage(new HttpMethod(row.Method), row.Template.Replace("{campaignId}", target.CampaignId.ToString()).Replace("{sceneId}", target.SceneId.ToString()).Replace("{revealId}", target.RevealId.ToString()).Replace("{investigatorId}", target.InvestigatorId.ToString()))
+            var target = address(new Addresses(seeded.CampaignId, seeded.PreparedSceneId, seeded.RevealId, seeded.InvestigatorId, seeded.ItemId));
+            using var request = new HttpRequestMessage(new HttpMethod(row.Method), row.Template.Replace("{campaignId}", target.CampaignId.ToString()).Replace("{sceneId}", target.SceneId.ToString()).Replace("{revealId}", target.RevealId.ToString()).Replace("{investigatorId}", target.InvestigatorId.ToString()).Replace("{itemId}", target.ItemId.ToString()))
             {
                 Content = row.Content(),
             };
@@ -152,7 +154,12 @@ public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactor
         var reveal = await client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/active-scene/reveals", KeeperOid, new { subject = new { type = "Handout", id = handoutId }, investigatorIds = new[] { investigatorId } }));
         reveal.EnsureSuccessStatusCode();
         var revealId = (await reveal.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("revealId").GetGuid();
-        return new Seeded(campaignId, prepared.SceneId, revealId, investigatorId);
+        var item = await client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/items", KeeperOid, new { name = "Walter Corbitt's diary", playerFacingDescription = PreparedScenarioSeed.Json(PreparedScenarioSeed.RichText("A leather diary")), keeperNotes = PreparedScenarioSeed.Json(PreparedScenarioSeed.RichText("The last page is torn out")) }));
+        item.EnsureSuccessStatusCode();
+        var itemId = (await item.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var link = await client.SendAsync(BuildRequest(HttpMethod.Post, $"{scenes}/{activeSceneId}/item-links", KeeperOid, new { itemId }));
+        link.EnsureSuccessStatusCode();
+        return new Seeded(campaignId, prepared.SceneId, revealId, investigatorId, itemId);
     }
 
     // The (method, template) pairs of the assembly's actions, with route constraints removed so they match the table.
@@ -172,7 +179,7 @@ public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactor
     {
         using var scope = _factory.Services.CreateScope();
         var lines = new List<string>();
-        lines.AddRange(await ChecksumsAsync(scope.ServiceProvider.GetRequiredService<ScenarioPreparationDbContext>(), "Scenes", "SceneInvestigatorsPresent", "Reveals", "RevealRecipients"));
+        lines.AddRange(await ChecksumsAsync(scope.ServiceProvider.GetRequiredService<ScenarioPreparationDbContext>(), "Scenes", "SceneInvestigatorsPresent", "Reveals", "RevealRecipients", "Items"));
         lines.AddRange(await ChecksumsAsync(scope.ServiceProvider.GetRequiredService<CampaignPlayDbContext>(), "WallEntries"));
         return string.Join('\n', lines);
     }
@@ -213,6 +220,10 @@ public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactor
             new("GET", campaign + "/active-scene", NoBody, HttpStatusCode.OK),
             new("POST", campaign + "/active-scene/reveals", Json(new { subject = new { type = "Handout", id = SomeId }, investigatorIds = new[] { SomeId } }), HttpStatusCode.NotFound),
             new("GET", campaign + "/reveals/{revealId}/file", NoBody, HttpStatusCode.NotFound),
+            new("POST", campaign + "/items/{itemId}/give", Json(new { investigatorId = SomeId }), HttpStatusCode.NotFound),
+            new("POST", campaign + "/items/{itemId}/take-back", NoBody, HttpStatusCode.NotFound),
+            new("GET", campaign + "/investigators/mine/items", NoBody, HttpStatusCode.NotFound),
+            new("GET", campaign + "/investigators/{investigatorId}/items", NoBody, HttpStatusCode.NotFound),
             new("GET", campaign + "/investigators/mine/clues", NoBody, HttpStatusCode.NotFound),
             new("GET", campaign + "/investigators/{investigatorId}/clues", NoBody, HttpStatusCode.NotFound),
         ];

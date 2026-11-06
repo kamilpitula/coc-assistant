@@ -45,7 +45,7 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
         new(Keepers, repository ?? new EfScenarioRepository(context), TimeProvider);
 
     public SceneService CreateSceneService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
-        new(Keepers, new EfScenarioRepository(context), repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), new EfItemDirectory(context), FileStore, TimeProvider, SceneLogger);
+        new(Keepers, new EfScenarioRepository(context), repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), new EfItemRepository(context), FileStore, TimeProvider, SceneLogger);
 
     public static LinkedSceneGuard CreateLinkedSceneGuard(ScenarioPreparationDbContext context, ISceneRepository? scenes = null) =>
         new(scenes ?? new EfSceneRepository(context));
@@ -57,7 +57,7 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
         new(Keepers, repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), TimeProvider);
 
     public ItemLinkService CreateItemLinkService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
-        new(Keepers, repository ?? new EfSceneRepository(context), new EfItemDirectory(context), TimeProvider);
+        new(Keepers, repository ?? new EfSceneRepository(context), new EfItemRepository(context), TimeProvider);
 
     public ItemService CreateItemService(ScenarioPreparationDbContext context, IItemRepository? repository = null, IItemUsage? usage = null) =>
         new(Keepers, repository ?? new EfItemRepository(context), new EfItemDirectory(context), usage ?? new EfItemUsage(context), CreateLinkedSceneGuard(context), FileStore, TimeProvider, ItemLogger);

@@ -1,8 +1,8 @@
 namespace CocAssistant.ScenePlay.Application;
 
 /// <summary>
-/// What a Reveal shows. An Item is refused until PBI-SPL-003 (PBI-SPL-002 D5). Unknown is a type the request did not name or does not
-/// exist; it is refused like an Item, but only after the Active Scene check, and never reaches the provider.
+/// What a Reveal shows. Unknown is a type the request did not name or does not exist; it is refused after the Active Scene check
+/// and never reaches the provider.
 /// </summary>
 public enum RevealSubjectKind
 {

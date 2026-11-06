@@ -4,16 +4,19 @@ namespace CocAssistant.ScenarioPreparation.Application;
 /// The provider side of Scene Play's Reveal port (PBI-SPL-002 D1, ADR 0024): makes a Reveal on the Campaign's Active Scene, lists the
 /// Clues of one Investigator, and finds the snapshotted file of a Reveal. It performs no authorization; Scene Play checks the Keeper,
 /// or the Player's recipient status, before it calls, and no Scenario Preparation endpoint calls it. A Reveal adds rows and does
-/// not touch the Scene's version (PBI-SPL-002 D2).
+/// not touch the Scene's version (PBI-SPL-002 D2). A Reveal of an Item or of one of its Handouts marks the owning Item in play
+/// (ADR 0029).
 /// </summary>
 public class SceneRevealService
 {
     private readonly ISceneRepository _scenes;
+    private readonly IItemRepository _items;
     private readonly TimeProvider _timeProvider;
 
-    public SceneRevealService(ISceneRepository scenes, TimeProvider timeProvider)
+    public SceneRevealService(ISceneRepository scenes, IItemRepository items, TimeProvider timeProvider)
     {
         _scenes = scenes;
+        _items = items;
         _timeProvider = timeProvider;
     }
 
@@ -26,12 +29,16 @@ public class SceneRevealService
             return new SceneRevealResult(SceneRevealOutcome.NoActiveScene, null);
         }
 
-        var result = scene.Reveal(new RevealSubject(subjectType, subjectId), recipientIds, _timeProvider.GetUtcNow());
+        var linked = subjectType is RevealSubjectType.Item or RevealSubjectType.Handout
+            ? await _items.ListLinkedForSceneAsync(campaignId, scene.Id, cancellationToken)
+            : [];
+        var result = scene.Reveal(new RevealSubject(subjectType, subjectId), recipientIds, _timeProvider.GetUtcNow(), linked);
         if (result.Outcome != RevealOutcome.Revealed)
         {
             return new SceneRevealResult(ToOutcome(result.Outcome), null);
         }
 
+        result.OwningItem?.MarkInPlay();
         await _scenes.SaveChangesAsync(cancellationToken);
         return new SceneRevealResult(SceneRevealOutcome.Revealed, RevealViews.ToView(result.Reveal!));
     }

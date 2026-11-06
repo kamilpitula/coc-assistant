@@ -257,7 +257,7 @@ public class ScenarioPreparationMigrationTests : IAsyncLifetime
         Assert.Equal(SceneTransitionOutcome.Transitioned, play.Start(now, [holderId], [holderId]));
         var held = await context.Items.SingleAsync(candidate => candidate.Id == itemId);
         var give = play.GiveItem(held, holderId, now);
-        Assert.Equal(GiveItemOutcome.Given, give.Outcome);
+        Assert.Equal(CocAssistant.ScenarioPreparation.Domain.GiveItemOutcome.Given, give.Outcome);
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();
 

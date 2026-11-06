@@ -34,6 +34,12 @@ internal static class RevealMapping
     public static CluesResponse ToResponse(CluesResult result) =>
         new(result.InvestigatorName, result.Clues.Select(ToResponse).ToList());
 
+    public static HeldItemsResponse ToMineResponse(HeldItemsResult result) =>
+        new(result.InvestigatorName, result.Items.Select(item => new HeldItemResponse(item.Reveal.RevealId, item.Reveal.Title, ParseContent(item.Reveal.Content), item.Reveal.RevealedAt)).ToList());
+
+    public static KeeperHeldItemsResponse ToInvestigatorResponse(HeldItemsResult result) =>
+        new(result.InvestigatorName, result.Items.Select(item => new KeeperHeldItemResponse(item.ItemId, item.Reveal.RevealId, item.Reveal.Title, ParseContent(item.Reveal.Content), item.Reveal.RevealedAt)).ToList());
+
     private static RevealFileResponse? ToResponse(RevealedFileDetails? file) =>
         file is null ? null : new RevealFileResponse(file.Name, file.MediaType, file.SizeBytes);
 

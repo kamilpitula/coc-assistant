@@ -36,6 +36,7 @@ public static class CampaignPlayInfrastructureServiceCollectionExtensions
         services.AddScoped<ApprovedInvestigatorQuery>();
         services.AddScoped<PublishActiveSceneChanged>();
         services.AddScoped<PublishRevealMade>();
+        services.AddScoped<PublishItemHolderChanged>();
         services.AddScoped<PlayerInvestigatorService>();
         services.AddScoped<KeeperInvestigatorService>();
         services.AddSingleton<CreationRuleSets>();

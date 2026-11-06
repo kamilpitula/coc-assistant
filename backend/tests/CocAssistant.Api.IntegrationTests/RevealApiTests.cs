@@ -275,18 +275,21 @@ public class RevealApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task Given_a_bad_subject_type_When_revealing_Then_it_is_a_400_at_subject_type_and_an_Item_has_its_own_message()
+    public async Task Given_a_bad_subject_type_When_revealing_Then_it_is_a_400_at_subject_type_and_an_unknown_Item_is_not_found()
     {
         var table = await TableAsync("8");
 
         var missing = await RevealAsync(table, new { investigatorIds = new[] { table.HarveyId } });
         var unknown = await RevealAsync(table, new { subject = Subject("Banana", Guid.NewGuid()) });
-        var item = await RevealAsync(table, new { subject = Subject("Item", Guid.NewGuid()) });
 
-        Assert.All([missing, unknown, item], response => Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode));
-        Assert.All([await JsonAsync(missing), await JsonAsync(unknown), await JsonAsync(item)], problem => Assert.Equal(["subject.type"], Errors(problem)));
-        Assert.Equal("Choose a Handout or a Non-Player Entity to reveal.", (await JsonAsync(unknown)).GetProperty("errors").GetProperty("subject.type")[0].GetString());
-        Assert.Equal("Items can't be revealed yet.", (await JsonAsync(item)).GetProperty("errors").GetProperty("subject.type")[0].GetString());
+        Assert.All([missing, unknown], response => Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode));
+        Assert.All([await JsonAsync(missing), await JsonAsync(unknown)], problem => Assert.Equal(["subject.type"], Errors(problem)));
+        Assert.Equal("Choose a Handout, a Non-Player Entity, or an Item to reveal.", (await JsonAsync(unknown)).GetProperty("errors").GetProperty("subject.type")[0].GetString());
+
+        var unlinkedItem = await RevealAsync(table, new { subject = Subject("Item", Guid.NewGuid()) });
+
+        Assert.Equal(HttpStatusCode.BadRequest, unlinkedItem.StatusCode);
+        Assert.Equal(["subject.id"], Errors(await JsonAsync(unlinkedItem)));
         Assert.Equal(0, await RevealRowsAsync());
     }
 

@@ -26,6 +26,7 @@ public static class ScenarioPreparationInfrastructureServiceCollectionExtensions
         services.AddScoped<SceneService>();
         services.AddScoped<SceneLifecycleService>();
         services.AddScoped<SceneRevealService>();
+        services.AddScoped<ItemHolderCommandService>();
         services.AddScoped<LinkedSceneGuard>();
         services.AddScoped<NonPlayerEntityLinkService>();
         services.AddScoped<ItemService>();

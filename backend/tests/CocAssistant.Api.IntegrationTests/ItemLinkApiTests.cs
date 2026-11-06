@@ -29,7 +29,9 @@ public class ItemLinkApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetim
         var loaded = await GetSceneAsync(client, scene, "ilink-keeper-1");
 
         Assert.Equal(["id", "item"], first.EnumerateObject().Select(property => property.Name));
-        Assert.Equal(["id", "name"], first.GetProperty("item").EnumerateObject().Select(property => property.Name));
+        Assert.Equal(["id", "name", "holder", "handouts"], first.GetProperty("item").EnumerateObject().Select(property => property.Name));
+        Assert.Equal(JsonValueKind.Null, first.GetProperty("item").GetProperty("holder").ValueKind);
+        Assert.Equal(0, first.GetProperty("item").GetProperty("handouts").GetArrayLength());
         Assert.Equal(second.GetProperty("item").GetProperty("id").GetGuid(), keyId);
         var links = loaded.GetProperty("itemLinks").EnumerateArray().ToList();
         Assert.Equal(["The diary", "The cellar key"], links.Select(link => link.GetProperty("item").GetProperty("name").GetString()));
