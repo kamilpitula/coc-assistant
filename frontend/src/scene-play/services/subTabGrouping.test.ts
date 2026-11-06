@@ -5,7 +5,7 @@ import type { NonPlayerEntityLink } from '@/scenario-preparation/types/Scene'
 import type { InvestigatorPresent } from '@/scene-play/types/ActiveScene'
 import type { KeeperReveal } from '@/scene-play/types/Reveal'
 
-import { isRevealedToEveryonePresent, keeperReferenceSubjects, revealTargetOf, toRevealStatus, toRevealSubjects } from './subTabGrouping'
+import { isRevealedToEveryonePresent, keeperReferenceSubjects, revealsToEveryonePresent, revealTargetOf, toRevealStatus, toRevealSubjects } from './subTabGrouping'
 
 // specs/scene-play/ux.md section 21.4: the rule that moves a subject off "To reveal".
 function reveal(subjectId: string, recipientIds: string[]): KeeperReveal {
@@ -155,6 +155,32 @@ describe('toRevealSubjects', () => {
     const reveals = [reveal('h-front', ['harvey', 'lucy']), reveal('n-landlord', ['harvey', 'lucy'])]
 
     expect(toRevealSubjects([front], [landlord], reveals, [harvey, lucy])).toEqual([])
+  })
+})
+
+describe('revealsToEveryonePresent', () => {
+  it('is empty when nothing was revealed', () => {
+    expect(revealsToEveryonePresent([], [harvey, lucy])).toEqual([])
+  })
+
+  it('excludes the Reveal of a partly revealed subject (SPL-UX-43)', () => {
+    expect(revealsToEveryonePresent([reveal('h-front', ['harvey'])], [harvey, lucy])).toEqual([])
+  })
+
+  it('includes the Reveal once its subject reached every Investigator present (SPL-UX-43)', () => {
+    const full = reveal('h-front', ['harvey', 'lucy'])
+
+    expect(revealsToEveryonePresent([reveal('h-plan', ['harvey']), full], [harvey, lucy])).toEqual([full])
+  })
+
+  it('unions the recipients across the subject Reveals', () => {
+    const reveals = [reveal('h-front', ['harvey']), reveal('h-front', ['lucy'])]
+
+    expect(revealsToEveryonePresent(reveals, [harvey, lucy])).toEqual(reveals)
+  })
+
+  it('excludes the subject again when an added Investigator has not received it (SPL-UX-44)', () => {
+    expect(revealsToEveryonePresent([reveal('h-front', ['harvey'])], [harvey, lucy])).toEqual([])
   })
 })
 

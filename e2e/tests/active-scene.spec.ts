@@ -118,7 +118,7 @@ test.describe('Starting and finishing a Scene', () => {
       })
 
       await test.step('SPL-UX-25 as amended: a Handout title opens its content in the side panel', async () => {
-        await page.getByRole('link', { name: 'To reveal, 4' }).click()
+        await page.getByRole('link', { name: 'Keeper reference, 5' }).click()
         const handouts = page.getByRole('region', { name: 'Handouts' })
         await handouts.getByRole('button', { name: PREPARED.handouts[1].title, exact: true }).click()
         const panel = page.getByRole('dialog', { name: PREPARED.handouts[1].title })
@@ -346,18 +346,18 @@ test.describe('Starting and finishing a Scene', () => {
     const table = await setUpTable(page, browser, 'Shots')
     const { campaignId } = table.prepared
     await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
-    await revealHandoutViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneHandoutIds[PREPARED.handouts[0].title], [table.harveyId])
+    await revealHandoutViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneHandoutIds[PREPARED.handouts[0].title], [table.harveyId, table.lucyId])
 
     try {
       await test.step('SPL-UX-40 to SPL-UX-43, SPL-UX-45: each sub-tab at 1366px', async () => {
         await page.setViewportSize({ width: 1366, height: 800 })
         await page.goto(`/campaigns/${campaignId}/active-scene`)
         await expect(page.getByRole('button', { name: 'Hide Keeper notes' })).toBeVisible()
-        await expect(page.getByRole('link', { name: 'To reveal, 4' })).toBeVisible()
+        await expect(page.getByRole('link', { name: 'To reveal, 3' })).toBeVisible()
         await page.screenshot({ path: '../docs/scene-play/screenshots/spl-006-run-1366.png' })
         await page.goto(`/campaigns/${campaignId}/active-scene/to-reveal`)
         await expect(page.getByRole('region', { name: 'Handouts' })).toBeVisible()
-        await expect(page.getByRole('link', { name: 'To reveal, 4' })).toBeVisible()
+        await expect(page.getByRole('link', { name: 'To reveal, 3' })).toBeVisible()
         await page.screenshot({ path: '../docs/scene-play/screenshots/spl-006-to-reveal-1366.png' })
         await page.goto(`/campaigns/${campaignId}/active-scene/reference`)
         await expect(page.getByText('Only you see these: Keeper-facing Handouts and the profiles behind Non-Player Entities.')).toBeVisible()
@@ -374,7 +374,7 @@ test.describe('Starting and finishing a Scene', () => {
         for (const tab of ['', '/to-reveal', '/reference', '/revealed']) {
           await page.goto(`/campaigns/${campaignId}/active-scene${tab}`)
           await expect(page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
-          await expect(page.getByRole('link', { name: 'To reveal, 4' })).toBeVisible()
+          await expect(page.getByRole('link', { name: 'To reveal, 3' })).toBeVisible()
           const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
           expect(sideways, `no sideways scrolling on ${tab || 'run'}`).toBeLessThanOrEqual(0)
           const file = tab === '' ? 'run' : tab.slice(1)

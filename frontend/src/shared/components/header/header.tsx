@@ -15,7 +15,7 @@ export const slowResolvingDelayMs = 400
 
 export function Header() {
   return (
-    <header className="flex items-center justify-between border-b border-border px-6 py-4">
+    <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border px-6 py-4">
       <span className="text-lg font-semibold">CoC Assistant</span>
       <AuthSlot />
     </header>
@@ -50,7 +50,7 @@ function AuthSlot() {
 
 function ResolvingSlot({ isSlow }: { isSlow: boolean }) {
   return (
-    <div aria-busy="true" className="flex min-h-9 items-center gap-3">
+    <div aria-busy="true" className="flex min-h-9 flex-wrap items-center gap-3">
       {isSlow && (
         <>
           <Skeleton data-testid="auth-skeleton" aria-hidden="true" className="h-5 w-24" />
@@ -63,7 +63,7 @@ function ResolvingSlot({ isSlow }: { isSlow: boolean }) {
 
 function SignedInSlot({ account, onSignOut }: { account: Account | undefined; onSignOut: () => void }) {
   return (
-    <div className="flex min-h-9 items-center gap-3">
+    <div className="flex min-h-9 flex-wrap items-center gap-3">
       <a href="/campaigns" className={buttonVariants({ variant: 'link' })}>
         Campaigns
       </a>
@@ -79,7 +79,7 @@ function SignedInSlot({ account, onSignOut }: { account: Account | undefined; on
 
 function AccountUnavailableSlot({ onSignOut }: { onSignOut: () => void }) {
   return (
-    <div className="flex min-h-9 items-center gap-3">
+    <div className="flex min-h-9 flex-wrap items-center gap-3">
       <span role="status" className="text-sm text-destructive">
         Account unavailable
       </span>
@@ -90,7 +90,7 @@ function AccountUnavailableSlot({ onSignOut }: { onSignOut: () => void }) {
 
 function SignedOutSlot({ onSignIn }: { onSignIn: () => void }) {
   return (
-    <div className="flex min-h-9 items-center gap-3">
+    <div className="flex min-h-9 flex-wrap items-center gap-3">
       <Button variant="outline" onClick={onSignIn}>
         <LogIn aria-hidden="true" />
         Sign In

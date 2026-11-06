@@ -2,6 +2,7 @@ import { KeeperReferenceSection } from '@/scene-play/components/keeper-reference
 import { RevealedSection } from '@/scene-play/components/revealed-section/revealed-section'
 import { RunView } from '@/scene-play/components/run-view/run-view'
 import { ToRevealSection } from '@/scene-play/components/to-reveal-section/to-reveal-section'
+import { revealsToEveryonePresent } from '@/scene-play/services/subTabGrouping'
 
 import { useActiveSceneTab } from './active-scene-tab-context'
 
@@ -26,9 +27,9 @@ export function ReferenceTab() {
   return <KeeperReferenceSection campaignId={campaignId} scene={scene} />
 }
 
-/** The "Revealed" sub-tab body (specs/scene-play/ux.md section 21.6). */
+/** The "Revealed" sub-tab body (specs/scene-play/ux.md section 21.6): only fully revealed subjects. */
 export function RevealedTab() {
   const { scene } = useActiveSceneTab()
 
-  return <RevealedSection reveals={scene.reveals} />
+  return <RevealedSection reveals={revealsToEveryonePresent(scene.reveals, scene.investigatorsPresent)} />
 }

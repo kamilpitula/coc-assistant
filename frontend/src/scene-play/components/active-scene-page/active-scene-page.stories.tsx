@@ -32,6 +32,16 @@ const reveal: KeeperReveal = {
   recipients: [{ id: 'i-a', name: 'Dr. Ames' }],
 }
 
+/** The same Reveal once every Investigator present received it, for the populated Revealed story (SPL-UX-43). */
+const fullReveal: KeeperReveal = {
+  ...reveal,
+  revealId: 'r2',
+  recipients: [
+    { id: 'i-a', name: 'Dr. Ames' },
+    { id: 'i-b', name: 'Missy Chang' },
+  ],
+}
+
 const keeperScene: KeeperActiveScene = {
   kind: 'keeper',
   sceneId: 'story-scene',
@@ -176,7 +186,7 @@ export const KeeperToReveal: Story = { args: { tab: 'to-reveal' } }
 
 export const KeeperReference: Story = { args: { tab: 'reference' } }
 
-export const KeeperRevealed: Story = { args: { tab: 'revealed' } }
+export const KeeperRevealed: Story = { args: { tab: 'revealed', scene: { ...keeperScene, reveals: [fullReveal] } } }
 
 export const PlayerPresent: Story = {
   args: {

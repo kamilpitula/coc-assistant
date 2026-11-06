@@ -53,6 +53,15 @@ export function keeperReferenceSubjects(
   return { handouts: handouts.filter((handout) => handout.visibility === 'KeeperFacing'), links: [...links] }
 }
 
+/**
+ * What "Revealed" lists (specs/scene-play/ux.md section 21.6): this Scene's Reveals, newest first, but only of subjects
+ * that reached every Investigator present. A partly revealed subject stays on "To reveal" until the last one receives
+ * it (SPL-UX-43); adding an Investigator present moves its subject back off until they receive it (SPL-UX-44).
+ */
+export function revealsToEveryonePresent(reveals: KeeperReveal[], investigatorsPresent: InvestigatorPresent[]): KeeperReveal[] {
+  return reveals.filter((reveal) => isRevealedToEveryonePresent(reveal.subjectId, reveals, investigatorsPresent))
+}
+
 function subjectIdOf(subject: ToRevealSubject): string {
   return subject.type === 'handout' ? subject.handout.id : subject.link.id
 }

@@ -1,6 +1,6 @@
 ---
 id: PBI-SPL-006
-status: todo
+status: done
 blocked_by: [PBI-NAV-001, PBI-NAV-002, PBI-SPL-005]
 ---
 
@@ -27,13 +27,15 @@ Read: [scene-play ux](../../../specs/scene-play/ux.md) section 21 (normative), a
 - No API change: the grouping is derived from the Keeper Scene read, the Reveals, and the Investigators present already loaded.
 
 ## Verification
-- [ ] SPL-UX-40 to SPL-UX-48, SPL-UX-50 and SPL-A11Y-15 to SPL-A11Y-18 hold; SPL-UX-20 to SPL-UX-25 and SPL-UX-33 are updated to the new layout.
-- [ ] Unit tests cover `isRevealedToEveryonePresent` (none, partial, all, Investigator added, Investigator removed), the counts, the redirects, and focus after a Reveal.
-- [ ] Storybook stories for Run and each sub-tab, including partial reveal and empty states.
-- [ ] Playwright E2E covers the scene-play spec scenarios for "To reveal", and `e2e/tests/reveals.spec.ts` and `e2e/tests/active-scene.spec.ts` are updated to the sub-tabs.
-- [ ] Screenshots of Run and each sub-tab at 1366px and 375px, with the prototype's sample data, are compared side by side with variant A; differences are either fixed or justified in the PR.
+- [x] SPL-UX-40 to SPL-UX-48, SPL-UX-50 and SPL-A11Y-15 to SPL-A11Y-18 hold; SPL-UX-20 to SPL-UX-25 and SPL-UX-33 are updated to the new layout. (`e2e/tests/active-scene.spec.ts`: 17 passed; `e2e/tests/reveals.spec.ts`: 10 passed, each with `--workers=1`.)
+- [x] Unit tests cover `isRevealedToEveryonePresent` (none, partial, all, Investigator added, Investigator removed), the counts, the redirects, and focus after a Reveal. (Plus `revealsToEveryonePresent`: partial excluded, full included across one or two Reveals, added Investigator excludes again; `keeperSubTabCounts` counts the listed entries. Full frontend suite: 310 files, 2425 tests passed.)
+- [x] Storybook stories for Run and each sub-tab, including partial reveal and empty states. (`KeeperRevealed` seeds a fully revealed subject; `KeeperToReveal` seeds the partial one; `build-storybook` succeeds.)
+- [x] Playwright E2E covers the scene-play spec scenarios for "To reveal", and `e2e/tests/reveals.spec.ts` and `e2e/tests/active-scene.spec.ts` are updated to the sub-tabs. (Same runs as above.)
+- [x] Screenshots of Run and each sub-tab at 1366px and 375px, with the prototype's sample data, are compared side by side with variant A; differences are either fixed or justified in the PR. (8 files under `docs/scene-play/screenshots/spl-006-*-{1366,375}.png`; comparison notes in the PR text.)
 
 ## Refinement Protocol
 A change to the grouping or layout updates scene-play ux section 21, the scene-play spec Scenarios, the pure function, the components, and their tests together.
 
 ## Follow-ups
+- PBI-NAV-001 `e2e/tests/navigation.spec.ts:132` line 173 asserts the site banner still overflows at 320px ("the site header holds the rest"); the SPL-A11Y-18 header wrap fix in this PBI makes the banner fit, so that one line fails while the rest of the test passes. Needs an Architect/human call: update the NAV-001 expectation (the banner now fits, matching NAV-A11Y-4's "the page body never scrolls sideways") or revert the header wrap to a NAV follow-up (which re-breaks this PBI's 375px no-sideways-scroll assertion). The PBI-NAV-001 file is untouched.
+- The Revealed sub-tab lists each Reveal event of a fully revealed subject, so a subject revealed in two operations appears twice; consider one entry per subject (newest Reveal) if that reads better.

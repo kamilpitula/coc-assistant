@@ -17,7 +17,7 @@ import { useScene } from '@/scenario-preparation/hooks/useScenes'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import { activeSceneSubTabOf, type ActiveSceneSubTab } from '@/scene-play/services/activeSceneSubTab'
 import { recipientsOfSubject } from '@/scene-play/services/revealPresentation'
-import { keeperReferenceSubjects, toRevealSubjects } from '@/scene-play/services/subTabGrouping'
+import { keeperReferenceSubjects, revealsToEveryonePresent, toRevealSubjects } from '@/scene-play/services/subTabGrouping'
 import type { ActiveScene, KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { Button } from '@/shared/components/ui/button'
@@ -145,13 +145,13 @@ function dialogText(target: RevealTarget | null): { title: string; summary: stri
   return { title: target?.title ?? '', summary: target?.summary ?? '' }
 }
 
-/** The nav counts for a Keeper Scene: subjects still to reveal, Keeper-only subjects, and all Reveals. */
+/** The nav counts for a Keeper Scene: the entries each sub-tab lists (specs/scene-play/ux.md section 21.1). */
 function keeperSubTabCounts(material: Scene, scene: KeeperActiveScene): ActiveSceneSubTabCounts {
   const reference = keeperReferenceSubjects(material.handouts, material.nonPlayerEntityLinks)
   return {
     toReveal: toRevealSubjects(material.handouts, material.nonPlayerEntityLinks, scene.reveals, scene.investigatorsPresent).length,
     reference: reference.handouts.length + reference.links.length,
-    revealed: scene.reveals.length,
+    revealed: revealsToEveryonePresent(scene.reveals, scene.investigatorsPresent).length,
   }
 }
 

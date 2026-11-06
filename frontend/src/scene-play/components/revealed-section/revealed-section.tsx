@@ -6,7 +6,7 @@ import { Button } from '@/shared/components/ui/button'
 import { useSidePanel } from '@/shared/hooks/useSidePanel'
 
 interface RevealedSectionProps {
-  /** Every Reveal of the Active Scene, newest first. */
+  /** The Reveals of fully revealed subjects, newest first (specs/scene-play/ux.md section 21.6). */
   reveals: KeeperReveal[]
 }
 

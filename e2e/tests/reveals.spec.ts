@@ -171,7 +171,7 @@ test.describe('Revealing to Investigators', () => {
         await expect(dialog).toBeHidden()
         await expect(revealButton(page, FRONT_DOOR)).toBeFocused()
         await page.goto(revealedPath(table.prepared.campaignId))
-        await expect(revealedInScene(page).getByRole('listitem')).toHaveCount(1)
+        await expect(revealedInScene(page).getByText('Nothing has been revealed in this Scene yet.')).toBeVisible()
       })
     } finally {
       await closeTable(table)

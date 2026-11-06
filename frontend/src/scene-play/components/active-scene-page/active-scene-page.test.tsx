@@ -182,7 +182,7 @@ describe('ActiveScenePage', () => {
     expect(within(nav).getByRole('link', { name: 'Run' })).toHaveAttribute('aria-current', 'page')
     expect(within(nav).getByRole('link', { name: 'To reveal, 1' })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: 'Keeper reference, 2' })).toBeInTheDocument()
-    expect(within(nav).getByRole('link', { name: 'Revealed, 2' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: 'Revealed, 1' })).toBeInTheDocument()
     expect(screen.getByTestId('child-route')).toBeInTheDocument()
   })
 
