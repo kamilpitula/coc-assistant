@@ -2,13 +2,12 @@ import { useId } from 'react'
 
 import { MaterialEntry, MaterialEntryList } from '@/scenario-preparation/components/material-entry/material-entry'
 import { useScene } from '@/scenario-preparation/hooks/useScenes'
+import { MaterialLoadState } from '@/scene-play/components/material-load-state/material-load-state'
 import { RevealTrigger } from '@/scene-play/components/reveal-trigger/reveal-trigger'
 import { type RevealOpenContext, type RevealTarget } from '@/scene-play/hooks/useRevealFlow'
 import { recipientsOfSubject } from '@/scene-play/services/revealPresentation'
 import { revealTargetOf, toRevealStatus, toRevealSubjects, type ToRevealSubject } from '@/scene-play/services/subTabGrouping'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
-import { Button } from '@/shared/components/ui/button'
-import { Skeleton } from '@/shared/components/ui/skeleton'
 
 interface ToRevealSectionProps {
   campaignId: string
@@ -27,23 +26,8 @@ export function ToRevealSection({ campaignId, scene, onReveal }: ToRevealSection
   const headingId = useId()
   const material = useScene(campaignId, scene.scenarioId, scene.sceneId, true)
 
-  if (material.isError) {
-    return (
-      <div className="flex flex-col items-start gap-3">
-        <p className="text-sm">We couldn&apos;t load this Scene&apos;s material.</p>
-        <Button type="button" variant="outline" onClick={() => void material.refetch()}>
-          Try again
-        </Button>
-      </div>
-    )
-  }
-  if (!material.data) {
-    return (
-      <div aria-busy="true" className="flex flex-col gap-3">
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-20 w-full" />
-      </div>
-    )
+  if (material.isError || !material.data) {
+    return <MaterialLoadState isError={material.isError} onRetry={() => void material.refetch()} />
   }
 
   const subjects = toRevealSubjects(material.data.handouts, material.data.nonPlayerEntityLinks, scene.reveals, scene.investigatorsPresent)

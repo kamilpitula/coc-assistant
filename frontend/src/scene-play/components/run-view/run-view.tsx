@@ -1,10 +1,9 @@
 import { useScene } from '@/scenario-preparation/hooks/useScenes'
 import { InvestigatorsPresentSection } from '@/scene-play/components/investigators-present-section/investigators-present-section'
 import { KeeperNotesSection } from '@/scene-play/components/keeper-notes-section/keeper-notes-section'
+import { MaterialLoadState } from '@/scene-play/components/material-load-state/material-load-state'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
-import { Button } from '@/shared/components/ui/button'
 import { Card } from '@/shared/components/ui/card'
-import { Skeleton } from '@/shared/components/ui/skeleton'
 
 interface RunViewProps {
   campaignId: string
@@ -41,23 +40,8 @@ function RunCard({ children }: { children: React.ReactNode }) {
 function KeeperNotesRegion({ campaignId, scene }: { campaignId: string; scene: KeeperActiveScene }) {
   const material = useScene(campaignId, scene.scenarioId, scene.sceneId, true)
 
-  if (material.isError) {
-    return (
-      <div className="flex flex-col items-start gap-3">
-        <p className="text-sm">We couldn&apos;t load this Scene&apos;s material.</p>
-        <Button type="button" variant="outline" onClick={() => void material.refetch()}>
-          Try again
-        </Button>
-      </div>
-    )
-  }
-  if (!material.data) {
-    return (
-      <div aria-busy="true" className="flex flex-col gap-3">
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-20 w-full" />
-      </div>
-    )
+  if (material.isError || !material.data) {
+    return <MaterialLoadState isError={material.isError} onRetry={() => void material.refetch()} />
   }
 
   return <KeeperNotesSection notes={material.data.keeperNotes} />

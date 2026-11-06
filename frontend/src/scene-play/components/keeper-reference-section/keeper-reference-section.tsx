@@ -2,10 +2,9 @@ import { useId, type ReactNode } from 'react'
 
 import { MaterialEntry, MaterialEntryList } from '@/scenario-preparation/components/material-entry/material-entry'
 import { useScene } from '@/scenario-preparation/hooks/useScenes'
+import { MaterialLoadState } from '@/scene-play/components/material-load-state/material-load-state'
 import { keeperReferenceSubjects } from '@/scene-play/services/subTabGrouping'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
-import { Button } from '@/shared/components/ui/button'
-import { Skeleton } from '@/shared/components/ui/skeleton'
 
 interface KeeperReferenceSectionProps {
   campaignId: string
@@ -21,23 +20,8 @@ export function KeeperReferenceSection({ campaignId, scene }: KeeperReferenceSec
   const headingId = useId()
   const material = useScene(campaignId, scene.scenarioId, scene.sceneId, true)
 
-  if (material.isError) {
-    return (
-      <div className="flex flex-col items-start gap-3">
-        <p className="text-sm">We couldn&apos;t load this Scene&apos;s material.</p>
-        <Button type="button" variant="outline" onClick={() => void material.refetch()}>
-          Try again
-        </Button>
-      </div>
-    )
-  }
-  if (!material.data) {
-    return (
-      <div aria-busy="true" className="flex flex-col gap-3">
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-20 w-full" />
-      </div>
-    )
+  if (material.isError || !material.data) {
+    return <MaterialLoadState isError={material.isError} onRetry={() => void material.refetch()} />
   }
 
   const { handouts, links } = keeperReferenceSubjects(material.data.handouts, material.data.nonPlayerEntityLinks)
