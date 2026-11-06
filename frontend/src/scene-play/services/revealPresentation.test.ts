@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { KeeperReveal, PlayerReveal } from '@/scene-play/types/Reveal'
 
-import { joinNames, newRevealAnnouncement, recipientNames, recipientsOfSubject, revealKindLabel } from './revealPresentation'
+import { joinNames, newHeldItemsAnnouncement, newRevealAnnouncement, recipientNames, recipientsOfSubject, revealKindLabel } from './revealPresentation'
 
 // specs/scene-play/ux.md sections 12, 14, and 17; SPL-UX-22, SPL-UX-28.
 
@@ -72,5 +72,23 @@ describe('newRevealAnnouncement', () => {
     expect(newRevealAnnouncement(new Set(), [player('1'), player('2')], 'Harvey Walters')).toBe('2 new for Harvey Walters.')
     expect(newRevealAnnouncement(new Set(['1']), [player('1')], 'Harvey Walters')).toBeNull()
     expect(newRevealAnnouncement(new Set(), [player('1')], null)).toBe('New for Unnamed Investigator: Title 1.')
+  })
+})
+
+describe('newHeldItemsAnnouncement', () => {
+  const item = (revealId: string, name = `Item ${revealId}`) => ({ revealId, name })
+
+  it('names the one gained Item, the one taken-back Item, counts several changes, and is silent otherwise (SPL-UX-52, SPL-UX-54)', () => {
+    expect(newHeldItemsAnnouncement(new Map(), [item('1', "Walter Corbitt's diary")], 'Harvey Walters')).toBe(
+      "Harvey Walters now holds Walter Corbitt's diary.",
+    )
+    expect(newHeldItemsAnnouncement(new Map([['1', "Walter Corbitt's diary"]]), [], 'Harvey Walters')).toBe(
+      "Walter Corbitt's diary was taken back from Harvey Walters.",
+    )
+    expect(
+      newHeldItemsAnnouncement(new Map([['1', 'Item 1']]), [item('2'), item('3')], 'Harvey Walters'),
+    ).toBe('3 Items changed for Harvey Walters.')
+    expect(newHeldItemsAnnouncement(new Map([['1', 'Item 1']]), [item('1')], 'Harvey Walters')).toBeNull()
+    expect(newHeldItemsAnnouncement(new Map(), [item('1')], null)).toBe('Unnamed Investigator now holds Item 1.')
   })
 })

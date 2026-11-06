@@ -10,15 +10,22 @@ import { CluesPanel } from './clues-panel'
 
 // specs/navigation/ux.md section 3 (refinements G2, G4-G7): the Clues panel reads through useCluesRead with role gating,
 // shows the kind label until ready, and links to the full page with ?from=active-scene.
-const { mockUseCampaign, mockUseMyClues, mockUseInvestigatorClues, refetch } = vi.hoisted(() => ({
+const { mockUseCampaign, mockUseMyClues, mockUseInvestigatorClues, mockUseMine, mockUseTheirs, refetch } = vi.hoisted(() => ({
   mockUseCampaign: vi.fn(),
   mockUseMyClues: vi.fn(),
   mockUseInvestigatorClues: vi.fn(),
+  mockUseMine: vi.fn(),
+  mockUseTheirs: vi.fn(),
   refetch: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
+vi.mock('@/scene-play/hooks/useHeldItems', () => ({
+  useMyHeldItems: mockUseMine,
+  useInvestigatorHeldItems: mockUseTheirs,
+  useTakeBackItem: () => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false, error: null }),
+}))
 vi.mock('@/scene-play/hooks/useReveals', () => ({
   useMyClues: mockUseMyClues,
   useInvestigatorClues: mockUseInvestigatorClues,
@@ -60,6 +67,8 @@ describe('CluesPanel', () => {
     mockUseCampaign.mockReturnValue({ data: { role: 'Keeper' } })
     mockUseMyClues.mockReturnValue(query(undefined))
     mockUseInvestigatorClues.mockReturnValue(query(clues))
+    mockUseMine.mockReturnValue({ data: undefined, isError: false, isFetchedAfterMount: false, refetch })
+    mockUseTheirs.mockReturnValue({ data: undefined, isError: false, isFetchedAfterMount: false, refetch })
   })
 
   it('shows the kind line, the title, the h3 group with an h4 Clue, and the full-page link for the Keeper (NAV-UX-4, NAV-UX-7)', () => {
@@ -70,6 +79,30 @@ describe('CluesPanel', () => {
     expect(screen.getByRole('heading', { level: 3, name: 'The Corbitt House' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 4, name: 'The front door' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Open full page' })).toHaveAttribute('href', '/campaigns/c1/investigators/i1/clues?from=active-scene')
+  })
+
+  it('shows the Investigator\'s Items above the Clues, one level deeper (SPL-UX-52)', () => {
+    mockUseTheirs.mockReturnValue({
+      data: {
+        investigatorName: 'Lucy Ward',
+        items: [
+          {
+            revealId: 'h1',
+            itemId: 'k1',
+            name: "Walter Corbitt's diary",
+            description: { root: { type: 'root', children: [{ type: 'paragraph', version: 1, children: [text("Walter's last entry.")] }] } },
+            givenAt: '2026-10-28T19:58:00Z',
+          },
+        ],
+      },
+      isError: false,
+      isFetchedAfterMount: true,
+      refetch,
+    })
+    show({ investigatorId: 'i1' })
+
+    expect(screen.getByRole('heading', { level: 3, name: 'Items Lucy Ward holds' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: "Take back Walter Corbitt's diary" })).toBeInTheDocument()
   })
 
   it('links to the Player Clues page with ?from=active-scene for a Player (NAV-UX-7)', () => {

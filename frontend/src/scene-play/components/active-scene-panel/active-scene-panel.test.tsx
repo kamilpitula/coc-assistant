@@ -14,12 +14,14 @@ import { ActiveScenePanel } from './active-scene-panel'
 
 // specs/navigation/ux.md section 3 (refinements G2, G8): the Active Scene hosts its panel, which renders once the
 // Active Scene query has loaded, dispatching each panel type to its body (PBI-NAV-002 design record D4).
-const { mockUseActive, mockUseSidePanel, mockUseCampaign, mockUseMyClues, mockUseInvestigatorClues, mockUseHandout, mockUseScene, mockUseHumanNpc, mockUseItem, mockUseCampaignMembers, sidePanelProps } = vi.hoisted(() => ({
+const { mockUseActive, mockUseSidePanel, mockUseCampaign, mockUseMyClues, mockUseInvestigatorClues, mockUseMine, mockUseTheirs, mockUseHandout, mockUseScene, mockUseHumanNpc, mockUseItem, mockUseCampaignMembers, sidePanelProps } = vi.hoisted(() => ({
   mockUseActive: vi.fn(),
   mockUseSidePanel: vi.fn(),
   mockUseCampaign: vi.fn(),
   mockUseMyClues: vi.fn(),
   mockUseInvestigatorClues: vi.fn(),
+  mockUseMine: vi.fn(),
+  mockUseTheirs: vi.fn(),
   mockUseHandout: vi.fn(),
   mockUseScene: vi.fn(),
   mockUseHumanNpc: vi.fn(),
@@ -43,6 +45,11 @@ vi.mock('@/scene-play/hooks/useReveals', () => ({
   useInvestigatorClues: mockUseInvestigatorClues,
   useRevealAnnouncement: () => ({ message: '', sequence: 0 }),
   useRevealFile: vi.fn(),
+}))
+vi.mock('@/scene-play/hooks/useHeldItems', () => ({
+  useMyHeldItems: mockUseMine,
+  useInvestigatorHeldItems: mockUseTheirs,
+  useTakeBackItem: () => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false, error: null }),
 }))
 vi.mock('@/scenario-preparation/hooks/useHandouts', () => ({ useHandout: mockUseHandout, useHandoutFile: vi.fn() }))
 vi.mock('@/scenario-preparation/hooks/useScenes', () => ({ useScene: mockUseScene }))
@@ -111,6 +118,8 @@ describe('ActiveScenePanel', () => {
     mockUseCampaign.mockReturnValue({ data: { role: 'Keeper' } })
     mockUseMyClues.mockReturnValue(query(undefined))
     mockUseInvestigatorClues.mockReturnValue(query(clues))
+    mockUseMine.mockReturnValue(query(undefined))
+    mockUseTheirs.mockReturnValue(query(undefined))
     mockUseHandout.mockReturnValue(query(undefined))
     mockUseScene.mockReturnValue(query(undefined))
     mockUseHumanNpc.mockReturnValue(query(undefined))

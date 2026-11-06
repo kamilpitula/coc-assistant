@@ -7,17 +7,24 @@ import type { Clue, Clues } from '@/scene-play/types/Reveal'
 import { CluesPage } from './clues-page'
 
 // specs/scene-play/ux.md section 15; SPL-UX-31 to SPL-UX-34, SPL-UX-37, SPL-A11Y-8, SPL-A11Y-11.
-const { mockUseCampaign, mockUseMyClues, mockUseInvestigatorClues, mockUseOriginBackLink, refetch } = vi.hoisted(() => ({
+const { mockUseCampaign, mockUseMyClues, mockUseInvestigatorClues, mockUseOriginBackLink, mockUseMine, mockUseTheirs, refetch } = vi.hoisted(() => ({
   mockUseCampaign: vi.fn(),
   mockUseMyClues: vi.fn(),
   mockUseInvestigatorClues: vi.fn(),
   mockUseOriginBackLink: vi.fn(),
+  mockUseMine: vi.fn(),
+  mockUseTheirs: vi.fn(),
   refetch: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
 vi.mock('@/campaign-play/hooks/useOriginBackLink', () => ({ useOriginBackLink: mockUseOriginBackLink }))
+vi.mock('@/scene-play/hooks/useHeldItems', () => ({
+  useMyHeldItems: mockUseMine,
+  useInvestigatorHeldItems: mockUseTheirs,
+  useTakeBackItem: () => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false, error: null }),
+}))
 vi.mock('@/scene-play/hooks/useReveals', () => ({
   useMyClues: mockUseMyClues,
   useInvestigatorClues: mockUseInvestigatorClues,
@@ -56,6 +63,8 @@ describe('CluesPage', () => {
     mockUseOriginBackLink.mockReturnValue('The Corbitt House')
     mockUseMyClues.mockReturnValue(query(clues))
     mockUseInvestigatorClues.mockReturnValue(query(undefined))
+    mockUseMine.mockReturnValue({ data: undefined, isError: false, isFetchedAfterMount: false, refetch })
+    mockUseTheirs.mockReturnValue({ data: undefined, isError: false, isFetchedAfterMount: false, refetch })
   })
 
   it('titles the page "{name}\'s Clues" and groups the Clues by Scene, newest group first, each Clue closed (SPL-UX-31, SPL-A11Y-8)', () => {
@@ -68,6 +77,32 @@ describe('CluesPage', () => {
     const group = within(screen.getByRole('region', { name: 'The Corbitt House' }))
     expect(group.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual(['The cellar plan', 'The front door'])
     expect(screen.queryByText('Text of The front door')).not.toBeInTheDocument()
+  })
+
+  it("shows the Investigator's Items above the Scene groups (SPL-UX-52)", () => {
+    mockUseMine.mockReturnValue({
+      data: {
+        investigatorName: 'Harvey Walters',
+        items: [
+          {
+            revealId: 'h1',
+            name: "Walter Corbitt's diary",
+            description: { root: { type: 'root', children: [{ type: 'paragraph', version: 1, children: [text("Walter's last entry.")] }] } },
+            givenAt: '2026-10-28T19:58:00Z',
+          },
+        ],
+      },
+      isError: false,
+      isFetchedAfterMount: true,
+      refetch,
+    })
+    render(<CluesPage campaignId="c1" />)
+
+    expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toEqual([
+      'Items Harvey Walters holds',
+      'The Corbitt House',
+      'Meeting Knott',
+    ])
   })
 
   it('shows a Clue after "Show" and hides it again after "Hide", named by its title (SPL-UX-31, SPL-A11Y-11)', async () => {

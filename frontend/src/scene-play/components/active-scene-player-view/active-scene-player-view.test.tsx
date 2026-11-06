@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { PresentPlayerActiveScene } from '@/scene-play/types/ActiveScene'
 import type { PlayerReveal } from '@/scene-play/types/Reveal'
@@ -8,7 +8,13 @@ import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-pane
 import { ActiveScenePlayerView } from './active-scene-player-view'
 
 // specs/scene-play/ux.md sections 4 and 14; SPL-UX-12, SPL-UX-13, SPL-UX-26, SPL-UX-35, SPL-A11Y-1, SPL-A11Y-4, SPL-A11Y-8.
+const { mockUseMine } = vi.hoisted(() => ({ mockUseMine: vi.fn() }))
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
+vi.mock('@/scene-play/hooks/useHeldItems', () => ({
+  useMyHeldItems: mockUseMine,
+  useInvestigatorHeldItems: vi.fn(),
+  useTakeBackItem: () => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false, error: null }),
+}))
 vi.mock('@/scene-play/hooks/useReveals', () => ({ useRevealFile: vi.fn() }))
 
 const text = (value: string) => ({ type: 'text', version: 1, text: value, format: 0, style: '', detail: 0, mode: 'normal' })
@@ -37,6 +43,10 @@ const present = (reveals: PlayerReveal[] = []): PresentPlayerActiveScene =>
   })
 
 describe('ActiveScenePlayerView', () => {
+  beforeEach(() => {
+    mockUseMine.mockReturnValue({ data: undefined, isError: false, isFetchedAfterMount: false, refetch: vi.fn() })
+  })
+
   const renderView = (scene: PresentPlayerActiveScene | { kind: 'absent-player'; title: string }) => {
     const headingRef = { current: null as HTMLHeadingElement | null }
     const view = render(
@@ -75,6 +85,19 @@ describe('ActiveScenePlayerView', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Revealed to Harvey Walters' })).toBeInTheDocument()
     expect(screen.getByText("The Keeper hasn't revealed anything to Harvey Walters yet.")).toBeInTheDocument()
     expect(screen.queryByRole('article')).not.toBeInTheDocument()
+  })
+
+  it('shows the Player\'s Items after "Revealed to {name}" with the short Given time (SPL-UX-52)', () => {
+    mockUseMine.mockReturnValue({
+      data: { investigatorName: 'Harvey Walters', items: [] },
+      isError: false,
+      isFetchedAfterMount: true,
+      refetch: vi.fn(),
+    })
+    renderView(present())
+
+    expect(screen.getByRole('heading', { level: 2, name: "Items Harvey Walters holds" })).toBeInTheDocument()
+    expect(screen.getByText("Harvey Walters doesn't hold any Items.")).toBeInTheDocument()
   })
 
   it('opens the Clues panel from "{name}\'s Clues" under "Revealed to {name}" (SPL-UX-26, G1)', () => {

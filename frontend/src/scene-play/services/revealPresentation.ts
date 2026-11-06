@@ -56,6 +56,33 @@ export function newRevealAnnouncement(previousIds: ReadonlySet<string>, reveals:
   return fresh.length === 1 ? `New for ${name}: ${fresh[0].title}.` : `${fresh.length} new for ${name}.`
 }
 
+/**
+ * What the Player hears when a refetch after the first load finds held Items it did not have (specs/scene-play/ux.md section
+ * 22.7): "{name} now holds {item}." for one gain, "{item} was taken back from {name}." for one loss, "{n} Items changed for
+ * {name}." for several changes, and null when nothing changed. `previous` maps the known Reveal ids to their Item names, so a
+ * loss can name the taken-back Item.
+ */
+export function newHeldItemsAnnouncement(
+  previous: ReadonlyMap<string, string>,
+  items: ReadonlyArray<{ revealId: string; name: string }>,
+  investigatorName: string | null,
+): string | null {
+  const name = investigatorName ?? UNNAMED_INVESTIGATOR
+  const currentIds = new Set(items.map((item) => item.revealId))
+  const gained = items.filter((item) => !previous.has(item.revealId))
+  const lost = [...previous.entries()].filter(([revealId]) => !currentIds.has(revealId))
+  if (gained.length + lost.length === 0) {
+    return null
+  }
+  if (gained.length === 1 && lost.length === 0) {
+    return `${name} now holds ${gained[0].name}.`
+  }
+  if (gained.length === 0 && lost.length === 1) {
+    return `${lost[0][1]} was taken back from ${name}.`
+  }
+  return `${gained.length + lost.length} Items changed for ${name}.`
+}
+
 /** The time of a Reveal as "19:52" (section 14). */
 export function formatRevealTime(iso: string, locale?: string): string {
   return new Intl.DateTimeFormat(locale, { timeStyle: 'short' }).format(new Date(iso))
