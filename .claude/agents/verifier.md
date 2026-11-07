@@ -70,7 +70,7 @@ Run from `frontend/`:
 Run from `e2e/`:
 
 - Install (only if `node_modules` is missing/stale): `npm ci`
-- Run the suite: `npx playwright test --retries=0` (the local config
+- Run the suite: `npm test -- --retries=0` (the local config
   retries once, which hides flaky tests)
 - If Playwright browsers are missing, install first: `npx playwright install --with-deps chromium`
 - Inspect a failure's HTML report: `npm run report`

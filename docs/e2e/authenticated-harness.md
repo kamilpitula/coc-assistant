@@ -75,26 +75,55 @@ deterministically regardless of the globally installed EF tooling.
 
 ```powershell
 cd e2e
-npm test
+npm test -- <args>
 ```
 
-In a fresh checkout or agent worktree, run `npm run build:backend` (in `e2e/`) once first.
-`globalSetup.ts` runs `dotnet ef`, which builds the backend while the `api` server's
-`dotnet run` is building it too; on a cold build the two collide on MSBuild file locks and
-setup fails with "Build failed". A warm build avoids it. `.worktreeinclude` copies the
-gitignored `e2e/.certs/` into new worktrees.
+`npm test` is the only supported entry point: the `runE2e.ts` wrapper holds a
+machine-wide single-run lock, clears a leftover mock container, refuses occupied ports, and
+then starts Playwright with the lock path in the child's environment. Direct
+`npx playwright test` runs are refused by `globalSetup.ts`. Extra args pass through to
+Playwright, for example `npm test -- --retries=0` or `npm test -- tests/smoke.spec.ts`.
 
 Playwright's `webServer` config starts three servers for you:
 
 | Server         | Port                                  | Owner             |
 |----------------|---------------------------------------|-------------------|
 | Mock OIDC      | 8443 (HTTPS)                          | Docker container  |
-| API            | 5059 (HTTPS, dev cert)                | `dotnet run`      |
+| API            | 5059 (HTTPS, dev cert)                | `dotnet <dll>`    |
 | Vite dev UI    | 5174 (HTTP, `--mode e2e`)             | `vite`            |
 
-`globalSetup.ts` applies both EF Core migrations against the `CocAssistantE2E` LocalDB
+The API server command builds `backend/src/CocAssistant.Api` once with
+`dotnet build --disable-build-servers` (no resident build servers stay behind) and then runs
+the built DLL. The EF migrations in `globalSetup.ts` use `--no-build` against that output.
+
+Server output goes through the shell into `e2e/logs/{api,vite,mock-oauth2}.log` (gitignored,
+outside `test-results/`, which Playwright clears at the start of a run), so the console shows
+one `list` line per test. The local HTML report opens only on failure; agents run headless and
+must set `PLAYWRIGHT_HTML_OPEN=never` so it never blocks waiting for Ctrl+C.
+
+Worker count comes from `E2E_WORKERS` (a positive integer; anything else fails loudly) and
+defaults to 1 locally and 2 on CI. Server reuse is off by default: with `E2E_REUSE_SERVERS=1`
+already-running servers are reused instead of started (local only; on CI the value is ignored
+and servers are always started). You are then responsible for the running servers matching this
+checkout. The lock applies either way.
+
+Only one run may be active per machine (ports are machine-wide, and overlapping runs from
+different worktrees used to test each other's servers). A second run fails fast naming the
+lock owner's pid, checkout, and start time. A lock whose owning process is gone is treated as
+stale and cleared; if the refusal names a pid that is not actually an E2E run, delete the
+printed lock path and retry. Without reuse, an occupied server port also fails fast with one
+line per port.
+
+`globalSetup.ts` applies the EF Core migrations against the `CocAssistantE2E` LocalDB
 before Playwright launches the suite, and reads `e2e/.certs/dev-cert.password` so the mock
 container and the API's Kestrel endpoint both use the trusted dev cert.
+
+To re-enable authentication debug logging for one run (the E2E config keeps it at `Warning`):
+
+```powershell
+$env:Logging__LogLevel__Microsoft_AspNetCore_Authentication = "Debug"
+npm test -- <args>
+```
 
 `playwright.config.ts` sets `use.ignoreHTTPSErrors: true` and the Vite proxy sets
 `secure: false` for the API target so the dev cert is accepted by Node's HTTP agent (the
@@ -122,11 +151,11 @@ The `e2e` job in `.github/workflows/ci.yml` runs the same suite on `ubuntu-lates
 - The dev certificate is exported per run with the committed password above and added to the
   runner's OpenSSL trust store, so the API can fetch the mock issuer's OIDC metadata over
   HTTPS. The browser relies on `ignoreHTTPSErrors`.
-- Under `CI`, Playwright starts every server itself (`reuseExistingServer` is off), retries
-  failed tests twice, and writes both the line and HTML reporters.
-- When the job fails, the HTML report, traces, the Playwright console log (including API and
-  Vite output), and the mock issuer's container log are uploaded as the `e2e-diagnostics`
-  artifact for 7 days.
+- Under `CI`, every server is started (`reuseExistingServer` is off), failed tests are
+  retried twice, the console uses the `list` reporter, and each shard writes a blob report.
+  `merge-reports` merges the 4 shard blobs into one HTML report and the `E2E tests` check run.
+- Every shard uploads its blob report and `e2e/logs/*.log` on success and on failure, and the
+  merged HTML report is uploaded on every run, all retained 7 days.
 
 ## Adding new Accounts
 

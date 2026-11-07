@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "build:backend": "dotnet build ../backend/CocAssistant.slnx --verbosity quiet",
-    "test": "playwright test",
-    "test:unit": "node --test localDbMemory.test.ts",
-    "test:ui": "playwright test --ui",
+    "test": "node runE2e.ts",
+    "test:unit": "node --test *.test.ts",
+    "test:ui": "node runE2e.ts --ui",
     "report": "playwright show-report"
   },
   "devDependencies": {

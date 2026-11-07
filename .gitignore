@@ -12,6 +12,8 @@
 # Playwright
 e2e/playwright-report/
 e2e/test-results/
+e2e/logs/
+e2e/blob-report/
 
 # Authenticated-E2E harness: exported dev-cert PFX and its password file
 e2e/.certs/
