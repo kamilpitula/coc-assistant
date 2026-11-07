@@ -391,7 +391,7 @@ New `e2e/tests/items-in-play.spec.ts`, with a 240s timeout as in `active-scene.s
 - **"A Player cannot give an Item"**: an API call as a Player returns 404.
 - **"A held Item cannot be deleted"**: Delete on the Item page shows the held message. This closes the PBI-SP-008 and PBI-SP-006 E2E exception.
 - **"An Item in a played Scene cannot be deleted"**: the PBI-SPL-001 follow-up.
-- **Unchanged:** `reveals.spec.ts` keeps its assertions for SPL-UX-20 to SPL-UX-45. Items only add a group. Checked against SPL-UX-40, SPL-UX-42, SPL-UX-45, and SPL-UX-48.
+- **Updated:** `reveals.spec.ts` and `active-scene.spec.ts` expectations now account for the Items group: To reveal counts the linked Item and its Player-facing Handouts (ux 22.1), Keeper reference counts the Item and its Keeper-facing Handouts with the amended hint (ux 22.2), and the Clues page lists the Items section above the per-Scene groups (ux 22.7). Checked against SPL-UX-40, SPL-UX-42, SPL-UX-45, and SPL-UX-48.
 
 ## ADR
 - **ADR 0029**, "Item holders live on the Item and change through a provider service":
