@@ -108,6 +108,27 @@ public interface ISceneWallEntries
     Task AddPublicAsync(Guid campaignId, Guid keeperAccountId, string text, CancellationToken cancellationToken);
 }
 
+/// <summary>A played Scene as the provider returns it: the fields history shows, the ids of the Investigators present, and its Reveals.</summary>
+public sealed record PlayedScene(
+    Guid SceneId,
+    Guid ScenarioId,
+    string ScenarioTitle,
+    string Title,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? FinishedAt,
+    IReadOnlyList<Guid> InvestigatorsPresent,
+    IReadOnlyList<SceneRevealRecord> Reveals);
+
+/// <summary>
+/// Consumer-owned query port onto played Scenes (PBI-SPL-004 D1). It performs no authorization: <see cref="SceneHistoryService"/>
+/// checks the member before it calls.
+/// </summary>
+public interface ISceneHistory
+{
+    /// <summary>The Campaign's played Scenes (Active and Finished), newest StartedAt first.</summary>
+    Task<IReadOnlyList<PlayedScene>> ListPlayedAsync(Guid campaignId, CancellationToken cancellationToken);
+}
+
 /// <summary>Consumer-owned port: tells the Campaign's connected members that the Active Scene changed (topic activeScene, no data).</summary>
 public interface IActiveSceneSignals
 {

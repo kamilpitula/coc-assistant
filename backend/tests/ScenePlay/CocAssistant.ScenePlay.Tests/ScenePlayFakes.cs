@@ -74,6 +74,20 @@ public sealed class FakePlayableScenes : IPlayableScenes
     }
 }
 
+/// <summary>Records each call and answers with set results, so the history service's decisions are observable.</summary>
+public sealed class FakeSceneHistory : ISceneHistory
+{
+    public List<string> Calls { get; } = [];
+
+    public List<PlayedScene> Played { get; } = [];
+
+    public Task<IReadOnlyList<PlayedScene>> ListPlayedAsync(Guid campaignId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(ListPlayedAsync));
+        return Task.FromResult<IReadOnlyList<PlayedScene>>(Played.ToList());
+    }
+}
+
 public sealed class RecordingSceneWallEntries : ISceneWallEntries
 {
     public List<string> Texts { get; } = [];

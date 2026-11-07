@@ -5,6 +5,7 @@ import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
 import { activeSceneQueryKeys } from '@/scene-play/services/activeSceneApi'
 import { cluesQueryKeys } from '@/scene-play/services/cluesApi'
 import { heldItemsQueryKeys } from '@/scene-play/services/itemHolderApi'
+import { sceneHistoryQueryKeys } from '@/scene-play/services/sceneHistoryApi'
 
 import { campaignQueryKeys } from './campaignApi'
 import { queryKeysForTopics } from './liveTopics'
@@ -40,17 +41,26 @@ describe('queryKeysForTopics', () => {
     expect(queryKeysForTopics('c1', ['activeScene'])).toEqual([activeSceneQueryKeys.detail('c1'), sceneQueryKeys.inCampaign('c1')])
   })
 
-  it('refetches the Active Scene and the own Clues for the myClues topic, and neither the roster nor the Scene queries (SPL-UX-28)', () => {
-    expect(queryKeysForTopics('c1', ['myClues'])).toEqual([activeSceneQueryKeys.detail('c1'), cluesQueryKeys.mine('c1')])
+  it('refetches the Scene History for the sceneHistory topic (SPL-UX-68)', () => {
+    expect(queryKeysForTopics('c1', ['sceneHistory'])).toEqual([sceneHistoryQueryKeys.detail('c1')])
   })
 
-  it('refetches the Active Scene and every Keeper Clues query for the sceneReveals topic', () => {
+  it('refetches the Active Scene and the own Clues for the myClues topic, and the Scene History too (SPL-UX-28, SPL-UX-68)', () => {
+    expect(queryKeysForTopics('c1', ['myClues'])).toEqual([
+      activeSceneQueryKeys.detail('c1'),
+      cluesQueryKeys.mine('c1'),
+      sceneHistoryQueryKeys.detail('c1'),
+    ])
+  })
+
+  it('refetches the Active Scene, every Keeper Clues query, and the Scene History for the sceneReveals topic', () => {
     expect(queryKeysForTopics('c1', ['sceneReveals'])).toEqual([
       activeSceneQueryKeys.detail('c1'),
       cluesQueryKeys.investigators('c1'),
       sceneQueryKeys.inCampaign('c1'),
       itemQueryKeys.all('c1'),
       heldItemsQueryKeys.all('c1'),
+      sceneHistoryQueryKeys.detail('c1'),
     ])
   })
 

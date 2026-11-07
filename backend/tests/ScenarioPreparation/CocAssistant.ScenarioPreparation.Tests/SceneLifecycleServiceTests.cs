@@ -47,6 +47,89 @@ public class SceneLifecycleServiceTests : IDisposable
         return await _builder.CreateLifecycleService(context).ReplaceInvestigatorsPresentAsync(_builder.CampaignId, present, Approved, CancellationToken.None);
     }
 
+    private async Task<IReadOnlyList<PlayableSceneView>> ListPlayedAsync(Guid? campaignId = null, IScenarioRepository? scenarios = null)
+    {
+        using var context = _builder.Fixture.CreateContext();
+        var service = scenarios is null
+            ? _builder.CreateLifecycleService(context)
+            : new SceneLifecycleService(new EfSceneRepository(context), scenarios, _builder.TimeProvider);
+        return await service.ListPlayedAsync(campaignId ?? _builder.CampaignId, CancellationToken.None);
+    }
+
+    /// <summary>Counts the Scenario lookups behind a history listing; finding one Scenario by id must never be needed.</summary>
+    private sealed class CountingScenarios(IScenarioRepository inner) : IScenarioRepository
+    {
+        public int ListedForCampaign { get; private set; }
+
+        public void Add(Scenario scenario) => inner.Add(scenario);
+
+        public Task<IReadOnlyList<Scenario>> ListForCampaignAsync(Guid campaignId, CancellationToken cancellationToken)
+        {
+            ListedForCampaign++;
+            return inner.ListForCampaignAsync(campaignId, cancellationToken);
+        }
+
+        public Task<IReadOnlyList<Scenario>> ListTrackedForCampaignAsync(Guid campaignId, CancellationToken cancellationToken) =>
+            inner.ListTrackedForCampaignAsync(campaignId, cancellationToken);
+
+        public Task<Scenario?> FindByIdAsync(Guid campaignId, Guid scenarioId, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The history lists every played Scene with one Scenario lookup.");
+
+        public Task<int> MaxPositionAsync(Guid campaignId, CancellationToken cancellationToken) => inner.MaxPositionAsync(campaignId, cancellationToken);
+
+        public Task SaveChangesAsync(CancellationToken cancellationToken) => inner.SaveChangesAsync(cancellationToken);
+    }
+
+    [Fact]
+    public async Task Given_played_scenes_of_two_scenarios_When_listing_played_Then_prepared_are_excluded_and_the_newest_started_come_first()
+    {
+        var haunting = await _builder.CreateScenarioAsync(_builder.CampaignId, "The Haunting");
+        await _builder.CreateSceneAsync(_builder.CampaignId, haunting.Id, "Meeting Knott");
+        var corbittHouse = await _builder.CreateSceneAsync(_builder.CampaignId, haunting.Id, "The Corbitt House");
+        var dunwich = await _builder.CreateScenarioAsync(_builder.CampaignId, "The Dunwich Horror");
+        var strangeHouse = await _builder.CreateSceneAsync(_builder.CampaignId, dunwich.Id, "The Strange High House");
+        var festival = await _builder.CreateSceneAsync(_builder.CampaignId, dunwich.Id, "The Festival");
+        var (_, _, otherCampaignPlayed) = await TwoScenesAsync(_builder.OtherCampaignOfSameKeeperId);
+        _builder.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        await StartAsync(corbittHouse.Id);
+        _builder.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        await FinishAsync();
+        _builder.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        await StartAsync(strangeHouse.Id);
+        _builder.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        await StartAsync(festival.Id, finishActiveScene: true);
+        await StartAsync(otherCampaignPlayed, campaignId: _builder.OtherCampaignOfSameKeeperId);
+
+        using var context = _builder.Fixture.CreateContext();
+        var scenarios = new CountingScenarios(new EfScenarioRepository(context));
+        var played = await ListPlayedAsync(scenarios: scenarios);
+
+        Assert.Equal(1, scenarios.ListedForCampaign);
+        Assert.Equal(
+            [
+                (festival.Id, "The Dunwich Horror", "The Festival", SceneStatus.Active),
+                (strangeHouse.Id, "The Dunwich Horror", "The Strange High House", SceneStatus.Finished),
+                (corbittHouse.Id, "The Haunting", "The Corbitt House", SceneStatus.Finished),
+            ],
+            played.Select(scene => (scene.SceneId, scene.ScenarioTitle, scene.Title, scene.Status)));
+        Assert.All(played, scene => Assert.NotNull(scene.StartedAt));
+        Assert.Null(played[0].FinishedAt);
+        Assert.Equal(played[0].StartedAt, played[1].FinishedAt);
+    }
+
+    [Fact]
+    public async Task Given_an_active_and_a_finished_scene_started_at_the_same_time_When_listing_played_Then_the_active_scene_comes_first()
+    {
+        var (_, first, second) = await TwoScenesAsync();
+        await StartAsync(first);
+        await FinishAsync();
+        await StartAsync(second);
+
+        var played = await ListPlayedAsync();
+
+        Assert.Equal([second, first], played.Select(scene => scene.SceneId));
+    }
+
     private async Task<Scene> StoredAsync(Guid sceneId, Guid? campaignId = null)
     {
         using var context = _builder.Fixture.CreateContext();

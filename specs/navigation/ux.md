@@ -23,6 +23,7 @@ Behavior and rules: [spec.md](spec.md). The Active Scene layout that uses these 
 Campaign tabs (nav "Campaign")
   Overview       /campaigns/$campaignId
   Active Scene   /campaigns/$campaignId/active-scene[/to-reveal|/reference|/revealed]
+  Scene History  /campaigns/$campaignId/scene-history          (PBI-SPL-004, scene-play ux section 23)
   Wall           /campaigns/$campaignId/wall
   Settings       /campaigns/$campaignId/settings            (Keeper only)
 
@@ -43,16 +44,17 @@ Origin (search param on a full page)
 < Back to Campaigns
 Arkham Nights
 1920s
-[ Overview ]  Active Scene (o Live)  Wall  Settings
+[ Overview ]  Active Scene (o Live)  Scene History  Wall  Settings
 ```
 
-- **Order:** Overview, Active Scene, Wall, Settings (Settings Keeper only). Each is a link in the existing `nav` "Campaign", not an ARIA tab.
+- **Order:** Overview, Active Scene, Scene History (since PBI-SPL-004), Wall, Settings (Settings Keeper only). Each is a link in the existing `nav` "Campaign", not an ARIA tab.
 - **Current tab (`aria-current="page"`):**
   - Active Scene is current on `/active-scene` and every sub-route under it.
+  - Scene History is current on `/scene-history` ([scene-play ux](../scene-play/ux.md) section 23).
   - Overview stays current on the overview, sheet, wizard, review, Scenario, Scene, Clues, Non-Player Entity, Item, and Handout pages.
 - **Live badge:** while a Scene is Active, the Active Scene link ends with a `Badge` reading "Live" with an `aria-hidden` dot. The link's accessible name is then "Active Scene, live". The badge appears and disappears on the `activeScene` topic without reloading; nothing is announced. A Player whose Investigator is not present still sees "Live".
 - **Data:** the badge reads the Active Scene query the page already uses (`useActiveScene`); the header does not add a request of its own when that query is cached.
-- **Narrow screens:** the row no longer fits four labels at 320px. Below 640px the `nav` scrolls horizontally inside itself (`overflow-x-auto`, no visible scrollbar gutter change), the current link is scrolled into view on load, and the page body never scrolls sideways. Links stay at least 44px high.
+- **Narrow screens:** the row no longer fits the labels at 320px. Below 640px the `nav` scrolls horizontally inside itself (`overflow-x-auto`, no visible scrollbar gutter change), the current link is scrolled into view on load, and the page body never scrolls sideways. Links stay at least 44px high.
 
 ## 3. Side panel (`side-panel`, shadcn `Sheet`)
 
@@ -162,7 +164,7 @@ New features follow this table. A feature that needs a new origin adds it to the
 
 ## 8. UX acceptance criteria
 
-- **NAV-UX-1** Every Campaign page shows the tabs Overview, Active Scene, Wall, and (Keeper) Settings, in that order.
+- **NAV-UX-1** Every Campaign page shows the tabs Overview, Active Scene, Scene History (since PBI-SPL-004), Wall, and (Keeper) Settings, in that order.
 - **NAV-UX-2** Active Scene is the current tab on `/active-scene` and its sub-routes; Overview stays current on the pages listed in section 2.
 - **NAV-UX-3** "Live" shows on the Active Scene tab exactly while a Scene is Active, and changes without reloading when a Scene starts or finishes.
 - **NAV-UX-4** Opening a lookup from the Active Scene opens a side panel and adds the panel params to the URL; the page under it does not reload or lose scroll position.

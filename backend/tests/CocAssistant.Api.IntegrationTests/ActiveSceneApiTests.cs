@@ -327,7 +327,7 @@ public class ActiveSceneApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
     }
 
     [Fact]
-    public async Task Given_connected_members_When_the_Keeper_starts_changes_and_finishes_Then_members_of_that_Campaign_only_hear_activeScene()
+    public async Task Given_connected_members_When_the_Keeper_starts_changes_and_finishes_Then_members_of_that_Campaign_only_hear_activeScene_and_sceneHistory()
     {
         var table = await TableAsync("17");
         var other = await TableAsync("17b");
@@ -337,11 +337,11 @@ public class ActiveSceneApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
         await using var _2 = outsider;
 
         await StartAsync(table, table.CorbittHouse, [table.HarveyId]);
-        Assert.Equal(["activeScene"], await NextDataChangedTopicsAsync(harvey, table.CampaignId, "wallEntries"));
+        Assert.Equal(["activeScene", "sceneHistory"], await NextDataChangedTopicsAsync(harvey, table.CampaignId, "wallEntries"));
         await ChangePresentAsync(table, [table.LucyId]);
-        Assert.Equal(["activeScene"], await NextDataChangedTopicsAsync(harvey, table.CampaignId));
+        Assert.Equal(["activeScene", "sceneHistory"], await NextDataChangedTopicsAsync(harvey, table.CampaignId));
         await FinishAsync(table);
-        Assert.Equal(["activeScene"], await NextDataChangedTopicsAsync(harvey, table.CampaignId, "wallEntries"));
+        Assert.Equal(["activeScene", "sceneHistory"], await NextDataChangedTopicsAsync(harvey, table.CampaignId, "wallEntries"));
 
         Assert.Empty(await DrainDataChangedAsync(outsider, table.CampaignId));
     }

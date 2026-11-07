@@ -24,10 +24,11 @@ public static class CampaignLivePublicationPolicy
 
     /// <summary>
     /// The Active Scene is visible to every Campaign Member in some form (a Player not present sees only its title), and the signal
-    /// carries no data, so the whole Campaign hears it (specs/scene-play/spec.md, Live updates; ADR 0024).
+    /// carries no data, so the whole Campaign hears it (specs/scene-play/spec.md, Live updates; ADR 0024). Every Active Scene
+    /// change also changes the Scene History (specs/scene-play/spec.md, Scene History), so the whole Campaign hears sceneHistory too.
     /// </summary>
     public static IReadOnlyList<LivePublication> ForActiveSceneChanged(Guid campaignId) =>
-        [new LivePublication(LiveAudience.Campaign(campaignId), [CampaignDataTopic.ActiveScene])];
+        [new LivePublication(LiveAudience.Campaign(campaignId), [CampaignDataTopic.ActiveScene, CampaignDataTopic.SceneHistory])];
 
     /// <summary>The Keeper sees the status change; only the owning Player learns of their own Investigator's change.</summary>
     public static IReadOnlyList<LivePublication> ForInvestigatorChanged(Guid campaignId, Guid playerAccountId) =>

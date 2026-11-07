@@ -1,6 +1,6 @@
 ---
 id: PBI-SPL-004
-status: todo
+status: done
 blocked_by: [PBI-SPL-002]
 ---
 
@@ -27,9 +27,9 @@ Read: `specs/scene-play/spec.md`
 Read: `CONTEXT.md` (Scene History).
 
 ## Verification
-- [ ] Every Campaign Member sees Active and Finished Scenes across Scenarios in start order, and no Prepared Scene.
-- [ ] A Player sees only Reveals that reached their Investigator; the Keeper sees all.
-- [ ] Unit, integration, and E2E tests cover ordering, filtering, and Campaign isolation.
+- [x] Every Campaign Member sees Active and Finished Scenes across Scenarios in start order, and no Prepared Scene.
+- [x] A Player sees only Reveals that reached their Investigator; the Keeper sees all.
+- [x] Unit, integration, and E2E tests cover ordering, filtering, and Campaign isolation.
 
 ## Refinement Protocol
 If the Player projection changes, update the spec's Regression Guardrails first.

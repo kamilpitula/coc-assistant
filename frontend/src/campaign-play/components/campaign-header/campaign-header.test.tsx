@@ -36,6 +36,7 @@ describe('CampaignHeader', () => {
     expect(navLinks().map((link) => [link.textContent, link.getAttribute('href'), link.getAttribute('aria-current')])).toEqual([
       ['Overview', '/campaigns/c1', 'page'],
       ['Active Scene', '/campaigns/c1/active-scene', null],
+      ['Scene History', '/campaigns/c1/scene-history', null],
       ['Wall', '/campaigns/c1/wall', null],
       ['Settings', '/campaigns/c1/settings', null],
     ])
@@ -51,7 +52,15 @@ describe('CampaignHeader', () => {
   it('marks Settings as current on the Settings page', () => {
     render(<CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="settings" isOverview={false} hasActiveScene={false} />)
 
-    expect(navLinks().map((link) => link.getAttribute('aria-current'))).toEqual([null, null, null, 'page'])
+    expect(navLinks().map((link) => link.getAttribute('aria-current'))).toEqual([null, null, null, null, 'page'])
+  })
+
+  // specs/scene-play/ux.md section 23; SPL-UX-61.
+  it.each(['Keeper', 'Player'] as const)('marks Scene History as current on the Scene History page for the %s', (role) => {
+    render(<CampaignHeader campaign={{ ...campaign, role }} section="scene-history" isOverview={false} hasActiveScene={false} />)
+
+    const current = navLinks().filter((link) => link.getAttribute('aria-current') === 'page')
+    expect(current.map((link) => link.textContent)).toEqual(['Scene History'])
   })
 
   // specs/campaign-wall/ux.md section 5; WL-UX-1.
@@ -62,10 +71,10 @@ describe('CampaignHeader', () => {
     expect(current.map((link) => link.textContent)).toEqual(['Wall'])
   })
 
-  it('gives a Player Overview, Active Scene, and Wall, and no Settings (CO-UX-2, NAV-UX-1)', () => {
+  it('gives a Player Overview, Active Scene, Scene History, and Wall, and no Settings (CO-UX-2, NAV-UX-1)', () => {
     render(<CampaignHeader campaign={{ ...campaign, role: 'Player' }} section="overview" isOverview hasActiveScene={false} />)
 
-    expect(navLinks().map((link) => link.textContent)).toEqual(['Overview', 'Active Scene', 'Wall'])
+    expect(navLinks().map((link) => link.textContent)).toEqual(['Overview', 'Active Scene', 'Scene History', 'Wall'])
   })
 
   it('names the Active Scene link "Active Scene, live" with a visible "Live" while a Scene is Active (NAV-UX-3, NAV-A11Y-1)', () => {

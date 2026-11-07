@@ -31,6 +31,12 @@ public interface ISceneRepository
     Task<Scene?> FindActiveAsync(Guid campaignId, CancellationToken cancellationToken);
 
     /// <summary>
+    /// The Campaign's played Scenes (Active and Finished, never Prepared), newest StartedAt first, then Active before Finished,
+    /// then newest FinishedAt first, then Id. Read-only, with the Investigators present and the Reveals with their recipients.
+    /// </summary>
+    Task<IReadOnlyList<Scene>> ListPlayedAsync(Guid campaignId, CancellationToken cancellationToken);
+
+    /// <summary>
     /// The Reveals that reached the Investigator, across the Campaign's Scenes, newest first (RevealedAt descending, then Id), read-only
     /// and without their recipients (PBI-SPL-002 D5).
     /// </summary>

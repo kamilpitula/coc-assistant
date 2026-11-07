@@ -215,6 +215,9 @@ export async function closeTable(table: Table): Promise<void> {
 /** The Keeper's Active Scene page of the Campaign. */
 export const activeScenePath = (campaignId: string): string => `/campaigns/${campaignId}/active-scene`
 
+/** The Scene History page of the Campaign (specs/scene-play/ux.md section 23.1). */
+export const sceneHistoryPath = (campaignId: string): string => `/campaigns/${campaignId}/scene-history`
+
 /** The Keeper's sub-tab pages of the Active Scene (specs/scene-play/ux.md section 21.1). */
 export const toRevealPath = (campaignId: string): string => `${activeScenePath(campaignId)}/to-reveal`
 export const referencePath = (campaignId: string): string => `${activeScenePath(campaignId)}/reference`

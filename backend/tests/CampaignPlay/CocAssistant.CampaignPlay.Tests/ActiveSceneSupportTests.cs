@@ -13,13 +13,13 @@ public class ActiveSceneSupportTests : IDisposable
     public void Dispose() => _scenario.Dispose();
 
     [Fact]
-    public void Given_an_active_scene_change_When_choosing_publications_Then_only_the_campaign_hears_activeScene()
+    public void Given_an_active_scene_change_When_choosing_publications_Then_the_campaign_hears_activeScene_and_sceneHistory()
     {
         var publications = CampaignLivePublicationPolicy.ForActiveSceneChanged(CampaignId);
 
         var publication = Assert.Single(publications);
         Assert.Equal(LiveAudience.Campaign(CampaignId), publication.Audience);
-        Assert.Equal([CampaignDataTopic.ActiveScene], publication.Topics);
+        Assert.Equal([CampaignDataTopic.ActiveScene, CampaignDataTopic.SceneHistory], publication.Topics);
     }
 
     [Fact]
@@ -29,14 +29,20 @@ public class ActiveSceneSupportTests : IDisposable
     }
 
     [Fact]
-    public async Task Given_an_active_scene_change_When_published_Then_the_activeScene_topic_goes_to_the_campaign_only()
+    public void Given_the_scene_history_topic_When_sent_on_the_wire_Then_its_name_is_sceneHistory()
+    {
+        Assert.Equal("sceneHistory", JsonNamingPolicy.CamelCase.ConvertName(nameof(CampaignDataTopic.SceneHistory)));
+    }
+
+    [Fact]
+    public async Task Given_an_active_scene_change_When_published_Then_the_activeScene_and_sceneHistory_topics_go_to_the_campaign_only()
     {
         var liveUpdates = new RecordingCampaignLiveUpdates();
 
         await new PublishActiveSceneChanged(liveUpdates).PublishAsync(CampaignId, CancellationToken.None);
 
         Assert.Equal(
-            [new PublishedCampaignDataChanged(LiveAudience.Campaign(CampaignId), CampaignId, nameof(CampaignDataTopic.ActiveScene))],
+            [new PublishedCampaignDataChanged(LiveAudience.Campaign(CampaignId), CampaignId, $"{nameof(CampaignDataTopic.ActiveScene)},{nameof(CampaignDataTopic.SceneHistory)}")],
             liveUpdates.Published);
     }
 
