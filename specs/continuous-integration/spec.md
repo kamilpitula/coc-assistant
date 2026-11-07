@@ -18,7 +18,8 @@ The existing integration tests and E2E harness were written local-first against 
     | `backend` | `backend/**` changed | restore, build, `dotnet format --verify-no-changes`, unit tests (`CocAssistant.Api.Tests`, `CocAssistant.Identity.Tests`, `CocAssistant.CampaignPlay.Tests`) with trx results in the job summary |
     | `backend-integration` | `backend/**` changed | `CocAssistant.Api.IntegrationTests` against a `mcr.microsoft.com/mssql/server:2022-latest` service container |
     | `frontend` | `frontend/**` changed | `npm ci`, `generate-routes` (the gitignored TanStack route tree), `lint`, `build` (includes `tsc -b`), `test`, `build-storybook` |
-    | `e2e` | `backend/**`, `frontend/**`, or `e2e/**` changed | SQL Server service container, per-run dev certificate, Playwright chromium suite |
+    | `e2e` | `backend/**`, `frontend/**`, or `e2e/**` changed | 4-shard Playwright chromium matrix (`E2E (shard N/4)`, `fail-fast: false`), each shard with its own SQL Server service container, 2 workers, blob report plus server logs uploaded per shard |
+    | `merge-reports` | `backend/**`, `frontend/**`, or `e2e/**` changed | merges the shard blob reports into one HTML report artifact and the `E2E tests` check run |
     | `terraform` | `infrastructure/**` changed | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate` |
     | `backlog` | always | `npm ci`, `typecheck`, `test`, and `check` (`--check` on every PBI file, see `docs/backlog.md`) in `tools/backlog/` |
     | `ascii` | always | `npm ci`, `typecheck`, `test`, and `check` (non-ASCII characters in tracked files, minus the exclusions and baseline in `tools/ascii-check/src/asciiPolicy.ts`) in `tools/ascii-check/` |
@@ -33,8 +34,9 @@ The existing integration tests and E2E harness were written local-first against 
 - **E2E in CI:**
   - The dev certificate is generated per run with `dotnet dev-certs https --export-path e2e/.certs/dev-cert.pfx --password <committed password> --format Pfx`, and `COC_E2E_CERT_PASSWORD` is set from the same value. The password is the one committed in `e2e/docker/mock-oauth2-config.json`. The same certificate is added to the runner's OpenSSL trust store, because the API fetches the mock issuer's OIDC metadata over HTTPS; the browser relies on Playwright's `ignoreHTTPSErrors`.
   - The mock OIDC issuer is started by Playwright's `webServer` via `docker compose -f e2e/docker/docker-compose.e2e.yml up`.
-  - Under `CI`, Playwright uses the `line` and `html` reporters.
-  - On failure, the Playwright report, traces, and webServer logs are uploaded as artifacts with 7-day retention.
+  - Under `CI`, Playwright uses the `list` reporter in the console and each shard writes a blob report to `e2e/blob-report/`; there is no separate API build step because each shard's `api` server command builds `backend/src/CocAssistant.Api` once with `dotnet build --disable-build-servers` and then runs the built DLL.
+  - `merge-reports` downloads the shard blob reports, runs `npx playwright merge-reports --reporter html,junit`, publishes the `E2E tests` check run from `e2e/results.xml` via `dorny/test-reporter`, and uploads the merged HTML report.
+  - Every shard uploads its blob report and `e2e/logs/*.log` on success and on failure; the merged HTML report is uploaded on every run. All artifacts are retained 7 days.
 - **Toolchain versions:** `global.json` (.NET SDK 10.0.x, `rollForward: latestFeature`) and `.nvmrc` (Node 24) at the repo root are the single source of truth. The workflow reads them through `global-json-file` and `node-version-file`.
 - **Workflow supply chain:** `.github/dependabot.yml` updates the `github-actions` ecosystem.
 - **Branch protection on `master`:** a pull request is required before merging, `ci-success` is a required status check, and zero approvals are required.
@@ -48,7 +50,7 @@ The existing integration tests and E2E harness were written local-first against 
 - Third-party actions are referenced by full commit SHA.
 - The workflow uses no repository secrets. The SQL Server SA password is a literal scoped to the ephemeral service container, and the E2E certificate password is the documented, committed mock-only value.
 - The integration test suite and E2E suite run against SQL Server through the same code paths locally (LocalDB) and in CI (service container); only `COC_SQLSERVER_CONNECTION` differs.
-- `e2e/e2e-out.txt` and `frontend/test-results/` are untracked and covered by `.gitignore`.
+- `e2e/e2e-out.txt`, `e2e/logs/`, `e2e/blob-report/`, and `frontend/test-results/` are untracked and covered by `.gitignore`.
 
 ## Contract
 
@@ -95,26 +97,26 @@ Scenario: Runs on master are never cancelled
 Scenario: A push to master runs every job
   Given a commit pushed to master that changes only files under docs/
   When the CI workflow runs
-  Then the backend, backend-integration, frontend, e2e, terraform, backlog, and ascii jobs all run
+  Then the backend, backend-integration, frontend, e2e, merge-reports, terraform, backlog, and ascii jobs all run
 
 Scenario: A Terraform-only pull request skips application jobs
   Given a pull request that changes only files under infrastructure/
   When the CI workflow runs
   Then the terraform job runs
-  And the backend, backend-integration, frontend, and e2e jobs are skipped
+  And the backend, backend-integration, frontend, e2e, and merge-reports jobs are skipped
   And ci-success passes when the terraform job passes
 
 Scenario: A documentation-only pull request passes without running jobs
   Given a pull request that changes only files under docs/
   When the CI workflow runs
-  Then the backend, backend-integration, frontend, e2e, and terraform jobs are skipped
+  Then the backend, backend-integration, frontend, e2e, merge-reports, and terraform jobs are skipped
   And the backlog and ascii jobs run
   And ci-success passes when the backlog and ascii jobs pass
 
 Scenario: A workflow change runs every job
   Given a pull request that changes .github/workflows/ci.yml
   When the CI workflow runs
-  Then the backend, backend-integration, frontend, e2e, and terraform jobs all run
+  Then the backend, backend-integration, frontend, e2e, merge-reports, and terraform jobs all run
 
 Scenario: A failing job fails the required check
   Given a pull request whose frontend lint fails
@@ -137,7 +139,7 @@ Scenario: A non-ASCII character fails the required check
 Scenario: A frontend change runs E2E
   Given a pull request that changes only files under frontend/
   When the CI workflow runs
-  Then the frontend and e2e jobs run
+  Then the frontend, e2e, and merge-reports jobs run
   And the backend, backend-integration, and terraform jobs are skipped
 
 Scenario: Unformatted backend code fails CI
@@ -157,14 +159,21 @@ Scenario: Integration tests fall back to LocalDB
   Then the connection string targets (localdb)\mssqllocaldb
   And its database is CocAssistantIdentityTests
 
-Scenario: E2E failure diagnostics are preserved
-  Given a Playwright test fails in the e2e job
-  When the e2e job completes
-  Then the Playwright report, traces, and webServer logs are uploaded as workflow artifacts
+Scenario: E2E shard artifacts are preserved
+  Given the e2e job runs as 4 shards
+  When any shard completes, on success or on failure
+  Then that shard uploads its blob report and e2e/logs/*.log as workflow artifacts
   And the artifacts are retained for 7 days
 
-Scenario: E2E success uploads no diagnostics
-  Given every Playwright test passes in the e2e job
-  When the e2e job completes
-  Then no Playwright diagnostics artifact is uploaded
+Scenario: E2E results are reported
+  Given the e2e shards completed
+  When the merge-reports job runs
+  Then it publishes the "E2E tests" check run
+  And it uploads the merged HTML report on every run
+
+Scenario: A failing shard fails the required check
+  Given a pull request whose E2E shard fails
+  When the CI workflow runs
+  Then the e2e job fails
+  And ci-success fails
 ```

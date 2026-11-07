@@ -187,11 +187,16 @@ jobs:
         run: npm run build-storybook
 
   e2e:
-    name: E2E
+    name: E2E (shard ${{ matrix.shardIndex }}/4)
     needs: changes
     if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shardIndex: [1, 2, 3, 4]
+        shardTotal: [4]
     env:
       # Committed mock-only keystore password, see e2e/docker/mock-oauth2-config.json.
       COC_E2E_CERT_PASSWORD: CocE2eDevCertP@ss1!
@@ -217,8 +222,6 @@ jobs:
           dotnet dev-certs https --export-path "$RUNNER_TEMP/coc-dev-cert.crt" --format PEM --no-password
           sudo cp "$RUNNER_TEMP/coc-dev-cert.crt" /usr/local/share/ca-certificates/coc-dev-cert.crt
           sudo update-ca-certificates
-      - name: Build the API
-        run: dotnet build backend/src/CocAssistant.Api
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
@@ -246,26 +249,70 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         working-directory: e2e
         run: npx playwright install-deps chromium
-      # Explicit bash enables pipefail so tee cannot mask a failing suite; pw:webserver
-      # forwards API and Vite output into the log.
       - name: Run E2E suite
         working-directory: e2e
-        shell: bash
-        env:
-          DEBUG: pw:webserver
-        run: npm test 2>&1 | tee playwright-output.log
-      - name: Collect mock issuer logs
-        if: failure()
-        run: docker logs coc-mock-oauth2 > e2e/mock-oauth2.log 2>&1 || true
-      - name: Upload E2E diagnostics
-        if: failure()
+        run: npm test -- --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+      - name: Upload blob report
+        if: success() || failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: e2e-diagnostics
-          path: |
-            e2e/playwright-report
-            e2e/test-results
-            e2e/*.log
+          name: blob-report-${{ matrix.shardIndex }}
+          path: e2e/blob-report
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Upload E2E server logs
+        if: success() || failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-logs-${{ matrix.shardIndex }}
+          path: e2e/logs/*.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  merge-reports:
+    name: E2E report
+    needs: [changes, e2e]
+    if: always() && needs.changes.outputs.e2e == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Install E2E dependencies
+        working-directory: e2e
+        run: npm ci
+      - name: Download blob reports
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: blob-report-*
+          merge-multiple: true
+          path: all-blob-reports
+      - name: Merge blob reports
+        working-directory: e2e
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: results.xml
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report
+          PLAYWRIGHT_HTML_OPEN: never
+        run: npx playwright merge-reports --reporter html,junit ../all-blob-reports
+      - name: Report E2E test results
+        if: success() || failure()
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
+        with:
+          name: E2E tests
+          path: e2e/results.xml
+          reporter: java-junit
+      - name: Upload merged HTML report
+        if: success() || failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-html-report
+          path: e2e/playwright-report
           retention-days: 7
           if-no-files-found: ignore
 
@@ -337,7 +384,7 @@ jobs:
 
   ci-success:
     name: ci-success
-    needs: [changes, backend, backend-integration, frontend, e2e, terraform, backlog, ascii]
+    needs: [changes, backend, backend-integration, frontend, e2e, merge-reports, terraform, backlog, ascii]
     if: always()
     runs-on: ubuntu-latest
     steps:
