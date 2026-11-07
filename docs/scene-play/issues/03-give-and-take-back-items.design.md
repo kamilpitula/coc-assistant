@@ -391,7 +391,7 @@ New `e2e/tests/items-in-play.spec.ts`, with a 240s timeout as in `active-scene.s
 - **"A Player cannot give an Item"**: an API call as a Player returns 404.
 - **"A held Item cannot be deleted"**: Delete on the Item page shows the held message. This closes the PBI-SP-008 and PBI-SP-006 E2E exception.
 - **"An Item in a played Scene cannot be deleted"**: the PBI-SPL-001 follow-up.
-- **Updated:** `reveals.spec.ts` and `active-scene.spec.ts` expectations now account for the Items group: To reveal counts the linked Item and its Player-facing Handouts (ux 22.1), Keeper reference counts the Item and its Keeper-facing Handouts with the amended hint (ux 22.2), and the Clues page lists the Items section above the per-Scene groups (ux 22.7). Checked against SPL-UX-40, SPL-UX-42, SPL-UX-45, and SPL-UX-48.
+- **Updated:** `reveals.spec.ts` and `active-scene.spec.ts` expectations now account for the Items group: To reveal counts the linked Item and its Player-facing Handouts (ux 22.1), Keeper reference counts the Item and its Keeper-facing Handouts with the amended hint (ux 22.2), and the Clues page lists the Items section above the per-Scene groups (ux 22.7). Checked against SPL-UX-40, SPL-UX-42, SPL-UX-45, and SPL-UX-48. `scene-item-links.spec.ts` and `manual-preparation.spec.ts` follow the PBI-SPL-003 item-panel contract: the Scene page lists each Item title as a panel-opening button (ux section 72 amendment), so the shared `item-link-{id}` title id is the locator and the panel's "Open full page" reaches the Item page (B6).
 
 ## ADR
 - **ADR 0029**, "Item holders live on the Item and change through a provider service":
