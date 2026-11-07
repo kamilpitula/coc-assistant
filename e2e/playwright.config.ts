@@ -100,6 +100,10 @@ export default defineConfig({
       env: {
         ASPNETCORE_ENVIRONMENT: 'E2E',
         ASPNETCORE_URLS: `https://localhost:${e2ePort('api')}`,
+        // A `dotnet <dll>` run takes the content root from the working directory, which is the
+        // repo root here; point it at the project directory so appsettings*.json load exactly
+        // as they did under `dotnet run --project`.
+        ASPNETCORE_CONTENTROOT: resolve(REPO_ROOT, 'backend/src/CocAssistant.Api'),
         ConnectionStrings__IdentityDb: E2E_CONNECTION_STRING,
         ConnectionStrings__CampaignPlayDb: E2E_CONNECTION_STRING,
         ConnectionStrings__ScenarioPreparationDb: E2E_CONNECTION_STRING,
