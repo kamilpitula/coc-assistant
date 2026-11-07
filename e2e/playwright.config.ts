@@ -1,18 +1,34 @@
 import { defineConfig, devices } from '@playwright/test'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { resolveE2eConnectionString } from './sqlServerConnection'
+import { e2ePort } from './e2eServers.ts'
+import { resolveReuseServers, resolveWorkerCount } from './runSettings.ts'
+import { resolveE2eConnectionString } from './sqlServerConnection.ts'
 
 const E2E_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(E2E_DIR, '..')
 const PFX_PATH = resolve(E2E_DIR, '.certs/dev-cert.pfx')
 const PFX_PASSWORD_FILE = resolve(E2E_DIR, '.certs/dev-cert.password')
+const LOGS_DIR = resolve(E2E_DIR, 'logs')
 const E2E_CONNECTION_STRING = resolveE2eConnectionString()
 // Handout files go to a temporary directory, so the suite needs no Azure Storage (PBI-SP-007 D7).
 const E2E_HANDOUT_FILES_DIRECTORY = resolve(tmpdir(), 'coc-e2e-handout-files')
+
+// Server output goes through the shell into e2e/logs (outside test-results/, which Playwright
+// clears at the start of a run), so the console shows only test progress. Every command in a
+// chain appends to the same file: the first redirect creates it, later ones append. The syntax
+// (&&, >, >>, 2>&1, double-quoted paths) works in both cmd and sh.
+mkdirSync(LOGS_DIR, { recursive: true })
+
+function logRedirect(name: string, append: boolean): string {
+  const operator = append ? '>>' : '>'
+  return `${operator} "${resolve(LOGS_DIR, `${name}.log`)}" 2>&1`
+}
+
+const reuseServers = resolveReuseServers()
 
 /**
  * Resolves the dev-cert PFX password at config load time so the webServer env captures the
@@ -40,12 +56,13 @@ export default defineConfig({
   timeout: 90_000,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
-  // Capping workers keeps the ASP.NET LocalDB connection pool, Vite HMR, and the mock
-  // container's thread pool from saturating under full-suite load; 2 is the sweet spot
-  // between parallelism and stability on a typical dev workstation.
-  workers: process.env.CI ? 2 : 2,
-  // CI keeps the line output for logs and writes the HTML report for the failure artifact.
-  reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'html',
+  // Worker count comes from E2E_WORKERS (1 locally, 2 on CI by default): a full suite
+  // against LocalDB saturates early, so local runs stay serial unless asked otherwise.
+  workers: resolveWorkerCount(),
+  // Locally the list reporter shows progress and the HTML report opens only on failure
+  // (agents set PLAYWRIGHT_HTML_OPEN=never so it never blocks). On CI the list reporter
+  // keeps the step log readable and each shard writes a blob report for merge-reports.
+  reporter: process.env.CI ? [['list'], ['blob']] : [['list'], ['html', { open: 'on-failure' }]],
   globalSetup: './globalSetup.ts',
   use: {
     baseURL: process.env.BASE_URL ?? 'http://localhost:5174',
@@ -61,15 +78,15 @@ export default defineConfig({
   webServer: [
     {
       name: 'mock-oauth2',
-      command: 'docker compose -f docker/docker-compose.e2e.yml up',
+      command: `docker compose -f docker/docker-compose.e2e.yml up ${logRedirect('mock-oauth2', false)}`,
       cwd: E2E_DIR,
       env: {
         COC_E2E_CERT_PASSWORD: certPassword,
       },
       // Port-probe for the same self-signed-TLS reason as the API. Once Netty binds 8443,
       // mock-oauth2-server is ready. See docs/e2e/authenticated-harness.md.
-      port: 8443,
-      reuseExistingServer: !process.env.CI,
+      port: e2ePort('mock-oauth2'),
+      reuseExistingServer: reuseServers,
       stdout: 'pipe',
       stderr: 'pipe',
       timeout: 120_000,
@@ -77,11 +94,12 @@ export default defineConfig({
     {
       name: 'api',
       command:
-        'dotnet run --project backend/src/CocAssistant.Api --no-launch-profile',
+        `dotnet build --disable-build-servers -v q -nologo backend/src/CocAssistant.Api ${logRedirect('api', false)}` +
+        ` && dotnet backend/src/CocAssistant.Api/bin/Debug/net10.0/CocAssistant.Api.dll ${logRedirect('api', true)}`,
       cwd: REPO_ROOT,
       env: {
         ASPNETCORE_ENVIRONMENT: 'E2E',
-        ASPNETCORE_URLS: 'https://localhost:5059',
+        ASPNETCORE_URLS: `https://localhost:${e2ePort('api')}`,
         ConnectionStrings__IdentityDb: E2E_CONNECTION_STRING,
         ConnectionStrings__CampaignPlayDb: E2E_CONNECTION_STRING,
         ConnectionStrings__ScenarioPreparationDb: E2E_CONNECTION_STRING,
@@ -92,19 +110,19 @@ export default defineConfig({
       // The TCP port is the readiness probe (not url): Playwright's HTTP probe does not
       // reliably ignore self-signed TLS, so port-availability is used instead. Once Kestrel
       // is bound, the API is ready to serve.
-      port: 5059,
+      port: e2ePort('api'),
       ignoreHTTPSErrors: true,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: reuseServers,
       stdout: 'pipe',
       stderr: 'pipe',
       timeout: 240_000,
     },
     {
       name: 'vite',
-      command: 'npm run dev -- --mode e2e --port 5174 --strictPort',
+      command: `npm run dev -- --mode e2e --port ${e2ePort('vite')} --strictPort ${logRedirect('vite', false)}`,
       cwd: resolve(REPO_ROOT, 'frontend'),
-      url: 'http://localhost:5174',
-      reuseExistingServer: !process.env.CI,
+      url: `http://localhost:${e2ePort('vite')}`,
+      reuseExistingServer: reuseServers,
       stdout: 'pipe',
       stderr: 'pipe',
       timeout: 120_000,

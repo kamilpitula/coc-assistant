@@ -65,6 +65,13 @@ function raiseLocalDbMemoryFloor(connectionString: string): void {
 }
 
 export default async function globalSetup(): Promise<void> {
+  if (!process.env.COC_E2E_RUN_LOCK) {
+    throw new Error(
+      'E2E runs must start with `npm test -- <args>` from e2e/ so the single-run lock is held. ' +
+        'Direct `npx playwright test` runs are refused. See docs/e2e/authenticated-harness.md.',
+    )
+  }
+
   if (!existsSync(PFX_PATH)) {
     abortWithGuidance(`Dev certificate PFX not found at ${PFX_PATH}.`)
   }
@@ -86,17 +93,17 @@ export default async function globalSetup(): Promise<void> {
 
   run('dotnet tool restore')
   run(
-    'dotnet ef database update --project backend/src/Identity/CocAssistant.Identity.Infrastructure ' +
+    'dotnet ef database update --no-build --project backend/src/Identity/CocAssistant.Identity.Infrastructure ' +
       '--startup-project backend/src/CocAssistant.Api --context IdentityDbContext',
     migrationEnv,
   )
   run(
-    'dotnet ef database update --project backend/src/CampaignPlay/CocAssistant.CampaignPlay.Infrastructure ' +
+    'dotnet ef database update --no-build --project backend/src/CampaignPlay/CocAssistant.CampaignPlay.Infrastructure ' +
       '--startup-project backend/src/CocAssistant.Api --context CampaignPlayDbContext',
     migrationEnv,
   )
   run(
-    'dotnet ef database update --project backend/src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Infrastructure ' +
+    'dotnet ef database update --no-build --project backend/src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Infrastructure ' +
       '--startup-project backend/src/CocAssistant.Api --context ScenarioPreparationDbContext',
     migrationEnv,
   )
