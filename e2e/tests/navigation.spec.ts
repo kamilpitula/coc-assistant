@@ -48,14 +48,14 @@ test.describe('Campaign tabs with the Active Scene tab', () => {
     const { campaignId, sceneId, scenePath } = table.prepared
 
     try {
-      await test.step('NAV-UX-1: the Keeper sees Overview, Active Scene, Wall, and Settings, in that order', async () => {
+      await test.step('NAV-UX-1: the Keeper sees Overview, Active Scene, Scene History, Wall, and Settings, in that order', async () => {
         await page.goto(`/campaigns/${campaignId}`)
-        await expect(campaignNav(page).getByRole('link')).toHaveText(['Overview', 'Active Scene', 'Wall', 'Settings'])
+        await expect(campaignNav(page).getByRole('link')).toHaveText(['Overview', 'Active Scene', 'Scene History', 'Wall', 'Settings'])
       })
 
-      await test.step('NAV-UX-1: a Player sees Overview, Active Scene, and Wall, and no Settings', async () => {
+      await test.step('NAV-UX-1: a Player sees Overview, Active Scene, Scene History, and Wall, and no Settings', async () => {
         await table.harvey.page.goto(`/campaigns/${campaignId}`)
-        await expect(campaignNav(table.harvey.page).getByRole('link')).toHaveText(['Overview', 'Active Scene', 'Wall'])
+        await expect(campaignNav(table.harvey.page).getByRole('link')).toHaveText(['Overview', 'Active Scene', 'Scene History', 'Wall'])
       })
 
       await test.step('The Keeper starts the Scene and opens the Wall', async () => {
@@ -142,7 +142,7 @@ test.describe('Campaign tabs with the Active Scene tab', () => {
         await harveyPage.setViewportSize({ width: 1366, height: 768 })
         await openWall(page, campaignId)
         await harveyPage.goto(`/campaigns/${campaignId}`)
-        await expect(campaignNav(page).getByRole('link')).toHaveText(['Overview', 'Active SceneLive', 'Wall', 'Settings'])
+        await expect(campaignNav(page).getByRole('link')).toHaveText(['Overview', 'Active SceneLive', 'Scene History', 'Wall', 'Settings'])
         await expect(campaignNav(page).getByRole('link', { name: 'Active Scene, live' })).toBeVisible()
         await expect(campaignNav(harveyPage).getByRole('link', { name: 'Active Scene, live' })).toBeVisible()
         await page.screenshot({ path: test.info().outputPath('keeper-1366.png') })
