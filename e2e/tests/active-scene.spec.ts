@@ -88,15 +88,17 @@ test.describe('Starting and finishing a Scene', () => {
 
       await test.step('SPL-UX-41: the sub-navigation shows each tab with its count, and Run is current', async () => {
         await expect(page.getByRole('link', { name: 'Run', exact: true })).toHaveAttribute('aria-current', 'page')
-        await expect(page.getByRole('link', { name: 'To reveal, 4' })).toBeVisible()
-        await expect(page.getByRole('link', { name: 'Keeper reference, 5' })).toBeVisible()
+        // 2 Player-facing Handouts, 2 Non-Player Entities, the diary Item, and its Player-facing Handout (ux 22.1).
+        await expect(page.getByRole('link', { name: 'To reveal, 6' })).toBeVisible()
+        // 3 Keeper-facing Handouts, 2 Non-Player Entities, the diary Item, and its Keeper-facing Handout (ux 22.2).
+        await expect(page.getByRole('link', { name: 'Keeper reference, 7' })).toBeVisible()
         await expect(page.getByRole('link', { name: 'Revealed, 0' })).toBeVisible()
       })
 
       await test.step('SPL-UX-20, SPL-UX-42: To reveal lists the Player-facing Handouts and Non-Player Entities with "Reveal..."', async () => {
-        await page.getByRole('link', { name: 'To reveal, 4' }).click()
+        await page.getByRole('link', { name: 'To reveal, 6' }).click()
         await expect(page).toHaveURL(`/campaigns/${prepared.campaignId}/active-scene/to-reveal`)
-        await expect(page.getByRole('link', { name: 'To reveal, 4' })).toHaveAttribute('aria-current', 'page')
+        await expect(page.getByRole('link', { name: 'To reveal, 6' })).toHaveAttribute('aria-current', 'page')
         const handouts = page.getByRole('region', { name: 'Handouts' })
         await expect(handouts.getByRole('heading', { level: 4 })).toHaveText([PREPARED.handouts[0].title, PREPARED.handouts[2].title])
         await expect(handouts.getByRole('button', { name: /^Reveal / })).toHaveCount(2)
@@ -108,7 +110,7 @@ test.describe('Starting and finishing a Scene', () => {
       })
 
       await test.step('SPL-UX-45: Keeper reference lists the Keeper-facing Handouts and every Non-Player Entity with no "Reveal..."', async () => {
-        await page.getByRole('link', { name: 'Keeper reference, 5' }).click()
+        await page.getByRole('link', { name: 'Keeper reference, 7' }).click()
         await expect(page).toHaveURL(`/campaigns/${prepared.campaignId}/active-scene/reference`)
         const handouts = page.getByRole('region', { name: 'Handouts' })
         await expect(handouts.getByRole('heading', { level: 4 })).toHaveText([PREPARED.handouts[1].title, PREPARED.handouts[3].title, PREPARED.handouts[4].title])
@@ -118,7 +120,7 @@ test.describe('Starting and finishing a Scene', () => {
       })
 
       await test.step('SPL-UX-25 as amended: a Handout title opens its content in the side panel', async () => {
-        await page.getByRole('link', { name: 'Keeper reference, 5' }).click()
+        await page.getByRole('link', { name: 'Keeper reference, 7' }).click()
         const handouts = page.getByRole('region', { name: 'Handouts' })
         await handouts.getByRole('button', { name: PREPARED.handouts[1].title, exact: true }).click()
         const panel = page.getByRole('dialog', { name: PREPARED.handouts[1].title })
@@ -353,15 +355,17 @@ test.describe('Starting and finishing a Scene', () => {
         await page.setViewportSize({ width: 1366, height: 800 })
         await page.goto(`/campaigns/${campaignId}/active-scene`)
         await expect(page.getByRole('button', { name: 'Hide Keeper notes' })).toBeVisible()
-        await expect(page.getByRole('link', { name: 'To reveal, 3' })).toBeVisible()
+        // The front door reached everyone, so 5 subjects stay (ux 22.1): the plan, the 2 Non-Player Entities,
+        // the diary Item, and its Player-facing Handout.
+        await expect(page.getByRole('link', { name: 'To reveal, 5' })).toBeVisible()
         await page.screenshot({ path: '../docs/scene-play/screenshots/spl-006-run-1366.png' })
         await page.goto(`/campaigns/${campaignId}/active-scene/to-reveal`)
         await expect(page.getByRole('region', { name: 'Handouts' })).toBeVisible()
-        await expect(page.getByRole('link', { name: 'To reveal, 3' })).toBeVisible()
+        await expect(page.getByRole('link', { name: 'To reveal, 5' })).toBeVisible()
         await page.screenshot({ path: '../docs/scene-play/screenshots/spl-006-to-reveal-1366.png' })
         await page.goto(`/campaigns/${campaignId}/active-scene/reference`)
-        await expect(page.getByText('Only you see these: Keeper-facing Handouts and the profiles behind Non-Player Entities.')).toBeVisible()
-        await expect(page.getByRole('link', { name: 'Keeper reference, 5' })).toBeVisible()
+        await expect(page.getByText("Only you see these: Keeper-facing Handouts, the profiles behind Non-Player Entities, and Items' Keeper notes.")).toBeVisible()
+        await expect(page.getByRole('link', { name: 'Keeper reference, 7' })).toBeVisible()
         await page.screenshot({ path: '../docs/scene-play/screenshots/spl-006-reference-1366.png' })
         await page.goto(`/campaigns/${campaignId}/active-scene/revealed`)
         await expect(page.getByRole('region', { name: 'Revealed', exact: true }).getByRole('heading', { level: 3, name: PREPARED.handouts[0].title })).toBeVisible()
@@ -374,7 +378,7 @@ test.describe('Starting and finishing a Scene', () => {
         for (const tab of ['', '/to-reveal', '/reference', '/revealed']) {
           await page.goto(`/campaigns/${campaignId}/active-scene${tab}`)
           await expect(page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
-          await expect(page.getByRole('link', { name: 'To reveal, 3' })).toBeVisible()
+          await expect(page.getByRole('link', { name: 'To reveal, 5' })).toBeVisible()
           const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
           expect(sideways, `no sideways scrolling on ${tab || 'run'}`).toBeLessThanOrEqual(0)
           const file = tab === '' ? 'run' : tab.slice(1)
@@ -394,15 +398,15 @@ test.describe('Starting and finishing a Scene', () => {
     try {
       await page.goto(activePath)
       await expect(page.getByRole('link', { name: 'Run', exact: true })).toHaveAttribute('aria-current', 'page')
-      await page.getByRole('link', { name: 'To reveal, 4' }).click()
+      await page.getByRole('link', { name: 'To reveal, 6' }).click()
       await expect(page).toHaveURL(`${activePath}/to-reveal`)
-      await page.getByRole('link', { name: 'Keeper reference, 5' }).click()
+      await page.getByRole('link', { name: 'Keeper reference, 7' }).click()
       await expect(page).toHaveURL(`${activePath}/reference`)
 
       await test.step('SPL-UX-41: back moves through the visited sub-tabs with the current link marked', async () => {
         await page.goBack()
         await expect(page).toHaveURL(`${activePath}/to-reveal`)
-        await expect(page.getByRole('link', { name: 'To reveal, 4' })).toHaveAttribute('aria-current', 'page')
+        await expect(page.getByRole('link', { name: 'To reveal, 6' })).toHaveAttribute('aria-current', 'page')
         await page.goBack()
         await expect(page).toHaveURL(activePath)
         await expect(page.getByRole('link', { name: 'Run', exact: true })).toHaveAttribute('aria-current', 'page')

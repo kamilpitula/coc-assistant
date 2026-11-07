@@ -1,8 +1,9 @@
+import { UNNAMED_INVESTIGATOR } from '@/campaign-play/services/rosterRows'
 import { HANDOUT_KIND_LABELS } from '@/scenario-preparation/types/Handout'
 import type { InvestigatorPresent } from '@/scene-play/types/ActiveScene'
 import type { KeeperReveal, PlayerReveal } from '@/scene-play/types/Reveal'
 
-export const UNNAMED_INVESTIGATOR = 'Unnamed Investigator'
+export { UNNAMED_INVESTIGATOR }
 
 /** "A", "A and B", or "A, B, and C" (specs/scene-play/ux.md section 17). A missing name is "Unnamed Investigator". */
 export function joinNames(names: (string | null)[]): string {
@@ -13,9 +14,12 @@ export function joinNames(names: (string | null)[]): string {
   return `${shown.slice(0, -1).join(', ')}, and ${shown[shown.length - 1]}`
 }
 
-/** What a Reveal shows: its Handout kind as the Keeper knows it, or "Non-Player Entity" (section 14). */
+/** What a Reveal shows: its Handout kind as the Keeper knows it, "Item", or "Non-Player Entity" (section 14, PBI-SPL-003). */
 export function revealKindLabel(reveal: PlayerReveal): string {
-  return reveal.handoutKind ? HANDOUT_KIND_LABELS[reveal.handoutKind] : 'Non-Player Entity'
+  if (reveal.handoutKind) {
+    return HANDOUT_KIND_LABELS[reveal.handoutKind]
+  }
+  return reveal.subjectType === 'Item' ? 'Item' : 'Non-Player Entity'
 }
 
 /**
@@ -50,6 +54,34 @@ export function newRevealAnnouncement(previousIds: ReadonlySet<string>, reveals:
     return null
   }
   return fresh.length === 1 ? `New for ${name}: ${fresh[0].title}.` : `${fresh.length} new for ${name}.`
+}
+
+/**
+ * What the Player hears when a refetch after the first load finds held Items it did not have (specs/scene-play/ux.md section
+ * 22.7): "{name} now holds {item}." for one gain, "{item} was taken back from {name}." for one loss, "{n} Items changed for
+ * {name}." for several changes, and null when nothing changed. `previous` maps the known Reveal ids to their Item names, so a
+ * loss can name the taken-back Item.
+ */
+export function newHeldItemsAnnouncement(
+  previous: ReadonlyMap<string, string>,
+  items: ReadonlyArray<{ revealId: string; name: string }>,
+  investigatorName: string | null,
+): string | null {
+  const name = investigatorName ?? UNNAMED_INVESTIGATOR
+  const currentIds = new Set(items.map((item) => item.revealId))
+  const gained = items.filter((item) => !previous.has(item.revealId))
+  const lost = [...previous.entries()].filter(([revealId]) => !currentIds.has(revealId))
+  if (gained.length + lost.length === 0) {
+    return null
+  }
+  if (gained.length === 1 && lost.length === 0) {
+    return `${name} now holds ${gained[0].name}.`
+  }
+  if (gained.length === 0 && lost.length === 1) {
+    const [, lostName] = lost[0]
+    return `${lostName} was taken back from ${name}.`
+  }
+  return `${gained.length + lost.length} Items changed for ${name}.`
 }
 
 /** The time of a Reveal as "19:52" (section 14). */

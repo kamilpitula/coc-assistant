@@ -5,14 +5,15 @@ import type { ReactNode } from 'react'
 import { HandoutBadges } from '@/scenario-preparation/components/handout-badges/handout-badges'
 import { HandoutPreview } from '@/scenario-preparation/components/handout-preview/handout-preview'
 import { useHandout } from '@/scenario-preparation/hooks/useHandouts'
-import { describeHandoutOwner, type SceneHandoutOwner } from '@/scenario-preparation/services/handoutOwner'
+import { describeHandoutOwner, type HandoutOwner } from '@/scenario-preparation/services/handoutOwner'
 import { SidePanelContent } from '@/shared/components/side-panel/side-panel-content'
 import type { Origin } from '@/shared/components/back-link/backLinkOrigin'
 import { buttonVariants } from '@/shared/components/ui/button'
 import { HeadingOffsetProvider } from '@/shared/providers/heading-offset/heading-offset'
 
 interface HandoutPanelBodyProps {
-  owner: SceneHandoutOwner
+  /** Whose Handout this is: a Scene's, or from PBI-SPL-003 an Item's (specs/scene-play/ux.md 22.1). */
+  owner: HandoutOwner
   handoutId: string
   /** Where the viewer came from; the "Open full page" link carries it, and the full page shows its origin back link. */
   from?: Origin

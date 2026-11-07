@@ -2,6 +2,7 @@ import type { ReactNode, RefObject } from 'react'
 
 import { EntityPanelBody } from '@/scenario-preparation/components/entity-panel-body/entity-panel-body'
 import { HandoutPanelBody } from '@/scenario-preparation/components/handout-panel-body/handout-panel-body'
+import { ItemPanelBody } from '@/scenario-preparation/components/item-panel-body/item-panel-body'
 import type { SceneHandoutOwner } from '@/scenario-preparation/services/handoutOwner'
 import { useSidePanel } from '@/shared/hooks/useSidePanel'
 import { SidePanel } from '@/shared/components/side-panel/side-panel'
@@ -50,6 +51,8 @@ const PANEL_BODIES: Record<
     return <HandoutPanelBody owner={owner} handoutId={panel.handoutId} />
   },
   reveal: () => null,
+  item: (campaignId, _scenarioId, _sceneId, panel) =>
+    panel.type === 'item' ? <ItemPanelBody campaignId={campaignId} itemId={panel.itemId} /> : null,
 }
 
 function panelBody(campaignId: string, scenarioId: string, sceneId: string, panel: OpenPanel | null) {

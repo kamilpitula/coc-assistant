@@ -58,7 +58,14 @@ public class ItemLinksController : ScenarioPreparationControllerBase
         };
     }
 
-    internal static ItemLinkResponse ToResponse(ItemLinkView view) => new(view.Id, new ItemReferenceResponse(view.Item.Id, view.Item.Name));
+    internal static ItemLinkResponse ToResponse(ItemLinkView view) =>
+        new(
+            view.Id,
+            new ItemReferenceResponse(
+                view.Item.Id,
+                view.Item.Name,
+                view.Item.Holder is null ? null : new ItemHolderResponse(view.Item.Holder.InvestigatorId),
+                view.Item.Handouts.Select(HandoutsController.ToSummaryResponse).ToList()));
 
     private ActionResult Invalid(string field, string message)
     {

@@ -22,7 +22,7 @@ public sealed record SceneReveal(Reveal Reveal, Guid SceneId, string SceneTitle)
 /// <summary>The snapshotted file of a Reveal, with its blob key, and the Investigators the Reveal reached.</summary>
 public sealed record RevealFileView(string Key, string Name, string MediaType, long SizeBytes, IReadOnlyList<Guid> RecipientIds);
 
-/// <summary>How revealing ended; the refusals are the domain's, in its order, and NoActiveScene covers a Scene that is no longer Active.</summary>
+/// <summary>How revealing ended; the refusals are the domain's, in its order, and NoActiveScene covers a Scene that is no longer Active. Conflict is a write that won the race after the read.</summary>
 public enum SceneRevealOutcome
 {
     Revealed,
@@ -33,6 +33,7 @@ public enum SceneRevealOutcome
     NoRecipient,
     DuplicateRecipient,
     RecipientNotPresent,
+    Conflict,
 }
 
 /// <summary>The Reveal when <see cref="SceneRevealOutcome.Revealed"/>, otherwise null.</summary>

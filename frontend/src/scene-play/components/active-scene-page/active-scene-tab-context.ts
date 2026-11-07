@@ -1,5 +1,7 @@
 import { createContext, useContext } from 'react'
 
+import type { GiveItemContext, GiveItemRequest } from '@/scene-play/components/give-item-dialog/give-item-dialog'
+import type { TakeBackItemContext, TakeBackItemRequest } from '@/scene-play/components/take-back-item-dialog/take-back-item-dialog'
 import type { RevealOpenContext, RevealTarget } from '@/scene-play/hooks/useRevealFlow'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 
@@ -9,6 +11,10 @@ export interface ActiveSceneTabContextValue {
   scene: KeeperActiveScene
   /** Opens the layout-level reveal dialog for the entry's target, with the completion and focus context (21.7). */
   onReveal: (target: RevealTarget, context: RevealOpenContext) => void
+  /** Opens the layout-level give dialog for the Item, with the focus context (22.3). */
+  onGive: (request: GiveItemRequest, context: GiveItemContext) => void
+  /** Opens the layout-level take-back dialog for the Item, with the focus context (22.4). */
+  onTakeBack: (request: TakeBackItemRequest, context: TakeBackItemContext) => void
   /** The Investigators present were saved, so the page says "Investigators present saved.". */
   onPresentSaved: () => void
   /** A present change found the Scene finished, so the page refetches. */

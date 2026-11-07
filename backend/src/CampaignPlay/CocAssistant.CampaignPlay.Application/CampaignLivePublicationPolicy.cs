@@ -46,6 +46,27 @@ public static class CampaignLivePublicationPolicy
         .. recipientAccountIds.Distinct().Select(accountId => new LivePublication(LiveAudience.Account(accountId), [CampaignDataTopic.MyClues])),
     ];
 
+    /// <summary>
+    /// An Item holder change tells the Keeper (sceneReveals), the gaining account (myItems and myClues, because the give Reveal
+    /// reached them), and, when someone else lost it, the losing account (myItems). The Campaign is never told (PBI-SPL-003 D5).
+    /// </summary>
+    public static IReadOnlyList<LivePublication> ForItemHolderChanged(Guid campaignId, Guid? gainerAccountId, Guid? loserAccountId)
+    {
+        var publications = new List<LivePublication>
+        {
+            new(LiveAudience.CampaignKeeper(campaignId), [CampaignDataTopic.SceneReveals]),
+        };
+        if (gainerAccountId is not null)
+        {
+            publications.Add(new LivePublication(LiveAudience.Account(gainerAccountId.Value), [CampaignDataTopic.MyItems, CampaignDataTopic.MyClues]));
+        }
+        if (loserAccountId is not null && loserAccountId != gainerAccountId)
+        {
+            publications.Add(new LivePublication(LiveAudience.Account(loserAccountId.Value), [CampaignDataTopic.MyItems]));
+        }
+        return publications;
+    }
+
     /// <summary>Approval also changes what every member sees in the roster, so the Campaign hears "members".</summary>
     public static IReadOnlyList<LivePublication> ForInvestigatorApproved(Guid campaignId, Guid playerAccountId) =>
     [

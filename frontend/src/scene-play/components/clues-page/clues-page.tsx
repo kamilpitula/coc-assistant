@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useOriginBackLink } from '@/campaign-play/hooks/useOriginBackLink'
 import { InvestigatorNotFound } from '@/campaign-play/components/investigator-not-found/investigator-not-found'
 import { CluesList } from '@/scene-play/components/clues-list/clues-list'
+import { HeldItemsSection } from '@/scene-play/components/held-items-section/held-items-section'
 import { useCluesRead } from '@/scene-play/hooks/useCluesRead'
 import { UNNAMED_INVESTIGATOR } from '@/scene-play/services/revealPresentation'
 import type { Clues } from '@/scene-play/types/Reveal'
@@ -113,6 +114,7 @@ function CluesBody({ campaignId, investigatorId, clues, from }: CluesBodyProps) 
         <h1 className="text-2xl font-semibold break-words">{name}&apos;s Clues</h1>
         <p className="text-sm text-muted-foreground">Everything {name} received from the Keeper, newest first.</p>
       </div>
+      <HeldItemsSection campaignId={campaignId} investigatorId={investigatorId} />
       <CluesList campaignId={campaignId} clues={clues} />
     </>
   )

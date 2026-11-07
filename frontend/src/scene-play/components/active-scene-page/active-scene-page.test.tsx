@@ -16,14 +16,26 @@ const {
   mockUseActive,
   mockUseScene,
   mockUseRevealFlow,
+  mockUseGiveItemFlow,
+  mockUseTakeBackItemFlow,
   openSpy,
   confirmSpy,
   cancelSpy,
   returnFocusSpy,
+  giveOpenSpy,
+  giveConfirmSpy,
+  giveCancelSpy,
+  giveReturnFocusSpy,
+  takeBackOpenSpy,
+  takeBackConfirmSpy,
+  takeBackCancelSpy,
+  takeBackReturnFocusSpy,
   mockUseAnnouncement,
   refetch,
   headerProps,
   dialogProps,
+  giveDialogProps,
+  takeBackDialogProps,
   panelProps,
   playerProps,
 } = vi.hoisted(() => ({
@@ -31,14 +43,26 @@ const {
   mockUseActive: vi.fn(),
   mockUseScene: vi.fn(),
   mockUseRevealFlow: vi.fn(),
+  mockUseGiveItemFlow: vi.fn(),
+  mockUseTakeBackItemFlow: vi.fn(),
   openSpy: vi.fn(),
   confirmSpy: vi.fn(),
   cancelSpy: vi.fn(),
   returnFocusSpy: vi.fn(),
+  giveOpenSpy: vi.fn(),
+  giveConfirmSpy: vi.fn(),
+  giveCancelSpy: vi.fn(),
+  giveReturnFocusSpy: vi.fn(),
+  takeBackOpenSpy: vi.fn(),
+  takeBackConfirmSpy: vi.fn(),
+  takeBackCancelSpy: vi.fn(),
+  takeBackReturnFocusSpy: vi.fn(),
   mockUseAnnouncement: vi.fn(),
   refetch: vi.fn(),
   headerProps: { current: null as null | Record<string, unknown> },
   dialogProps: { current: null as null | Record<string, unknown> },
+  giveDialogProps: { current: null as null | Record<string, unknown> },
+  takeBackDialogProps: { current: null as null | Record<string, unknown> },
   panelProps: { current: null as null | Record<string, unknown> },
   playerProps: { current: null as null | Record<string, unknown> },
 }))
@@ -58,6 +82,8 @@ vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampai
 vi.mock('@/scene-play/hooks/useActiveScene', () => ({ useActiveScene: mockUseActive }))
 vi.mock('@/scenario-preparation/hooks/useScenes', () => ({ useScene: mockUseScene }))
 vi.mock('@/scene-play/hooks/useRevealFlow', () => ({ useRevealFlow: mockUseRevealFlow }))
+vi.mock('@/scene-play/hooks/useGiveItemFlow', () => ({ useGiveItemFlow: mockUseGiveItemFlow }))
+vi.mock('@/scene-play/hooks/useTakeBackItemFlow', () => ({ useTakeBackItemFlow: mockUseTakeBackItemFlow }))
 vi.mock('@/scene-play/hooks/useActiveSceneAnnouncement', () => ({ useActiveSceneAnnouncement: mockUseAnnouncement }))
 vi.mock('@/scene-play/components/active-scene-panel/active-scene-panel', async () => {
   const { useSidePanelScope } = await import('@/shared/components/side-panel/side-panel-scope-context')
@@ -82,6 +108,18 @@ vi.mock('@/scene-play/components/active-scene-header/active-scene-header', () =>
 vi.mock('@/scene-play/components/reveal-dialog/reveal-dialog', () => ({
   RevealDialog: (props: Record<string, unknown>) => {
     dialogProps.current = props
+    return null
+  },
+}))
+vi.mock('@/scene-play/components/give-item-dialog/give-item-dialog', () => ({
+  GiveItemDialog: (props: Record<string, unknown>) => {
+    giveDialogProps.current = props
+    return null
+  },
+}))
+vi.mock('@/scene-play/components/take-back-item-dialog/take-back-item-dialog', () => ({
+  TakeBackItemDialog: (props: Record<string, unknown>) => {
+    takeBackDialogProps.current = props
     return null
   },
 }))
@@ -140,6 +178,20 @@ const material = {
       playerFacingDescription: null,
     },
   ],
+  itemLinks: [
+    {
+      id: 'il1',
+      item: {
+        id: 'item1',
+        name: "Walter Corbitt's diary",
+        holder: null,
+        handouts: [
+          { id: 'ih1', kind: 'Text', visibility: 'PlayerFacing', title: 'The last entry' },
+          { id: 'ih2', kind: 'Text', visibility: 'KeeperFacing', title: 'The missing page' },
+        ],
+      },
+    },
+  ],
 }
 
 const playerScene: ActiveScene = { kind: 'absent-player', title: 'The Corbitt House' }
@@ -162,6 +214,8 @@ describe('ActiveScenePage', () => {
     mockUseActive.mockReturnValue(query(keeperScene))
     mockUseScene.mockReturnValue({ data: material, isError: false })
     mockUseRevealFlow.mockReturnValue({ target: null, open: openSpy, confirm: confirmSpy, cancel: cancelSpy, returnFocus: returnFocusSpy, pending: false, refusal: null })
+    mockUseGiveItemFlow.mockReturnValue({ request: null, open: giveOpenSpy, confirm: giveConfirmSpy, cancel: giveCancelSpy, returnFocus: giveReturnFocusSpy, pending: false, refusal: null })
+    mockUseTakeBackItemFlow.mockReturnValue({ request: null, open: takeBackOpenSpy, confirm: takeBackConfirmSpy, cancel: takeBackCancelSpy, returnFocus: takeBackReturnFocusSpy, pending: false, refusal: null })
     mockUseAnnouncement.mockReturnValue({ message: '', sequence: 0 })
   })
 
@@ -180,8 +234,8 @@ describe('ActiveScenePage', () => {
     expect(headerProps.current).toMatchObject({ campaignId: 'c1', scene: keeperScene, compact: false })
     const nav = screen.getByRole('navigation', { name: 'Active Scene' })
     expect(within(nav).getByRole('link', { name: 'Run' })).toHaveAttribute('aria-current', 'page')
-    expect(within(nav).getByRole('link', { name: 'To reveal, 1' })).toBeInTheDocument()
-    expect(within(nav).getByRole('link', { name: 'Keeper reference, 2' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: 'To reveal, 3' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: 'Keeper reference, 4' })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: 'Revealed, 1' })).toBeInTheDocument()
     expect(screen.getByTestId('child-route')).toBeInTheDocument()
   })
@@ -191,7 +245,7 @@ describe('ActiveScenePage', () => {
     render(<ActiveScenePage campaignId="c1" />)
 
     expect(headerProps.current).toMatchObject({ compact: true })
-    expect(screen.getByRole('link', { name: 'To reveal, 1' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'To reveal, 3' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByTestId('child-route')).toBeInTheDocument()
   })
 
@@ -324,6 +378,115 @@ describe('ActiveScenePage', () => {
     render(<ActiveScenePage campaignId="c1" />)
 
     expect(panelProps.current?.onReveal).toBe(openSpy)
+  })
+
+  it('opens the give dialog from the tab and wires its callbacks to the give flow (SPL-UX-52)', () => {
+    render(<ActiveScenePage campaignId="c1" />)
+
+    const request = { itemId: 'item1', itemName: "Walter Corbitt's diary", holder: null, triggerId: 'give-trigger-item1' }
+    const context = { fallbackIds: ['item-link-item1'] }
+    act(() => tabValue?.onGive(request, context))
+
+    expect(giveOpenSpy).toHaveBeenCalledWith(request, context)
+
+    mockUseGiveItemFlow.mockReturnValue({
+      request,
+      open: giveOpenSpy,
+      confirm: giveConfirmSpy,
+      cancel: giveCancelSpy,
+      returnFocus: giveReturnFocusSpy,
+      pending: true,
+      refusal: 'That Investigator is no longer present or already holds it. Check the list and try again.',
+    })
+    render(<ActiveScenePage campaignId="c1" />)
+
+    expect(giveDialogProps.current).toMatchObject({
+      open: true,
+      itemName: "Walter Corbitt's diary",
+      holder: null,
+      investigators: keeperScene.investigatorsPresent,
+      pending: true,
+      refusal: 'That Investigator is no longer present or already holds it. Check the list and try again.',
+    })
+    const callbacks = giveDialogProps.current as unknown as { onConfirm: (id: string) => void; onCancel: () => void; onCloseAutoFocus: (event: Event) => void }
+    callbacks.onConfirm('i2')
+    expect(giveConfirmSpy).toHaveBeenCalledWith('i2')
+    callbacks.onCancel()
+    expect(giveCancelSpy).toHaveBeenCalledTimes(1)
+    const event = new Event('focus')
+    callbacks.onCloseAutoFocus(event)
+    expect(giveReturnFocusSpy).toHaveBeenCalledWith(event)
+  })
+
+  it('opens the take-back dialog from the tab and wires its callbacks to the take-back flow (SPL-UX-54)', () => {
+    render(<ActiveScenePage campaignId="c1" />)
+
+    const request = { itemId: 'item1', itemName: "Walter Corbitt's diary", holderId: 'i1', holderName: 'Harvey Walters', triggerId: 'take-back-trigger-item1' }
+    const context = { fallbackIds: ['give-trigger-item1'] }
+    act(() => tabValue?.onTakeBack(request, context))
+
+    expect(takeBackOpenSpy).toHaveBeenCalledWith(request, context)
+
+    mockUseTakeBackItemFlow.mockReturnValue({
+      request,
+      open: takeBackOpenSpy,
+      confirm: takeBackConfirmSpy,
+      cancel: takeBackCancelSpy,
+      returnFocus: takeBackReturnFocusSpy,
+      pending: true,
+      refusal: "We couldn't take Walter Corbitt's diary back. Try again.",
+    })
+    render(<ActiveScenePage campaignId="c1" />)
+
+    expect(takeBackDialogProps.current).toMatchObject({
+      open: true,
+      itemName: "Walter Corbitt's diary",
+      holderName: 'Harvey Walters',
+      pending: true,
+      refusal: "We couldn't take Walter Corbitt's diary back. Try again.",
+    })
+    const callbacks = takeBackDialogProps.current as unknown as { onConfirm: () => void; onCancel: () => void; onCloseAutoFocus: (event: Event) => void }
+    callbacks.onConfirm()
+    expect(takeBackConfirmSpy).toHaveBeenCalledTimes(1)
+    callbacks.onCancel()
+    expect(takeBackCancelSpy).toHaveBeenCalledTimes(1)
+    const event = new Event('focus')
+    callbacks.onCloseAutoFocus(event)
+    expect(takeBackReturnFocusSpy).toHaveBeenCalledWith(event)
+  })
+
+  it('gives the give flow the Investigators present and their Reveals, and refetches after a refusal (SPL-UX-58)', () => {
+    render(<ActiveScenePage campaignId="c1" />)
+
+    const [, present, reveals, callbacks] = mockUseGiveItemFlow.mock.calls[0] as [string, InvestigatorPresent[], KeeperReveal[], { onGiven: (message: string) => void; onRefetch: () => void }]
+    expect(present).toEqual(keeperScene.investigatorsPresent)
+    expect(reveals).toEqual(keeperScene.reveals)
+    act(() => callbacks.onGiven("Walter Corbitt's diary given to Lucy Ward."))
+    expect(screen.getByRole('status')).toHaveTextContent("Walter Corbitt's diary given to Lucy Ward.")
+    act(() => callbacks.onRefetch())
+
+    expect(refetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('says "{name} taken back from {holder}." after a take back (SPL-UX-54)', () => {
+    render(<ActiveScenePage campaignId="c1" />)
+
+    const callbacks = mockUseTakeBackItemFlow.mock.calls[0][1] as { onTakenBack: (message: string) => void; onRefetch: () => void }
+    act(() => callbacks.onTakenBack("Walter Corbitt's diary taken back from Harvey Walters."))
+
+    expect(screen.getByRole('status')).toHaveTextContent("Walter Corbitt's diary taken back from Harvey Walters.")
+  })
+
+  it('moves focus to the heading when a give or take back found the Scene finished (SPL-UX-52, SPL-A11Y-9)', async () => {
+    const { rerender } = render(<ActiveScenePage campaignId="c1" />)
+
+    const giveCallbacks = mockUseGiveItemFlow.mock.calls[0][3] as { onRefetch: () => void }
+    act(() => giveCallbacks.onRefetch())
+    mockUseActive.mockReturnValue(query(null))
+    rerender(<ActiveScenePage campaignId="c1" />)
+
+    expect(refetch).toHaveBeenCalled()
+    expect(await screen.findByRole('heading', { level: 1, name: 'No Active Scene' })).toHaveFocus()
   })
 
   it('says "{title} revealed to {names}." in the status region after the Keeper reveals (SPL-UX-22)', () => {

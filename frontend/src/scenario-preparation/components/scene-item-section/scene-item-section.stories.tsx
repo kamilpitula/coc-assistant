@@ -6,11 +6,11 @@ import { StoryProviders } from '@/shared/storybook/storyProviders'
 
 import { SceneItemSection } from './scene-item-section'
 
-const diary: ItemLink = { id: 'link-1', item: { id: 'diary', name: "Walter Corbitt's diary" } }
-const key: ItemLink = { id: 'link-2', item: { id: 'key', name: 'The cellar key' } }
+const diary: ItemLink = { id: 'link-1', item: { id: 'diary', name: "Walter Corbitt's diary", holder: null, handouts: [] } }
+const key: ItemLink = { id: 'link-2', item: { id: 'key', name: 'The cellar key', holder: null, handouts: [] } }
 const longName: ItemLink = {
   id: 'link-3',
-  item: { id: 'long', name: 'A water-stained, leather-bound ledger of the Miskatonic Valley Historical Society with a very long name' },
+  item: { id: 'long', name: 'A water-stained, leather-bound ledger of the Miskatonic Valley Historical Society with a very long name', holder: null, handouts: [] },
 }
 
 const meta = {

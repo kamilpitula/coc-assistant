@@ -12,7 +12,7 @@ interface RevealedContentProps {
 }
 
 /**
- * What a Reveal showed, rendered from its snapshot (specs/scene-play/ux.md section 14): Read-aloud in its panel, Text and a
+ * What a Reveal showed, rendered from its snapshot (specs/scene-play/ux.md section 14): Read-aloud in its panel, Text, an Item, and a
  * Non-Player Entity's Player-facing description as rich text, an Image capped at 70vh, a Map across the full content width, and a
  * Document with "Open" and "Download". Headings inside start at h4, under the Reveal's h3. A file is fetched from the Reveal's file
  * endpoint, and `alt` is the image description, or the title when there is none (SPL-A11Y-10).
@@ -26,7 +26,7 @@ export function RevealedContent({ campaignId, reveal }: RevealedContentProps) {
 }
 
 function Content({ campaignId, reveal }: RevealedContentProps) {
-  if (reveal.subjectType === 'NonPlayerEntity') {
+  if (reveal.subjectType === 'NonPlayerEntity' || reveal.subjectType === 'Item') {
     return <Description reveal={reveal} />
   }
 
@@ -35,6 +35,18 @@ function Content({ campaignId, reveal }: RevealedContentProps) {
       return reveal.content ? <ReadAloudText document={reveal.content} showHeading={false} /> : null
     case 'Text':
       return <Description reveal={reveal} />
+    case 'Image':
+    case 'Map':
+    case 'Document':
+      return <FileContent campaignId={campaignId} reveal={reveal} />
+    default:
+      return null
+  }
+}
+
+/** An Image, a Map, or a Document, fetched from the Reveal's file endpoint. */
+function FileContent({ campaignId, reveal }: RevealedContentProps) {
+  switch (reveal.handoutKind) {
     case 'Image':
     case 'Map':
       return reveal.file ? <RevealedImage campaignId={campaignId} reveal={reveal} file={reveal.file} kind={reveal.handoutKind} /> : null

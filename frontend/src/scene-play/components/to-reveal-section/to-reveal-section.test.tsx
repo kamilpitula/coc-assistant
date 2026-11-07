@@ -10,15 +10,19 @@ import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-pane
 import { ToRevealSection } from './to-reveal-section'
 
 // specs/scene-play/ux.md section 21.4; SPL-UX-42, SPL-UX-43, SPL-A11Y-16.
-const { mockUseScene, mockUseSidePanelOpen, refetchScene } = vi.hoisted(() => ({
+// Section 22.1; SPL-UX-51: linked Items follow the entities, each with its Player-facing Handouts.
+const { mockUseScene, mockUseSidePanelOpen, mockUseHolderNames, refetchScene, refetchNames } = vi.hoisted(() => ({
   mockUseScene: vi.fn(),
   mockUseSidePanelOpen: vi.fn(),
+  mockUseHolderNames: vi.fn(),
   refetchScene: vi.fn(),
+  refetchNames: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/scenario-preparation/hooks/useScenes', () => ({ useScene: mockUseScene }))
 vi.mock('@/shared/hooks/useSidePanel', () => ({ useSidePanel: () => ({ open: mockUseSidePanelOpen }) }))
+vi.mock('@/campaign-play/hooks/useApprovedInvestigatorNames', () => ({ useApprovedInvestigatorNames: mockUseHolderNames }))
 
 const material: Scene = {
   id: 's1',
@@ -41,6 +45,21 @@ const material: Scene = {
     { id: 'h1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door' },
     { id: 'h2', kind: 'Text', visibility: 'KeeperFacing', title: "Corbitt's true nature" },
     { id: 'h3', kind: 'Text', visibility: 'PlayerFacing', title: 'Boston Globe clipping' },
+  ],
+}
+
+const materialWithItems: Scene = {
+  ...material,
+  itemLinks: [
+    {
+      id: 'k1-link',
+      item: {
+        id: 'k1',
+        name: "Walter Corbitt's diary",
+        holder: { investigatorId: 'i1' },
+        handouts: [{ id: 'h9', kind: 'Text', visibility: 'PlayerFacing', title: 'The last entry' }],
+      },
+    },
   ],
 }
 
@@ -75,16 +94,25 @@ const scene = (reveals: KeeperReveal[] = []): KeeperActiveScene => ({
 
 describe('ToRevealSection', () => {
   const onReveal = vi.fn()
+  const onGive = vi.fn()
   const renderSection = (active: KeeperActiveScene = scene()) =>
     render(
       <SidePanelScopeProvider>
-        <ToRevealSection campaignId="c1" scene={active} onReveal={onReveal} />
+        <ToRevealSection campaignId="c1" scene={active} onReveal={onReveal} onGive={onGive} />
       </SidePanelScopeProvider>,
     )
 
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseScene.mockReturnValue({ data: material, isError: false, refetch: refetchScene })
+    mockUseHolderNames.mockReturnValue({
+      names: new Map([
+        ['i1', 'Harvey Walters'],
+        ['i2', 'Lucy Ward'],
+      ]),
+      isError: false,
+      refetch: refetchNames,
+    })
   })
 
   it('reads the Keeper Scene by the ids of the Active Scene', () => {
@@ -196,5 +224,87 @@ describe('ToRevealSection', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
     expect(refetchScene).toHaveBeenCalledTimes(1)
+  })
+
+  it('lists linked Items with their Player-facing Handouts after the entities (SPL-UX-51)', () => {
+    mockUseScene.mockReturnValue({ data: materialWithItems, isError: false, refetch: refetchScene })
+    renderSection()
+
+    const section = screen.getByRole('region', { name: 'To reveal' })
+    expect(within(section).getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual([
+      'Handouts',
+      'Non-Player Entities',
+      'Items',
+    ])
+    expect(within(section).getByRole('button', { name: "Walter Corbitt's diary" })).toHaveAttribute('aria-haspopup', 'dialog')
+    expect(within(section).getByText('Item')).toBeInTheDocument()
+    expect(within(section).getByRole('button', { name: 'The last entry' })).toBeInTheDocument()
+    expect(within(section).getByText("Item: Walter Corbitt's diary")).toBeInTheDocument()
+    expect(within(section).getByRole('button', { name: "Give Walter Corbitt's diary" })).toBeInTheDocument()
+  })
+
+  it('opens the `item` panel from an Item title (SPL-UX-51)', async () => {
+    mockUseScene.mockReturnValue({ data: materialWithItems, isError: false, refetch: refetchScene })
+    renderSection()
+
+    await userEvent.click(screen.getByRole('button', { name: "Walter Corbitt's diary" }))
+
+    expect(mockUseSidePanelOpen).toHaveBeenCalledWith({ type: 'item', itemId: 'k1' }, expect.anything())
+  })
+
+  it('joins the reveal status with the holder on an Item entry (SPL-UX-51)', () => {
+    mockUseScene.mockReturnValue({ data: materialWithItems, isError: false, refetch: refetchScene })
+    renderSection(scene([reveal({ subjectId: 'k1', subjectType: 'Item', title: "Walter Corbitt's diary" })]))
+
+    expect(screen.getByText('Revealed to Harvey Walters . not yet: Lucy Ward . Held by Harvey Walters')).toBeInTheDocument()
+  })
+
+  it('shows the reveal status without the holder until the names resolve', () => {
+    mockUseScene.mockReturnValue({ data: materialWithItems, isError: false, refetch: refetchScene })
+    mockUseHolderNames.mockReturnValue({ names: undefined, isError: false, refetch: refetchNames })
+    renderSection(scene([reveal({ subjectId: 'k1', subjectType: 'Item', title: "Walter Corbitt's diary" })]))
+
+    expect(screen.getByText('Revealed to Harvey Walters . not yet: Lucy Ward')).toBeInTheDocument()
+    expect(screen.queryByText(/Held by/)).not.toBeInTheDocument()
+  })
+
+  it('opens the give dialog from "Give..." with the focus fallbacks (SPL-UX-51)', async () => {
+    mockUseScene.mockReturnValue({ data: materialWithItems, isError: false, refetch: refetchScene })
+    renderSection()
+
+    await userEvent.click(screen.getByRole('button', { name: "Give Walter Corbitt's diary" }))
+
+    const headingId = screen.getByRole('heading', { level: 2, name: 'To reveal' }).id
+    expect(onGive).toHaveBeenCalledTimes(1)
+    expect(onGive.mock.calls[0][0]).toEqual({
+      itemId: 'k1',
+      itemName: "Walter Corbitt's diary",
+      holder: { id: 'i1', name: 'Harvey Walters' },
+      triggerId: 'give-trigger-k1',
+    })
+    expect(onGive.mock.calls[0][1]).toEqual({ fallbackIds: ['handout-link-h9', 'entity-link-l1', headingId] })
+  })
+
+  it('opens the reveal dialog for an Item and its Handout entries (SPL-UX-51)', async () => {
+    mockUseScene.mockReturnValue({ data: materialWithItems, isError: false, refetch: refetchScene })
+    renderSection()
+
+    await userEvent.click(screen.getByRole('button', { name: "Reveal Walter Corbitt's diary" }))
+    expect(onReveal.mock.calls[0][0]).toEqual({
+      subjectType: 'Item',
+      subjectId: 'k1',
+      title: "Walter Corbitt's diary",
+      summary: 'Item',
+      triggerId: 'reveal-trigger-k1',
+    })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reveal The last entry' }))
+    expect(onReveal.mock.calls[1][0]).toEqual({
+      subjectType: 'Handout',
+      subjectId: 'h9',
+      title: 'The last entry',
+      summary: 'Text . Player-facing',
+      triggerId: 'reveal-trigger-h9',
+    })
   })
 })

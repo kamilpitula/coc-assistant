@@ -1428,7 +1428,7 @@ Scenes                                            (h2)
   - a link "Back to Items" with an `aria-hidden` ArrowLeft icon;
   - the `role=status` paragraph;
   - `h1` with the name (`break-words`, `tabIndex=-1`);
-  - the muted line "Held by no one.".
+  - the muted line "Held by no one.", or since PBI-SPL-003 "Held by {name}." with the name taken from the Approved Investigators ([scene-play ux](../scene-play/ux.md) section 22.6). With `?from=active-scene` the back link is "Back to {Active Scene title}".
 - **Rich text:** the Player-facing description and Keeper notes use `rich-text-view` with `headingOffset` 0, so their headings render as `h3` and `h4`.
 - **Handouts:** the shared `handout-section` (section 65).
 - **Scenes (`item-scenes-section`):**
@@ -1477,7 +1477,7 @@ Scenes                                            (h2)
 
 ### 64.1 Items section (`scene-item-section`)
 
-> **Since PBI-SPL-005** each entry is the material entry of section 72: the title keeps its link to the Item page until PBI-SPL-003 adds an `item` panel, and the actions below sit in its action slot.
+> **Since PBI-SPL-005** each entry is the material entry of section 72: the title keeps its link to the Item page until PBI-SPL-003 adds an `item` panel, and the actions below sit in its action slot. **Since PBI-SPL-003** the title opens the `item` panel ([scene-play ux](../scene-play/ux.md) section 22.5), whose "Open full page" leads to the Item page.
 
 ```
 Items                                             (h2)  [Link an Item]
@@ -1673,8 +1673,8 @@ No new primitives are needed.
 ## 70. Item open decisions and research gaps
 
 - **Deferred:**
-  - giving and taking back Items, and showing the holder (PBI-SPL-003);
-  - revealing an Item or its Handouts (PBI-SPL-003; PBI-SPL-002 reveals Scene Handouts and Non-Player Entity links only);
+  - ~~giving and taking back Items, and showing the holder (PBI-SPL-003);~~ done in PBI-SPL-003 ([scene-play ux](../scene-play/ux.md) section 22);
+  - ~~revealing an Item or its Handouts (PBI-SPL-003; PBI-SPL-002 reveals Scene Handouts and Non-Player Entity links only);~~ done in PBI-SPL-003;
   - Active and Finished journeys end to end (PBI-SPL-001);
   - returning to the Scene after "Create Item" from the picker (the convenience of rejected Option B);
   - Item previews on the Scene page;
@@ -1732,7 +1732,7 @@ One entry for a Scene's Handouts, Non-Player Entity links, and Items, used on th
 ```
 
 - **Lives in** `scenario-preparation/components/material-entry` (the slice that owns Handouts, links, and Items); Scene Play passes its action and status.
-- **Title:** an `h3` (level configurable) holding a button with the title (`break-words`, `aria-haspopup="dialog"`). It opens the side panel of [navigation ux](../navigation/ux.md) section 3: `handout` for a Handout, `entity` for a Non-Player Entity link. The button keeps the `id` used as a focus target after a create or link.
+- **Title:** an `h3` (level configurable) holding a button with the title (`break-words`, `aria-haspopup="dialog"`). It opens the side panel of [navigation ux](../navigation/ux.md) section 3: `handout` for a Handout, `entity` for a Non-Player Entity link, and since PBI-SPL-003 `item` for an Item. The button keeps the `id` used as a focus target after a create or link.
 - **Second line:**
   - Handout: `handout-badges` (kind and visibility).
   - Non-Player Entity link: "{type label}: {profile name}" in muted text. The profile name is plain text; the profile is in the panel.
@@ -1742,10 +1742,10 @@ One entry for a Scene's Handouts, Non-Player Entity links, and Items, used on th
   - Scene page, Handout: `move-controls` (section 41), unchanged.
   - Scene page, Non-Player Entity link: "Edit" and "Unlink" (section 32), unchanged.
   - Scene page, Item: "Unlink" (section 64.1), unchanged.
-  - Active Scene: "Reveal..." or nothing (scene-play ux section 21).
+  - Active Scene: "Reveal..." or nothing (scene-play ux section 21); for an Item, also "Give..." and "Take back" (scene-play ux section 22).
 - **List:** entries are `li` rows in one bordered list, separated by a top border; the list keeps its existing `ol` or `ul`, without visible numbers (the Handout `ol` drops its decimal markers so both contexts look the same; move announcements still name the position).
 - **Item page Handouts (section 65):** the same entry with the title as a link to the Handout page, because the Item page hosts no side panel; the focus target `id` stays on that link.
-- **What moves off the Scene page list:** the Non-Player Entity description (now in the `entity` panel) and the Handout title link (now the panel, whose "Open full page" leads to the Handout page with its Edit and Delete). Items keep their title link to the Item page until PBI-SPL-003 adds an `item` panel.
+- **What moves off the Scene page list:** the Non-Player Entity description (now in the `entity` panel) and the Handout title link (now the panel, whose "Open full page" leads to the Handout page with its Edit and Delete). Items keep their title link to the Item page until PBI-SPL-003 adds an `item` panel. (Since PBI-SPL-003 the Item title opens the `item` panel.)
 - **Panels from the Scene page** have no "Reveal..." and open full pages without `from`, so those pages show their structural back link: the Handout page returns to the Scene page; the Human NPC and Mythos Creature pages return to "Non-Player Entities", as they do from the Scene page today. No new origin is added.
 
 ### 72.1 UX acceptance criteria

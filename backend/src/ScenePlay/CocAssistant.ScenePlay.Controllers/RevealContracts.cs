@@ -1,6 +1,6 @@
 namespace CocAssistant.ScenePlay.Controllers;
 
-/// <summary>The material to reveal: <c>type</c> is <c>Handout</c>, <c>NonPlayerEntity</c>, or <c>Item</c>, and <c>id</c> is a Handout id or a Non-Player Entity link id of the Active Scene.</summary>
+/// <summary>The material to reveal: <c>type</c> is <c>Handout</c>, <c>NonPlayerEntity</c>, or <c>Item</c>, and <c>id</c> is a Handout id, a Non-Player Entity link id, or an Item id of the Active Scene.</summary>
 public record RevealSubjectRequest(string? Type, Guid Id);
 
 /// <summary>Reveals a subject. A missing <c>investigatorIds</c> means every Investigator present.</summary>
@@ -56,9 +56,8 @@ internal static class RevealProblems
     public const string SubjectTypeKey = "subject.type";
     public const string SubjectIdKey = "subject.id";
     public const string InvestigatorIdsKey = "investigatorIds";
-    public const string UnknownTypeMessage = "Choose a Handout or a Non-Player Entity to reveal.";
-    public const string ItemMessage = "Items can't be revealed yet.";
-    public const string SubjectNotFoundMessage = "This isn't a Handout or Non-Player Entity of the Active Scene.";
+    public const string UnknownTypeMessage = "Choose a Handout, a Non-Player Entity, or an Item to reveal.";
+    public const string SubjectNotFoundMessage = "This isn't a Handout, a Non-Player Entity, or an Item of the Active Scene.";
     public const string KeeperFacingMessage = "This Handout is Keeper-facing and can't be revealed.";
     public const string NoRecipientMessage = "Choose at least one Investigator.";
     public const string DuplicateRecipientMessage = "Each Investigator can be chosen only once.";

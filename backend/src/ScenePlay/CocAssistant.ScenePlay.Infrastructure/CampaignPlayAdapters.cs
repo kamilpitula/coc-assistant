@@ -67,6 +67,20 @@ public sealed class CampaignPlayRevealSignals : IRevealSignals
         _publisher.PublishAsync(campaignId, recipientAccountIds, cancellationToken);
 }
 
+/// <summary>Publishes myItems (and myClues to the gaining account) when an Item's holder changes, never to the Campaign (ADR 0009, PBI-SPL-003 D5).</summary>
+public sealed class CampaignPlayItemHolderSignals : IItemHolderSignals
+{
+    private readonly CocAssistant.CampaignPlay.Application.PublishItemHolderChanged _publisher;
+
+    public CampaignPlayItemHolderSignals(CocAssistant.CampaignPlay.Application.PublishItemHolderChanged publisher)
+    {
+        _publisher = publisher;
+    }
+
+    public Task ItemHolderChangedAsync(Guid campaignId, Guid? gainerAccountId, Guid? loserAccountId, CancellationToken cancellationToken) =>
+        _publisher.PublishAsync(campaignId, gainerAccountId, loserAccountId, cancellationToken);
+}
+
 /// <summary>Publishes the activeScene topic through Campaign Play's publisher, which uses the publication policy (ADR 0009, ADR 0024).</summary>
 public sealed class CampaignPlayActiveSceneSignals : IActiveSceneSignals
 {

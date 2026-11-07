@@ -11,7 +11,7 @@ function jsonResponse(status: number, body?: unknown): Response {
   })
 }
 
-const link = { id: 'l1', item: { id: 'k1', name: "Walter Corbitt's diary" } }
+const link = { id: 'l1', item: { id: 'k1', name: "Walter Corbitt's diary", holder: null, handouts: [] } }
 const baseUrl = '/api/campaigns/c1/scenarios/s1/scenes/a1/item-links'
 
 describe('Item link API', () => {

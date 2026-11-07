@@ -31,6 +31,7 @@ Side panel (search params on the page that opens it)
   ?panel=entity&link=<linkId>        a Scene's Non-Player Entity: what Players see, then the profile read-only (Keeper)
   ?panel=handout&handout=<id>        a Handout's current content (Keeper)
   ?panel=reveal&reveal=<revealId>    what was revealed, from its snapshot (Keeper)
+  ?panel=item&item=<itemId>          an Item: what Players see, its holder, Handouts, and Keeper notes (Keeper; PBI-SPL-003)
 
 Origin (search param on a full page)
   ?from=active-scene                 the only allowed value for now
@@ -73,6 +74,7 @@ Arkham Nights
   - **entity:** "What Players see" (`h3`): the link's Player-facing name and description, or "No Player-facing description yet."; then "Profile" (`h3`): the profile's View mode ([scenario-preparation ux](../scenario-preparation/ux.md) section 25.1) read-only, without Edit, Delete, or Duplicate, headings shifted down to start at `h4`. The panel title is the Player-facing name.
   - **handout:** the Handout's current content as rendered by `handout-preview`, with its badges.
   - **reveal:** `revealed-content` from the Reveal's snapshot, with the meta line "{kind} . {time} . to {names}".
+  - **item (PBI-SPL-003):** kind line "Item"; "What Players see", the holder, "Handouts", and "Keeper notes", as [scene-play ux](../scene-play/ux.md) section 22.5. Hosted on the Active Scene and on the Scene page.
 - **Footer:** the link "Open full page" to the full page with `from` set to the opening page's origin (section 4). The `reveal` panel has no full page and no footer link. A page may add one context action to the footer (the Active Scene adds "Reveal..." on a revealable Handout, scene-play ux section 21).
 - **URL:** opening pushes a history entry with the panel params; the page under it keeps its own path and params.
 - **Closing:** the close button, Escape, and a click on the dimmed page each close the panel. If the previous history entry is the same page without a panel, closing goes back; otherwise it replaces the entry without the panel params. Browser back closes it too.
@@ -115,6 +117,7 @@ Arkham Nights
 | Player Clues page | "Back to your Campaign" |
 | Human NPC and Mythos Creature profile pages | their existing back link (scenario-preparation ux section 25) |
 | Scene Handout page | its existing back link to the Scene page (scenario-preparation ux section 42) |
+| Item page (PBI-SPL-003) | "Back to Items" (scenario-preparation ux section 63.1) |
 
 - **One hop:** `from` is not carried forward. A link on the full page to yet another page does not pass `from` on.
 - **Placement and style:** where the page's back link is today, the existing `ArrowLeft` link style. The page's `h1` and focus handling are unchanged.
@@ -136,7 +139,7 @@ New features follow this table. A feature that needs a new origin adds it to the
 | Tab | "Active Scene" |
 | Live badge | "Live" (accessible name of the link: "Active Scene, live") |
 | Panel close | "Close" |
-| Panel kind lines | "Clues", "Non-Player Entity", "Handout", "Revealed" |
+| Panel kind lines | "Clues", "Non-Player Entity", "Handout", "Revealed", "Item" |
 | Entity panel headings | "What Players see", "Profile" |
 | Panel footer | "Open full page" |
 | Panel load failure | "We couldn't load this." / "Try again" |
@@ -151,6 +154,7 @@ New features follow this table. A feature that needs a new origin adds it to the
 | Live badge | `Badge` + dot | `shared/components/live-badge` |
 | Side panel | `Sheet` (shadcn) | `shared/components/ui/sheet.tsx` (on the installed `@radix-ui/react-dialog`); `shared/components/side-panel` holds `side-panel`, `side-panel-content` (kind line, `h2`, states, footer and action slot), `side-panel-scope` (opener and title focus refs), and the never-throwing `sidePanelSearchSchema`; `shared/hooks/useSidePanel` parses it and opens, replaces, and closes per the history rules ([ADR 0027](../../docs/adr/0027-side-panels-and-origins-are-url-search-params.md)) |
 | Panel host | `active-scene-panel`, `scene-panel` | `scene-play/components/active-scene-panel` maps each panel type to its body (`clues-panel`, `handout-panel`, `entity-panel`, `reveal-panel`); `scenario-preparation/components/scene-panel` (PBI-SPL-005) maps `handout` and `entity` for the Scene page |
+| Item panel (PBI-SPL-003) | `item-panel-body`, `item-panel` | `scenario-preparation/components/item-panel-body` takes an Item id and an optional `from`; `scene-play` `item-panel` and `scene-panel` host it (ADR 0028) |
 | Scene-scoped panel bodies | `handout-panel-body`, `entity-panel-body` | `scenario-preparation/components`; take explicit Scene ids and an optional `from`; the `scene-play` `handout-panel` and `entity-panel` adapt the Active Scene to them ([ADR 0028](../../docs/adr/0028-panel-bodies-live-in-the-subject-slice-and-hosts-adapt.md)) |
 | Panel bodies | `clues-list`, profile view, `handout-preview`, `revealed-content` | extracted from their pages so page and panel render the same thing |
 | Heading levels | `HeadingOffsetProvider` | `shared/providers/heading-offset`; shifts the headings of an extracted body (and `RichTextView`) inside a panel; pages without a provider are unchanged |

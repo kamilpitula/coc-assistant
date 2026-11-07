@@ -10,14 +10,14 @@ public class ItemLinkService
 {
     private readonly ICampaignKeepers _keepers;
     private readonly ISceneRepository _scenes;
-    private readonly IItemDirectory _directory;
+    private readonly IItemRepository _items;
     private readonly TimeProvider _timeProvider;
 
-    public ItemLinkService(ICampaignKeepers keepers, ISceneRepository scenes, IItemDirectory directory, TimeProvider timeProvider)
+    public ItemLinkService(ICampaignKeepers keepers, ISceneRepository scenes, IItemRepository items, TimeProvider timeProvider)
     {
         _keepers = keepers;
         _scenes = scenes;
-        _directory = directory;
+        _items = items;
         _timeProvider = timeProvider;
     }
 
@@ -36,9 +36,9 @@ public class ItemLinkService
             return new ItemLinkWriteResult(ItemLinkWriteOutcome.NotFound, null);
         }
 
-        var items = await _directory.ListForCampaignAsync(campaignId, cancellationToken);
-        var itemInCampaign = itemId is not null && items.Any(item => item.Id == itemId);
-        var result = scene.LinkItem(itemId ?? Guid.Empty, itemInCampaign, _timeProvider.GetUtcNow());
+        var items = await _items.ListLinkedForSceneAsync(campaignId, sceneId, cancellationToken);
+        var candidate = itemId is null ? null : await _items.FindByIdAsync(campaignId, itemId.Value, cancellationToken);
+        var result = scene.LinkItem(itemId ?? Guid.Empty, candidate is not null, _timeProvider.GetUtcNow());
         if (result.Link is null)
         {
             return new ItemLinkWriteResult(ToWriteOutcome(result.Outcome), null);
@@ -46,10 +46,12 @@ public class ItemLinkService
 
         if (result.Outcome == ItemLinkOutcome.Linked && !await TrySaveAsync(cancellationToken))
         {
-            return await ExistingLinkAsync(campaignId, scenarioId, sceneId, itemId!.Value, items, cancellationToken);
+            return await ExistingLinkAsync(campaignId, scenarioId, sceneId, itemId!.Value, cancellationToken);
         }
 
-        var view = ItemLinkViews.Create([result.Link], items).Single();
+        var view = result.Outcome == ItemLinkOutcome.Linked
+            ? new ItemLinkView(result.Link.Id, ItemLinkViews.ToReference(candidate!))
+            : ItemLinkViews.Create([result.Link], items).Single();
         return new ItemLinkWriteResult(ToWriteOutcome(result.Outcome), view);
     }
 
@@ -72,14 +74,14 @@ public class ItemLinkService
         Guid scenarioId,
         Guid sceneId,
         Guid itemId,
-        IReadOnlyList<ItemSummary> items,
         CancellationToken cancellationToken)
     {
         var scene = await _scenes.FindByIdAsync(campaignId, scenarioId, sceneId, cancellationToken);
         var existing = scene?.ItemLinks.SingleOrDefault(link => link.ItemId == itemId);
-        return existing is null
+        var item = existing is null ? null : await _items.FindByIdAsync(campaignId, itemId, cancellationToken);
+        return existing is null || item is null
             ? new ItemLinkWriteResult(ItemLinkWriteOutcome.NotFound, null)
-            : new ItemLinkWriteResult(ItemLinkWriteOutcome.AlreadyLinked, ItemLinkViews.Create([existing], items).Single());
+            : new ItemLinkWriteResult(ItemLinkWriteOutcome.AlreadyLinked, new ItemLinkView(existing.Id, ItemLinkViews.ToReference(item)));
     }
 
     /// <summary>Removes a link; the Item itself is untouched.</summary>

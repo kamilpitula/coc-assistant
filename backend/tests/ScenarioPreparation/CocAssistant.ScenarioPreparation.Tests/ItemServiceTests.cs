@@ -104,7 +104,6 @@ public class ItemServiceTests : IDisposable
         Assert.Equal(ItemDeleteOutcome.NotFound, deleted);
         Assert.Empty(repository.Calls);
         Assert.Empty(usage.Calls);
-        Assert.Empty(_builder.ItemHolders.Calls);
         Assert.Equal(1, await _builder.StoredItemCountAsync());
     }
 
@@ -273,7 +272,6 @@ public class ItemServiceTests : IDisposable
         await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
         await _builder.AddItemImageHandoutAsync(_builder.CampaignId, item.Id);
         await _builder.PlayAsync(sceneId, status);
-        _builder.ItemHolders.Calls.Clear();
 
         var outcome = await DeleteAsync(item.Id);
 
@@ -281,7 +279,6 @@ public class ItemServiceTests : IDisposable
         Assert.Equal(1, await _builder.StoredItemCountAsync());
         Assert.Equal(1, await _builder.StoredItemLinkCountAsync());
         Assert.Empty(_builder.FileStore.DeletedKeys);
-        Assert.Empty(_builder.ItemHolders.Calls);
     }
 
     [Fact]
@@ -301,33 +298,32 @@ public class ItemServiceTests : IDisposable
     public async Task Given_a_held_Item_When_deleting_Then_it_is_refused_as_held_and_unchanged()
     {
         var item = await _builder.CreateItemAsync(_builder.CampaignId);
-        _builder.ItemHolders.Hold(item.Id, Guid.NewGuid());
+        await _builder.HoldItemAsync(item.Id, Guid.NewGuid());
 
         var outcome = await DeleteAsync(item.Id);
 
         Assert.Equal(ItemDeleteOutcome.Held, outcome);
-        Assert.Equal((_builder.CampaignId, item.Id), Assert.Single(_builder.ItemHolders.Calls));
         Assert.Equal(Fields(item), Fields(await _builder.GetItemAsync(_builder.CampaignId, item.Id)));
     }
 
     [Fact]
-    public async Task Given_an_Item_both_played_and_held_When_deleting_Then_the_played_Scene_is_reported_first()
+    public async Task Given_an_Item_both_played_and_held_When_deleting_Then_the_holder_is_reported_first()
     {
         var (scenarioId, sceneId) = await SceneAsync();
         var item = await _builder.CreateItemAsync(_builder.CampaignId);
         await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
         await _builder.PlayAsync(sceneId, SceneStatus.Active);
-        _builder.ItemHolders.Hold(item.Id, Guid.NewGuid());
+        await _builder.HoldItemAsync(item.Id, Guid.NewGuid());
 
-        Assert.Equal(ItemDeleteOutcome.LinkedToPlayedScene, await DeleteAsync(item.Id));
+        Assert.Equal(ItemDeleteOutcome.Held, await DeleteAsync(item.Id));
     }
 
     [Fact]
-    public async Task Given_a_held_Item_When_getting_it_Then_the_holder_is_read_through_the_port()
+    public async Task Given_a_held_Item_When_getting_it_Then_the_holder_comes_from_the_Item()
     {
         var item = await _builder.CreateItemAsync(_builder.CampaignId);
         var investigatorId = Guid.NewGuid();
-        _builder.ItemHolders.Hold(item.Id, investigatorId);
+        await _builder.HoldItemAsync(item.Id, investigatorId);
 
         var view = await _builder.GetItemAsync(_builder.CampaignId, item.Id);
 

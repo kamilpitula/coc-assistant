@@ -125,7 +125,9 @@ test.describe('Revealing to Investigators', () => {
         await expect(dialog).toBeHidden()
         await expect(pageStatus(page)).toHaveText(`${PLAN} revealed to ${HARVEY} and ${LUCY}. Moved to Revealed.`)
         await expect(page.getByRole('region', { name: 'Handouts' }).getByText(PLAN, { exact: true })).toHaveCount(0)
-        await expect(page.getByRole('link', { name: 'To reveal, 3' })).toBeVisible()
+        // The plan is fully revealed, so 5 subjects stay: the partly revealed front door, the 2 Non-Player Entities,
+        // the diary Item, and its Player-facing Handout (specs/scene-play/ux.md section 22.1).
+        await expect(page.getByRole('link', { name: 'To reveal, 5' })).toBeVisible()
         await expect(page.getByRole('link', { name: 'Revealed, 1' })).toBeVisible()
         const lucyArticles = revealedToSection(table.lucy.page, LUCY).getByRole('article')
         await expect(lucyArticles.getByRole('heading', { level: 3 })).toHaveText([PLAN])
@@ -407,7 +409,9 @@ test.describe('Clues', () => {
         await harveyPage.goto(`/campaigns/${campaignId}/investigator/clues`)
         await expect(harveyPage.getByRole('heading', { level: 1, name: `${HARVEY}'s Clues` })).toBeVisible()
         await expect(harveyPage.getByText(`Everything ${HARVEY} received from the Keeper, newest first.`)).toBeVisible()
-        await expect(harveyPage.getByRole('heading', { level: 2 })).toHaveText([PREPARED.secondSceneTitle, PREPARED.firstSceneTitle])
+        // The Clues page renders the Items section above the per-Scene groups, newest Scene first
+        // (specs/scene-play/ux.md sections 15 and 22.7).
+        await expect(harveyPage.getByRole('heading', { level: 2 })).toHaveText([`Items ${HARVEY} holds`, PREPARED.secondSceneTitle, PREPARED.firstSceneTitle])
         const corbitt = harveyPage.getByRole('region', { name: PREPARED.firstSceneTitle, exact: true })
         await expect(corbitt.getByRole('heading', { level: 3 })).toHaveText([PLAN, FRONT_DOOR])
       })

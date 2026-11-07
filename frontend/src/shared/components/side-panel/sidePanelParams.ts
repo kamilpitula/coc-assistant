@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 /** The panel types of specs/navigation/ux.md section 3: the only values a host route accepts in `panel`. */
-export const PANEL_TYPES = ['clues', 'entity', 'handout', 'reveal'] as const
+export const PANEL_TYPES = ['clues', 'entity', 'handout', 'reveal', 'item'] as const
 
 export type PanelType = (typeof PANEL_TYPES)[number]
 
@@ -15,6 +15,7 @@ export const sidePanelSearchSchema = z.object({
   link: z.string().optional().catch(undefined),
   handout: z.string().optional().catch(undefined),
   reveal: z.string().optional().catch(undefined),
+  item: z.string().optional().catch(undefined),
 })
 
 export type SidePanelSearch = z.infer<typeof sidePanelSearchSchema>
@@ -25,21 +26,29 @@ export type OpenPanel =
   | { type: 'entity'; linkId: string }
   | { type: 'handout'; handoutId: string }
   | { type: 'reveal'; revealId: string }
+  | { type: 'item'; itemId: string }
 
 /** The panel the search params describe, or null when they are incomplete or unknown (which opens no panel, silently). */
 export function toOpenPanel(search: SidePanelSearch): OpenPanel | null {
   switch (search.panel) {
     case 'clues':
-      return search.investigator === undefined ? { type: 'clues' } : { type: 'clues', investigatorId: search.investigator }
+      return cluesPanelOf(search.investigator)
     case 'entity':
       return search.link === undefined ? null : { type: 'entity', linkId: search.link }
     case 'handout':
       return search.handout === undefined ? null : { type: 'handout', handoutId: search.handout }
     case 'reveal':
       return search.reveal === undefined ? null : { type: 'reveal', revealId: search.reveal }
+    case 'item':
+      return search.item === undefined ? null : { type: 'item', itemId: search.item }
     default:
       return null
   }
+}
+
+/** The Clues panel: the Player's own Clues, or one Investigator's Clues for the Keeper. */
+function cluesPanelOf(investigator: string | undefined): OpenPanel {
+  return investigator === undefined ? { type: 'clues' } : { type: 'clues', investigatorId: investigator }
 }
 
 /** The search params that open the panel, carrying identifiers only. */
@@ -53,5 +62,7 @@ export function toPanelSearch(panel: OpenPanel): Record<string, string> {
       return { panel: 'handout', handout: panel.handoutId }
     case 'reveal':
       return { panel: 'reveal', reveal: panel.revealId }
+    case 'item':
+      return { panel: 'item', item: panel.itemId }
   }
 }

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 
 import { useRevealToInvestigators } from '@/scene-play/hooks/useReveals'
-import { RevealInvestigatorsRefusedError, RevealSceneFinishedError, RevealSubjectRefusedError } from '@/scene-play/services/revealApi'
+import { RevealConflictError, RevealInvestigatorsRefusedError, RevealSceneFinishedError, RevealSubjectRefusedError } from '@/scene-play/services/revealApi'
 import { joinNames } from '@/scene-play/services/revealPresentation'
 import type { InvestigatorPresent } from '@/scene-play/types/ActiveScene'
 import type { RevealSubjectType } from '@/scene-play/types/Reveal'
@@ -24,6 +24,9 @@ export const REVEAL_REFUSALS = {
 
 export const revealFailureMessage = (title: string): string => `We couldn't reveal ${title}. Try again.`
 
+/** A lost write, mirroring the give-conflict wording (specs/scene-play/ux.md sections 21.7 and 22.3). */
+export const revealConflictMessage = (title: string): string => `${title} wasn't revealed: the Scene or the Item changed meanwhile.`
+
 /** The message the dialog shows for a failed Reveal, or null when there is no error. */
 export function revealRefusalFor(error: unknown, title: string): string | null {
   if (!error) {
@@ -31,6 +34,9 @@ export function revealRefusalFor(error: unknown, title: string): string | null {
   }
   if (error instanceof RevealSceneFinishedError) {
     return REVEAL_REFUSALS.finished
+  }
+  if (error instanceof RevealConflictError) {
+    return revealConflictMessage(title)
   }
   if (error instanceof RevealSubjectRefusedError) {
     return REVEAL_REFUSALS.subject
@@ -57,8 +63,8 @@ export interface RevealOpenContext {
 
 /**
  * The Keeper's reveal dialog flow (specs/scene-play/ux.md sections 13 and 21.7): which subject is being revealed, the Reveal in flight, the
- * refusal to show, and where focus goes when the dialog closes. A 409 leads to the no-Active-Scene state when the dialog is closed;
- * a 400 refetches the Scene and keeps the dialog open.
+ * refusal to show, and where focus goes when the dialog closes. A finished-scene 409 leads to the no-Active-Scene state when the dialog
+ * is closed; a 400 or a lost-write 409 refetches the Scene and keeps the dialog open.
  */
 export function useRevealFlow(campaignId: string, present: InvestigatorPresent[] = [], callbacks: RevealFlowCallbacks) {
   const reveal = useRevealToInvestigators(campaignId)
@@ -98,7 +104,7 @@ export function useRevealFlow(campaignId: string, present: InvestigatorPresent[]
           callbacks.onRevealed(completed ? `${target.title} revealed to ${names}. Moved to Revealed.` : `${target.title} revealed to ${names}.`)
         },
         onError: (error) => {
-          if (error instanceof RevealSubjectRefusedError || error instanceof RevealInvestigatorsRefusedError) {
+          if (error instanceof RevealSubjectRefusedError || error instanceof RevealInvestigatorsRefusedError || error instanceof RevealConflictError) {
             callbacks.onRefetch()
           }
         },

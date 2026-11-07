@@ -12,5 +12,6 @@ public enum CampaignDataTopic
     MyInvestigator,
     ActiveScene,
     MyClues,
+    MyItems,
     SceneReveals,
 }

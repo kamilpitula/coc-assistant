@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cluesQueryKeys, getInvestigatorClues, getMyClues } from './cluesApi'
 import {
   getRevealFile,
+  RevealConflictError,
   RevealFileNotFoundError,
   RevealInvestigatorsRefusedError,
   revealQueryKeys,
@@ -95,6 +96,17 @@ describe('reveal API', () => {
 
       fetchMock.mockResolvedValueOnce(jsonResponse(400, { errors: { investigatorIds: ['x'] } }))
       await expect(revealToInvestigators('token', 'c1', input)).rejects.toBeInstanceOf(RevealInvestigatorsRefusedError)
+    })
+
+    it('tells a lost write from a finished Scene: the race title is a conflict, any other 409 is finished', async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(409, { title: 'Another change won the race. Fetch again and try again.' }))
+      await expect(revealToInvestigators('token', 'c1', input)).rejects.toBeInstanceOf(RevealConflictError)
+
+      fetchMock.mockResolvedValueOnce(jsonResponse(409, { title: 'No Scene is Active.' }))
+      await expect(revealToInvestigators('token', 'c1', input)).rejects.toBeInstanceOf(RevealSceneFinishedError)
+
+      fetchMock.mockResolvedValueOnce(jsonResponse(409))
+      await expect(revealToInvestigators('token', 'c1', input)).rejects.toBeInstanceOf(RevealSceneFinishedError)
     })
 
     it('treats any other failure as a plain error', async () => {

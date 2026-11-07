@@ -2,9 +2,10 @@ namespace CocAssistant.ScenarioPreparation.Domain;
 
 /// <summary>
 /// A Campaign's Item (CONTEXT.md, Item): a name that Players see, a required Player-facing rich-text description, optional
-/// Keeper notes, and its own ordered Handouts. It stores its Campaign id only (ADR 0013) and has no holder: who holds an Item is
-/// owned by Scene Play and read through a port (ADR 0022). The Item and its Handouts stay editable whatever the status of the
-/// Scenes that link it; whether the Item is in play only restricts deleting a Handout and deleting a replaced file.
+/// Keeper notes, and its own ordered Handouts. It stores its Campaign id only (ADR 0013). The Investigator who holds it is
+/// stored on the Item and changes only through Scenario Preparation's provider service, which Scene Play calls (ADR 0029).
+/// The Item and its Handouts stay editable whatever the status of the Scenes that link it; whether the Item is in play only
+/// restricts deleting a Handout and deleting a replaced file.
 /// </summary>
 public class Item
 {
@@ -25,6 +26,15 @@ public class Item
     public string? KeeperNotes { get; private set; }
 
     public DateTimeOffset CreatedAt { get; private set; }
+
+    /// <summary>The Investigator who holds the Item, or null when no one does. The Investigator id has no foreign key (ADR 0013).</summary>
+    public Guid? HolderInvestigatorId { get; private set; }
+
+    /// <summary>The give Reveal that set the holder; null when no one holds it. A Player sees the held Item as it was when given.</summary>
+    public Guid? HolderRevealId { get; private set; }
+
+    /// <summary>The optimistic concurrency token (ADR 0029). Every holder change and every play-usage write increments it.</summary>
+    public int Version { get; private set; }
 
     /// <summary>The Handouts in the Item's order: Position, then CreatedAt, then Id (ADR 0014).</summary>
     public IReadOnlyList<Handout> Handouts => HandoutCollection.InOrder(_handouts);
@@ -82,14 +92,57 @@ public class Item
 
     /// <summary>
     /// Replaces a file Handout's fields and, when one is given, its file. While the Item is in play the replaced key is not
-    /// returned, so the old stored file is kept (ADR 0022).
+    /// returned, so the old stored file is kept (ADR 0022). A returned replaced key also increments the version (ADR 0029).
     /// </summary>
-    public HandoutFileEditResult EditFileHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, bool isInPlay, string? imageDescription = null) =>
-        HandoutCollection.EditFile(_handouts, handoutId, kind, visibility, title, file, imageDescription, mayDeleteReplacedFile: !isInPlay);
+    public HandoutFileEditResult EditFileHandout(Guid handoutId, HandoutKind? kind, HandoutVisibility? visibility, string title, HandoutFile? file, bool isInPlay, string? imageDescription = null)
+    {
+        var result = HandoutCollection.EditFile(_handouts, handoutId, kind, visibility, title, file, imageDescription, mayDeleteReplacedFile: !isInPlay);
+        if (result.ReplacedKey is not null)
+        {
+            Version++;
+        }
 
-    /// <summary>Removes a Handout only while the Item is not in play; that is checked before the Handout, so an unknown id is still refused.</summary>
-    public HandoutRemovalOutcome RemoveHandout(Guid handoutId, bool isInPlay) =>
-        isInPlay ? HandoutRemovalOutcome.ItemInPlay : HandoutCollection.Remove(_handouts, handoutId);
+        return result;
+    }
+
+    /// <summary>Removes a Handout only while the Item is not in play; that is checked before the Handout, so an unknown id is still refused. A removal increments the version (ADR 0029).</summary>
+    public HandoutRemovalOutcome RemoveHandout(Guid handoutId, bool isInPlay)
+    {
+        var outcome = isInPlay ? HandoutRemovalOutcome.ItemInPlay : HandoutCollection.Remove(_handouts, handoutId);
+        if (outcome == HandoutRemovalOutcome.Removed)
+        {
+            Version++;
+        }
+
+        return outcome;
+    }
+
+    /// <summary>
+    /// Gives the Item to an Investigator and records the give Reveal's id, returning the former holder, if any. Only
+    /// <see cref="CocAssistant.ScenarioPreparation.Domain.Scene.GiveItem"/> calls it, after the Scene checked the give.
+    /// </summary>
+    internal Guid? GiveTo(Guid investigatorId, Guid revealId)
+    {
+        var formerHolder = HolderInvestigatorId;
+        HolderInvestigatorId = investigatorId;
+        HolderRevealId = revealId;
+        Version++;
+        return formerHolder;
+    }
+
+    /// <summary>
+    /// Takes the Item back: no one holds it and the give Reveal is forgotten, but the Reveal itself stays, so the former
+    /// holder keeps the Clue (specs/scene-play/spec.md). Only the provider service calls it.
+    /// </summary>
+    internal void TakeBack()
+    {
+        HolderInvestigatorId = null;
+        HolderRevealId = null;
+        Version++;
+    }
+
+    /// <summary>Marks the Item in play after a Reveal of the Item or of one of its Handouts (ADR 0029).</summary>
+    internal void MarkInPlay() => Version++;
 
     /// <summary>Renumbers the Handouts 1..n to the requested order (ADR 0014). All or nothing.</summary>
     public HandoutOrderOutcome ReorderHandouts(IReadOnlyList<Guid> handoutIds) => HandoutCollection.Reorder(_handouts, handoutIds);

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
+import { itemQueryKeys } from '@/scenario-preparation/services/itemApi'
 import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
 import { activeSceneQueryKeys } from '@/scene-play/services/activeSceneApi'
 import { cluesQueryKeys } from '@/scene-play/services/cluesApi'
+import { heldItemsQueryKeys } from '@/scene-play/services/itemHolderApi'
 
 import { campaignQueryKeys } from './campaignApi'
 import { queryKeysForTopics } from './liveTopics'
@@ -43,7 +45,17 @@ describe('queryKeysForTopics', () => {
   })
 
   it('refetches the Active Scene and every Keeper Clues query for the sceneReveals topic', () => {
-    expect(queryKeysForTopics('c1', ['sceneReveals'])).toEqual([activeSceneQueryKeys.detail('c1'), cluesQueryKeys.investigators('c1')])
+    expect(queryKeysForTopics('c1', ['sceneReveals'])).toEqual([
+      activeSceneQueryKeys.detail('c1'),
+      cluesQueryKeys.investigators('c1'),
+      sceneQueryKeys.inCampaign('c1'),
+      itemQueryKeys.all('c1'),
+      heldItemsQueryKeys.all('c1'),
+    ])
+  })
+
+  it('refetches the own held Items for the myItems topic, and nothing else (PBI-SPL-003)', () => {
+    expect(queryKeysForTopics('c1', ['myItems'])).toEqual([heldItemsQueryKeys.mine('c1')])
   })
 
   it('ignores topics this client does not know yet, so a newer server never breaks it', () => {

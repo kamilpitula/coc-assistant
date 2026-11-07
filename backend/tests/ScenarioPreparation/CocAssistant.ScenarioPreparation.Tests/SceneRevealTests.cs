@@ -51,13 +51,13 @@ public class SceneRevealTests
     }
 
     [Fact]
-    public void Given_an_item_subject_When_revealing_Then_it_is_not_revealable_even_when_the_recipients_are_invalid()
+    public void Given_an_Item_not_linked_to_the_Active_Scene_When_revealing_Then_the_subject_is_not_found_even_when_the_recipients_are_invalid()
     {
         var scene = ActiveScene();
 
         var result = scene.Reveal(new RevealSubject(RevealSubjectType.Item, Guid.NewGuid()), [], Now);
 
-        Assert.Equal(RevealOutcome.SubjectNotRevealable, result.Outcome);
+        Assert.Equal(RevealOutcome.SubjectNotFound, result.Outcome);
     }
 
     [Fact]

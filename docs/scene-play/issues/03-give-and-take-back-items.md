@@ -1,6 +1,6 @@
 ---
 id: PBI-SPL-003
-status: todo
+status: done
 blocked_by: [PBI-SPL-001, PBI-SP-008, PBI-SPL-006]
 ---
 
@@ -27,11 +27,12 @@ Read: `specs/scene-play/spec.md`
 Read: `CONTEXT.md` (Item, Reveal, Clue).
 
 ## Verification
-- [ ] The Keeper can give an Item to an Approved Investigator and take it back; only the Keeper can.
-- [ ] The holder's Player sees the Item among their Investigator's Items and Clues, and keeps the Clue after it is taken back.
-- [ ] Unit, integration, and E2E tests cover holder changes, live updates, and authorization.
+- [x] The Keeper can give an Item to an Approved Investigator and take it back; only the Keeper can.
+- [x] The holder's Player sees the Item among their Investigator's Items and Clues, and keeps the Clue after it is taken back.
+- [x] Unit, integration, and E2E tests cover holder changes, live updates, and authorization.
 
 ## Refinement Protocol
 Before implementation, decide and record in the spec whether giving or taking back an Item requires an Active Scene and an Investigator present; the grilling session on 2026-10-17 left this open.
+- Resolved 2026-11-06: giving needs an Active Scene that links the Item and the Investigator present; taking back needs neither. See `specs/scene-play/spec.md`, Constraints, and the [design record](03-give-and-take-back-items.design.md).
 
 ## Follow-ups

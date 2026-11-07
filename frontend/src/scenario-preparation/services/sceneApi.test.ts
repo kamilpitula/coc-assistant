@@ -33,7 +33,7 @@ const link = {
   playerFacingName: 'A shape in the cellar',
   playerFacingDescription: notes,
 }
-const itemLink = { id: 'i1', item: { id: 'k1', name: "Walter Corbitt's diary" } }
+const itemLink = { id: 'i1', item: { id: 'k1', name: "Walter Corbitt's diary", holder: null, handouts: [] } }
 const handoutSummary = { id: 'h1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door' }
 const detail = { ...summary, location: 'Arkham', keeperNotes: notes, nonPlayerEntityLinks: [link], itemLinks: [itemLink], handouts: [handoutSummary] }
 
@@ -112,7 +112,7 @@ describe('scene API', () => {
     })
 
     it('returns the Item links in the order sent, each as the Item id and its live name', async () => {
-      const second = { id: 'i2', item: { id: 'k2', name: 'The cellar key' } }
+      const second = { id: 'i2', item: { id: 'k2', name: 'The cellar key', holder: null, handouts: [] } }
       fetchMock.mockResolvedValue(jsonResponse(200, { ...detail, itemLinks: [itemLink, second] }))
 
       const scene = await getScene('token', 'c1', 's1', 'a1')

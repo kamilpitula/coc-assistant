@@ -89,6 +89,12 @@ describe('Item API', () => {
       expect(fetchMock.mock.calls[0][0]).toBe(`${baseUrl}/k1`)
     })
 
+    it('accepts a holder naming its Investigator (PBI-SPL-003)', async () => {
+      fetchMock.mockResolvedValue(jsonResponse(200, { ...item, holder: { investigatorId: 'i1' } }))
+
+      expect(await getItem('token', 'c1', 'k1')).toEqual({ ...item, holder: { investigatorId: 'i1' } })
+    })
+
     it('returns null on 404 and fails on any other status', async () => {
       fetchMock.mockResolvedValueOnce(jsonResponse(404))
       expect(await getItem('token', 'c1', 'k1')).toBeNull()
@@ -97,13 +103,14 @@ describe('Item API', () => {
       await expect(getItem('token', 'c1', 'k1')).rejects.toThrow('Failed to load the Item (500)')
     })
 
-    it('rejects a field beyond the contract, a Scene without its Scenario, a holder, and a Handout with content', async () => {
+    it('rejects a field beyond the contract, a Scene without its Scenario, and a Handout with content', async () => {
       for (const body of [
         { ...item, position: 1 },
         { ...item, scenes: [{ ...scene, scenarioTitle: undefined }] },
         { ...item, scenes: [{ ...scene, position: 2 }] },
         { ...item, scenes: [{ ...scene, status: 'Done' }] },
-        { ...item, holder: { investigatorId: 'i1' } },
+        { ...item, holder: { investigatorId: 'i1', name: 'Harvey Walters' } },
+        { ...item, holder: { investigator: 'i1' } },
         { ...item, handouts: [{ ...handout, content: description }] },
         { ...item, playerFacingDescription: null },
       ]) {

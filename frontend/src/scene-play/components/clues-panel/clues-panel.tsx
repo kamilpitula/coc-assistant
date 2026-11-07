@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
 
 import { CluesList } from '@/scene-play/components/clues-list/clues-list'
+import { HeldItemsSection } from '@/scene-play/components/held-items-section/held-items-section'
 import { useCluesRead } from '@/scene-play/hooks/useCluesRead'
 import { UNNAMED_INVESTIGATOR } from '@/scene-play/services/revealPresentation'
 import { SidePanelContent } from '@/shared/components/side-panel/side-panel-content'
@@ -52,6 +53,7 @@ export function CluesPanel({ campaignId, investigatorId }: CluesPanelProps) {
       }
     >
       <HeadingOffsetProvider value={1}>
+        <HeldItemsSection campaignId={campaignId} investigatorId={investigatorId} />
         <CluesList campaignId={campaignId} clues={query.data} />
       </HeadingOffsetProvider>
     </SidePanelContent>

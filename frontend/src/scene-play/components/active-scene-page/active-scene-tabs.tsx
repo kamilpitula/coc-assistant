@@ -13,18 +13,18 @@ export function RunTab() {
   return <RunView campaignId={campaignId} scene={scene} onPresentSaved={onPresentSaved} onFinishedMeanwhile={onFinishedMeanwhile} />
 }
 
-/** The "To reveal" sub-tab body (specs/scene-play/ux.md section 21.4). */
+/** The "To reveal" sub-tab body (specs/scene-play/ux.md sections 21.4 and 22.1). */
 export function ToRevealTab() {
-  const { campaignId, scene, onReveal } = useActiveSceneTab()
+  const { campaignId, scene, onReveal, onGive } = useActiveSceneTab()
 
-  return <ToRevealSection campaignId={campaignId} scene={scene} onReveal={onReveal} />
+  return <ToRevealSection campaignId={campaignId} scene={scene} onReveal={onReveal} onGive={onGive} />
 }
 
-/** The "Keeper reference" sub-tab body (specs/scene-play/ux.md section 21.5). */
+/** The "Keeper reference" sub-tab body (specs/scene-play/ux.md sections 21.5 and 22.2). */
 export function ReferenceTab() {
-  const { campaignId, scene } = useActiveSceneTab()
+  const { campaignId, scene, onGive, onTakeBack } = useActiveSceneTab()
 
-  return <KeeperReferenceSection campaignId={campaignId} scene={scene} />
+  return <KeeperReferenceSection campaignId={campaignId} scene={scene} onGive={onGive} onTakeBack={onTakeBack} />
 }
 
 /** The "Revealed" sub-tab body (specs/scene-play/ux.md section 21.6): only fully revealed subjects. */

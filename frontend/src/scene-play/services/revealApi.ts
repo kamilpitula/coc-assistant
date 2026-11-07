@@ -16,6 +16,14 @@ export class RevealSceneFinishedError extends Error {
   }
 }
 
+/** The API answered 409 to a reveal: another change won the race; fetch again and try again. */
+export class RevealConflictError extends Error {
+  constructor() {
+    super('Another change won the race. Fetch again and try again.')
+    this.name = 'RevealConflictError'
+  }
+}
+
 /** The API answered 400 at the subject: it is not on the Active Scene, is Keeper-facing, or cannot be revealed. */
 export class RevealSubjectRefusedError extends Error {
   constructor() {
@@ -40,9 +48,12 @@ export class RevealFileNotFoundError extends Error {
   }
 }
 
+const REVEAL_CONFLICT_TITLE = 'Another change won the race. Fetch again and try again.'
+
 async function failReveal(response: Response): Promise<never> {
   if (response.status === 409) {
-    throw new RevealSceneFinishedError()
+    const problem: unknown = await response.json().catch(() => null)
+    throw (problem as { title?: string } | null)?.title === REVEAL_CONFLICT_TITLE ? new RevealConflictError() : new RevealSceneFinishedError()
   }
   if (response.status === 400) {
     const paths = (await readValidationProblems(response)).map((problem) => problem.path)

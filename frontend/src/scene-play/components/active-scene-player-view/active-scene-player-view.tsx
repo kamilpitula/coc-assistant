@@ -1,6 +1,7 @@
 import type { Ref } from 'react'
 
 import { RevealedToSection } from '@/scene-play/components/revealed-to-section/revealed-to-section'
+import { HeldItemsSection } from '@/scene-play/components/held-items-section/held-items-section'
 import type { AbsentPlayerActiveScene, PresentPlayerActiveScene } from '@/scene-play/types/ActiveScene'
 
 interface ActiveScenePlayerViewProps {
@@ -53,6 +54,7 @@ export function ActiveScenePlayerView({ campaignId, scene, headingRef }: ActiveS
         </ul>
       </section>
       <RevealedToSection campaignId={campaignId} investigatorName={yourName} reveals={scene.reveals} />
+      <HeldItemsSection campaignId={campaignId} shortTime />
     </div>
   )
 }

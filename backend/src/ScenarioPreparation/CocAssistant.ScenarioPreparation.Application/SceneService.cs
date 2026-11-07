@@ -12,7 +12,7 @@ public class SceneService
     private readonly IScenarioRepository _scenarios;
     private readonly ISceneRepository _scenes;
     private readonly INonPlayerEntityDirectory _directory;
-    private readonly IItemDirectory _itemDirectory;
+    private readonly IItemRepository _items;
     private readonly IHandoutFileStore _fileStore;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<SceneService> _logger;
@@ -22,7 +22,7 @@ public class SceneService
         IScenarioRepository scenarios,
         ISceneRepository scenes,
         INonPlayerEntityDirectory directory,
-        IItemDirectory itemDirectory,
+        IItemRepository items,
         IHandoutFileStore fileStore,
         TimeProvider timeProvider,
         ILogger<SceneService> logger)
@@ -31,7 +31,7 @@ public class SceneService
         _scenarios = scenarios;
         _scenes = scenes;
         _directory = directory;
-        _itemDirectory = itemDirectory;
+        _items = items;
         _fileStore = fileStore;
         _timeProvider = timeProvider;
         _logger = logger;
@@ -227,7 +227,7 @@ public class SceneService
             : await _directory.ListForCampaignAsync(scene.CampaignId, cancellationToken);
         var items = scene.ItemLinks.Count == 0
             ? []
-            : await _itemDirectory.ListForCampaignAsync(scene.CampaignId, cancellationToken);
+            : await _items.ListLinkedForSceneAsync(scene.CampaignId, scene.Id, cancellationToken);
         return ToDetail(scene, NonPlayerEntityLinkViews.Create(scene.NonPlayerEntityLinks, entities), ItemLinkViews.Create(scene.ItemLinks, items));
     }
 

@@ -1,8 +1,8 @@
 namespace CocAssistant.ScenePlay.Application;
 
 /// <summary>
-/// What a Reveal shows. An Item is refused until PBI-SPL-003 (PBI-SPL-002 D5). Unknown is a type the request did not name or does not
-/// exist; it is refused like an Item, but only after the Active Scene check, and never reaches the provider.
+/// What a Reveal shows. Unknown is a type the request did not name or does not exist; it is refused after the Active Scene check
+/// and never reaches the provider.
 /// </summary>
 public enum RevealSubjectKind
 {
@@ -34,7 +34,7 @@ public sealed record ClueRecord(SceneRevealRecord Reveal, Guid SceneId, string S
 /// <summary>The snapshotted file of a Reveal with its blob key and the Investigators the Reveal reached.</summary>
 public sealed record RevealFileRecord(string FileKey, string Name, string MediaType, long SizeBytes, IReadOnlyList<Guid> RecipientIds);
 
-/// <summary>How revealing ended in the provider; the refusals are the domain's, in its order.</summary>
+/// <summary>How revealing ended in the provider; the refusals are the domain's, in its order. Conflict is a write that won the race after the read.</summary>
 public enum RevealOutcome
 {
     Revealed,
@@ -45,6 +45,7 @@ public enum RevealOutcome
     NoRecipient,
     DuplicateRecipient,
     RecipientNotPresent,
+    Conflict,
 }
 
 /// <summary>The Reveal when <see cref="RevealOutcome.Revealed"/>, otherwise null.</summary>

@@ -42,9 +42,31 @@ public class ItemLinkServiceTests : IDisposable
         var result = await LinkAsync(scenarioId, sceneId, item.Id);
 
         Assert.Equal(ItemLinkWriteOutcome.Linked, result.Outcome);
-        Assert.Equal(new ItemReference(item.Id, "Walter Corbitt's diary"), result.Link!.Item);
+        Assert.Equal((item.Id, "Walter Corbitt's diary", null), (result.Link!.Item.Id, result.Link.Item.Name, result.Link.Item.Holder));
+        Assert.Empty(result.Link.Item.Handouts);
         var listed = Assert.Single((await _builder.GetSceneAsync(_builder.CampaignId, scenarioId, sceneId))!.ItemLinks);
-        Assert.Equal(result.Link, listed);
+        Assert.Equal((result.Link!.Id, result.Link.Item.Id), (listed.Id, listed.Item.Id));
+    }
+
+    [Fact]
+    public async Task Given_a_held_Item_with_Handouts_When_reading_the_Scene_Then_the_link_carries_the_holder_and_the_Handouts()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var item = await _builder.CreateItemAsync(_builder.CampaignId);
+        var handout = await _builder.AddItemHandoutAsync(_builder.CampaignId, item.Id);
+        await LinkAsync(scenarioId, sceneId, item.Id);
+        await _builder.PlayAsync(sceneId, SceneStatus.Active);
+        using (var context = _builder.Fixture.CreateContext())
+        {
+            var given = await new ItemHolderCommandService(new EfSceneRepository(context), new EfItemRepository(context), _builder.TimeProvider)
+                .GiveAsync(_builder.CampaignId, item.Id, SceneStartExtensions.Harvey, CancellationToken.None);
+            Assert.Equal(ItemGiveOutcome.Given, given.Outcome);
+        }
+
+        var link = Assert.Single((await _builder.GetSceneAsync(_builder.CampaignId, scenarioId, sceneId))!.ItemLinks);
+
+        Assert.Equal(new ItemHolder(SceneStartExtensions.Harvey), link.Item.Holder);
+        Assert.Equal(handout.Id, Assert.Single(link.Item.Handouts).Id);
     }
 
     [Fact]
@@ -57,7 +79,7 @@ public class ItemLinkServiceTests : IDisposable
         var again = await LinkAsync(scenarioId, sceneId, item.Id);
 
         Assert.Equal(ItemLinkWriteOutcome.AlreadyLinked, again.Outcome);
-        Assert.Equal(first.Link, again.Link);
+        Assert.Equal((first.Link!.Id, first.Link.Item.Id), (again.Link!.Id, again.Link.Item.Id));
         Assert.Equal(1, await _builder.StoredItemLinkCountAsync());
     }
 
@@ -74,7 +96,7 @@ public class ItemLinkServiceTests : IDisposable
         var result = await LinkAsync(scenarioId, sceneId, item.Id, repository: racing);
 
         Assert.Equal(ItemLinkWriteOutcome.AlreadyLinked, result.Outcome);
-        Assert.Equal(winner, result.Link);
+        Assert.Equal((winner!.Id, winner.Item.Id), (result.Link!.Id, result.Link.Item.Id));
         Assert.Equal(1, await _builder.StoredItemLinkCountAsync());
     }
 
@@ -129,8 +151,8 @@ public class ItemLinkServiceTests : IDisposable
         };
         using var context = _builder.Fixture.CreateContext();
         var recording = new RecordingSceneRepository(new EfSceneRepository(context));
-        var directory = new RecordingItemDirectory(new EfItemDirectory(context));
-        var service = new ItemLinkService(_builder.Keepers, recording, directory, _builder.TimeProvider);
+        var items = new RecordingItemRepository(new EfItemRepository(context));
+        var service = new ItemLinkService(_builder.Keepers, recording, items, _builder.TimeProvider);
 
         var linked = await service.LinkAsync(campaignId, accountId, scenarioId, sceneId, item.Id, CancellationToken.None);
         var unlinked = await service.UnlinkAsync(campaignId, accountId, scenarioId, sceneId, link.Id, CancellationToken.None);
@@ -138,7 +160,7 @@ public class ItemLinkServiceTests : IDisposable
         Assert.Equal(ItemLinkWriteOutcome.NotFound, linked.Outcome);
         Assert.Equal(ItemUnlinkOutcome.NotFound, unlinked);
         Assert.Empty(recording.Calls);
-        Assert.Empty(directory.Calls);
+        Assert.Empty(items.Calls);
         Assert.Equal(1, await _builder.StoredItemLinkCountAsync());
     }
 

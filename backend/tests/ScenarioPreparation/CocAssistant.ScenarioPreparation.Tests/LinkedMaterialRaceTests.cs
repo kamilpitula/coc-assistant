@@ -118,6 +118,107 @@ public class LinkedMaterialRaceTests : IDisposable
     }
 
     [Fact]
+    public async Task Given_a_give_wins_the_race_When_deleting_an_Item_Then_the_delete_is_refused_as_held_and_the_Item_stays_held()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var item = await _builder.CreateItemAsync(_builder.CampaignId);
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
+        using var context = _builder.Fixture.CreateContext();
+        var racing = new RecordingItemRepository(new EfItemRepository(context))
+        {
+            BeforeSave = () => GiveAsync(_builder.CampaignId, sceneId, item.Id, SceneStartExtensions.Harvey),
+        };
+
+        var outcome = await _builder.CreateItemService(context, racing).DeleteAsync(_builder.CampaignId, Keeper, item.Id, CancellationToken.None);
+
+        Assert.Equal(ItemDeleteOutcome.Held, outcome);
+        Assert.Equal(1, await _builder.StoredItemCountAsync());
+        Assert.Equal(SceneStartExtensions.Harvey, (await _builder.GetItemAsync(_builder.CampaignId, item.Id))!.Holder!.InvestigatorId);
+    }
+
+    [Fact]
+    public async Task Given_an_Item_Reveal_wins_the_race_When_deleting_an_Item_Then_the_delete_is_refused_as_played_and_the_Item_stays()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var item = await _builder.CreateItemAsync(_builder.CampaignId);
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
+        using var context = _builder.Fixture.CreateContext();
+        var racing = new RecordingItemRepository(new EfItemRepository(context))
+        {
+            BeforeSave = () => RevealAsync(_builder.CampaignId, sceneId, new RevealSubject(RevealSubjectType.Item, item.Id)),
+        };
+
+        var outcome = await _builder.CreateItemService(context, racing).DeleteAsync(_builder.CampaignId, Keeper, item.Id, CancellationToken.None);
+
+        Assert.Equal(ItemDeleteOutcome.LinkedToPlayedScene, outcome);
+        Assert.Equal(1, await _builder.StoredItemCountAsync());
+    }
+
+    [Fact]
+    public async Task Given_an_Item_Handout_Reveal_wins_the_race_When_removing_the_Handout_Then_it_is_refused_as_in_play_and_the_Handout_stays()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var item = await _builder.CreateItemAsync(_builder.CampaignId);
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
+        var handout = await _builder.AddItemHandoutAsync(_builder.CampaignId, item.Id);
+        using var context = _builder.Fixture.CreateContext();
+        var racing = new RecordingItemRepository(new EfItemRepository(context))
+        {
+            BeforeSave = () => RevealAsync(_builder.CampaignId, sceneId, new RevealSubject(RevealSubjectType.Handout, handout.Id)),
+        };
+
+        var outcome = await _builder.CreateHandoutService(context, null, racing)
+            .RemoveAsync(_builder.CampaignId, Keeper, new ItemHandoutOwnerReference(item.Id), handout.Id, CancellationToken.None);
+
+        Assert.Equal(HandoutRemoveOutcome.InPlay, outcome);
+        Assert.Single((await _builder.GetItemAsync(_builder.CampaignId, item.Id))!.Handouts);
+    }
+
+    [Fact]
+    public async Task Given_an_Item_Handout_Reveal_wins_the_race_When_replacing_the_file_Then_it_is_refused_in_play_and_the_new_blob_is_deleted()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var item = await _builder.CreateItemAsync(_builder.CampaignId);
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
+        var (handout, oldKey) = await _builder.AddItemImageHandoutAsync(_builder.CampaignId, item.Id);
+        using var context = _builder.Fixture.CreateContext();
+        var racing = new RecordingItemRepository(new EfItemRepository(context))
+        {
+            BeforeSave = () => RevealAsync(_builder.CampaignId, sceneId, new RevealSubject(RevealSubjectType.Handout, handout.Id)),
+        };
+        var png = HandoutFileSamples.Png();
+
+        var result = await _builder.CreateHandoutFileService(context, null, racing).EditAsync(
+            _builder.CampaignId, Keeper, new ItemHandoutOwnerReference(item.Id), handout.Id, HandoutKind.Image, HandoutVisibility.PlayerFacing, "A photograph",
+            new HandoutUpload("new.png", png.Length, new MemoryStream(png)), null, CancellationToken.None);
+
+        Assert.Equal(HandoutWriteOutcome.InPlay, result.Outcome);
+        Assert.Equal([oldKey], _builder.FileStore.StoredKeys.ToList());
+    }
+
+    private async Task GiveAsync(Guid campaignId, Guid sceneId, Guid itemId, Guid holderId)
+    {
+        using var context = _builder.Fixture.CreateContext();
+        var scene = (await new EfSceneRepository(context).FindForPlayAsync(campaignId, sceneId, CancellationToken.None))!;
+        scene.StartWithOneInvestigator(_builder.TimeProvider.GetUtcNow());
+        var item = await context.Items.SingleAsync(candidate => candidate.Id == itemId);
+        Assert.Equal(GiveItemOutcome.Given, scene.GiveItem(item, holderId, _builder.TimeProvider.GetUtcNow()).Outcome);
+        await context.SaveChangesAsync();
+    }
+
+    private async Task RevealAsync(Guid campaignId, Guid sceneId, RevealSubject subject)
+    {
+        using var context = _builder.Fixture.CreateContext();
+        var scene = (await new EfSceneRepository(context).FindForPlayAsync(campaignId, sceneId, CancellationToken.None))!;
+        scene.StartWithOneInvestigator(_builder.TimeProvider.GetUtcNow());
+        var items = await context.Items.Include(item => item.Handouts).Where(item => item.CampaignId == campaignId).ToListAsync();
+        var result = scene.Reveal(subject, [SceneStartExtensions.Harvey], _builder.TimeProvider.GetUtcNow(), items);
+        Assert.Equal(RevealOutcome.Revealed, result.Outcome);
+        result.OwningItem!.MarkInPlay();
+        await context.SaveChangesAsync();
+    }
+
+    [Fact]
     public async Task Given_no_race_When_replacing_an_Item_Handout_file_of_an_Item_not_in_play_Then_the_replace_is_saved_and_the_old_blob_deleted()
     {
         var (scenarioId, sceneId) = await SceneAsync();

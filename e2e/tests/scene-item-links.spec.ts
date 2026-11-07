@@ -8,6 +8,7 @@ import {
   itemLinksApiUrl,
   itemPicker,
   linkItemViaUi,
+  openItemPageFromScene,
   openLinkItemPage,
   sceneItemNames,
   sceneItemSection,
@@ -92,12 +93,12 @@ test.describe('Scene Item links', () => {
       await page.getByRole('button', { name: 'Link', exact: true }).click()
       await expect(page.getByRole('status').filter({ hasText: 'The cellar key linked.' })).toBeVisible()
       await expect(sceneItemNames(page)).toHaveText(['The cellar key'])
-      await expect(sceneItemSection(page).getByRole('link', { name: 'The cellar key' })).toBeFocused()
+      await expect(sceneItemSection(page).getByRole('button', { name: 'The cellar key', exact: true })).toBeFocused()
     })
 
-    await test.step('SP-UX-97, SP-UX-107: the Item name links to its page with an Item badge, which lists the Scene (SP-UX-96)', async () => {
+    await test.step('SP-UX-97, SP-UX-107: the Item title opens its panel with an Item badge, and "Open full page" reaches its page, which lists the Scene (SP-UX-96)', async () => {
       await expect(sceneItemSection(page).getByText('Item', { exact: true })).toBeVisible()
-      await sceneItemSection(page).getByRole('link', { name: 'The cellar key' }).click()
+      await openItemPageFromScene(page, 'The cellar key')
       await expect(page).toHaveURL(new RegExp(`/campaigns/${scene.campaignId}/items/${keyId}$`))
       const scenes = page.getByRole('region', { name: 'Scenes' })
       await expect(scenes.getByRole('link', { name: 'The Corbitt House' })).toBeVisible()
@@ -254,7 +255,10 @@ test.describe('Item links of a Finished Scene', () => {
 
     await test.step('SP-UX-97 to SP-UX-99: the Item is listed and the section has no actions', async () => {
       await expect(sceneItemNames(page)).toHaveText(["Walter Corbitt's diary"])
-      await expect(sceneItemSection(page).getByRole('button')).toHaveCount(0)
+      // Since PBI-SPL-003 the listed title is a panel-opening button (specs/scenario-preparation/ux.md section 72),
+      // so the section holds that one button and no Unlink or Link an Item control.
+      await expect(sceneItemSection(page).getByRole('button', { name: "Walter Corbitt's diary", exact: true })).toBeVisible()
+      await expect(sceneItemSection(page).getByRole('button', { name: /^Unlink / })).toHaveCount(0)
       await expect(sceneItemSection(page).getByRole('link', { name: 'Link an Item' })).toHaveCount(0)
     })
   })

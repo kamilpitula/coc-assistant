@@ -11,15 +11,13 @@ public class HandoutOwnerLocator
     private readonly ISceneRepository _scenes;
     private readonly IItemRepository _items;
     private readonly IItemUsage _itemUsage;
-    private readonly IItemHolders _itemHolders;
 
-    public HandoutOwnerLocator(ICampaignKeepers keepers, ISceneRepository scenes, IItemRepository items, IItemUsage itemUsage, IItemHolders itemHolders)
+    public HandoutOwnerLocator(ICampaignKeepers keepers, ISceneRepository scenes, IItemRepository items, IItemUsage itemUsage)
     {
         _keepers = keepers;
         _scenes = scenes;
         _items = items;
         _itemUsage = itemUsage;
-        _itemHolders = itemHolders;
     }
 
     public async Task<IHandoutOwner?> FindAsync(Guid campaignId, Guid callerAccountId, HandoutOwnerReference reference, CancellationToken cancellationToken)
@@ -51,8 +49,8 @@ public class HandoutOwnerLocator
             return null;
         }
 
-        var isInPlay = await _itemUsage.IsLinkedToPlayedSceneAsync(campaignId, item.Id, cancellationToken)
-            || await _itemHolders.FindHolderAsync(campaignId, item.Id, cancellationToken) is not null;
+        var isInPlay = await _itemUsage.IsPlayedAsync(campaignId, item.Id, cancellationToken)
+            || item.HolderInvestigatorId is not null;
         var linkingPreparedScenes = isInPlay ? [] : await _scenes.ListTrackedPreparedLinkingItemAsync(campaignId, item.Id, cancellationToken);
         return new ItemHandoutOwner(item, isInPlay, linkingPreparedScenes, _items);
     }

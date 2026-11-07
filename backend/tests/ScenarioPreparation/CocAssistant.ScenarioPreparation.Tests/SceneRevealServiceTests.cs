@@ -29,10 +29,15 @@ public class SceneRevealServiceTests : IDisposable
         Assert.Equal(SceneStartOutcome.Started, result.Outcome);
     }
 
-    private async Task<SceneRevealResult> RevealAsync(RevealSubjectType type, Guid subjectId, Guid[]? recipients = null, ISceneRepository? repository = null)
+    private async Task<SceneRevealResult> RevealAsync(
+        RevealSubjectType type,
+        Guid subjectId,
+        Guid[]? recipients = null,
+        ISceneRepository? repository = null,
+        IItemRepository? items = null)
     {
         using var context = _builder.Fixture.CreateContext();
-        var service = new SceneRevealService(repository ?? new EfSceneRepository(context), _builder.TimeProvider);
+        var service = new SceneRevealService(repository ?? new EfSceneRepository(context), items ?? new EfItemRepository(context), _builder.TimeProvider);
         _builder.TimeProvider.Advance(TimeSpan.FromMinutes(1));
         return await service.RevealAsync(_builder.CampaignId, type, subjectId, recipients, CancellationToken.None);
     }
@@ -40,14 +45,14 @@ public class SceneRevealServiceTests : IDisposable
     private async Task<IReadOnlyList<ClueView>> CluesAsync(Guid investigatorId, Guid? campaignId = null)
     {
         using var context = _builder.Fixture.CreateContext();
-        return await new SceneRevealService(new EfSceneRepository(context), _builder.TimeProvider)
+        return await new SceneRevealService(new EfSceneRepository(context), new EfItemRepository(context), _builder.TimeProvider)
             .ListCluesAsync(campaignId ?? _builder.CampaignId, investigatorId, CancellationToken.None);
     }
 
     private async Task<RevealFileView?> FileOfAsync(Guid revealId, Guid? campaignId = null)
     {
         using var context = _builder.Fixture.CreateContext();
-        return await new SceneRevealService(new EfSceneRepository(context), _builder.TimeProvider)
+        return await new SceneRevealService(new EfSceneRepository(context), new EfItemRepository(context), _builder.TimeProvider)
             .FindRevealFileAsync(campaignId ?? _builder.CampaignId, revealId, CancellationToken.None);
     }
 
@@ -91,6 +96,92 @@ public class SceneRevealServiceTests : IDisposable
         var reveal = Assert.Single(stored.Reveals);
         Assert.Equal([Lucy], reveal.RecipientIds);
         Assert.Equal((handout.Title, HandoutKind.ReadAloud), (reveal.Title, reveal.HandoutKind));
+    }
+
+    [Fact]
+    public async Task Given_a_linked_Item_When_revealing_it_Then_it_is_revealed_and_marked_in_play()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var item = await _builder.CreateItemAsync(_builder.CampaignId);
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
+        await StartAsync(sceneId);
+
+        var result = await RevealAsync(RevealSubjectType.Item, item.Id, [Harvey]);
+
+        Assert.Equal(SceneRevealOutcome.Revealed, result.Outcome);
+        using var context = _builder.Fixture.CreateContext();
+        Assert.Equal(1, (await new EfItemRepository(context).FindByIdAsync(_builder.CampaignId, item.Id, CancellationToken.None))!.Version);
+    }
+
+    [Fact]
+    public async Task Given_a_Player_facing_Item_Handout_When_revealing_it_Then_the_owning_Item_is_marked_in_play()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var item = await _builder.CreateItemAsync(_builder.CampaignId);
+        var handout = await _builder.AddItemHandoutAsync(_builder.CampaignId, item.Id);
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
+        await StartAsync(sceneId);
+
+        var result = await RevealAsync(RevealSubjectType.Handout, handout.Id, [Harvey]);
+
+        Assert.Equal(SceneRevealOutcome.Revealed, result.Outcome);
+        using var context = _builder.Fixture.CreateContext();
+        Assert.Equal(1, (await new EfItemRepository(context).FindByIdAsync(_builder.CampaignId, item.Id, CancellationToken.None))!.Version);
+    }
+
+    [Fact]
+    public async Task Given_a_delete_wins_the_race_When_revealing_an_Item_Then_it_is_a_conflict_and_nothing_is_revealed()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var item = await _builder.CreateItemAsync(_builder.CampaignId);
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
+        await StartAsync(sceneId);
+        using var context = _builder.Fixture.CreateContext();
+        var racing = new RecordingSceneRepository(new EfSceneRepository(context))
+        {
+            BeforeSave = async () =>
+            {
+                using var other = _builder.Fixture.CreateContext();
+                var rival = await other.Items.SingleAsync(candidate => candidate.Id == item.Id);
+                other.Items.Remove(rival);
+                await other.SaveChangesAsync();
+            },
+        };
+
+        var result = await RevealAsync(RevealSubjectType.Item, item.Id, [Harvey], racing, new EfItemRepository(context));
+
+        Assert.Equal(SceneRevealOutcome.Conflict, result.Outcome);
+        Assert.Null(result.Reveal);
+        using var read = _builder.Fixture.CreateContext();
+        Assert.Equal(0, await read.Set<Reveal>().CountAsync());
+    }
+
+    [Fact]
+    public async Task Given_a_delete_wins_the_race_When_revealing_an_Item_Handout_Then_it_is_a_conflict_and_nothing_is_revealed()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var item = await _builder.CreateItemAsync(_builder.CampaignId);
+        var handout = await _builder.AddItemHandoutAsync(_builder.CampaignId, item.Id);
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
+        await StartAsync(sceneId);
+        using var context = _builder.Fixture.CreateContext();
+        var racing = new RecordingSceneRepository(new EfSceneRepository(context))
+        {
+            BeforeSave = async () =>
+            {
+                using var other = _builder.Fixture.CreateContext();
+                var rival = await other.Items.SingleAsync(candidate => candidate.Id == item.Id);
+                other.Items.Remove(rival);
+                await other.SaveChangesAsync();
+            },
+        };
+
+        var result = await RevealAsync(RevealSubjectType.Handout, handout.Id, [Harvey], racing, new EfItemRepository(context));
+
+        Assert.Equal(SceneRevealOutcome.Conflict, result.Outcome);
+        Assert.Null(result.Reveal);
+        using var read = _builder.Fixture.CreateContext();
+        Assert.Equal(0, await read.Set<Reveal>().CountAsync());
     }
 
     [Fact]

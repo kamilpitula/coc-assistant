@@ -1,9 +1,9 @@
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { RevealInvestigatorsRefusedError, RevealSceneFinishedError, RevealSubjectRefusedError } from '@/scene-play/services/revealApi'
+import { RevealConflictError, RevealInvestigatorsRefusedError, RevealSceneFinishedError, RevealSubjectRefusedError } from '@/scene-play/services/revealApi'
 
-import { revealFailureMessage, revealRefusalFor, REVEAL_REFUSALS, useRevealFlow, type RevealTarget } from './useRevealFlow'
+import { revealConflictMessage, revealFailureMessage, revealRefusalFor, REVEAL_REFUSALS, useRevealFlow, type RevealTarget } from './useRevealFlow'
 
 // specs/scene-play/ux.md sections 13 and 21.7; SPL-UX-21, SPL-UX-22, SPL-UX-24, SPL-UX-36, SPL-UX-43, SPL-A11Y-17.
 const { mockUseReveal, mutate, reset } = vi.hoisted(() => ({ mockUseReveal: vi.fn(), mutate: vi.fn(), reset: vi.fn() }))
@@ -22,9 +22,11 @@ describe('revealRefusalFor', () => {
 
   it('maps each refusal to its message and any other failure to the retry sentence', () => {
     expect(revealRefusalFor(new RevealSceneFinishedError(), 'X')).toBe(REVEAL_REFUSALS.finished)
+    expect(revealRefusalFor(new RevealConflictError(), 'The front door')).toBe("The front door wasn't revealed: the Scene or the Item changed meanwhile.")
     expect(revealRefusalFor(new RevealSubjectRefusedError(), 'X')).toBe(REVEAL_REFUSALS.subject)
     expect(revealRefusalFor(new RevealInvestigatorsRefusedError(), 'X')).toBe(REVEAL_REFUSALS.investigators)
     expect(revealRefusalFor(new Error('boom'), 'The front door')).toBe("We couldn't reveal The front door. Try again.")
+    expect(revealConflictMessage('X')).toBe("X wasn't revealed: the Scene or the Item changed meanwhile.")
     expect(revealFailureMessage('X')).toBe("We couldn't reveal X. Try again.")
   })
 })
@@ -101,6 +103,18 @@ describe('useRevealFlow', () => {
     act(() => result.current.confirm(['i1']))
 
     expect(callbacks.onRefetch).toHaveBeenCalledTimes(1)
+    expect(result.current.target).toEqual(target)
+  })
+
+  it('asks the page to refetch after a lost write and keeps the dialog open', () => {
+    mutate.mockImplementation((_input: unknown, handlers: { onError: (error: Error) => void }) => handlers.onError(new RevealConflictError()))
+    const { result } = setup()
+    act(() => result.current.open(target))
+
+    act(() => result.current.confirm(['i1']))
+
+    expect(callbacks.onRefetch).toHaveBeenCalledTimes(1)
+    expect(callbacks.onSceneFinished).not.toHaveBeenCalled()
     expect(result.current.target).toEqual(target)
   })
 

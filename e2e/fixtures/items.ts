@@ -75,9 +75,18 @@ export function sceneItemSection(page: Page): Locator {
   return page.getByRole('region', { name: 'Items', exact: true })
 }
 
-/** The names linked from the Scene page's Items section, in the order linked. */
+/** The Item titles listed in the Scene page's Items section, in the order linked. Since PBI-SPL-003 each title is a button that opens the Item panel (specs/scenario-preparation/ux.md section 72); the shared `item-link-{id}` title id is the contract, as with Handouts. */
 export function sceneItemNames(page: Page): Locator {
-  return sceneItemSection(page).getByRole('listitem').getByRole('link')
+  return sceneItemSection(page).locator('[id^="item-link-"]')
+}
+
+/** Opens the Item page from the Scene page that is already open: the title opens the Item panel, then "Open full page". */
+export async function openItemPageFromScene(page: Page, title: string): Promise<void> {
+  await sceneItemSection(page).getByRole('button', { name: title, exact: true }).click()
+  const panel = page.getByRole('dialog', { name: title })
+  await expect(panel).toBeVisible()
+  await panel.getByRole('link', { name: 'Open full page' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible()
 }
 
 /** The picker's fieldset. */

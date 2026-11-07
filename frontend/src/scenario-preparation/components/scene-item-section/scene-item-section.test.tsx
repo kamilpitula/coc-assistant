@@ -9,17 +9,19 @@ import { SceneItemSection } from './scene-item-section'
 
 // specs/scenario-preparation/ux.md sections 64.1 and 64.3; SP-UX-97, SP-UX-99, SP-A11Y-51, SP-A11Y-54, SP-A11Y-56.
 
-const { mockUseUnlink, unlinkMutate, unlinkReset } = vi.hoisted(() => ({
+const { mockUseUnlink, unlinkMutate, unlinkReset, mockOpen } = vi.hoisted(() => ({
   mockUseUnlink: vi.fn(),
   unlinkMutate: vi.fn(),
   unlinkReset: vi.fn(),
+  mockOpen: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/scenario-preparation/hooks/useItemLinks', () => ({ useUnlinkItem: mockUseUnlink }))
+vi.mock('@/shared/hooks/useSidePanel', () => ({ useSidePanel: () => ({ panel: null, open: mockOpen, close: vi.fn() }) }))
 
-const diary: ItemLink = { id: 'l1', item: { id: 'k1', name: "Walter Corbitt's diary" } }
-const key: ItemLink = { id: 'l2', item: { id: 'k2', name: 'The cellar key' } }
+const diary: ItemLink = { id: 'l1', item: { id: 'k1', name: "Walter Corbitt's diary", holder: null, handouts: [] } }
+const key: ItemLink = { id: 'l2', item: { id: 'k2', name: 'The cellar key', holder: null, handouts: [] } }
 
 const unlinking = (overrides: Record<string, unknown> = {}) => ({ mutate: unlinkMutate, reset: unlinkReset, isPending: false, isError: false, error: null, ...overrides })
 
@@ -43,14 +45,18 @@ describe('SceneItemSection', () => {
     expect(within(section).getByText("Players see an Item's name and description only when you reveal or give it.")).toBeInTheDocument()
   })
 
-  it('lists the Items in the order linked, each name an entry title link to its Item page with an Item badge (SP-UX-97, SP-UX-108)', () => {
+  it('lists the Items in the order linked, each name a title button opening its Item panel with an Item badge (SP-UX-97, SPL-UX-51)', async () => {
     renderSection()
 
     const items = within(screen.getByRole('list')).getAllByRole('listitem')
-    expect(items.map((item) => within(item).getAllByRole('link')[0].textContent)).toEqual(["Walter Corbitt's diary", 'The cellar key'])
-    expect(within(items[0]).getByRole('link', { name: "Walter Corbitt's diary" })).toHaveAttribute('href', '/campaigns/c1/items/k1')
-    expect(within(items[0]).getByRole('link', { name: "Walter Corbitt's diary" })).toHaveAttribute('id', 'item-link-l1')
+    const titles = items.map((item) => within(item).getAllByRole('button')[0])
+    expect(titles.map((title) => title.textContent)).toEqual(["Walter Corbitt's diary", 'The cellar key'])
+    expect(titles[0]).toHaveAttribute('id', 'item-link-l1')
+    expect(titles[0]).toHaveAttribute('aria-haspopup', 'dialog')
     expect(items[0]).toHaveTextContent('Item')
+
+    await userEvent.click(titles[0])
+    expect(mockOpen).toHaveBeenCalledWith({ type: 'item', itemId: 'k1' }, titles[0])
   })
 
   it('says nothing is linked yet and still offers the action (SP-UX-97)', () => {
@@ -72,21 +78,21 @@ describe('SceneItemSection', () => {
   it('shows the Items of a Finished Scene without Link an Item or Unlink (SP-UX-97)', () => {
     renderSection({ status: 'Finished' })
 
-    expect(screen.getByRole('link', { name: "Walter Corbitt's diary" })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: "Walter Corbitt's diary" })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Link an Item' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Unlink / })).not.toBeInTheDocument()
   })
 
   it('lets a long Item name wrap instead of overflowing (SP-A11Y-57)', () => {
-    renderSection({ links: [{ id: 'l9', item: { id: 'k9', name: 'x'.repeat(200) } }] })
+    renderSection({ links: [{ id: 'l9', item: { id: 'k9', name: 'x'.repeat(200), holder: null, handouts: [] } }] })
 
-    expect(screen.getByRole('link', { name: 'x'.repeat(200) })).toHaveClass('break-words')
+    expect(screen.getByRole('button', { name: 'x'.repeat(200) })).toHaveClass('break-words')
   })
 
-  it('moves focus to the link of the Item named by focusLinkId once it is listed (SP-UX-98, SP-A11Y-54)', () => {
+  it('moves focus to the title button of the Item named by focusLinkId once it is listed (SP-UX-98, SP-A11Y-54)', () => {
     renderSection({ focusLinkId: 'l2' })
 
-    expect(screen.getByRole('link', { name: 'The cellar key' })).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'The cellar key' })).toHaveFocus()
   })
 
   describe('unlink', () => {

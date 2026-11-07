@@ -25,12 +25,14 @@ export type MaterialEntryPage = ReturnType<HandoutOwnerDescription['handoutPage'
 
 /**
  * One entry's subject (specs/scenario-preparation/ux.md section 72, PBI-SPL-005 design record D2, Strategy): the
- * subject's own record, with a page only when the host has no panel for it (Item Handouts, Items until PBI-SPL-003).
+ * subject's own record, with a page only when the host has no panel for it. From PBI-SPL-003 an Item title opens the
+ * `item` panel on every host, and an Item Handout names its link and itself and opens the `handout` panel.
  */
 export type MaterialEntrySubject =
   | { type: 'handout'; handout: HandoutSummary; page?: MaterialEntryPage }
   | { type: 'entity'; link: NonPlayerEntityLink }
-  | { type: 'item'; link: ItemLink; page: MaterialEntryPage }
+  | { type: 'item'; link: ItemLink }
+  | { type: 'itemHandout'; link: ItemLink; handout: HandoutSummary }
 
 interface MaterialEntryProps {
   subject: MaterialEntrySubject
@@ -71,6 +73,8 @@ function titleOf(subject: MaterialEntrySubject): string {
       return subject.link.playerFacingName
     case 'item':
       return subject.link.item.name
+    case 'itemHandout':
+      return subject.handout.title
   }
 }
 
@@ -87,16 +91,14 @@ function EntryTitle({ subject, titleId }: { subject: MaterialEntrySubject; title
     case 'entity':
       return <PanelTitleButton subject={subject} titleId={titleId} />
     case 'item':
-      return (
-        <Link id={titleId} {...subject.page} className="min-h-6 min-w-0 break-words hover:underline">
-          {subject.link.item.name}
-        </Link>
-      )
+      return <PanelTitleButton subject={subject} titleId={titleId} />
+    case 'itemHandout':
+      return <PanelTitleButton subject={subject} titleId={titleId} />
   }
 }
 
-/** A title that opens a side panel: only Handouts and Non-Player Entity links, until PBI-SPL-003 adds an item panel. */
-type PanelSubject = Extract<MaterialEntrySubject, { type: 'handout' | 'entity' }>
+/** A title that opens a side panel: Handouts, Non-Player Entity links, Items, and Item Handouts (PBI-SPL-003). */
+type PanelSubject = Extract<MaterialEntrySubject, { type: 'handout' | 'entity' | 'item' | 'itemHandout' }>
 
 /** The panel-opening title, on its own so `useSidePanel` (and its scope) is only needed where a host exists. */
 function PanelTitleButton({ subject, titleId }: { subject: PanelSubject; titleId: string }) {
@@ -122,10 +124,14 @@ function panelOf(subject: PanelSubject): OpenPanel {
       return { type: 'handout', handoutId: subject.handout.id }
     case 'entity':
       return { type: 'entity', linkId: subject.link.id }
+    case 'item':
+      return { type: 'item', itemId: subject.link.item.id }
+    case 'itemHandout':
+      return { type: 'handout', handoutId: subject.handout.id }
   }
 }
 
-/** The second line by subject (specs/scenario-preparation/ux.md section 72, Strategy). */
+/** The second line by subject (specs/scenario-preparation/ux.md section 72, specs/scene-play/ux.md 22.1, Strategy). */
 function SecondLine({ subject }: { subject: MaterialEntrySubject }) {
   switch (subject.type) {
     case 'handout':
@@ -141,6 +147,13 @@ function SecondLine({ subject }: { subject: MaterialEntrySubject }) {
         <span>
           <Badge variant="secondary">Item</Badge>
         </span>
+      )
+    case 'itemHandout':
+      return (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <HandoutBadges kind={subject.handout.kind} visibility={subject.handout.visibility} />
+          <p className="text-sm break-words text-muted-foreground">Item: {subject.link.item.name}</p>
+        </div>
       )
   }
 }

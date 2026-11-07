@@ -14,15 +14,19 @@ import { ActiveScenePanel } from './active-scene-panel'
 
 // specs/navigation/ux.md section 3 (refinements G2, G8): the Active Scene hosts its panel, which renders once the
 // Active Scene query has loaded, dispatching each panel type to its body (PBI-NAV-002 design record D4).
-const { mockUseActive, mockUseSidePanel, mockUseCampaign, mockUseMyClues, mockUseInvestigatorClues, mockUseHandout, mockUseScene, mockUseHumanNpc, sidePanelProps } = vi.hoisted(() => ({
+const { mockUseActive, mockUseSidePanel, mockUseCampaign, mockUseMyClues, mockUseInvestigatorClues, mockUseMine, mockUseTheirs, mockUseHandout, mockUseScene, mockUseHumanNpc, mockUseItem, mockUseCampaignMembers, sidePanelProps } = vi.hoisted(() => ({
   mockUseActive: vi.fn(),
   mockUseSidePanel: vi.fn(),
   mockUseCampaign: vi.fn(),
   mockUseMyClues: vi.fn(),
   mockUseInvestigatorClues: vi.fn(),
+  mockUseMine: vi.fn(),
+  mockUseTheirs: vi.fn(),
   mockUseHandout: vi.fn(),
   mockUseScene: vi.fn(),
   mockUseHumanNpc: vi.fn(),
+  mockUseItem: vi.fn(),
+  mockUseCampaignMembers: vi.fn(),
   sidePanelProps: { current: null as null | Record<string, unknown> },
 }))
 
@@ -42,9 +46,16 @@ vi.mock('@/scene-play/hooks/useReveals', () => ({
   useRevealAnnouncement: () => ({ message: '', sequence: 0 }),
   useRevealFile: vi.fn(),
 }))
+vi.mock('@/scene-play/hooks/useHeldItems', () => ({
+  useMyHeldItems: mockUseMine,
+  useInvestigatorHeldItems: mockUseTheirs,
+  useTakeBackItem: () => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false, error: null }),
+}))
 vi.mock('@/scenario-preparation/hooks/useHandouts', () => ({ useHandout: mockUseHandout, useHandoutFile: vi.fn() }))
 vi.mock('@/scenario-preparation/hooks/useScenes', () => ({ useScene: mockUseScene }))
 vi.mock('@/scenario-preparation/hooks/useNonPlayerEntities', () => ({ useHumanNpc: mockUseHumanNpc, useMythosCreature: vi.fn() }))
+vi.mock('@/scenario-preparation/hooks/useItems', () => ({ useItem: mockUseItem }))
+vi.mock('@/campaign-play/hooks/useCampaignMembers', () => ({ useCampaignMembers: mockUseCampaignMembers }))
 
 const keeperScene: ActiveScene = { kind: 'keeper', sceneId: 's', scenarioId: 'p', scenarioTitle: 'T', title: 'The Corbitt House', location: '', startedAt: null, investigatorsPresent: [], reveals: [] }
 const clues: Clues = { investigatorName: 'Lucy Ward', clues: [] }
@@ -56,6 +67,21 @@ const textHandout = {
   content: { root: { type: 'root', children: [{ type: 'paragraph', version: 1, children: [{ type: 'text', version: 1, text: 'Come at once.', format: 0, style: '', detail: 0, mode: 'normal' }] }] } },
 } as const
 const npcLink = { id: 'l1', nonPlayerEntity: { id: 'n1', type: 'HumanNpc', name: 'Mr. Knott' }, playerFacingName: 'The man by the gate', playerFacingDescription: null }
+const itemLink = { id: 'l2', item: { id: 'k1', name: "Walter Corbitt's diary", holder: null, handouts: [] } }
+const item = {
+  id: 'k1',
+  name: "Walter Corbitt's diary",
+  playerFacingDescription: {
+    root: {
+      type: 'root',
+      children: [{ type: 'paragraph', version: 1, children: [{ type: 'text', version: 1, text: "Walter Corbitt's diary.", format: 0, style: '', detail: 0, mode: 'normal' }] }],
+    },
+  },
+  keeperNotes: null,
+  holder: null,
+  handouts: [],
+  scenes: [],
+}
 const material = {
   id: 's',
   title: 'The Corbitt House',
@@ -92,9 +118,22 @@ describe('ActiveScenePanel', () => {
     mockUseCampaign.mockReturnValue({ data: { role: 'Keeper' } })
     mockUseMyClues.mockReturnValue(query(undefined))
     mockUseInvestigatorClues.mockReturnValue(query(clues))
+    mockUseMine.mockReturnValue(query(undefined))
+    mockUseTheirs.mockReturnValue(query(undefined))
     mockUseHandout.mockReturnValue(query(undefined))
     mockUseScene.mockReturnValue(query(undefined))
     mockUseHumanNpc.mockReturnValue(query(undefined))
+    mockUseItem.mockReturnValue(query(undefined))
+    mockUseCampaignMembers.mockReturnValue(query([]))
+  })
+
+  it('dispatches the item panel to the Item body (SPL-UX-60)', () => {
+    mockUseScene.mockReturnValue(query({ ...material, itemLinks: [itemLink] }))
+    mockUseItem.mockReturnValue(query(item))
+    show({ type: 'item', itemId: 'k1' })
+
+    expect(screen.getByRole('heading', { level: 2, name: "Walter Corbitt's diary" })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open full page' })).toHaveAttribute('href', '/campaigns/c1/items/k1?from=active-scene')
   })
 
   it('renders nothing until the Active Scene query has loaded (G8)', () => {

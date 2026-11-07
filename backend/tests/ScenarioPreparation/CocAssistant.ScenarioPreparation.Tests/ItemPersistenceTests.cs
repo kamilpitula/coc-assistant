@@ -185,4 +185,54 @@ public class ItemPersistenceTests : IDisposable
         Assert.Equal((link.Id, sceneId, item.Id), (stored.Id, stored.SceneId, stored.ItemId));
         Assert.Equal(_builder.TimeProvider.GetUtcNow(), stored.CreatedAt);
     }
+
+    [Fact]
+    public async Task Given_Items_linked_to_a_Scene_When_listing_linked_Then_they_come_in_link_order_with_their_Handouts()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var first = await _builder.CreateItemAsync(_builder.CampaignId, "Diary");
+        var second = await _builder.CreateItemAsync(_builder.CampaignId, "Key");
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, first.Id);
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, second.Id);
+        var handout = await _builder.AddItemHandoutAsync(_builder.CampaignId, first.Id);
+
+        using var context = _builder.Fixture.CreateContext();
+        var linked = await new EfItemRepository(context).ListLinkedForSceneAsync(_builder.CampaignId, sceneId, CancellationToken.None);
+
+        Assert.Equal([first.Id, second.Id], linked.Select(item => item.Id));
+        Assert.Equal([handout.Id], linked[0].Handouts.Select(candidate => candidate.Id));
+        Assert.Empty(linked[1].Handouts);
+    }
+
+    [Fact]
+    public async Task Given_a_held_Item_When_listing_held_Then_it_comes_with_its_give_Reveal_newest_first()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var first = await _builder.CreateItemAsync(_builder.CampaignId, "Diary");
+        var second = await _builder.CreateItemAsync(_builder.CampaignId, "Key");
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, first.Id);
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, second.Id);
+        await _builder.PlayAsync(sceneId, SceneStatus.Active);
+        var harvey = SceneStartExtensions.Harvey;
+
+        Guid firstRevealId;
+        Guid secondRevealId;
+        using (var context = _builder.Fixture.CreateContext())
+        {
+            var scene = (await new EfSceneRepository(context).FindForPlayAsync(_builder.CampaignId, sceneId, CancellationToken.None))!;
+            var items = await context.Items.Where(item => item.CampaignId == _builder.CampaignId).ToListAsync();
+            _builder.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+            firstRevealId = scene.GiveItem(items.Single(item => item.Id == first.Id), harvey, _builder.TimeProvider.GetUtcNow()).Reveal!.Id;
+            _builder.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+            secondRevealId = scene.GiveItem(items.Single(item => item.Id == second.Id), harvey, _builder.TimeProvider.GetUtcNow()).Reveal!.Id;
+            await new EfItemRepository(context).SaveChangesAsync(CancellationToken.None);
+        }
+
+        using var read = _builder.Fixture.CreateContext();
+        var held = await new EfItemRepository(read).ListHeldAsync(_builder.CampaignId, harvey, CancellationToken.None);
+
+        Assert.Equal([second.Id, first.Id], held.Select(entry => entry.Item.Id));
+        Assert.Equal([secondRevealId, firstRevealId], held.Select(entry => entry.GiveReveal.Id));
+        Assert.All(held, entry => Assert.Equal(entry.Item.HolderRevealId, entry.GiveReveal.Id));
+    }
 }

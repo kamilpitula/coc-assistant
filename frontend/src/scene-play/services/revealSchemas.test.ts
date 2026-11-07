@@ -26,8 +26,12 @@ describe('reveal schemas', () => {
     }
   })
 
-  it('rejects an unknown subject type, such as an Item, and an unknown Handout kind', () => {
-    expect(playerRevealSchema.safeParse({ ...reveal, subjectType: 'Item' }).success).toBe(false)
+  it('accepts an Item Reveal, whose kind and file are always null (PBI-SPL-003)', () => {
+    expect(playerRevealSchema.safeParse({ ...reveal, subjectType: 'Item', handoutKind: null, content: null }).success).toBe(true)
+  })
+
+  it('rejects an unknown subject type and an unknown Handout kind', () => {
+    expect(playerRevealSchema.safeParse({ ...reveal, subjectType: 'Gear' }).success).toBe(false)
     expect(playerRevealSchema.safeParse({ ...reveal, handoutKind: 'Video' }).success).toBe(false)
   })
 

@@ -66,6 +66,18 @@ describe('HandoutPanelBody', () => {
     expect(mockUseHandout).toHaveBeenCalledWith(owner, 'h1', true)
   })
 
+  it('loads the Handout of an Item owner through the same query (SPL-UX-60)', () => {
+    const itemOwner = { type: 'item', campaignId: 'c1', itemId: 'k1' } as const
+    render(
+      <SidePanelScopeProvider>
+        <HandoutPanelBody owner={itemOwner} handoutId="h1" />
+      </SidePanelScopeProvider>,
+    )
+
+    expect(mockUseHandout).toHaveBeenCalledWith(itemOwner, 'h1', true)
+    expect(screen.getByRole('link', { name: 'Open full page' })).toHaveAttribute('href', '/campaigns/c1/items/k1/handouts/h1')
+  })
+
   it('carries `from` to the full-page link only when the host passes one', () => {
     show('h1', 'active-scene')
 

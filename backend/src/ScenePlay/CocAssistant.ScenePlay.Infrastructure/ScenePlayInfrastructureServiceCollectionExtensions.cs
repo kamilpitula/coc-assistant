@@ -13,8 +13,11 @@ public static class ScenePlayInfrastructureServiceCollectionExtensions
         services.AddScoped<ISceneReveals, ScenarioPreparationSceneReveals>();
         services.AddScoped<IRevealedFiles, ScenarioPreparationRevealedFiles>();
         services.AddScoped<IRevealSignals, CampaignPlayRevealSignals>();
+        services.AddScoped<ISceneItemHolders, ScenarioPreparationSceneItemHolders>();
+        services.AddScoped<IItemHolderSignals, CampaignPlayItemHolderSignals>();
         services.AddScoped<ActiveSceneService>();
         services.AddScoped<RevealService>();
+        services.AddScoped<ItemHolderService>();
 
         return services;
     }

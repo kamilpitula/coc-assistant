@@ -11,11 +11,13 @@ import { ScenePanel } from './scene-panel'
 
 // specs/navigation/ux.md section 3 (PBI-SPL-005 design record D1): the Scene page hosts its panel, mapping the
 // `handout` and `entity` panel types to the scene-scoped bodies with no `from`; `clues` and `reveal` open no panel.
-const { mockUseSidePanel, mockUseHandout, mockUseScene, mockUseHumanNpc, sidePanelProps } = vi.hoisted(() => ({
+const { mockUseSidePanel, mockUseHandout, mockUseScene, mockUseHumanNpc, mockUseItem, mockUseCampaignMembers, sidePanelProps } = vi.hoisted(() => ({
   mockUseSidePanel: vi.fn(),
   mockUseHandout: vi.fn(),
   mockUseScene: vi.fn(),
   mockUseHumanNpc: vi.fn(),
+  mockUseItem: vi.fn(),
+  mockUseCampaignMembers: vi.fn(),
   sidePanelProps: { current: null as null | Record<string, unknown> },
 }))
 
@@ -30,6 +32,8 @@ vi.mock('@/shared/components/side-panel/side-panel', () => ({
 vi.mock('@/scenario-preparation/hooks/useHandouts', () => ({ useHandout: mockUseHandout, useHandoutFile: vi.fn() }))
 vi.mock('@/scenario-preparation/hooks/useScenes', () => ({ useScene: mockUseScene }))
 vi.mock('@/scenario-preparation/hooks/useNonPlayerEntities', () => ({ useHumanNpc: mockUseHumanNpc, useMythosCreature: vi.fn() }))
+vi.mock('@/scenario-preparation/hooks/useItems', () => ({ useItem: mockUseItem }))
+vi.mock('@/campaign-play/hooks/useCampaignMembers', () => ({ useCampaignMembers: mockUseCampaignMembers }))
 
 const textHandout = {
   id: 'h1',
@@ -93,6 +97,36 @@ describe('ScenePanel', () => {
     show({ type: 'entity', linkId: 'l1' })
 
     expect(screen.getByRole('heading', { level: 2, name: 'The man by the gate' })).toBeInTheDocument()
+  })
+
+  it('opens the Item body for an item panel, with no `from` on the full-page link (SPL-UX-60)', () => {
+    mockUseItem.mockReturnValue(
+      query({
+        id: 'k1',
+        name: "Walter Corbitt's diary",
+        playerFacingDescription: {
+          root: {
+            type: 'root',
+            children: [
+              {
+                type: 'paragraph',
+                version: 1,
+                children: [{ type: 'text', version: 1, text: "Walter Corbitt's diary.", format: 0, style: '', detail: 0, mode: 'normal' }],
+              },
+            ],
+          },
+        },
+        keeperNotes: null,
+        holder: null,
+        handouts: [],
+        scenes: [],
+      }),
+    )
+    mockUseCampaignMembers.mockReturnValue(query([]))
+    show({ type: 'item', itemId: 'k1' })
+
+    expect(screen.getByRole('heading', { level: 2, name: "Walter Corbitt's diary" })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open full page' })).toHaveAttribute('href', '/campaigns/c1/items/k1')
   })
 
   it('opens no panel for a clues panel', () => {

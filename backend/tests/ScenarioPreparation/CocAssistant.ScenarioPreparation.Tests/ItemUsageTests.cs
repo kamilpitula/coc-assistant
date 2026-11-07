@@ -13,11 +13,32 @@ public class ItemUsageTests : IDisposable
         return (scenario.Id, (await _builder.CreateSceneAsync(_builder.CampaignId, scenario.Id, "The Corbitt House")).Id);
     }
 
-    private async Task<bool> IsLinkedAsync(Guid campaignId, Guid itemId)
+    private async Task<bool> IsPlayedAsync(Guid campaignId, Guid itemId)
     {
         using var context = _builder.Fixture.CreateContext();
-        return await new EfItemUsage(context).IsLinkedToPlayedSceneAsync(campaignId, itemId, CancellationToken.None);
+        return await new EfItemUsage(context).IsPlayedAsync(campaignId, itemId, CancellationToken.None);
     }
+
+    private async Task RevealAsync(Guid sceneId, RevealSubject subject)
+    {
+        using var context = _builder.Fixture.CreateContext();
+        var scene = (await new EfSceneRepository(context).FindForPlayAsync(_builder.CampaignId, sceneId, CancellationToken.None))!;
+        var items = await context.Items.Include(item => item.Handouts).Where(item => item.CampaignId == _builder.CampaignId).ToListAsync();
+        var result = scene.Reveal(subject, [SceneStartExtensions.Harvey], _builder.TimeProvider.GetUtcNow(), items);
+        Assert.Equal(RevealOutcome.Revealed, result.Outcome);
+        await context.SaveChangesAsync();
+    }
+
+    private async Task UnlinkItemAsync(Guid scenarioId, Guid sceneId, Guid itemId)
+    {
+        using var context = _builder.Fixture.CreateContext();
+        var link = await context.ItemLinks.SingleAsync(candidate => candidate.ItemId == itemId);
+        var scene = (await new EfSceneRepository(context).FindByIdAsync(_builder.CampaignId, scenarioId, sceneId, CancellationToken.None))!;
+        Assert.Equal(ItemLinkOutcome.Unlinked, scene.UnlinkItem(link.Id));
+        await context.SaveChangesAsync();
+    }
+
+    private Task HoldAsync(Guid itemId, Guid investigatorId) => _builder.HoldItemAsync(itemId, investigatorId);
 
     [Theory]
     [InlineData(SceneStatus.Active)]
@@ -29,7 +50,7 @@ public class ItemUsageTests : IDisposable
         await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
         await _builder.PlayAsync(sceneId, status);
 
-        Assert.True(await IsLinkedAsync(_builder.CampaignId, item.Id));
+        Assert.True(await IsPlayedAsync(_builder.CampaignId, item.Id));
     }
 
     [Fact]
@@ -40,8 +61,8 @@ public class ItemUsageTests : IDisposable
         var free = await _builder.CreateItemAsync(_builder.CampaignId, "Free");
         await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, linked.Id);
 
-        Assert.False(await IsLinkedAsync(_builder.CampaignId, linked.Id));
-        Assert.False(await IsLinkedAsync(_builder.CampaignId, free.Id));
+        Assert.False(await IsPlayedAsync(_builder.CampaignId, linked.Id));
+        Assert.False(await IsPlayedAsync(_builder.CampaignId, free.Id));
     }
 
     [Fact]
@@ -54,7 +75,7 @@ public class ItemUsageTests : IDisposable
         await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, activeScene, item.Id);
         await _builder.PlayAsync(activeScene, SceneStatus.Active);
 
-        Assert.True(await IsLinkedAsync(_builder.CampaignId, item.Id));
+        Assert.True(await IsPlayedAsync(_builder.CampaignId, item.Id));
     }
 
     [Fact]
@@ -66,7 +87,7 @@ public class ItemUsageTests : IDisposable
         await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, linked.Id);
         await _builder.PlayAsync(sceneId, SceneStatus.Active);
 
-        Assert.False(await IsLinkedAsync(_builder.CampaignId, free.Id));
+        Assert.False(await IsPlayedAsync(_builder.CampaignId, free.Id));
     }
 
     [Fact]
@@ -77,7 +98,58 @@ public class ItemUsageTests : IDisposable
         await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
         await _builder.PlayAsync(sceneId, SceneStatus.Active);
 
-        Assert.False(await IsLinkedAsync(_builder.OtherCampaignOfSameKeeperId, item.Id));
+        Assert.False(await IsPlayedAsync(_builder.OtherCampaignOfSameKeeperId, item.Id));
+    }
+
+    [Fact]
+    public async Task Given_an_Item_with_an_Item_Reveal_but_no_played_link_When_asking_Then_it_is_played()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var item = await _builder.CreateItemAsync(_builder.CampaignId);
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
+        await _builder.PlayAsync(sceneId, SceneStatus.Active);
+        await RevealAsync(sceneId, new RevealSubject(RevealSubjectType.Item, item.Id));
+        await UnlinkItemAsync(scenarioId, sceneId, item.Id);
+
+        Assert.True(await IsPlayedAsync(_builder.CampaignId, item.Id));
+    }
+
+    [Fact]
+    public async Task Given_an_Item_with_an_Item_Handout_Reveal_but_no_played_link_When_asking_Then_it_is_played()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var item = await _builder.CreateItemAsync(_builder.CampaignId);
+        var handout = await _builder.AddItemHandoutAsync(_builder.CampaignId, item.Id);
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, item.Id);
+        await _builder.PlayAsync(sceneId, SceneStatus.Active);
+        await RevealAsync(sceneId, new RevealSubject(RevealSubjectType.Handout, handout.Id));
+        await UnlinkItemAsync(scenarioId, sceneId, item.Id);
+
+        Assert.True(await IsPlayedAsync(_builder.CampaignId, item.Id));
+    }
+
+    [Fact]
+    public async Task Given_Reveals_of_another_Item_and_its_Handout_When_asking_Then_the_Item_is_not_played()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        var item = await _builder.CreateItemAsync(_builder.CampaignId, "Diary");
+        var other = await _builder.CreateItemAsync(_builder.CampaignId, "Key");
+        var handout = await _builder.AddItemHandoutAsync(_builder.CampaignId, other.Id);
+        await _builder.LinkItemAsync(_builder.CampaignId, scenarioId, sceneId, other.Id);
+        await _builder.PlayAsync(sceneId, SceneStatus.Active);
+        await RevealAsync(sceneId, new RevealSubject(RevealSubjectType.Item, other.Id));
+        await RevealAsync(sceneId, new RevealSubject(RevealSubjectType.Handout, handout.Id));
+
+        Assert.False(await IsPlayedAsync(_builder.CampaignId, item.Id));
+    }
+
+    [Fact]
+    public async Task Given_a_held_Item_with_no_played_link_When_asking_Then_it_is_played()
+    {
+        var item = await _builder.CreateItemAsync(_builder.CampaignId);
+        await HoldAsync(item.Id, Guid.NewGuid());
+
+        Assert.True(await IsPlayedAsync(_builder.CampaignId, item.Id));
     }
 
     [Fact]

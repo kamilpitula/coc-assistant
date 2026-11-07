@@ -36,11 +36,11 @@ public class SceneRevealChecksTests
     }
 
     [Fact]
-    public void Given_an_item_subject_When_checking_the_subject_Then_it_is_not_revealable_before_it_is_looked_for()
+    public void Given_an_unlinked_Item_When_checking_the_subject_Then_the_subject_is_not_found()
     {
         var scene = SceneWith(out _, out _, out _);
 
-        Assert.Equal(RevealOutcome.SubjectNotRevealable, Check(scene, SceneStatus.Active, new RevealSubject(RevealSubjectType.Item, Guid.NewGuid())).Outcome);
+        Assert.Equal(RevealOutcome.SubjectNotFound, Check(scene, SceneStatus.Active, new RevealSubject(RevealSubjectType.Item, Guid.NewGuid())).Outcome);
     }
 
     [Fact]

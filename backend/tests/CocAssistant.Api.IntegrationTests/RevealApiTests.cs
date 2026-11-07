@@ -275,18 +275,21 @@ public class RevealApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task Given_a_bad_subject_type_When_revealing_Then_it_is_a_400_at_subject_type_and_an_Item_has_its_own_message()
+    public async Task Given_a_bad_subject_type_When_revealing_Then_it_is_a_400_at_subject_type_and_an_unknown_Item_is_not_found()
     {
         var table = await TableAsync("8");
 
         var missing = await RevealAsync(table, new { investigatorIds = new[] { table.HarveyId } });
         var unknown = await RevealAsync(table, new { subject = Subject("Banana", Guid.NewGuid()) });
-        var item = await RevealAsync(table, new { subject = Subject("Item", Guid.NewGuid()) });
 
-        Assert.All([missing, unknown, item], response => Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode));
-        Assert.All([await JsonAsync(missing), await JsonAsync(unknown), await JsonAsync(item)], problem => Assert.Equal(["subject.type"], Errors(problem)));
-        Assert.Equal("Choose a Handout or a Non-Player Entity to reveal.", (await JsonAsync(unknown)).GetProperty("errors").GetProperty("subject.type")[0].GetString());
-        Assert.Equal("Items can't be revealed yet.", (await JsonAsync(item)).GetProperty("errors").GetProperty("subject.type")[0].GetString());
+        Assert.All([missing, unknown], response => Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode));
+        Assert.All([await JsonAsync(missing), await JsonAsync(unknown)], problem => Assert.Equal(["subject.type"], Errors(problem)));
+        Assert.Equal("Choose a Handout, a Non-Player Entity, or an Item to reveal.", (await JsonAsync(unknown)).GetProperty("errors").GetProperty("subject.type")[0].GetString());
+
+        var unlinkedItem = await RevealAsync(table, new { subject = Subject("Item", Guid.NewGuid()) });
+
+        Assert.Equal(HttpStatusCode.BadRequest, unlinkedItem.StatusCode);
+        Assert.Equal(["subject.id"], Errors(await JsonAsync(unlinkedItem)));
         Assert.Equal(0, await RevealRowsAsync());
     }
 
@@ -519,6 +522,66 @@ public class RevealApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
         Assert.Equal("myClues|myClues", await TopicsUntilActiveSceneAsync(harveyHub, table.CampaignId));
         Assert.Equal("myClues", await TopicsUntilActiveSceneAsync(lucyHub, table.CampaignId));
         Assert.Equal("sceneReveals|sceneReveals", await TopicsUntilActiveSceneAsync(keeperHub, table.CampaignId));
+    }
+
+    [Fact]
+    public async Task Given_a_give_wins_the_race_When_revealing_an_Item_Then_it_is_409_and_nothing_is_revealed()
+    {
+        var table = await TableAsync("20");
+
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            var itemId = (await CreateItemAsync(table.Client, table.CampaignId, table.KeeperOid, $"Race diary {attempt}")).GetProperty("id").GetGuid();
+            await LinkItemAsync(table.Client, (table.CampaignId, table.ScenarioId, table.CorbittHouse), table.KeeperOid, itemId);
+            var before = await RevealRowsAsync();
+            var reveal = RevealAsync(table, new { subject = Subject("Item", itemId) });
+            var give = table.Client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{table.CampaignId}/items/{itemId}/give", table.KeeperOid, new { investigatorId = table.HarveyId }));
+            var responses = await Task.WhenAll(reveal, give);
+            Assert.DoesNotContain(HttpStatusCode.InternalServerError, responses.Select(response => response.StatusCode));
+            if (responses[0].StatusCode == HttpStatusCode.Conflict)
+            {
+                Assert.Equal("Another change won the race. Fetch again and try again.", (await JsonAsync(responses[0])).GetProperty("title").GetString());
+                // The +1 is the winning give's own reveal; the refused reveal added nothing.
+                Assert.Equal(before + 1, await RevealRowsAsync());
+                return;
+            }
+        }
+
+        Assert.Fail("The give never beat the Item reveal to the write in 20 races.");
+    }
+
+    [Fact]
+    public async Task Given_a_give_wins_the_race_When_revealing_an_Item_Handout_Then_it_is_409_and_nothing_is_revealed()
+    {
+        var table = await TableAsync("21");
+
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            var itemId = (await CreateItemAsync(table.Client, table.CampaignId, table.KeeperOid, $"Race diary {attempt}")).GetProperty("id").GetGuid();
+            var handoutId = await AddItemHandoutAsync(table, itemId, $"Race entry {attempt}");
+            await LinkItemAsync(table.Client, (table.CampaignId, table.ScenarioId, table.CorbittHouse), table.KeeperOid, itemId);
+            var before = await RevealRowsAsync();
+            var reveal = RevealAsync(table, new { subject = Subject("Handout", handoutId) });
+            var give = table.Client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{table.CampaignId}/items/{itemId}/give", table.KeeperOid, new { investigatorId = table.LucyId }));
+            var responses = await Task.WhenAll(reveal, give);
+            Assert.DoesNotContain(HttpStatusCode.InternalServerError, responses.Select(response => response.StatusCode));
+            if (responses[0].StatusCode == HttpStatusCode.Conflict)
+            {
+                Assert.Equal("Another change won the race. Fetch again and try again.", (await JsonAsync(responses[0])).GetProperty("title").GetString());
+                // The +1 is the winning give's own reveal; the refused reveal added nothing.
+                Assert.Equal(before + 1, await RevealRowsAsync());
+                return;
+            }
+        }
+
+        Assert.Fail("The give never beat the Item Handout reveal to the write in 20 races.");
+    }
+
+    private static async Task<Guid> AddItemHandoutAsync(Table table, Guid itemId, string title)
+    {
+        var response = await table.Client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{table.CampaignId}/items/{itemId}/handouts", table.KeeperOid, new { kind = "Text", visibility = "PlayerFacing", title, content = PreparedScenarioSeed.Json(Rich("The last entry")) }));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        return (await JsonAsync(response)).GetProperty("id").GetGuid();
     }
 
     // The activeScene signal is sent after the reveals and in order on every connection, so everything a client heard before it is what the reveals sent.
