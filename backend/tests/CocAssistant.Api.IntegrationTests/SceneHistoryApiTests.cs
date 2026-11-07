@@ -83,12 +83,14 @@ public class SceneHistoryApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
-    // Starts the Corbitt House with both Investigators, reveals a Handout to Harvey, then starts the Strange High House
-    // finishing the Corbitt House in the same save, so the finished Scene's FinishedAt is the new Scene's StartedAt.
+    // Starts the Corbitt House with both Investigators, reveals a Handout to Harvey while a second Player-facing Handout
+    // is never revealed, then starts the Strange High House finishing the Corbitt House in the same save, so the finished
+    // Scene's FinishedAt is the new Scene's StartedAt.
     private static async Task PlayTwoScenesAsync(Table table)
     {
         Assert.Equal(HttpStatusCode.OK, (await StartAsync(table, table.CorbittHouse, [table.HarveyId, table.LucyId])).StatusCode);
         await RevealHandoutAsync(table, await AddTextHandoutAsync(table, table.CorbittHouse, "The cellar door"), [table.HarveyId]);
+        await AddTextHandoutAsync(table, table.CorbittHouse, "The unopened letter");
         Assert.Equal(HttpStatusCode.OK, (await StartAsync(table, table.StrangeHouse, [table.LucyId], finishActiveScene: true)).StatusCode);
     }
 
@@ -109,6 +111,7 @@ public class SceneHistoryApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         Assert.Equal(scenes[0].GetProperty("startedAt").GetDateTimeOffset(), scenes[1].GetProperty("finishedAt").GetDateTimeOffset());
         Assert.Equal(["Lucy Ward"], scenes[0].GetProperty("investigatorsPresent").EnumerateArray().Select(investigator => investigator.GetProperty("name").GetString()).ToList());
         Assert.Equal(["Harvey Walters", "Lucy Ward"], scenes[1].GetProperty("investigatorsPresent").EnumerateArray().Select(investigator => investigator.GetProperty("name").GetString()).ToList());
+        // The never-revealed "The unopened letter" contributes no Reveal, not even for the Keeper (spec.md 198-201).
         var reveal = scenes[1].GetProperty("reveals").EnumerateArray().Single();
         Assert.Equal("The cellar door", reveal.GetProperty("title").GetString());
         Assert.Equal(["Harvey Walters"], reveal.GetProperty("recipients").EnumerateArray().Select(recipient => recipient.GetProperty("name").GetString()).ToList());
@@ -137,8 +140,10 @@ public class SceneHistoryApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
             Assert.True(scene.TryGetProperty("finishedAt", out _));
         });
         Assert.Empty(scenes[0].GetProperty("reveals").EnumerateArray());
-        var reveal = scenes[1].GetProperty("reveals").EnumerateArray().Single();
+        var playerReveals = scenes[1].GetProperty("reveals").EnumerateArray().ToList();
+        var reveal = playerReveals.Single();
         Assert.Equal("The cellar door", reveal.GetProperty("title").GetString());
+        Assert.DoesNotContain(playerReveals, r => r.GetProperty("title").GetString() == "The unopened letter");
         Assert.False(reveal.TryGetProperty("subjectId", out _));
         Assert.False(reveal.TryGetProperty("recipients", out _));
     }
