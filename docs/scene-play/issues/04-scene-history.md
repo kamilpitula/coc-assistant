@@ -1,6 +1,6 @@
 ---
 id: PBI-SPL-004
-status: todo
+status: done
 blocked_by: [PBI-SPL-002]
 ---
 
@@ -27,14 +27,15 @@ Read: `specs/scene-play/spec.md`
 Read: `CONTEXT.md` (Scene History).
 
 ## Verification
-- [ ] Every Campaign Member sees Active and Finished Scenes across Scenarios in start order, and no Prepared Scene.
-- [ ] A Player sees only Reveals that reached their Investigator; the Keeper sees all.
-- [ ] Unit, integration, and E2E tests cover ordering, filtering, and Campaign isolation.
+- [x] Every Campaign Member sees Active and Finished Scenes across Scenarios in start order, and no Prepared Scene.
+- [x] A Player sees only Reveals that reached their Investigator; the Keeper sees all.
+- [x] Unit, integration, and E2E tests cover ordering, filtering, and Campaign isolation.
 
 ## Refinement Protocol
 If the Player projection changes, update the spec's Regression Guardrails first.
 
 ## Follow-ups
+- Navigation UX tab diagram: `specs/navigation/ux.md` section 2 names the amended tab order (with Scene History) on line 50, but its ASCII tab diagram still omits Scene History. Left untouched as a Phase 0 design artifact; update the diagram.
 - Roll Requests: needs a skill-roll rules document in `docs/game-rules/` first; results are Roll Records, rolled by the server with Keeper-entered physical results allowed, visible to the roller and the Keeper and optionally shared, with secret Keeper rolls.
 - Combat: needs a combat rules document in `docs/game-rules/` first; v1 direction is a DEX-order turn tracker with damage and Hit Point changes.
 - Sanity rolls during play: needs its rules document first.
