@@ -1,12 +1,10 @@
-import { createElement, useId, useState } from 'react'
+import { createElement, useId } from 'react'
 
-import { RevealedContent } from '@/scene-play/components/revealed-content/revealed-content'
+import { RevealDisclosure } from '@/scene-play/components/reveal-disclosure/reveal-disclosure'
 import { groupCluesByScene } from '@/scene-play/services/cluesGrouping'
 import { formatClueTime, revealKindLabel, UNNAMED_INVESTIGATOR } from '@/scene-play/services/revealPresentation'
 import type { Clue, Clues } from '@/scene-play/types/Reveal'
 import { useHeadingTag } from '@/shared/providers/heading-offset/heading-offset-context'
-import { Button } from '@/shared/components/ui/button'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible'
 
 interface CluesListProps {
   campaignId: string
@@ -50,28 +48,16 @@ function SceneGroup({ campaignId, title, clues }: { campaignId: string; title: s
 }
 
 function ClueItem({ campaignId, clue }: { campaignId: string; clue: Clue }) {
-  const [open, setOpen] = useState(false)
-  const titleId = useId()
-  const tag = useHeadingTag(3)
-
   return (
-    <Collapsible open={open} onOpenChange={setOpen} asChild>
-      <article aria-labelledby={titleId} className="flex flex-col gap-2 border-t pt-4">
-        {createElement(tag, { id: titleId, className: 'text-base font-semibold break-words' }, clue.title)}
+    <RevealDisclosure
+      campaignId={campaignId}
+      reveal={clue}
+      metaLine={
         <p className="text-sm text-muted-foreground">
-          {revealKindLabel(clue)} <span aria-hidden="true">&middot;</span> Revealed <time dateTime={clue.revealedAt}>{formatClueTime(clue.revealedAt)}</time>
+          {revealKindLabel(clue)} <span aria-hidden="true">&middot;</span> Revealed{' '}
+          <time dateTime={clue.revealedAt}>{formatClueTime(clue.revealedAt)}</time>
         </p>
-        <div>
-          <CollapsibleTrigger asChild>
-            <Button type="button" variant="outline" size="sm" aria-label={`${open ? 'Hide' : 'Show'} ${clue.title}`}>
-              {open ? 'Hide' : 'Show'}
-            </Button>
-          </CollapsibleTrigger>
-        </div>
-        <CollapsibleContent>
-          <RevealedContent campaignId={campaignId} reveal={clue} />
-        </CollapsibleContent>
-      </article>
-    </Collapsible>
+      }
+    />
   )
 }

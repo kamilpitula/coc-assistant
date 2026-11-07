@@ -61,6 +61,9 @@ export function CampaignHeader({ campaign, section, isOverview, hasActiveScene }
         >
           Active Scene
         </CampaignNavLink>
+        <CampaignNavLink to="/campaigns/$campaignId/scene-history" campaignId={campaign.id} current={section === 'scene-history'}>
+          Scene History
+        </CampaignNavLink>
         <CampaignNavLink to="/campaigns/$campaignId/wall" campaignId={campaign.id} current={section === 'wall'}>
           Wall
         </CampaignNavLink>
@@ -75,7 +78,7 @@ export function CampaignHeader({ campaign, section, isOverview, hasActiveScene }
 }
 
 interface CampaignNavLinkProps {
-  to: '/campaigns/$campaignId' | '/campaigns/$campaignId/active-scene' | '/campaigns/$campaignId/wall' | '/campaigns/$campaignId/settings'
+  to: '/campaigns/$campaignId' | '/campaigns/$campaignId/active-scene' | '/campaigns/$campaignId/scene-history' | '/campaigns/$campaignId/wall' | '/campaigns/$campaignId/settings'
   campaignId: string
   current: boolean
   /** Exact router-active matching. The Overview path prefixes every Campaign page, so without it the router adds its own aria-current here alongside the section-driven one. */

@@ -1,5 +1,5 @@
 /** The Campaign navigation entry a page belongs to; sheet, wizard, and review pages belong to the overview. */
-export type CampaignSection = 'overview' | 'active-scene' | 'wall' | 'settings'
+export type CampaignSection = 'overview' | 'active-scene' | 'scene-history' | 'wall' | 'settings'
 
 function isTabOrSubRoute(routeId: string, tabRouteId: string): boolean {
   return routeId === tabRouteId || routeId.startsWith(`${tabRouteId}/`)
@@ -9,6 +9,10 @@ function isTabOrSubRoute(routeId: string, tabRouteId: string): boolean {
 export function campaignSectionOf(routeId: string): CampaignSection {
   if (isTabOrSubRoute(routeId, '/campaigns/$campaignId/active-scene')) {
     return 'active-scene'
+  }
+
+  if (isTabOrSubRoute(routeId, '/campaigns/$campaignId/scene-history')) {
+    return 'scene-history'
   }
 
   if (isTabOrSubRoute(routeId, '/campaigns/$campaignId/wall')) {

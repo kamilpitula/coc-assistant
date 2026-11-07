@@ -44,6 +44,7 @@ const sections: Record<
   '/campaigns/$campaignId/scenarios/new': 'overview',
   '/campaigns/$campaignId/settings': 'settings',
   '/campaigns/$campaignId/wall': 'wall',
+  '/campaigns/$campaignId/scene-history': 'scene-history',
 }
 
 describe('campaignSectionOf', () => {
