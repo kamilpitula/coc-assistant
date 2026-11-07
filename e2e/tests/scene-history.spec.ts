@@ -16,14 +16,15 @@ import {
 } from '../fixtures/scene-play'
 
 /**
- * Traces to specs/scene-play/spec.md Scenarios "Players see the Scene History filtered to their Clues" (spec.md 192-196)
- * and "A Finished Scene with unrevealed material keeps it Keeper-only" (198-201), and to specs/scene-play/ux.md section 23
- * (PBI-SPL-004):
- * - "A Player sees the Scene History filtered to their Clues, with the tab current" (SPL-UX-61, SPL-UX-62, SPL-UX-64, SPL-UX-66)
+ * Traces to specs/scene-play/spec.md Scenario "Players see the Scene History filtered to their Clues" (spec.md 192-196)
+ * and to specs/scene-play/ux.md section 23 (PBI-SPL-004):
+ * - "A Player sees the Scene History filtered to their Clues, with the tab current" (SPL-UX-61, SPL-UX-62, SPL-UX-64, SPL-UX-66;
+ *   the plan reaches Lucy only, so its absence for Harvey is the revealed-elsewhere half of spec.md 198-201)
  * - "The Keeper sees every Reveal with its recipients and who was present" (SPL-UX-63)
  * - "Finishing, revealing, and starting update a connected Player without reloading" (SPL-UX-68, SPL-UX-64)
- * Exceptions, covered by integration tests (SceneHistoryApiTests, ScenePlayAuthorizationMatrixTests): cross-Campaign 404,
- * unauthenticated 401, unplayed-Scenario title secrecy, and the finish-then-start tie order.
+ * Exceptions, covered by integration tests (SceneHistoryApiTests, ScenePlayAuthorizationMatrixTests): a Player-facing Handout
+ * never revealed to anyone stays Keeper-only (spec.md 198-201), cross-Campaign 404, unauthenticated 401, unplayed-Scenario
+ * title secrecy, and the finish-then-start tie order.
  */
 
 const FRONT_DOOR = PREPARED.handouts[0].title // Read-aloud, Player-facing
@@ -138,7 +139,7 @@ test.describe('Scene History', () => {
       const scene = table.harvey.page.getByRole('region', { name: 'The Corbitt House' })
       await expect(scene).toBeVisible()
 
-      await test.step('SPL-UX-68: a Reveal to Lucy only never appears on Harvey's page', async () => {
+      await test.step('SPL-UX-68: a Reveal to Lucy only never appears on Harvey\'s page', async () => {
         // While "The Corbitt House" is still Active, so the Reveal has an Active Scene to land in.
         await revealHandoutViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneHandoutIds[PLAN], [table.lucyId])
         // Positive signal the Reveal landed: Lucy sees the plan on her history.
