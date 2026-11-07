@@ -44,7 +44,7 @@ Origin (search param on a full page)
 < Back to Campaigns
 Arkham Nights
 1920s
-[ Overview ]  Active Scene (o Live)  Wall  Settings
+[ Overview ]  Active Scene (o Live)  Scene History  Wall  Settings
 ```
 
 - **Order:** Overview, Active Scene, Scene History (since PBI-SPL-004), Wall, Settings (Settings Keeper only). Each is a link in the existing `nav` "Campaign", not an ARIA tab.
