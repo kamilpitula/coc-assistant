@@ -65,7 +65,7 @@ export default defineConfig({
   reporter: process.env.CI ? [['list'], ['blob']] : [['list'], ['html', { open: 'on-failure' }]],
   globalSetup: './globalSetup.ts',
   use: {
-    baseURL: process.env.BASE_URL ?? 'http://localhost:5174',
+    baseURL: process.env.BASE_URL ?? `http://localhost:${e2ePort('vite')}`,
     ignoreHTTPSErrors: true,
     trace: 'on-first-retry',
   },
