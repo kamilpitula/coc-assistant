@@ -1,0 +1,337 @@
+<!doctype html>
+<!-- Throwaway reference prototype for the PBI-SPL-004 Scene History UX gate (Options A, B, C); Option A selected on 2026-11-07 with newest first. Not production code, not wired to the API, mock data only: specs/scene-play/ux.md section 23 is normative. Open this file in a browser. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scene History prototype (PBI-SPL-004)</title>
+<style>
+:root {
+  --bg: #ffffff; --fg: #171717; --muted: #6b6b6b; --muted-bg: #f4f4f5; --border: #e4e4e7;
+  --primary: #171717; --primary-fg: #fafafa; --live: #15803d; --live-bg: #dcfce7; --destructive: #b91c1c; --destructive-bg: #fef2f2;
+  --chrome: #eceaf3; --chrome-fg: #2b2645; --proto: #5b4bd6; --proto-bg: #efecff; --focus: #2563eb;
+  --font-ui: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 14px; line-height: 1.45; margin: 0; padding: 16px 16px 90px }
+button, a { font: inherit; color: inherit }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px }
+h1, h2, h3, h4 { margin: 0; text-wrap: balance }
+
+/* Prototype toolbar (not part of the design) */
+.proto { background: var(--chrome); color: var(--chrome-fg); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; max-width: 1280px; margin: 0 auto }
+.proto-row { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center }
+.proto-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .75; font-weight: 700; min-width: 64px }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid color-mix(in srgb, var(--chrome-fg) 25%, transparent); border-radius: 8px; overflow: hidden }
+.seg button { border: 0; background: transparent; padding: 6px 12px; cursor: pointer; color: var(--chrome-fg) }
+.seg button[aria-pressed="true"] { background: var(--proto); color: #fff }
+.notes { background: var(--proto-bg); border-left: 3px solid var(--proto); border-radius: 6px; padding: 8px 12px; font-size: 13px }
+.notes ul { margin: 4px 0 0; padding-left: 18px }
+.pill { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 50; display: flex; gap: 8px; align-items: center; background: #1e1b3a; color: #fff; border-radius: 999px; padding: 6px 10px; box-shadow: 0 6px 20px rgba(0,0,0,.3); font-size: 13px }
+.pill button { background: #3b3570; color: #fff; border: 0; border-radius: 999px; width: 30px; height: 30px; cursor: pointer }
+.pill span { min-width: 220px; text-align: center; font-weight: 700 }
+
+/* Fake browser */
+.browser { max-width: 1280px; margin: 14px auto 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg) }
+.addr { display: flex; gap: 8px; align-items: center; padding: 8px 10px; background: var(--muted-bg); border-bottom: 1px solid var(--border) }
+.url { flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; overflow-x: auto; white-space: nowrap }
+.viewport-wrap { background: var(--muted-bg) }
+.viewport { background: var(--bg); min-height: 720px; margin: 0 auto }
+.viewport.narrow { width: 320px; border-inline: 1px dashed var(--proto) }
+.viewport.narrow .app { padding: 0 12px 40px }
+.viewport.narrow .topbar { margin: 0 -12px; padding-inline: 12px }
+.app { padding: 0 24px 40px }
+.topbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; border-bottom: 1px solid var(--border); margin: 0 -24px; gap: 8px; flex-wrap: wrap }
+.topbar .brand { font-weight: 700; font-size: 16px }
+
+/* App components (mirroring the app's shadcn-neutral look) */
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--bg); border-radius: 6px; padding: 6px 12px; cursor: pointer; font-weight: 600; font-size: 13px; text-decoration: none; white-space: nowrap; min-height: 28px }
+.btn:hover { background: var(--muted-bg) }
+.btn.sm { padding: 3px 10px; font-size: 12px }
+.link { background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; font-weight: 600; text-align: left }
+.backlink { display: inline-flex; gap: 6px; align-items: center; background: none; border: 0; padding: 0; cursor: pointer; color: var(--muted); font-size: 13px }
+.muted { color: var(--muted) }
+.small { font-size: 12.5px }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--muted-bg); border: 1px solid var(--border); white-space: nowrap }
+.chip.live { background: var(--live-bg); color: var(--live); border-color: transparent }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--live); display: inline-block }
+.campaign-head { padding-top: 18px; display: flex; flex-direction: column; gap: 4px }
+.campaign-head h1 { font-size: 22px }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-top: 12px; overflow-x: auto }
+.tabs button { background: none; border: 0; padding: 0 10px; min-height: 44px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap }
+.tabs button[aria-current="page"] { color: var(--fg); border-bottom-color: var(--fg); font-weight: 700 }
+.tabs button.new { outline: 1px dashed var(--proto); outline-offset: -4px }
+.page { padding-top: 20px; display: flex; flex-direction: column; gap: 18px; max-width: 48rem }
+.page.wide { max-width: none }
+.page-head h1 { font-size: 24px }
+.page-head p { margin: 4px 0 0 }
+.skip { font-size: 13px }
+
+/* Scene sections (Option A / C full page) */
+.scene { border-top: 1px solid var(--border); padding-top: 16px; display: flex; flex-direction: column; gap: 10px; scroll-margin-top: 12px }
+.scene h2 { font-size: 18px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.scene-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--muted) }
+.reveals { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden }
+.reveal { padding: 10px 14px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px }
+.reveal:first-child { border-top: 0 }
+.reveal-row { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; flex-wrap: wrap }
+.reveal h3 { font-size: 14px }
+.reveal .meta-line { font-size: 12.5px; color: var(--muted) }
+.empty-line { font-size: 13px; color: var(--muted); font-style: italic }
+.content { padding-top: 4px }
+.readaloud { border-left: 3px solid var(--border); padding: 8px 12px; background: var(--muted-bg); border-radius: 0 6px 6px 0; font-style: italic }
+.img-ph { aspect-ratio: 4/3; max-width: 100%; max-height: 70vh; border-radius: 8px; background: repeating-linear-gradient(45deg, var(--muted-bg) 0 10px, var(--bg) 10px 20px); border: 1px solid var(--border); display: grid; place-items: center; color: var(--muted); font-size: 12px; text-align: center; padding: 8px }
+.img-ph.map { aspect-ratio: 16/9; max-height: none }
+.file-line { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12.5px; color: var(--muted); margin-top: 6px }
+.alert { border: 1px solid var(--destructive); background: var(--destructive-bg); color: var(--destructive); border-radius: 8px; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between }
+.skel { background: var(--muted-bg); border-radius: 6px; height: 14px; margin: 8px 0 }
+.note-inline { font-size: 12.5px; background: var(--muted-bg); border-radius: 6px; padding: 8px 12px }
+
+/* Option B index */
+.index { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden }
+.index li { padding: 12px 14px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 6px 14px; flex-wrap: wrap; align-items: center }
+.index li:first-child { border-top: 0 }
+.index .num { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12px; min-width: 22px }
+.index .main { display: flex; gap: 10px; align-items: baseline; min-width: 0; flex: 1 1 240px }
+.index .title { font-size: 15px }
+.count { font-size: 12px; color: var(--muted); white-space: nowrap }
+.article { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px }
+.prevnext { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 12px; font-size: 13px }
+
+/* Option C overview */
+.card { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px }
+.card h2 { font-size: 16px }
+.card ol { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px }
+.placeholder { border-style: dashed; color: var(--muted) }
+</style>
+</head>
+<body>
+
+<section class="proto" aria-label="Prototype controls (not part of the design)">
+  <div class="proto-row"><strong>Scene History prototype (PBI-SPL-004)</strong><span class="small">Throwaway. Mock data. Keys: left/right arrows cycle the option.</span></div>
+  <div class="proto-row"><span class="proto-label">Option</span><div class="seg" id="c-option"></div></div>
+  <div class="proto-row"><span class="proto-label">Viewer</span><div class="seg" id="c-viewer"></div></div>
+  <div class="proto-row"><span class="proto-label">Order (Q1)</span><div class="seg" id="c-order"></div></div>
+  <div class="proto-row"><span class="proto-label">State</span><div class="seg" id="c-state"></div></div>
+  <div class="proto-row"><span class="proto-label">Width</span><div class="seg" id="c-width"></div>
+    <span class="proto-label">Live</span><div class="seg" id="c-live"></div></div>
+  <div class="notes" id="notes"></div>
+</section>
+
+<div class="browser">
+  <div class="addr"><span class="url" id="url"></span></div>
+  <div class="viewport-wrap"><div class="viewport" id="viewport"><div class="app" id="app"></div></div></div>
+</div>
+
+<div class="pill" aria-label="Option switcher (prototype)">
+  <button type="button" id="prev" aria-label="Previous option">&lt;</button>
+  <span id="pill-label"></span>
+  <button type="button" id="next" aria-label="Next option">&gt;</button>
+</div>
+
+<script>
+// ---------- Mock data ----------
+const HARVEY = "Harvey Walters", LUCY = "Lucy Ward";
+const SCENES = [
+  { id: "s1", scenario: "The Haunting", title: "Meeting Knott", started: "24 Oct 2026, 19:30", finished: "24 Oct 2026, 20:45", reveals: [
+    { id: "r1", kind: "Text", title: "Knott's letter", time: "19:42", to: [HARVEY, LUCY], body: "<p>Mr. Knott asks that you look into the house on Corbitt Street before he sells it. The last tenants left in a hurry.</p>" },
+    { id: "r2", kind: "Document", title: "Corbitt property deed", time: "20:10", to: [LUCY], file: "corbitt-deed.pdf, 240 KB" } ] },
+  { id: "s2", scenario: "The Haunting", title: "The Corbitt House", started: "24 Oct 2026, 20:45", finished: "24 Oct 2026, 22:10", reveals: [
+    { id: "r3", kind: "Read-aloud", title: "The front door", time: "20:52", to: [HARVEY, LUCY], body: "The door swings inward before your hand touches it. Cold air smelling of earth and old paper rolls out to meet you." },
+    { id: "r4", kind: "Text", title: "Diary page", time: "21:15", to: [HARVEY], body: "<p>March 1835. <em>He walks the cellar at night. I hear him in the walls.</em></p>" },
+    { id: "r5", kind: "Map", title: "Corbitt House cellar", time: "21:40", to: [HARVEY, LUCY], file: "corbitt-house-cellar.png, 1.2 MB" },
+    { id: "r6", kind: "Non-Player Entity", title: "A shape in the cellar", time: "21:58", to: [HARVEY], body: "<p>Something pale moves between the shelves, too tall to be a man.</p>" },
+    { id: "r7", kind: "Item", title: "Walter Corbitt's diary", time: "22:02", to: [HARVEY], body: "<p>A leather-bound diary, swollen with damp.</p>" } ] },
+  { id: "s3", scenario: "Dead Man Stomp", title: "The Speakeasy", started: "31 Oct 2026, 19:10", finished: "31 Oct 2026, 21:00", reveals: [
+    { id: "r8", kind: "Image", title: "Trumpet player's photo", time: "19:48", to: [LUCY], file: "trumpet-player.jpg, 640 KB", alt: "A grainy photo of a trumpet player on a small stage" } ] },
+  { id: "s4", scenario: "The Haunting", title: "Return to the Corbitt House", started: "7 Nov 2026, 19:05", finished: null, reveals: [
+    { id: "r9", kind: "Read-aloud", title: "The cellar door", time: "19:20", to: [HARVEY], body: "The cellar door is bolted from the inside." } ] }
+];
+
+// ---------- State (kept in the URL hash so reloads and links keep it) ----------
+const OPTIONS = { A: "One page, every Scene", B: "Index + Scene page", C: "No tab, overview card" };
+const S = Object.assign({ option: "A", viewer: "keeper", order: "oldest", state: "ready", width: "full", live: "active", route: "list", scene: "", overview: "1" }, Object.fromEntries(new URLSearchParams(location.hash.slice(1))));
+const open = new Set();
+function set(patch) { Object.assign(S, patch); location.hash = new URLSearchParams(S).toString(); render(); }
+
+// ---------- Helpers ----------
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const names = a => a.length < 2 ? a.join("") : a.length === 2 ? a.join(" and ") : a.slice(0, -1).join(", ") + ", and " + a[a.length - 1];
+const isKeeper = () => S.viewer === "keeper";
+const investigator = () => S.viewer === "player" ? HARVEY : null;
+function scenes() {
+  let list = SCENES.map(s => s.id === "s4" && S.live === "finished" ? Object.assign({}, s, { finished: "7 Nov 2026, 22:30" }) : s);
+  list = list.map(s => Object.assign({}, s, { reveals: isKeeper() ? s.reveals : s.reveals.filter(r => investigator() && r.to.includes(investigator())) }));
+  return S.order === "newest" ? list.slice().reverse() : list;
+}
+function times(s) {
+  return '<span>Started <time>' + esc(s.started) + '</time></span>' + (s.finished ? '<span>Finished <time>' + esc(s.finished) + '</time></span>' : '<span class="chip live"><span class="dot" aria-hidden="true"></span>Active</span>');
+}
+function metaLine(r) { return esc(r.kind) + " . Revealed " + esc(r.time) + (isKeeper() ? " . to " + esc(names(r.to)) : ""); }
+function content(r) {
+  if (r.kind === "Read-aloud") return '<div class="readaloud">' + esc(r.body) + '</div>';
+  if (r.kind === "Map") return '<div class="img-ph map">[Map image, full content width, no height cap]</div><div class="file-line">' + esc(r.file) + ' <button class="btn sm">Open full size</button><button class="btn sm">Download</button></div>';
+  if (r.kind === "Image") return '<div class="img-ph" style="max-width:420px">[Image, alt: "' + esc(r.alt) + '"]</div><div class="file-line">' + esc(r.file) + ' <button class="btn sm">Open full size</button><button class="btn sm">Download</button></div>';
+  if (r.kind === "Document") return '<div class="file-line">' + esc(r.file) + ' <button class="btn sm">Open</button><button class="btn sm">Download</button></div>';
+  return r.body;
+}
+function emptyForScene() {
+  if (isKeeper()) return "Nothing was revealed in this Scene.";
+  if (!investigator()) return "";
+  return "Nothing from this Scene reached " + HARVEY + ".";
+}
+function noInvestigatorNote() {
+  return S.viewer === "noinv" ? '<p class="note-inline">You don\'t have an Approved Investigator in this Campaign yet, so no Reveals are shown.</p>' : "";
+}
+function intro() {
+  return isKeeper() ? "Every Scene played in this Campaign and everything revealed in it."
+    : investigator() ? "Every Scene played in this Campaign and what reached " + HARVEY + "."
+    : "Every Scene played in this Campaign.";
+}
+function stateBlock() {
+  if (S.state === "loading") return '<div aria-busy="true"><div class="skel" style="width:40%"></div><div class="skel"></div><div class="skel" style="width:70%"></div><div class="skel"></div></div>';
+  if (S.state === "error") return '<div class="alert" role="alert">We couldn\'t load the Scene History. <button class="btn sm">Try again</button></div>';
+  if (S.state === "empty") return '<p class="muted">No Scene has been played yet.</p>';
+  return null;
+}
+
+// ---------- Shell ----------
+function shell(currentTab, body, withHistoryTab) {
+  const tabs = [["overview", "Overview"], ["active", 'Active Scene' + (S.live === "active" ? ' <span class="chip live"><span class="dot" aria-hidden="true"></span>Live</span>' : "")]];
+  if (withHistoryTab) tabs.push(["history", "Scene History"]);
+  tabs.push(["wall", "Wall"]);
+  if (isKeeper()) tabs.push(["settings", "Settings"]);
+  return '<div class="topbar"><span class="brand">CoC Assistant</span><span class="small muted">' + (isKeeper() ? "Keeper" : "Harvey's Player") + '</span></div>'
+    + '<div class="campaign-head"><button class="backlink">&larr; Back to Campaigns</button><h1 style="font-size:22px">Arkham Nights</h1><span class="muted small">1920s</span></div>'
+    + '<nav class="tabs" aria-label="Campaign">' + tabs.map(([k, l]) => '<button data-tab="' + k + '"' + (k === currentTab ? ' aria-current="page"' : "") + (k === "history" ? ' class="new"' : "") + '>' + l + '</button>').join("") + '</nav>'
+    + body;
+}
+
+// ---------- Option A: one page, every Scene, collapsed Reveals ----------
+function revealCollapsible(r) {
+  const isOpen = open.has(r.id);
+  return '<li class="reveal"><div class="reveal-row"><div><h3>' + esc(r.title) + '</h3><div class="meta-line">' + metaLine(r) + '</div></div>'
+    + '<button class="btn sm" data-toggle="' + r.id + '" aria-expanded="' + isOpen + '" aria-label="' + (isOpen ? "Hide " : "Show ") + esc(r.title) + '">' + (isOpen ? "Hide" : "Show") + '</button></div>'
+    + (isOpen ? '<div class="content">' + content(r) + '</div>' : "") + '</li>';
+}
+function sceneSection(s, latestId) {
+  const empty = emptyForScene();
+  const list = s.reveals.length ? '<ol class="reveals">' + s.reveals.map(revealCollapsible).join("") + '</ol>' : (empty ? '<p class="empty-line">' + esc(empty) + '</p>' : "");
+  return '<section class="scene" id="scene-' + s.id + '" aria-labelledby="h-' + s.id + '"><h2 id="h-' + s.id + '" tabindex="-1">' + esc(s.title) + '</h2>'
+    + '<div class="scene-meta"><span>Scenario: ' + esc(s.scenario) + '</span>' + times(s) + (s.finished ? "" : '<button class="link small">Open Active Scene</button>') + '</div>' + list + '</section>';
+}
+function fullPage(backLink) {
+  const st = stateBlock();
+  const list = scenes();
+  const latest = S.order === "oldest" ? list[list.length - 1] : null;
+  const skip = !st && latest && S.order === "oldest" ? '<a class="skip link" href="#" data-jump="' + latest.id + '">Jump to the latest Scene</a>' : "";
+  const order = S.order === "oldest" ? "in the order they were started" : "newest first";
+  return '<div class="page">' + (backLink || "") + '<div class="page-head"><h1>Scene History</h1><p class="muted">' + intro() + ' Scenes are listed ' + order + '.</p></div>'
+    + skip + noInvestigatorNote() + (st || list.map(s => sceneSection(s)).join("")) + '</div>';
+}
+function optionA() { return shell("history", fullPage(), true); }
+
+// ---------- Option B: index + Scene page ----------
+function countLabel(s) {
+  if (isKeeper()) return s.reveals.length + (s.reveals.length === 1 ? " Reveal" : " Reveals");
+  if (!investigator()) return "";
+  return s.reveals.length ? s.reveals.length + " reached " + HARVEY : "Nothing reached " + HARVEY;
+}
+function optionBIndex() {
+  const st = stateBlock();
+  const list = scenes();
+  const all = SCENES.map(s => s.id);
+  const rows = list.map(s => '<li><div class="main"><span class="num">' + (all.indexOf(s.id) + 1) + '.</span><div><button class="link title" data-scene="' + s.id + '">' + esc(s.title) + '</button>'
+    + '<div class="scene-meta">' + 'Scenario: ' + esc(s.scenario) + ' ' + times(s) + '</div></div></div><span class="count">' + esc(countLabel(s)) + '</span></li>').join("");
+  return shell("history", '<div class="page"><div class="page-head"><h1>Scene History</h1><p class="muted">' + intro() + '</p></div>' + noInvestigatorNote()
+    + (st || '<ol class="index" aria-label="Scenes">' + rows + '</ol>') + '</div>', true);
+}
+function optionBScene() {
+  const chrono = scenes().slice().sort((a, b) => SCENES.findIndex(x => x.id === a.id) - SCENES.findIndex(x => x.id === b.id));
+  const i = chrono.findIndex(s => s.id === S.scene);
+  const s = chrono[i];
+  const prev = chrono[i - 1], next = chrono[i + 1];
+  const empty = emptyForScene();
+  const body = s.reveals.length ? s.reveals.map(r => '<article class="article" aria-labelledby="a-' + r.id + '"><h2 id="a-' + r.id + '" style="font-size:16px">' + esc(r.title) + '</h2><div class="meta-line small muted">' + metaLine(r) + '</div><div class="content">' + content(r) + '</div></article>').join("")
+    : (empty ? '<p class="empty-line">' + esc(empty) + '</p>' : noInvestigatorNote());
+  return shell("history", '<div class="page"><button class="backlink" data-back="1">&larr; Back to Scene History</button>'
+    + '<div class="page-head"><h1>' + esc(s.title) + '</h1><div class="scene-meta" style="margin-top:6px"><span>Scenario: ' + esc(s.scenario) + '</span>' + times(s) + (s.finished ? "" : '<button class="link small">Open Active Scene</button>') + '</div></div>'
+    + body + '<nav class="prevnext" aria-label="Scenes">' + (prev ? '<button class="link" data-scene="' + prev.id + '">&larr; Previous: ' + esc(prev.title) + '</button>' : "<span></span>")
+    + (next ? '<button class="link" data-scene="' + next.id + '">Next: ' + esc(next.title) + ' &rarr;</button>' : "") + '</nav></div>', true);
+}
+
+// ---------- Option C: no tab; overview card + full page under Overview ----------
+function optionCOverview() {
+  const recent = SCENES.map((s, i) => s).slice(-3).reverse().map(s => s.id === "s4" && S.live === "finished" ? Object.assign({}, s, { finished: "7 Nov 2026, 22:30" }) : s);
+  const st = S.state === "error" ? '<div class="alert" role="alert">We couldn\'t load the Scene History. <button class="btn sm">Try again</button></div>'
+    : S.state === "empty" ? '<p class="muted">No Scene has been played yet.</p>' : S.state === "loading" ? '<div class="skel"></div><div class="skel"></div>'
+    : '<ol>' + recent.map(s => '<li><strong>' + esc(s.title) + '</strong> <span class="muted small">(' + esc(s.scenario) + ')</span><div class="scene-meta">' + times(s) + '</div></li>').join("") + '</ol>';
+  const active = S.live === "active" ? '<section class="card" aria-labelledby="c-active"><h2 id="c-active">Active Scene</h2><strong>Return to the Corbitt House</strong><span class="small">Investigators present: Harvey Walters</span><button class="link small">Open Active Scene</button></section>' : "";
+  return shell("overview", '<div class="page"><section class="card placeholder"><h2>Needs your attention</h2><span class="small">(existing card)</span></section>' + active
+    + '<section class="card" aria-labelledby="c-hist"><h2 id="c-hist">Scene History</h2><span class="small muted">Latest Scenes</span>' + st + '<button class="link small" data-full="1">Open Scene History</button></section>'
+    + '<section class="card placeholder"><h2>At the table</h2><span class="small">(existing card)</span></section></div>', false);
+}
+function optionCFull() { return shell("overview", fullPage('<button class="backlink" data-overview="1">&larr; Back to your Campaign</button>'), false); }
+
+// ---------- Notes per option ----------
+const NOTES = {
+  A: "<b>A: Campaign tab, one page.</b> What to judge: <ul><li>Does a long page (switch to Keeper, open several Reveals) stay scannable by Scene headings?</li><li>Oldest first plus 'Jump to the latest Scene' versus newest first (Q1).</li><li>A fifth tab at 320px (the row scrolls inside itself).</li></ul>",
+  B: "<b>B: Campaign tab, index plus Scene page.</b> Click a Scene title. What to judge: <ul><li>Is the extra click worth the compact index and the Reveals shown open?</li><li>The per-row count ('3 Reveals' or 'Nothing reached Harvey Walters').</li><li>Previous and next navigation between Scenes.</li></ul>",
+  C: "<b>C: no new tab.</b> The overview gets a 'Scene History' card with the 3 latest Scenes; 'Open Scene History' opens the same page as A with Overview as the current tab. What to judge: <ul><li>Is history discoverable enough without a tab?</li><li>Is another overview card worth it?</li></ul>"
+};
+
+// ---------- Render ----------
+function seg(id, key, choices) {
+  document.getElementById(id).innerHTML = choices.map(([v, l]) => '<button type="button" data-k="' + key + '" data-v="' + v + '" aria-pressed="' + (S[key] === v) + '">' + l + '</button>').join("");
+}
+function urlFor() {
+  const base = "/campaigns/arkham-nights";
+  if (S.option === "C") return S.overview === "1" ? base : base + "/scene-history";
+  return base + "/scene-history" + (S.option === "B" && S.route === "scene" ? "/" + S.scene : "");
+}
+function render() {
+  seg("c-option", "option", Object.entries(OPTIONS).map(([k, v]) => [k, k + ": " + v]));
+  seg("c-viewer", "viewer", [["keeper", "Keeper"], ["player", "Player (Harvey Walters)"], ["noinv", "Player, no Approved Investigator"]]);
+  seg("c-order", "order", [["oldest", "Oldest first + jump link"], ["newest", "Newest first"]]);
+  seg("c-state", "state", [["ready", "Data"], ["empty", "Empty"], ["loading", "Loading"], ["error", "Error"]]);
+  seg("c-width", "width", [["full", "Desktop"], ["narrow", "320px"]]);
+  seg("c-live", "live", [["active", "A Scene is Active"], ["finished", "Keeper finished it"]]);
+  document.getElementById("notes").innerHTML = NOTES[S.option] + '<div class="small">Mock: Scenes 1, 2 and 4 are in "The Haunting", Scene 3 in "Dead Man Stomp". Nothing in "The Speakeasy" reached Harvey. "Keeper finished it" shows what the page looks like after a <code>sceneHistory</code> refetch (no announcement; open Reveals stay open).</div>';
+  document.getElementById("pill-label").textContent = S.option + " (" + OPTIONS[S.option] + ")";
+  document.getElementById("url").textContent = urlFor();
+  document.getElementById("viewport").className = "viewport" + (S.width === "narrow" ? " narrow" : "");
+  let html;
+  if (S.option === "A") html = optionA();
+  else if (S.option === "B") html = S.route === "scene" && S.scene && S.state === "ready" ? optionBScene() : optionBIndex();
+  else html = S.overview === "1" ? optionCOverview() : optionCFull();
+  document.getElementById("app").innerHTML = html;
+}
+
+// ---------- Events ----------
+document.addEventListener("click", e => {
+  const t = e.target.closest("button, a");
+  if (!t) return;
+  if (t.dataset.k) return set({ [t.dataset.k]: t.dataset.v });
+  if (t.dataset.toggle) { open.has(t.dataset.toggle) ? open.delete(t.dataset.toggle) : open.add(t.dataset.toggle); render(); const b = document.querySelector('[data-toggle="' + t.dataset.toggle + '"]'); if (b) b.focus(); return; }
+  if (t.dataset.jump) { e.preventDefault(); const h = document.getElementById("h-" + t.dataset.jump); h.scrollIntoView(); h.focus(); return; }
+  if (t.dataset.scene) return set({ route: "scene", scene: t.dataset.scene });
+  if (t.dataset.back) return set({ route: "list", scene: "" });
+  if (t.dataset.full) return set({ overview: "0" });
+  if (t.dataset.overview) return set({ overview: "1" });
+  if (t.dataset.tab === "history") return set({ route: "list", scene: "" });
+  if (t.dataset.tab === "overview" && S.option === "C") return set({ overview: "1" });
+});
+const keys = Object.keys(OPTIONS);
+function cycle(d) { set({ option: keys[(keys.indexOf(S.option) + d + keys.length) % keys.length], route: "list", scene: "", overview: "1" }); }
+document.getElementById("prev").onclick = () => cycle(-1);
+document.getElementById("next").onclick = () => cycle(1);
+document.addEventListener("keydown", e => {
+  if (e.target.closest("input, textarea, [contenteditable]")) return;
+  if (e.key === "ArrowLeft") cycle(-1);
+  if (e.key === "ArrowRight") cycle(1);
+});
+render();
+</script>
+</body>
+</html>

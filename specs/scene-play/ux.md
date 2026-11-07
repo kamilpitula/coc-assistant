@@ -903,3 +903,141 @@ Stories cover:
 - **SPL-A11Y-20** "Held by", "(holds it)", and "Item" are text, never color alone. Give and take-back results use `role=status`, and refusals use `role=alert` (1.4.1, 4.1.3).
 - **SPL-A11Y-21** An Item arriving or leaving is announced politely, never on first load, and focus does not move (4.1.3).
 - **SPL-A11Y-22** Every new control is keyboard operable with a visible focus ring and is at least 24 by 24 CSS px. At 320px and 200% zoom, the entry actions wrap and the dialogs fit without horizontal scrolling (2.1.1, 2.4.7, 2.5.8, 1.4.10).
+
+## 23. Scene History (PBI-SPL-004)
+
+Selected direction: **Option A (a Campaign tab with one page, every Scene a section, its Reveals closed until "Show")**, chosen 2026-11-07 after comparing clickable prototypes (23.9). Alternatives considered:
+- **Option B (a Campaign tab with a Scene index and a page per Scene):** rejected; every re-read costs a second page and a back step, and the per-Scene page adds a not-found state and Previous/Next navigation for a list that is short at Campaign scale.
+- **Option C (no tab; an overview card with the latest Scenes and a full page under Overview):** rejected; Scene History is an area of the Campaign, which [navigation ux](../navigation/ux.md) section 5 puts behind a Campaign tab, and the card would be a second presentation of the same list.
+
+Human decisions at the PBI-SPL-004 UX gate (2026-11-07):
+- Scenes are listed newest started first. There is no "Jump to the latest Scene" link, because the latest Scene is at the top.
+- The Keeper sees each Scene's Investigators present; a Player does not.
+- A Scene where nothing reached a Player's Investigator stays listed with "Nothing from this Scene reached {name}.".
+
+Design record: [docs/scene-play/issues/04-scene-history.design.md](../../docs/scene-play/issues/04-scene-history.design.md).
+
+### 23.1 Information architecture
+
+```
+/campaigns/$campaignId/scene-history     Scene History (every Campaign Member)
+```
+
+- **Campaign tab (amends [navigation ux](../navigation/ux.md) section 2):** "Scene History" is the third tab: Overview, Active Scene, Scene History, Wall, Settings (Settings Keeper only). It is current on `/scene-history`. It has no badge.
+- **Entry:** the tab only. The page has no back link, like the Wall page.
+- **Exit:** the Campaign tabs; "Open Active Scene" on the Active Scene (23.2).
+
+### 23.2 Page (`scene-history-page`)
+
+```
+Scene History                                                    (h1)
+Every Scene played in this Campaign, newest first.               (muted; Keeper, Player without an Approved Investigator)
+Every Scene played in this Campaign and what reached Harvey Walters, newest first.   (muted; Player)
+
+Return to the Corbitt House                                      (h2)
+Scenario: The Haunting . Started 7 Nov 2026, 19:05 . [Active] Open Active Scene
+Investigators present: Harvey Walters and Lucy Ward              (Keeper only)
+  The cellar door                                                (h3)
+  Read-aloud . Revealed 7 Nov 2026, 19:20 . to Harvey Walters    ("to {names}" Keeper only)
+  [Show]
+
+The Speakeasy                                                    (h2)
+Scenario: Dead Man Stomp . Started 31 Oct 2026, 19:10 . Finished 31 Oct 2026, 21:00
+Nothing from this Scene reached Harvey Walters.                  (Player)
+```
+
+- **Scenes:** every Active and Finished Scene of every Scenario of the Campaign, newest started first. A Prepared Scene never appears.
+- **Each Scene:** a `section` labelled by its `h2` (the Scene title), then a muted meta line:
+  - "Scenario: {Scenario title}";
+  - "Started {date and time}";
+  - "Finished {date and time}", or, for the Active Scene, the "Active" `scene-status-badge` followed by the link "Open Active Scene" to `/campaigns/$campaignId/active-scene`.
+  - The separator between parts is the one the existing meta lines use (`reveal-meta-line`, `clues-list`); this section does not settle the PBI-SPL-002 separator follow-up.
+- **Investigators present (Keeper only):** "Investigators present: {names}" under the meta line: who was present when the Scene finished, or who is present now for the Active Scene, in roster order. Names are joined as section 17 says; an unnamed Investigator is "Unnamed Investigator".
+- **Reveals:** under the Scene, newest first, each an `article` labelled by its `h3`, closed until "Show", exactly as a Clue on the Clues page (section 15):
+  - **Meta line:** a Player reads "{kind} . Revealed {date and time}" (section 15); the Keeper reads the same followed by " . to {names}".
+  - **"Show" and "Hide":** accessible name "Show {title}" or "Hide {title}", with `aria-expanded`. Opening renders `revealed-content` from the snapshot (sections 14 and 22.8); a file loads on first open from `reveals/{revealId}/file`.
+- **Empty Scene:**
+  - Keeper: "Nothing was revealed in this Scene."
+  - Player: "Nothing from this Scene reached {name}."
+- **Player without an Approved Investigator:** every Scene is listed with its title and times and no Reveals and no per-Scene sentence. One muted note sits under the description: "You don't have an Approved Investigator in this Campaign yet, so no Reveals are shown."
+- **No Scene played yet:** "No Scene has been played yet." under the description.
+- **Loading:** a Skeleton with `aria-busy="true"`.
+- **Error:** "We couldn't load the Scene History." with "Try again" (`role=alert`).
+- **Not a member or no such Campaign:** the existing Campaign not-found page.
+
+### 23.3 Live updates
+
+- The page refetches silently on `sceneHistory` (a Scene starts or finishes, or the Investigators present change), on `myClues` (a Player's Investigator received a Reveal), and on `sceneReveals` (the Keeper).
+- Nothing is announced; arrivals are already announced on the Active Scene page and the overview card (sections 5 and 14).
+- Focus never moves. A Reveal that was open stays open across a refetch (open state is kept by Reveal id). A newly started Scene appears at the top.
+
+### 23.4 Headings and layout
+
+- One `h1`. Scenes are `h2`, Reveals `h3`, and revealed rich text starts at `h4`, as on the Clues page.
+- The page uses the same reading column as the Clues page; a Map breaks out to the full content width as section 14 says.
+- At 320px the meta line wraps between its parts; the Campaign tab row scrolls inside itself ([navigation ux](../navigation/ux.md) section 2).
+
+### 23.5 Content
+
+| Key | Copy |
+|---|---|
+| Tab | Scene History |
+| Page | Scene History / Every Scene played in this Campaign, newest first. / Every Scene played in this Campaign and what reached {name}, newest first. |
+| Scene meta | Scenario: {title} / Started {date and time} / Finished {date and time} / Active / Open Active Scene |
+| Keeper | Investigators present: {names} / to {names} / Nothing was revealed in this Scene. |
+| Player | Nothing from this Scene reached {name}. / You don't have an Approved Investigator in this Campaign yet, so no Reveals are shown. |
+| Reveal | {kind} / Revealed {date and time} / Show / Hide |
+| States | No Scene has been played yet. / We couldn't load the Scene History. / Try again |
+
+Never use "timeline", "log", or "play order" (root CONTEXT.md, Scene History).
+
+### 23.6 Component mapping
+
+| Element | Component |
+|---|---|
+| Route | New `routes/campaigns.$campaignId.scene-history.tsx` (thin) |
+| Page | New `scene-history-page` (states, description, note) |
+| Scene | New `scene-history-scene` (one `section`: meta line, Investigators present, Reveals, empty sentence) |
+| Reveal | New `reveal-disclosure`, extracted from the Clue item of `clues-list` and taking its meta line; `clues-list` and `scene-history-scene` both use it |
+| Reused | `revealed-content`, `useRevealFile`, `scene-times` ("Started" and "Finished"), `scene-status-badge`, `revealPresentation` (kind label, times, names), `Collapsible`, `Button`, `Skeleton`, `Alert` |
+| Tabs | `campaign-header` gains the "Scene History" link; `CampaignSection` gains `scene-history` |
+| Data | New `sceneHistoryApi.ts` (strict zod Keeper and Player schemas, `sceneHistoryQueryKeys`), `useSceneHistory` |
+| Live | `sceneHistory` added to `campaign-play/services/liveTopics.ts`; `myClues` and `sceneReveals` also refetch the Scene History |
+
+Stories cover:
+- **`scene-history-page`:** Keeper, Player, Player without an Approved Investigator, no Scene played, loading, error, and 320px.
+- **`scene-history-scene`:** Active and Finished, Keeper and Player, empty for each, and an unnamed Investigator.
+- **`reveal-disclosure`:** closed, open, and with the Keeper meta line.
+
+### 23.7 UX acceptance criteria
+
+- **SPL-UX-61** Every Campaign page shows the tabs Overview, Active Scene, Scene History, Wall, and (Keeper) Settings, in that order. Scene History is the current tab on `/scene-history`. (Amends NAV-UX-1.)
+- **SPL-UX-62** Scene History lists the Active and Finished Scenes of every Scenario of the Campaign, newest started first, each with its Scenario title, its start time, and its finish time or "Active". No Prepared Scene is listed.
+- **SPL-UX-63** The Keeper sees every Reveal of every listed Scene with "to {names}", and each Scene's "Investigators present: {names}".
+- **SPL-UX-64** A Player sees, per Scene, only the Reveals that reached their Investigator, with no "to {names}" and no Investigators present. A Scene where nothing reached it shows "Nothing from this Scene reached {name}.". A Player-facing Handout that was never revealed is absent.
+- **SPL-UX-65** A Player without an Approved Investigator sees the Scenes with their times, no Reveals, and "You don't have an Approved Investigator in this Campaign yet, so no Reveals are shown.".
+- **SPL-UX-66** "Show" opens a Reveal's content as revealed, by kind (SPL-UX-27), and keeps showing the snapshot after the Keeper edits the subject (SPL-UX-30).
+- **SPL-UX-67** "Open Active Scene" on the Active Scene opens the Active Scene page.
+- **SPL-UX-68** When the Keeper starts or finishes a Scene, a connected member's Scene History updates without reloading. A new Reveal appears only for the Keeper and the Players whose Investigators it reached. Nothing is announced, and an open Reveal stays open.
+- **SPL-UX-69** With no Scene played the page shows "No Scene has been played yet."; a load failure shows "We couldn't load the Scene History." with "Try again", which reloads it.
+
+### 23.8 Accessibility acceptance criteria (WCAG 2.2 AA)
+
+- **SPL-A11Y-23** The page has one `h1`; each Scene is a `section` labelled by its `h2`; each Reveal is an `article` labelled by its `h3`; revealed rich text starts at `h4`. Times are `time` elements, and "Active" is text, never color alone (1.3.1, 1.4.1, 2.4.6).
+- **SPL-A11Y-24** "Show" and "Hide" expose `aria-expanded`, and their accessible names include the Reveal title. Every control is keyboard operable with a visible focus ring and is at least 24 by 24 CSS px (2.1.1, 2.4.6, 2.4.7, 2.5.8, 4.1.2).
+- **SPL-A11Y-25** A live refetch announces nothing and never moves focus; the load error uses `role=alert` (2.4.3, 4.1.3).
+- **SPL-A11Y-26** At 320px and 200% zoom the page, its meta lines, and a revealed Map fit without horizontal scrolling (1.4.10).
+
+### 23.9 Prototype validation
+
+- **Question:** which page structure serves Scene History best (one page, index and Scene page, or no tab), and in which order.
+- **Branch of the prototype skill:** UI.
+- **Prototype:** [prototype/scene-history.html](prototype/scene-history.html), a throwaway single HTML file kept as a reference, as the [navigation prototype](../navigation/prototype/active-scene.html) is. It shows Options A, B, and C, Keeper and Player views (including a Player without an Approved Investigator and a Scene where nothing reached the Player), both orders, empty, loading, and error states, a simulated finish, and a 320px frame. Open it in a browser; this section, not the prototype, is normative. At the human's direction it is committed beside this document and no `prototype/` branch was created.
+- **Verdict:** Option A, with newest started first, Investigators present for the Keeper only, and empty Scenes kept listed for a Player.
+- **Date:** 2026-11-07. **Decided by:** the human at the PBI-SPL-004 UX gate, relayed by the Orchestrator.
+- **Screenshots:** none recorded.
+
+### 23.10 Open decisions and research gaps
+
+- **Research gap:** how long Campaigns grow. If Scene History becomes hard to scan, Option B's index is the documented fallback.
+- **Research gap:** whether Players want the Investigators present of past Scenes; adding them changes the Player projection and needs the spec's Regression Guardrails first.
