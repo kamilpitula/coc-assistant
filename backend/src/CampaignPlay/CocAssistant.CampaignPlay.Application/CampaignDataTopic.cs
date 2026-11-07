@@ -11,6 +11,7 @@ public enum CampaignDataTopic
     Investigators,
     MyInvestigator,
     ActiveScene,
+    SceneHistory,
     MyClues,
     MyItems,
     SceneReveals,

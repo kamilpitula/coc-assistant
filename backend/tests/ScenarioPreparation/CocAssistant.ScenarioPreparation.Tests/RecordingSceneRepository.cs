@@ -57,6 +57,12 @@ public sealed class RecordingSceneRepository : ISceneRepository
         return _inner.FindActiveAsync(campaignId, cancellationToken);
     }
 
+    public Task<IReadOnlyList<Scene>> ListPlayedAsync(Guid campaignId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(ListPlayedAsync));
+        return _inner.ListPlayedAsync(campaignId, cancellationToken);
+    }
+
     public Task<IReadOnlyList<Scene>> ListTrackedPreparedLinkingNonPlayerEntityAsync(Guid campaignId, NonPlayerEntityType type, Guid nonPlayerEntityId, CancellationToken cancellationToken)
     {
         Calls.Add(nameof(ListTrackedPreparedLinkingNonPlayerEntityAsync));

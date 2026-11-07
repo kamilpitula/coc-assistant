@@ -3,7 +3,8 @@ namespace CocAssistant.Api.IntegrationTests;
 /// <summary>
 /// The endpoint-list authorization matrix for Scene Play (ADR 0023; specs/scene-play/spec.md, Regression Guardrails). One table has
 /// a row, with a valid body, for every endpoint the app registers from the ScenePlay.Controllers assembly. A caller without a token
-/// gets 401; a Player gets the row's status (404 for Keeper-only rows, 200 with the non-present shape for the read); another
+/// gets 401; a Player gets the row's status (404 for Keeper-only rows, 200 with the non-present shape for the Active Scene
+/// read, 200 with only their Investigator's Reveals for the Scene History read); another
 /// Campaign's Keeper and the Keeper addressing a missing Campaign get 404. A refused call changes no Scene, no present Investigator,
 /// and no Wall Entry, and no response carries prepared text. The Reveal rows (PBI-SPL-002) answer a Player 404, because the matrix
 /// Player is not a recipient and has no Approved Investigator; a refused call adds no Reveal or recipient. The Item holder
@@ -131,8 +132,9 @@ public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactor
         request.Headers.Add("X-Test-Email", $"{oid}@example.com");
     }
 
-    // A Campaign with a Player who has no Investigator, a Player with an Approved one, a prepared Scenario full of secret text, and an
-    // Active Scene whose title is plain, because the title of the Active Scene is meant to reach every member.
+    // A Campaign with a Player who has no Investigator, a Player with an Approved one, a prepared Scenario full of secret text that
+    // keeps only Prepared Scenes, and an Active Scene in its own plain-titled Scenario, because the titles of played Scenes and
+    // their Scenarios are meant to reach every member (including through the Scene History).
     private async Task<Seeded> SeedAsync()
     {
         var client = _factory.CreateClient();
@@ -142,7 +144,10 @@ public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactor
         var investigatorId = await CreateApprovedAsync(client, campaignId, KeeperOid, PresentPlayerOid, "Harvey Walters");
         await CreateCampaignAsync(client, OtherKeeperOid);
         var prepared = await PreparedScenarioSeed.PrepareAsync(client, campaignId, KeeperOid);
-        var scenes = $"/api/campaigns/{campaignId}/scenarios/{prepared.ScenarioId}/scenes";
+        var playedScenario = await client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/scenarios", KeeperOid, new { title = "The Played Scenario" }));
+        playedScenario.EnsureSuccessStatusCode();
+        var playedScenarioId = (await playedScenario.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var scenes = $"/api/campaigns/{campaignId}/scenarios/{playedScenarioId}/scenes";
         var created = await client.SendAsync(BuildRequest(HttpMethod.Post, scenes, KeeperOid, new { title = "The Corbitt House" }));
         created.EnsureSuccessStatusCode();
         var activeSceneId = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
@@ -218,6 +223,7 @@ public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactor
             new("POST", campaign + "/active-scene/finish", NoBody, HttpStatusCode.NotFound),
             new("PUT", campaign + "/active-scene/present-investigators", Json(new { presentInvestigatorIds = new[] { SomeId } }), HttpStatusCode.NotFound),
             new("GET", campaign + "/active-scene", NoBody, HttpStatusCode.OK),
+            new("GET", campaign + "/scene-history", NoBody, HttpStatusCode.OK),
             new("POST", campaign + "/active-scene/reveals", Json(new { subject = new { type = "Handout", id = SomeId }, investigatorIds = new[] { SomeId } }), HttpStatusCode.NotFound),
             new("GET", campaign + "/reveals/{revealId}/file", NoBody, HttpStatusCode.NotFound),
             new("POST", campaign + "/items/{itemId}/give", Json(new { investigatorId = SomeId }), HttpStatusCode.NotFound),

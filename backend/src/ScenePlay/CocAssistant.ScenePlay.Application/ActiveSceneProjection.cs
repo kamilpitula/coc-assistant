@@ -15,12 +15,12 @@ internal static class ActiveSceneProjection
             scene.Title,
             scene.Location,
             scene.StartedAt,
-            Present(scene, approved).Select(investigator => new InvestigatorPresentView(investigator.Id, investigator.Name)).ToList(),
+            PresentInvestigators.Resolve(scene.InvestigatorsPresent, approved).Select(investigator => new InvestigatorPresentView(investigator.Id, investigator.Name)).ToList(),
             scene.Reveals.Select(reveal => RevealProjection.ForKeeper(reveal, approved)).OrderByDescending(reveal => reveal.Reveal.RevealedAt).ThenBy(reveal => reveal.Reveal.RevealId).ToList());
 
     public static ActiveSceneRead ForPlayer(PlayableScene scene, IReadOnlyList<ApprovedInvestigatorRef> approved, Guid playerAccountId)
     {
-        var present = Present(scene, approved);
+        var present = PresentInvestigators.Resolve(scene.InvestigatorsPresent, approved);
         var own = present.FirstOrDefault(investigator => investigator.PlayerAccountId == playerAccountId);
         if (own is null)
         {
@@ -39,16 +39,4 @@ internal static class ActiveSceneProjection
             .ToList();
         return new PresentPlayerActiveSceneRead(new PresentPlayerActiveSceneView(scene.Title, scene.Location, names, reveals));
     }
-
-    // Present ids with their Approved record when there is one, by name then id, so every view lists them in one order.
-    private static List<PresentInvestigator> Present(PlayableScene scene, IReadOnlyList<ApprovedInvestigatorRef> approved) =>
-        scene.InvestigatorsPresent
-            .Select(id => approved.FirstOrDefault(candidate => candidate.InvestigatorId == id) is { } match
-                ? new PresentInvestigator(id, match.PlayerAccountId, match.Name)
-                : new PresentInvestigator(id, null, null))
-            .OrderBy(investigator => investigator.Name, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(investigator => investigator.Id)
-            .ToList();
-
-    private sealed record PresentInvestigator(Guid Id, Guid? PlayerAccountId, string? Name);
 }

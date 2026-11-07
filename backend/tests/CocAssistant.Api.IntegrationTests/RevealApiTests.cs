@@ -584,7 +584,8 @@ public class RevealApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
         return (await JsonAsync(response)).GetProperty("id").GetGuid();
     }
 
-    // The activeScene signal is sent after the reveals and in order on every connection, so everything a client heard before it is what the reveals sent.
+    // The activeScene and sceneHistory signals are sent after the reveals and in order on every connection, so everything
+    // a client heard before them is what the reveals sent.
     private static async Task<string> TopicsUntilActiveSceneAsync(CampaignHubTestClient client, Guid campaignId)
     {
         var before = new List<string>();
@@ -593,7 +594,7 @@ public class RevealApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
             if (await client.NextMessageAsync() is CampaignDataChangedMessage message && message.CampaignId == campaignId)
             {
                 var topics = message.Topics.ToArray();
-                if (topics.SequenceEqual(["activeScene"]))
+                if (topics.SequenceEqual(["activeScene", "sceneHistory"]))
                 {
                     return string.Join('|', before);
                 }

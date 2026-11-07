@@ -34,6 +34,17 @@ public class SceneLifecycleService
     }
 
     /// <summary>
+    /// The Campaign's played Scenes (Active and Finished), newest StartedAt first, with their Scenario titles from a single
+    /// Scenario lookup.
+    /// </summary>
+    public async Task<IReadOnlyList<PlayableSceneView>> ListPlayedAsync(Guid campaignId, CancellationToken cancellationToken)
+    {
+        var scenes = await _scenes.ListPlayedAsync(campaignId, cancellationToken);
+        var titles = (await _scenarios.ListForCampaignAsync(campaignId, cancellationToken)).ToDictionary(scenario => scenario.Id, scenario => scenario.Title);
+        return scenes.Select(scene => ToView(scene, titles.GetValueOrDefault(scene.ScenarioId) ?? string.Empty)).ToList();
+    }
+
+    /// <summary>
     /// Starts a Prepared Scene with the Investigators present, finishing the Active Scene in the same save when asked. Checks run in
     /// this order: the Scene exists, it is Prepared, no other Scene is Active (unless it is to be finished), then the present list.
     /// </summary>
@@ -156,10 +167,14 @@ public class SceneLifecycleService
     private async Task<PlayableSceneView> ToViewAsync(Scene scene, CancellationToken cancellationToken)
     {
         var scenario = await _scenarios.FindByIdAsync(scene.CampaignId, scene.ScenarioId, cancellationToken);
-        return new PlayableSceneView(
+        return ToView(scene, scenario?.Title ?? string.Empty);
+    }
+
+    private static PlayableSceneView ToView(Scene scene, string scenarioTitle) =>
+        new(
             scene.Id,
             scene.ScenarioId,
-            scenario?.Title ?? string.Empty,
+            scenarioTitle,
             scene.Title,
             scene.Location,
             scene.Status,
@@ -167,7 +182,6 @@ public class SceneLifecycleService
             scene.FinishedAt,
             scene.InvestigatorsPresent,
             scene.Reveals.Select(RevealViews.ToView).ToList());
-    }
 
     private static SceneStartResult Refused(SceneStartOutcome outcome) => new(outcome, null, null);
 

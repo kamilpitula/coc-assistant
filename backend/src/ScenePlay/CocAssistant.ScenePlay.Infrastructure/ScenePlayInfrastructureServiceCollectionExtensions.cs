@@ -18,6 +18,8 @@ public static class ScenePlayInfrastructureServiceCollectionExtensions
         services.AddScoped<ActiveSceneService>();
         services.AddScoped<RevealService>();
         services.AddScoped<ItemHolderService>();
+        services.AddScoped<ISceneHistory, ScenarioPreparationSceneHistory>();
+        services.AddScoped<SceneHistoryService>();
 
         return services;
     }

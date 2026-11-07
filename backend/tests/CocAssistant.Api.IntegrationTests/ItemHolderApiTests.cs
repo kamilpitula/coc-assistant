@@ -372,7 +372,8 @@ public class ItemHolderApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifet
         Assert.Equal("myItems,myClues|myItems", await TopicsUntilActiveSceneAsync(lucyHub, table.CampaignId));
     }
 
-    // The activeScene signal is sent after the holder change and in order on every connection, so everything a client heard before it is what the change sent.
+    // The activeScene and sceneHistory signals are sent after the holder change and in order on every connection, so everything
+    // a client heard before them is what the change sent.
     private static async Task<string> TopicsUntilActiveSceneAsync(CampaignHubTestClient client, Guid campaignId)
     {
         var before = new List<string>();
@@ -381,7 +382,7 @@ public class ItemHolderApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifet
             if (await client.NextMessageAsync() is CampaignDataChangedMessage message && message.CampaignId == campaignId)
             {
                 var topics = message.Topics.ToArray();
-                if (topics.SequenceEqual(["activeScene"]))
+                if (topics.SequenceEqual(["activeScene", "sceneHistory"]))
                 {
                     return string.Join('|', before);
                 }

@@ -34,6 +34,21 @@ public class EfSceneRepository : ISceneRepository
     public Task<Scene?> FindActiveAsync(Guid campaignId, CancellationToken cancellationToken) =>
         WithChildren().SingleOrDefaultAsync(scene => scene.CampaignId == campaignId && scene.Status == SceneStatus.Active, cancellationToken);
 
+    // The only place played Scenes are sorted: newest StartedAt first, then Active before Finished, then newest FinishedAt
+    // first, then Id. Played Scenes always have a StartedAt; only the Active Scene has no FinishedAt, and it never reaches
+    // that tie-break because the Active-first key decides first.
+    public async Task<IReadOnlyList<Scene>> ListPlayedAsync(Guid campaignId, CancellationToken cancellationToken) =>
+        await _dbContext.Scenes
+            .AsNoTracking()
+            .Include(InvestigatorsPresentNavigation)
+            .Include(RevealRecipientsNavigation)
+            .Where(scene => scene.CampaignId == campaignId && scene.Status != SceneStatus.Prepared)
+            .OrderByDescending(scene => scene.StartedAt)
+            .ThenBy(scene => scene.Status == SceneStatus.Active ? 0 : 1)
+            .ThenByDescending(scene => scene.FinishedAt)
+            .ThenBy(scene => scene.Id)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Scene>> ListTrackedPreparedLinkingNonPlayerEntityAsync(
         Guid campaignId,
         NonPlayerEntityType type,
