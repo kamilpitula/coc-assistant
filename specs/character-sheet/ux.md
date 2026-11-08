@@ -5,7 +5,7 @@ Selected direction: **Option A (linear stepper with live summary rail) with task
 Behavior and rules: [spec.md](spec.md) and [specs/campaign-play/spec.md](../campaign-play/spec.md). Rule sections are linked from those specs. This document does not restate rules. Copy that explains a rule to the Player shows values the backend computes from rule data, not hard-coded text.
 
 Decisions from design review:
-- Players enter the **raw dice total** (for example `11` for 3D6). The UI shows the resulting characteristic value. The Roll Record stores the raw total.
+- **[DEPRECATED 2026-11-08]** ~~Players enter the **raw dice total** (for example `11` for 3D6). The UI shows the resulting characteristic value. The Roll Record stores the raw total.~~ Replaced by: the app rolls every creation dice result on the server when the Player asks (section 6.8). The Player sees the resulting values; the Keeper sees every die face in Dice results (section 7.1). Selected 2026-11-08 for PBI-DICE-002: option B of three, an inline roll with a confirmation dialog. The alternatives were an immediate inline roll and a dedicated "Roll dice" step; the step was rejected for its journey and E2E cost.
 - The Keeper approves with **one click**, with no confirmation dialog.
 
 ## 1. Information architecture
@@ -172,20 +172,41 @@ Later inputs are kept. When the Player saves, any later step whose inputs became
 
 ### 6.2 Characteristics (`characteristics`)
 - **Creation method**: a RadioGroup listing only the Campaign's allowed methods. It is hidden when only one method is allowed, and in that case the step shows "Creation method: Point buy" as text.
-- **Standard rolling** (`dice-roll-input`, one row per roll): the label (for example "STR"), the dice expression from the rules data (for example "3D6 x 5"), a number input labelled "STR, 3D6 total" with a range hint taken from the dice expression, and the computed result as text ("= 55").
-  - Rows: the eight characteristics plus Luck.
-  - When the age is in the two-Luck-roll bracket, a second Luck row "Luck, second roll" appears, with the help text "Your age lets you roll Luck twice and keep the higher result." The value kept is shown.
+- **[DEPRECATED 2026-11-08]** ~~**Standard rolling** (`dice-roll-input`, one row per roll): the label (for example "STR"), the dice expression from the rules data (for example "3D6 x 5"), a number input labelled "STR, 3D6 total" with a range hint taken from the dice expression, and the computed result as text ("= 55"). Rows: the eight characteristics plus Luck. When the age is in the two-Luck-roll bracket, a second Luck row "Luck, second roll" appears, with the help text "Your age lets you roll Luck twice and keep the higher result." The value kept is shown.~~ Replaced by the following (PBI-DICE-002):
+- **Standard rolling** (rolled by the app, section 6.8):
+  - **Before rolling:** the fieldset "Characteristics" holds:
+    - the text "The app rolls each characteristic for you: STR, CON, DEX, APP, POW {dice}; SIZ, INT, EDU {dice}.", with the dice and formulas from `rules.standardRolling`;
+    - below it, the roll action "Roll characteristics".
+  - **After rolling:**
+    - an `h3` "Your characteristics" (`tabIndex=-1`, the focus target);
+    - then a list of eight items such as "STR 65", in a grid of 2 columns below 640px and 4 columns at 640px and wider;
+    - values only, no faces.
+  - **Typed-in values from before the dice system:** they read "STR 55 (entered by you)". While some characteristics have no Roll Record, the action reads "Roll the remaining characteristics", and its dialog lists only those characteristics.
+  - **Creation method locked:** once any characteristic has a Roll Record:
+    - the RadioGroup is replaced by the text "Creation method: Standard rolling" with the help text "Locked because your characteristics are rolled.";
+    - in Draft only, the help text adds "To use another method, start over.".
 - **Point buy**: eight number inputs and a budget counter (`point-budget-counter`) reading "Points used: 410 of 460". Server warnings for low INT or SIZ appear under the Worth checking Alert.
   - **Luck (Point buy)**: below the eight inputs and the budget counter, outside the budget, an `h2` "Luck" with the help text "Luck isn't bought with points. Roll 3D6 at the table and enter the total." The dice expression in the help text comes from the rules data.
   - One `dice-roll-input` row labelled "Luck, 3D6 total" with the range hint from the dice expression (for example "3 to 18") and the computed result as text ("= 55").
   - When the age is in the two-Luck-roll bracket, a second row "Luck, second roll" appears with the help text "Your age lets you roll Luck twice and keep the higher result." The kept value is shown as "Luck kept: 65". The second row is not rendered for other ages.
   - Luck values are not counted in "Points used". Errors on the Luck rows appear in the step's error summary and inline, like any other field.
+- **Luck, rolled by the app** (every method; PBI-DICE-003): this replaces the typed Luck rows above once PBI-DICE-003 ships, and the typed rows remain until then.
+  - **The action:** "Roll Luck". Its dialog body reads: "The app rolls Luck ({luckDice}) once{, twice at your age, keeping the higher result}. You can't roll it again, and your age must then stay between {minimumAge} and {maximumAge}."
+  - **After rolling:** "Luck 55". In the two-roll bracket: "Luck rolls 45 and 55, kept 55".
+  - **Without a valid saved age:** the action is not rendered. The text "Enter a valid age on the Identity step to roll Luck." appears instead.
+  - Luck is still not counted in "Points used".
 - **Quick fire**: eight Selects. Each Select offers the pool values not yet assigned elsewhere, plus its own current value. A line "Values left to assign: 50, 60" shows what remains.
 
 ### 6.3 Age effects (`age`)
 - The intro line is built from the age bracket the server returns, for example "At age 45 you lose 5 points from STR, CON or DEX, and APP is reduced by 5." Every number and characteristic in it comes from rule data, not hard-coded text. Parts that don't apply to the bracket are left out (for example ages 20 to 39 read "At age 25 you make 1 EDU check.").
 - **Deduction split**: one number input per eligible characteristic, and a counter "Still to deduct: 3". The adjusted value is shown next to each input.
 - **EDU improvement checks**: one group per required check, headed "EDU check 1 of 2". The group has an input "D100 roll". If the roll is above the current EDU, a second input "1D10 gain" appears. Each group ends with a result line: "EDU 60 -> 67", or "No improvement".
+- **EDU improvement checks rolled by the app** (PBI-DICE-003; this replaces the typed inputs above once it ships):
+  - Each group "EDU check n of m" has the roll action "Roll EDU check n".
+  - Only the next unrolled check has the action. Later groups read "Roll EDU check {n-1} first."
+  - The dialog body reads: "The app rolls {eduImprovementCheckDice} against your EDU of {eduBefore}, and {eduImprovementGainDice} more if it improves. You can't roll it again. Afterwards your age must stay between {minimumAge} and {maximumAge}{ and your EDU can't change}." The EDU clause appears under Point buy and Quick fire only.
+  - The result line is unchanged.
+  - Without a valid age and EDU, the text "Enter a valid age and your EDU to roll EDU checks." appears instead.
 - Fields hidden by these conditions are not rendered, rather than disabled.
 
 ### 6.4 Occupation (`occupation`)
@@ -246,6 +267,63 @@ In read-only mode (section 7) sections 3 to 5 show the text with its line breaks
 
 When the Investigator is Changes Requested, a Keeper comment Alert appears at the top of every step.
 
+### 6.8 Creation rolling (selected 2026-11-08, PBI-DICE-002)
+The server rolls every creation dice result when the Player asks for it ([spec.md](spec.md), Creation rolling and Creation locks). Each roll is final.
+
+**Roll action (`creation-roll-action`)**
+- A primary Button whose label names its group.
+- It is rendered only when its prerequisites are met. Otherwise a text reason is shown instead, following section 6.3's rule that hidden fields are not rendered rather than disabled.
+- Activating it opens an AlertDialog:
+  - **Title:** "{Label}?", for example "Roll characteristics?".
+  - **Body:** the text from section 6.2 or 6.3. For characteristics: "The app rolls {list} once. You can't roll them again, and you can't change your creation method afterwards."
+  - **Buttons:** "Roll now" (primary, not destructive) and "Not yet" (cancel, initial focus).
+- "Not yet" or Escape closes the dialog, rolls nothing, and returns focus to the trigger.
+
+**"Roll now"**
+1. It first saves the step's inputs as "Save and continue" does (section 5.1), but stays on the step.
+2. It then sends the roll.
+3. While the roll is pending:
+   - "Roll now" reads "Rolling...";
+   - both buttons are disabled;
+   - the dialog stays open.
+4. On success:
+   - the dialog closes;
+   - the results replace the action;
+   - focus moves to the results heading;
+   - the polite status region announces "{Group} rolled.", for example "Characteristics rolled."
+
+**Failures**
+- **The save fails:** the save failure Alert of section 5.1 appears, and nothing is rolled.
+- **The roll fails** (network error or 5xx):
+  - the dialog closes and focus returns to the trigger;
+  - the Alert "We couldn't roll your {group}. Try again." appears, with a "Try again" button that sends the roll without the dialog;
+  - one confirmation never sends two rolls.
+- **The roll returns 409:** the sheet reloads.
+  - If the group now has results, they are shown with the status message "Your {group} were already rolled."
+  - Otherwise the Alert "We couldn't roll your {group}. Reload the page and try again." appears.
+
+**Locks**
+- **A save refused by a creation lock (409):**
+  - the sheet reloads and the Player stays on the step;
+  - the Alert "Your Investigator changed elsewhere, so we reloaded it." appears.
+- **The wizard never offers a control that breaks a lock:**
+  - The Creation Method shows as text (section 6.2).
+  - **Age** (PBI-DICE-003): the field shows the hint "Your age must stay between {minimumAge} and {maximumAge} because you rolled {Luck / EDU checks}.", and the client validator reports an age outside the bracket on blur.
+  - **EDU** (PBI-DICE-003): under Point buy the EDU input is disabled; under Quick fire the EDU Select is replaced by text. Both carry "Locked because you rolled an EDU check."
+
+**Error summary**
+- Links for `CharacteristicRollRequired` (field `characteristicRolls.{C}`) focus the roll action.
+- The inline error appears once, under the action.
+- The Luck and EDU links do the same in PBI-DICE-003.
+
+**Re-roll grant (PBI-DICE-004)**
+- The Keeper comment Alert adds "Your Keeper lets you roll again: {groups}."
+- Granted groups show their roll action again, labelled "Roll {group} again".
+- The dialog adds "Only your Keeper can allow a re-roll."
+- The Player never sees replaced results.
+
+No dice animation is used, so no result depends on motion.
+
 ## 7. Read-only sheet view and Keeper review
 
 `character-sheet-view` in read-only mode is used for:
@@ -256,7 +334,16 @@ When the Investigator is Changes Requested, a Keeper comment Alert appears at th
 - `h1` is the Investigator name. Below it: "Player: Ada Lovelace" and the status badge.
 - A **Worth checking** Alert lists the warnings. Custom content is also listed there: "Custom occupation: Bootlegger" and "2 custom weapons" ("1 custom weapon"). The custom content lines appear only on the Keeper's review; with no warnings and no custom content the Alert is not shown.
 - The sheet sections follow (as in 6.7, read-only).
-- **Dice results** is a Collapsible, collapsed by default, containing a table with columns Rolled for, Dice, Result, Entered by ("Player").
+- **[DEPRECATED 2026-11-08]** ~~**Dice results** is a Collapsible, collapsed by default, containing a table with columns Rolled for, Dice, Result, Entered by ("Player").~~ Replaced by the following (PBI-DICE-002).
+- **Dice results** is a Collapsible, collapsed by default. It contains a table with the columns Rolled for, Dice, Faces, Result, Rolled by, and When, each a column header with `scope="col"`. Cell contents:
+  - **Faces:** for example "2, 5, 6".
+  - **Rolled by:** "Server, for {Player name}" for results the server rolled, or "{Player name} (entered)" for results typed in before the dice system.
+  - **When:** a `<time dateTime>` element in the viewer's locale, for example "8 Nov 2026, 14:05".
+  - **Typed-in rows:** Faces and When read "Not recorded".
+  - The Player's views never show this table.
+- **Replaced results (PBI-DICE-004):**
+  - A replaced row reads "{Rolled for} (replaced)" and follows its replacement.
+  - The Request changes Dialog gains an optional fieldset, "Allow the Player to roll again". It has Checkboxes "Characteristics", "Luck", and "EDU checks", each shown only when that group has Roll Records, and the help text "Their current results stay visible to you and stop counting."
 - The actions sit at the end of the page, not sticky: "Request changes" (secondary) and "Approve" (primary). They appear only when the status is Submitted.
 - **Approve** has no confirmation. While pending the button reads "Approving..." and both buttons are disabled. On success the badge changes to "Approved", the actions are removed, the status message "Harvey Walters is approved and ready for play." is announced, and focus moves to the status message.
 - **Request changes** opens a Dialog titled "Request changes":
@@ -274,6 +361,7 @@ When the Investigator is Changes Requested, a Keeper comment Alert appears at th
 | Buttons, text inputs | Existing `shared/components/ui/button.tsx`, `input.tsx` |
 | Card, Badge, Alert, AlertDialog, Dialog, Checkbox, RadioGroup, Select, Textarea, Collapsible, Label, Table, Skeleton | Add from shadcn/ui into `shared/components/ui/` |
 | `investigator-creation-stepper`, `investigator-summary`, `dice-roll-input`, `point-budget-counter`, `skill-allocation-table`, `skill-picker`, `character-sheet-view`, `your-investigator-card`, `investigator-list`, `investigator-review`, `rules-options` | New, in `frontend/src/campaign-play/components/<name>/` with a colocated story and test |
+| `creation-roll-action` (section 6.8) | New in PBI-DICE-002, in `frontend/src/campaign-play/components/creation-roll-action/` with a colocated story and test; reuses `AlertDialog`. `dice-roll-input` is retired in PBI-DICE-003 |
 
 Tokens: `--destructive` (defined) and `--warning` (added in PBI-CP-003), each with at least 4.5:1 contrast against `--background`. Every warning and error also carries an icon and text.
 
@@ -285,6 +373,9 @@ Tokens: `--destructive` (defined) and `--warning` (added in PBI-CP-003), each wi
 | PBI-CP-003 | Section 3 (both roles); sections 4 and 5, including the summary rail without the occupation and personal interest budget lines; step 6.1; step 6.2 for Point buy, including its Luck rows; step 6.3 Age effects; a `sheet` step with Summary and Submit; section 7, including Dice results |
 | PBI-CP-009 | Step 6.2 (Standard rolling, Quick fire, the creation method RadioGroup, and the switch confirmation); steps 6.4 to 6.6 and 6.5a, including UX-22 to UX-26; the summary rail's budget lines; step 6.7 Skills (read-only, also on the Keeper's review) |
 | PBI-CP-010 | Step 6.7 Backstory, Weapons, Gear, Wealth, Idea and Know, Worth checking, and save before submit; section 7.1 custom content lines; UX-27 to UX-30 |
+| PBI-DICE-002 | Step 6.2 Standard rolling and the Creation Method lock; section 6.8 for characteristics; section 7.1 Dice results columns; UX-31 to UX-35; A11Y-12 to A11Y-14. Luck and EDU checks stay typed until PBI-DICE-003 |
+| PBI-DICE-003 | Step 6.2 Luck rolled by the app; step 6.3 EDU checks rolled by the app; the age and EDU locks of section 6.8; UX-36 to UX-38 |
+| PBI-DICE-004 | The re-roll grant parts of sections 6.8 and 7.1; UX-39 and UX-40 |
 
 In PBI-CP-009:
 - The stepper shows all seven steps, so the Draft card reads "Step N of 7".
@@ -311,7 +402,7 @@ In PBI-CP-003:
 - **UX-6** Not-started steps are not reachable from the stepper.
 - **UX-7** Lowering EDU after allocating occupation points marks Occupation skills "Needs attention" and keeps the allocations.
 - **UX-8** Switching the creation method after entering values requires confirmation. Cancelling keeps the method and the values.
-- **UX-9** Entering a raw dice total shows the computed value, and the Roll Record stores the raw total.
+- **UX-9** **[DEPRECATED 2026-11-08]** ~~Entering a raw dice total shows the computed value, and the Roll Record stores the raw total.~~ Replaced by UX-31.
 - **UX-10** The creation method choice is hidden when the Campaign allows only one method.
 - **UX-11** Submitting with errors lists each error with a link to the step that owns it. Submitting without errors returns to the Campaign page with the Submitted badge.
 - **UX-12** A Submitted Investigator opens read-only for the Player, with no edit controls.
@@ -322,7 +413,7 @@ In PBI-CP-003:
 - **UX-17** A failed save keeps every input and offers "Try again".
 - **UX-18** Opening another Player's Investigator URL shows "We couldn't find that Investigator".
 - **UX-19** When the Campaign allows no creation method that is available yet, the Your Investigator card explains it, names the methods to ask the Keeper for, and offers no create action.
-- **UX-20** A Point buy Player enters Luck on the Characteristics step; Luck is not counted in "Points used", and a second Luck row appears only in the two-roll age bracket.
+- **UX-20** **[DEPRECATED 2026-11-08; superseded by UX-36 when PBI-DICE-003 ships, holds until then]** A Point buy Player enters Luck on the Characteristics step; Luck is not counted in "Points used", and a second Luck row appears only in the two-roll age bracket.
 - **UX-21** A non-member opening a Campaign URL sees "We couldn't find that Campaign" with a link back to Campaigns.
 - **UX-22** On Occupation skills, a row whose slot has no skill chosen is disabled and reads "Choose this skill above first"; rows keep the occupation's slot order after every save.
 - **UX-23** A Quick fire value Select offers "No value", which clears the row and returns its value to "Values left to assign".
@@ -333,6 +424,16 @@ In PBI-CP-003:
 - **UX-28** The read-only sheet (Player's View and Keeper's review) shows the Backstory with its Key Connection, the weapons table, Gear, and Wealth, with no inputs.
 - **UX-29** On Sheet and submit, every warning is listed in "Worth checking"; a sheet with warnings and no errors submits.
 - **UX-30** The Keeper's "Worth checking" lists the custom occupation and the number of custom weapons with the warnings.
+- **UX-31** Standard rolling shows no dice inputs. "Roll characteristics" asks for confirmation. "Not yet" rolls nothing. "Roll now" shows the eight values and removes the action.
+- **UX-32** After characteristics are rolled, the creation method shows as text with the lock reason and can't be changed.
+- **UX-33** Characteristic values typed in before the dice system show as "(entered by you)", and the action rolls only the missing ones.
+- **UX-34** The Keeper's Dice results show Faces, Rolled by, and When. Typed-in rows read "Not recorded" and "(entered)".
+- **UX-35** A failed roll keeps the step and offers "Try again". One confirmation never sends two rolls.
+- **UX-36** (PBI-DICE-003) "Roll Luck" confirms with the age range that becomes fixed. In the two-roll bracket, both rolls and the kept value are shown. Luck is not counted in "Points used".
+- **UX-37** (PBI-DICE-003) EDU checks are rolled in order and show "EDU a -> b" or "No improvement".
+- **UX-38** (PBI-DICE-003) After Luck or an EDU check is rolled, an age outside the bracket is refused and the bracket is shown. After an EDU check under Point buy or Quick fire, EDU is locked and the reason is shown.
+- **UX-39** (PBI-DICE-004) The Keeper can allow re-rolls per group when requesting changes. The Player then sees "Roll {group} again".
+- **UX-40** (PBI-DICE-004) The Keeper sees replaced results marked "(replaced)". The Player never sees them.
 
 ## 11. Accessibility acceptance criteria (WCAG 2.2 AA)
 
@@ -347,6 +448,9 @@ In PBI-CP-003:
 - **A11Y-9** Interactive targets are at least 24 by 24 CSS pixels (2.5.8).
 - **A11Y-10** Identity data entered in step 1 is never asked for again in later steps (3.3.7).
 - **A11Y-11** Collapsibles expose `aria-expanded`, and the Rules options summary is part of the trigger's accessible name (4.1.2).
+- **A11Y-12** Each roll action's accessible name names its group. A missing prerequisite is explained in visible text, not with a disabled control (3.3.2, 4.1.2).
+- **A11Y-13** After a roll, focus moves to the results heading, and the result is announced through the polite status region (2.4.3, 4.1.3).
+- **A11Y-14** The roll confirmation follows A11Y-8, with initial focus on "Not yet". Dice results cells contain text such as "Not recorded", never an empty cell or colour alone, and the table has column headers with `scope="col"` (1.3.1, 1.4.1).
 
 Occupation skills (6.5, 6.5a) and Personal interests (6.6) against these criteria ("No longer personal interests" follows the same pattern as "No longer occupation skills"): the two sections are headed (`h2`) and "No longer occupation skills" is an `h3` (A11Y-1, 1.3.1); every control keeps a label naming its skill, and a disabled row says why in text (A11Y-3); each error is linked from the error summary to its row control, including the "Remove value" button (A11Y-4); clearing or removing a value is announced through the step's polite status region as the new "Values left to assign" or points left (A11Y-5); disabled and left-over states are shown with text, never colour alone (A11Y-6); "Remove value" and the Select options are at least 24 by 24 pixels (A11Y-9).
 
@@ -355,4 +459,6 @@ Occupation skills (6.5, 6.5a) and Personal interests (6.6) against these criteri
 - **Decided 2026-10-02:** the Change Request comment is limited to 2000 characters. The "skill above 90" warning stays as app-level advice, not a rule.
 - **Research gap:** whether Players actually create Investigators over several sessions. Measure resumes per Draft before investing further in the task-list hub (Option B).
 - **Research gap:** the one-click Approve has no undo. Watch for Keepers asking to revert an approval. Undo is not in the current lifecycle.
-- **Research gap:** whether new Players understand the dice-entry rows without help. Test with one or two first-time Players before PBI-CP-009 ships.
+- **[OBSOLETE 2026-11-08]** ~~**Research gap:** whether new Players understand the dice-entry rows without help. Test with one or two first-time Players before PBI-CP-009 ships.~~ The app rolls creation dice (section 6.8), so there are no dice-entry rows left to test.
+- **Decided 2026-11-08 (PBI-DICE-002):** the Player sees rolled values only. Faces appear only in the Keeper's Dice results.
+- **Research gap:** whether Players want to see their own dice faces. Watch for requests.
