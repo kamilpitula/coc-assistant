@@ -2,6 +2,7 @@ import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
+import { WALL_ENTRY_ADDED_MESSAGE } from '@/campaign-play/hooks/useAddWallEntryForm'
 import '@/campaign-play/types/navigationState'
 import { ActiveSceneHeader } from '@/scene-play/components/active-scene-header/active-scene-header'
 import { ActiveSceneNav, type ActiveSceneSubTabCounts } from '@/scene-play/components/active-scene-nav/active-scene-nav'
@@ -109,6 +110,7 @@ export function ActiveScenePage({ campaignId }: ActiveScenePageProps) {
             void active.refetch()
           }}
           onPresentSaved={() => setMessage('Investigators present saved.')}
+          onWallEntryAdded={() => setMessage(WALL_ENTRY_ADDED_MESSAGE)}
           onFinishedMeanwhile={() => void active.refetch()}
         />
         <ActiveScenePanel campaignId={campaignId} headingRef={headingRef} onReveal={flow.open} />
@@ -236,16 +238,17 @@ interface ActiveSceneBodyProps {
   onFinished: (title: string) => void
   onAlreadyFinished: () => void
   onPresentSaved: () => void
+  onWallEntryAdded: () => void
   onFinishedMeanwhile: () => void
 }
 
-function ActiveSceneBody({ campaignId, isKeeper, scene, subTab, headingRef, flow, giveFlow, takeBackFlow, onFinished, onAlreadyFinished, onPresentSaved, onFinishedMeanwhile }: ActiveSceneBodyProps) {
+function ActiveSceneBody({ campaignId, isKeeper, scene, subTab, headingRef, flow, giveFlow, takeBackFlow, onFinished, onAlreadyFinished, onPresentSaved, onWallEntryAdded, onFinishedMeanwhile }: ActiveSceneBodyProps) {
   if (scene === null) {
     return <NoActiveScene campaignId={campaignId} isKeeper={isKeeper} headingRef={headingRef} />
   }
 
   if (scene.kind !== 'keeper') {
-    return <ActiveScenePlayerView campaignId={campaignId} scene={scene} headingRef={headingRef} />
+    return <ActiveScenePlayerView campaignId={campaignId} scene={scene} headingRef={headingRef} onWallEntryAdded={onWallEntryAdded} />
   }
 
   return (
@@ -260,6 +263,7 @@ function ActiveSceneBody({ campaignId, isKeeper, scene, subTab, headingRef, flow
       onFinished={onFinished}
       onAlreadyFinished={onAlreadyFinished}
       onPresentSaved={onPresentSaved}
+      onWallEntryAdded={onWallEntryAdded}
       onFinishedMeanwhile={onFinishedMeanwhile}
     />
   )
@@ -276,10 +280,11 @@ interface KeeperSubTabsProps {
   onFinished: (title: string) => void
   onAlreadyFinished: () => void
   onPresentSaved: () => void
+  onWallEntryAdded: () => void
   onFinishedMeanwhile: () => void
 }
 
-function KeeperSubTabs({ campaignId, scene, subTab, headingRef, flow, giveFlow, takeBackFlow, onFinished, onAlreadyFinished, onPresentSaved, onFinishedMeanwhile }: KeeperSubTabsProps) {
+function KeeperSubTabs({ campaignId, scene, subTab, headingRef, flow, giveFlow, takeBackFlow, onFinished, onAlreadyFinished, onPresentSaved, onWallEntryAdded, onFinishedMeanwhile }: KeeperSubTabsProps) {
   const material = useScene(campaignId, scene.scenarioId, scene.sceneId, true)
   const counts = material.data ? keeperSubTabCounts(material.data, scene) : null
   const reveal = revealDialogModel(flow, scene)
@@ -290,7 +295,7 @@ function KeeperSubTabs({ campaignId, scene, subTab, headingRef, flow, giveFlow, 
     <>
       <ActiveSceneHeader campaignId={campaignId} scene={scene} compact={subTab !== 'run'} headingRef={headingRef} onFinished={onFinished} onAlreadyFinished={onAlreadyFinished} />
       <ActiveSceneNav campaignId={campaignId} current={subTab} counts={counts} />
-      <ActiveSceneTabContext.Provider value={{ campaignId, scene, onReveal: flow.open, onGive: giveFlow.open, onTakeBack: takeBackFlow.open, onPresentSaved, onFinishedMeanwhile }}>
+      <ActiveSceneTabContext.Provider value={{ campaignId, scene, onReveal: flow.open, onGive: giveFlow.open, onTakeBack: takeBackFlow.open, onPresentSaved, onWallEntryAdded, onFinishedMeanwhile }}>
         <Outlet />
       </ActiveSceneTabContext.Provider>
       <RevealDialog

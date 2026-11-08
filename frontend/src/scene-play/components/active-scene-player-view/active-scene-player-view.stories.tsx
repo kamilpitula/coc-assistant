@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
+import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
+import type { WallEntryPage } from '@/campaign-play/types/WallEntry'
 import type { RichTextDocument } from '@/shared/types/RichText'
 import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
@@ -7,14 +9,29 @@ import { StoryProviders } from '@/shared/storybook/storyProviders'
 
 import { ActiveScenePlayerView } from './active-scene-player-view'
 
+const CAMPAIGN_ID = 'story-campaign'
+
+const wall: WallEntryPage = {
+  nextCursor: null,
+  entries: [
+    {
+      id: 'w1',
+      text: 'The front door slams shut behind Harvey.',
+      visibility: 'Public',
+      createdAt: '2026-10-28T19:14:00Z',
+      authorDisplayName: 'Keeper',
+    },
+  ],
+}
+
 const meta = {
   title: 'ScenePlay/ActiveScenePlayerView',
   component: ActiveScenePlayerView,
-  args: { campaignId: 'story-campaign', headingRef: { current: null } },
+  args: { campaignId: CAMPAIGN_ID, headingRef: { current: null }, onWallEntryAdded: () => undefined },
   decorators: [
     (Story) => (
       <StoryMsal tokens="pending">
-        <StoryProviders>
+        <StoryProviders seed={(client) => client.setQueryData(campaignQueryKeys.wallPreview(CAMPAIGN_ID), wall)}>
           <SidePanelScopeProvider>
             <Story />
           </SidePanelScopeProvider>

@@ -8,8 +8,21 @@ import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-pane
 import { ActiveScenePlayerView } from './active-scene-player-view'
 
 // specs/scene-play/ux.md sections 4 and 14; SPL-UX-12, SPL-UX-13, SPL-UX-26, SPL-UX-35, SPL-A11Y-1, SPL-A11Y-4, SPL-A11Y-8.
-const { mockUseMine } = vi.hoisted(() => ({ mockUseMine: vi.fn() }))
+const { mockUseMine, wallProps } = vi.hoisted(() => ({
+  mockUseMine: vi.fn(),
+  wallProps: { current: null as null | Record<string, unknown> },
+}))
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
+vi.mock('@/scene-play/components/active-scene-wall/active-scene-wall', () => ({
+  ActiveSceneWall: (props: Record<string, unknown>) => {
+    wallProps.current = props
+    return (
+      <section aria-labelledby="wall-stub-heading">
+        <h2 id="wall-stub-heading">Wall</h2>
+      </section>
+    )
+  },
+}))
 vi.mock('@/scene-play/hooks/useHeldItems', () => ({
   useMyHeldItems: mockUseMine,
   useInvestigatorHeldItems: vi.fn(),
@@ -51,7 +64,7 @@ describe('ActiveScenePlayerView', () => {
     const headingRef = { current: null as HTMLHeadingElement | null }
     const view = render(
       <SidePanelScopeProvider>
-        <ActiveScenePlayerView campaignId="c1" scene={scene} headingRef={headingRef} />
+        <ActiveScenePlayerView campaignId="c1" scene={scene} headingRef={headingRef} onWallEntryAdded={vi.fn()} />
       </SidePanelScopeProvider>,
     )
     return { ...view, headingRef }
@@ -137,8 +150,32 @@ describe('ActiveScenePlayerView', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'The Corbitt House' })).toBeInTheDocument()
     expect(screen.getByText("This Scene is in progress. You aren't taking part in it.")).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 2, name: 'Investigators present' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(container.querySelector('dl, ul, time')).toBeNull()
+  })
+
+  it('shows the Wall last for a present Player and passes it the Player role with the add callback (SPL-UX-49)', () => {
+    const onWallEntryAdded = vi.fn()
+    const headingRef = { current: null as HTMLHeadingElement | null }
+    render(
+      <SidePanelScopeProvider>
+        <ActiveScenePlayerView campaignId="c1" scene={present()} headingRef={headingRef} onWallEntryAdded={onWallEntryAdded} />
+      </SidePanelScopeProvider>,
+    )
+
+    const h1 = screen.getByRole('heading', { level: 1, name: 'The Corbitt House' })
+    const wall = screen.getByRole('region', { name: 'Wall' })
+    expect(h1.compareDocumentPosition(wall) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(wallProps.current).toMatchObject({ campaignId: 'c1', viewerRole: 'Player', onWallEntryAdded })
+  })
+
+  it('shows the Wall to a Player who is not present, still without location or Investigator names (SPL-UX-49)', () => {
+    renderView({ kind: 'absent-player', title: 'The Corbitt House' })
+
+    const inProgress = screen.getByText("This Scene is in progress. You aren't taking part in it.")
+    const wall = screen.getByRole('region', { name: 'Wall' })
+    expect(inProgress.compareDocumentPosition(wall) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByText('Arkham, Boston Road')).not.toBeInTheDocument()
   })
 })

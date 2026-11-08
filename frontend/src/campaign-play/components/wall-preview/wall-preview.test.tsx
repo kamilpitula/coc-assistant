@@ -62,6 +62,35 @@ describe('WallPreview', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
+  it('renders the composer slot after the heading and before the entries (SPL-UX-49)', () => {
+    mockUseWallPreview.mockReturnValue(loaded([entry('a')]))
+
+    render(<WallPreview campaignId="c1" composer={<button type="button">Compose stub</button>} />)
+
+    const section = screen.getByRole('region', { name: 'Wall' })
+    const heading = within(section).getByRole('heading', { name: 'Wall' })
+    const stub = within(section).getByRole('button', { name: 'Compose stub' })
+    const firstItem = within(section).getAllByRole('listitem')[0]
+    expect(heading.compareDocumentPosition(stub) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(stub.compareDocumentPosition(firstItem) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(within(section).getByRole('link', { name: 'Open the Wall' })).toBeInTheDocument()
+  })
+
+  it('renders the composer slot while loading, empty, and failed', () => {
+    const composer = <button type="button">Compose stub</button>
+
+    mockUseWallPreview.mockReturnValue({ data: undefined, isPending: true, isError: false, refetch: vi.fn() })
+    const { unmount } = render(<WallPreview campaignId="c1" composer={composer} />)
+    expect(screen.getByRole('button', { name: 'Compose stub' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Open the Wall' })).not.toBeInTheDocument()
+    unmount()
+
+    mockUseWallPreview.mockReturnValue(loaded([]))
+    render(<WallPreview campaignId="c1" composer={composer} />)
+    expect(screen.getByRole('button', { name: 'Compose stub' })).toBeInTheDocument()
+    expect(screen.getByText('Nothing on the Wall yet.')).toBeInTheDocument()
+  })
+
   it('says the Wall is empty and still links to it', () => {
     mockUseWallPreview.mockReturnValue(loaded([]))
 

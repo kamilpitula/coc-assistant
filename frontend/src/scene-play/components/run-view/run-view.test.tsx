@@ -6,14 +6,17 @@ import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 import { RunView } from './run-view'
 
 // specs/scene-play/ux.md sections 21.3 and 21.10; SPL-UX-40, SPL-UX-50.
-const { notesProps, presentProps, mockUseScene } = vi.hoisted(() => ({
+const { notesProps, presentProps, wallProps, mockUseScene, mockUseCampaign } = vi.hoisted(() => ({
   notesProps: { current: null as null | Record<string, unknown> },
   presentProps: { current: null as null | Record<string, unknown> },
+  wallProps: { current: null as null | Record<string, unknown> },
   mockUseScene: vi.fn(),
+  mockUseCampaign: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/scenario-preparation/hooks/useScenes', () => ({ useScene: mockUseScene }))
+vi.mock('@/campaign-play/hooks/useCampaign', () => ({ useCampaign: mockUseCampaign }))
 vi.mock('@/scene-play/components/keeper-notes-section/keeper-notes-section', () => ({
   KeeperNotesSection: (props: Record<string, unknown>) => {
     notesProps.current = props
@@ -34,6 +37,16 @@ vi.mock('@/scene-play/components/investigators-present-section/investigators-pre
     )
   },
 }))
+vi.mock('@/scene-play/components/active-scene-wall/active-scene-wall', () => ({
+  ActiveSceneWall: (props: Record<string, unknown>) => {
+    wallProps.current = props
+    return (
+      <section aria-labelledby="wall-stub-heading">
+        <h2 id="wall-stub-heading">Wall</h2>
+      </section>
+    )
+  },
+}))
 
 const scene: KeeperActiveScene = {
   kind: 'keeper',
@@ -50,10 +63,11 @@ const scene: KeeperActiveScene = {
 describe('RunView', () => {
   beforeEach(() => {
     mockUseScene.mockReturnValue({ data: { keeperNotes: null }, isError: false })
+    mockUseCampaign.mockReturnValue({ data: { id: 'c1', role: 'Keeper' } })
   })
 
   it('shows Keeper notes before Investigators present, and no material (SPL-UX-40)', () => {
-    render(<RunView campaignId="c1" scene={scene} onPresentSaved={vi.fn()} onFinishedMeanwhile={vi.fn()} />)
+    render(<RunView campaignId="c1" scene={scene} onPresentSaved={vi.fn()} onWallEntryAdded={vi.fn()} onFinishedMeanwhile={vi.fn()} />)
 
     const notes = screen.getByRole('region', { name: 'Keeper notes' })
     const present = screen.getByRole('region', { name: 'Investigators present' })
@@ -62,12 +76,22 @@ describe('RunView', () => {
     expect(screen.queryByRole('heading', { name: 'Non-Player Entities' })).not.toBeInTheDocument()
   })
 
-  it('passes the Scene to both regions', () => {
+  it('shows the Wall after Investigators present in the DOM (SPL-UX-50)', () => {
+    render(<RunView campaignId="c1" scene={scene} onPresentSaved={vi.fn()} onWallEntryAdded={vi.fn()} onFinishedMeanwhile={vi.fn()} />)
+
+    const present = screen.getByRole('region', { name: 'Investigators present' })
+    const wall = screen.getByRole('region', { name: 'Wall' })
+    expect(present.compareDocumentPosition(wall) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('passes the Scene to both regions and the Wall its add callback (SPL-UX-40)', () => {
     const onPresentSaved = vi.fn()
+    const onWallEntryAdded = vi.fn()
     const onFinishedMeanwhile = vi.fn()
-    render(<RunView campaignId="c1" scene={scene} onPresentSaved={onPresentSaved} onFinishedMeanwhile={onFinishedMeanwhile} />)
+    render(<RunView campaignId="c1" scene={scene} onPresentSaved={onPresentSaved} onWallEntryAdded={onWallEntryAdded} onFinishedMeanwhile={onFinishedMeanwhile} />)
 
     expect(notesProps.current).toMatchObject({ notes: null })
     expect(presentProps.current).toMatchObject({ campaignId: 'c1', scene, onSaved: onPresentSaved, onFinishedMeanwhile })
+    expect(wallProps.current).toMatchObject({ campaignId: 'c1', viewerRole: 'Keeper', onWallEntryAdded })
   })
 })

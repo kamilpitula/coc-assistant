@@ -23,10 +23,12 @@ interface WallEntryComposerProps {
   failed: boolean
   /** Sends the entry; resolves true once it is stored, so the box clears. */
   onSubmit: (entry: NewWallEntry) => Promise<boolean>
+  /** Visible Textarea rows; the Active Scene uses 2 (specs/scene-play/ux.md section 21.8). */
+  rows?: number
 }
 
 /** The compose box on the Wall (specs/campaign-wall/ux.md sections 2 and 4.2). */
-export function WallEntryComposer({ viewerRole, pending, failed, onSubmit }: WallEntryComposerProps) {
+export function WallEntryComposer({ viewerRole, pending, failed, onSubmit, rows = 3 }: WallEntryComposerProps) {
   const [text, setText] = useState('')
   const [visibility, setVisibility] = useState<WallEntryVisibility>('Public')
   const textRef = useRef<HTMLTextAreaElement>(null)
@@ -68,7 +70,7 @@ export function WallEntryComposer({ viewerRole, pending, failed, onSubmit }: Wal
         <Textarea
           id={WALL_COMPOSER_TEXT_ID}
           ref={textRef}
-          rows={3}
+          rows={rows}
           value={text}
           aria-invalid={tooLong ? true : undefined}
           aria-describedby={hintId}

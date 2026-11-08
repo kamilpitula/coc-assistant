@@ -280,7 +280,7 @@ export function revealedInScene(page: Page): Locator {
   return page.getByRole('region', { name: 'Revealed', exact: true })
 }
 
-/** The polite live region that announces a Reveal arriving. */
+/** The polite live region that announces a Reveal arriving. The Wall preview has its own polite region (a div), so this stays on the page-level paragraph. */
 export function revealAnnouncement(page: Page): Locator {
-  return page.locator('[aria-live="polite"]')
+  return page.locator('p[aria-live="polite"]')
 }

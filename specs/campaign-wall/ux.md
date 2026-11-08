@@ -130,9 +130,9 @@ Completes [campaign-overview ux](../campaign-overview/ux.md) section 7.
 
 - **Source:** the same entries the Wall page would show to this viewer, newest first, limited to 5. For a Player this is the 5 latest Public entries, never the 5 latest overall with Keeper only entries removed afterwards.
 - **Each entry:** the `time` (section 3), the author's display name, the Keeper only `Badge` for the Keeper, and the text clamped to 3 lines (`line-clamp-3`). The full text is on the Wall.
-- **"Open the Wall":** a link to `/campaigns/$campaignId/wall`, shown in every state except loading.
+- **"Open the Wall":** a link to `/campaigns/$campaignId/wall`, shown in every state except loading, placed after the entries.
 - **Empty, loading, error:** as in campaign-overview ux section 7 ("Nothing on the Wall yet.", three Skeleton entries, "We couldn't load the Wall." with "Try again").
-- **Freshness:** when an entry is added or removed on the Wall page, the preview refreshes the next time the overview is shown.
+- **Freshness:** when an entry is added or removed, the preview refreshes in place through invalidation (section 4.5). On the Active Scene a post refreshes the preview in place the same way.
 - **Live updates (PBI-CP-006):** the arrival, removal, first-load, and reconnect rules of section 4.5 apply. A new entry goes to the top and the sixth drops off; after a removal the next older entry fills in.
 - **Announcements:** the copy and 5-second merge of section 4.5, through a visually hidden `aria-live="polite"` region inside the preview section, which is the section's one live region (campaign-overview ux CO-A11Y-7).
 

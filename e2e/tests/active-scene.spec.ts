@@ -6,6 +6,7 @@ import { openAndCaptureBearer } from '../fixtures/investigators'
 import { PREPARED, prepareScenarioViaApi } from '../fixtures/prepared-scenario'
 import {
   activeSceneCard,
+  activeScenePath,
   changePresentViaApi,
   closeTable,
   finishActiveSceneViaApi,
@@ -22,7 +23,7 @@ import {
   toRevealPath,
 } from '../fixtures/scene-play'
 import { sceneLinks, scenesSection } from '../fixtures/scenes'
-import { openWall, wallEntry } from '../fixtures/wall'
+import { addWallEntryViaUi, openWall, wallEntry, wallPreview } from '../fixtures/wall'
 
 /**
  * Traces to specs/scene-play/spec.md Scenarios and to specs/scene-play/ux.md (PBI-SPL-001, PBI-SPL-006):
@@ -614,6 +615,158 @@ test.describe('What Players see of the Active Scene', () => {
         await changePresentViaApi(page.request, table.keeperBearer, campaignId, [table.harveyId, table.lucyId])
         await expect(table.lucy.page.getByText(`${LUCY} (your Investigator)`)).toBeVisible()
         await expect(pageStatus(table.lucy.page)).toHaveText(`You're now taking part in ${CORBITT}.`)
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+})
+
+/**
+ * Traces to specs/scene-play/spec.md Scenarios (PBI-SPL-007):
+ * - "The Keeper posts to the Wall from the Active Scene" (SPL-UX-49)
+ * - "A Player never sees a Keeper-only Wall Entry on the Active Scene" (SPL-UX-49, WL-UX-12)
+ * - Wall placement on Run and the Player view at desktop and phone widths (SPL-UX-50)
+ */
+test.describe('The Wall on the Active Scene', () => {
+  // Each journey signs a Keeper in and joins Players in isolated contexts before it checks anything, which takes longer than the default.
+  test.describe.configure({ timeout: 240_000 })
+
+  test('The Keeper posts to the Wall from the Active Scene and a connected Player sees it live (SPL-UX-49)', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'WallPost')
+    const { campaignId } = table.prepared
+    await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId])
+    const activePath = activeScenePath(campaignId)
+
+    try {
+      await table.harvey.page.goto(activePath)
+      await expect(table.harvey.page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
+
+      await test.step('SPL-UX-49: the Keeper posts from Run and sees the entry at the top with the status', async () => {
+        await page.goto(activePath)
+        await expect(page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
+        await addWallEntryViaUi(page, 'The front door slams shut.')
+        // Newest first (campaign-wall ux sections 2 and 7): the new entry leads the preview.
+        await expect(wallPreview(page).getByRole('listitem').first()).toContainText('The front door slams shut.')
+        await expect(pageStatus(page)).toHaveText('Wall Entry added.')
+      })
+
+      await test.step('SPL-UX-49: the connected Player sees it in the preview without reloading', async () => {
+        await expect(wallPreview(table.harvey.page).getByRole('listitem').first()).toContainText('The front door slams shut.')
+      })
+
+      await test.step('SPL-UX-49: the entry is on the Wall page too', async () => {
+        await openWall(page, campaignId)
+        await expect(wallEntry(page, 'The front door slams shut.')).toBeVisible()
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('A Player never sees a Keeper-only Wall Entry on the Active Scene (SPL-UX-49, WL-UX-12)', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'WallKeeperOnly')
+    const { campaignId } = table.prepared
+    await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId])
+    const activePath = activeScenePath(campaignId)
+
+    try {
+      await test.step('SPL-UX-49: the Keeper posts a Keeper only entry from Run and sees it with the badge', async () => {
+        await page.goto(activePath)
+        await expect(page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
+        await addWallEntryViaUi(page, 'Corbitt has noticed Cy.', 'Keeper only')
+        await expect(wallEntry(page, 'Corbitt has noticed Cy.').getByText('Keeper only')).toBeVisible()
+      })
+
+      await test.step('WL-UX-12: the present Player sees the Wall without the entry and without the visibility choice', async () => {
+        await table.harvey.page.goto(activePath)
+        await expect(table.harvey.page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
+        const harveyWall = wallPreview(table.harvey.page)
+        await expect(harveyWall.getByText(/Scene started/)).toBeVisible()
+        await expect(harveyWall.getByText('Corbitt has noticed Cy.')).toHaveCount(0)
+        await expect(harveyWall.getByRole('radio', { name: 'Keeper only' })).toHaveCount(0)
+      })
+
+      await test.step('WL-UX-12: the absent Player sees the Wall without the entry', async () => {
+        await table.lucy.page.goto(activePath)
+        await expect(table.lucy.page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
+        const lucyWall = wallPreview(table.lucy.page)
+        await expect(lucyWall.getByText(/Scene started/)).toBeVisible()
+        await expect(lucyWall.getByText('Corbitt has noticed Cy.')).toHaveCount(0)
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('Wall placement on Run and the Player view at desktop and phone widths (SPL-UX-50)', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'WallShots')
+    const { campaignId } = table.prepared
+    await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
+    const activePath = activeScenePath(campaignId)
+
+    try {
+      await test.step('SPL-UX-50: at 1366px the Keeper Wall sits above Investigators present in the right column', async () => {
+        await page.setViewportSize({ width: 1366, height: 800 })
+        await page.goto(activePath)
+        await expect(wallPreview(page).getByRole('listitem').first()).toBeVisible()
+        const notes = await page.getByRole('region', { name: 'Keeper notes' }).boundingBox()
+        const present = await presentSection(page).boundingBox()
+        const wall = await wallPreview(page).boundingBox()
+        expect(notes).not.toBeNull()
+        expect(present).not.toBeNull()
+        expect(wall).not.toBeNull()
+        if (notes && present && wall) {
+          expect(wall.y, 'the Wall is above Investigators present').toBeLessThan(present.y)
+          expect(wall.x, 'the Wall is in the right column, next to Keeper notes').toBeGreaterThan(notes.x)
+        }
+        await page.screenshot({ path: '../docs/scene-play/screenshots/spl-007-run-1366.png' })
+      })
+
+      await test.step('SPL-UX-50: at 375px Run is one column in the order Keeper notes, Investigators present, Wall', async () => {
+        await page.setViewportSize({ width: 375, height: 800 })
+        await page.goto(activePath)
+        await expect(wallPreview(page).getByRole('link', { name: 'Open the Wall' })).toBeVisible()
+        const notes = await page.getByRole('region', { name: 'Keeper notes' }).boundingBox()
+        const present = await presentSection(page).boundingBox()
+        const wall = await wallPreview(page).boundingBox()
+        expect(notes).not.toBeNull()
+        expect(present).not.toBeNull()
+        expect(wall).not.toBeNull()
+        if (notes && present && wall) {
+          expect(present.y, 'Investigators present is below Keeper notes').toBeGreaterThan(notes.y)
+          expect(wall.y, 'the Wall is last').toBeGreaterThan(present.y)
+        }
+        const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+        expect(sideways, 'no sideways scrolling').toBeLessThanOrEqual(0)
+        await page.screenshot({ path: '../docs/scene-play/screenshots/spl-007-run-375.png' })
+      })
+
+      await test.step('SPL-UX-50: the Player view keeps the Wall on the right at 1366px and last at 375px', async () => {
+        await table.harvey.page.setViewportSize({ width: 1366, height: 800 })
+        await table.harvey.page.goto(activePath)
+        await expect(table.harvey.page.getByRole('heading', { level: 1, name: CORBITT })).toBeVisible()
+        const wall1366 = await wallPreview(table.harvey.page).boundingBox()
+        const title1366 = await table.harvey.page.getByRole('heading', { level: 1, name: CORBITT }).boundingBox()
+        expect(wall1366).not.toBeNull()
+        expect(title1366).not.toBeNull()
+        if (wall1366 && title1366) {
+          expect(wall1366.x, 'the Wall is in the right column').toBeGreaterThan(title1366.x)
+        }
+        await table.harvey.page.screenshot({ path: '../docs/scene-play/screenshots/spl-007-player-1366.png' })
+
+        await table.harvey.page.setViewportSize({ width: 375, height: 800 })
+        await table.harvey.page.goto(activePath)
+        const title375 = await table.harvey.page.getByRole('heading', { level: 1, name: CORBITT }).boundingBox()
+        const wall375 = await wallPreview(table.harvey.page).boundingBox()
+        expect(title375).not.toBeNull()
+        expect(wall375).not.toBeNull()
+        if (title375 && wall375) {
+          expect(wall375.y, 'the Wall is last').toBeGreaterThan(title375.y)
+        }
+        const sideways = await table.harvey.page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+        expect(sideways, 'no sideways scrolling').toBeLessThanOrEqual(0)
+        await table.harvey.page.screenshot({ path: '../docs/scene-play/screenshots/spl-007-player-375.png' })
       })
     } finally {
       await closeTable(table)

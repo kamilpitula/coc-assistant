@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { useId } from 'react'
+import { useId, type ReactNode } from 'react'
 
 import { WallEntryTime } from '@/campaign-play/components/wall-entry-time/wall-entry-time'
 import { useWallPreview } from '@/campaign-play/hooks/useWallEntries'
@@ -12,10 +12,12 @@ import { Skeleton } from '@/shared/components/ui/skeleton'
 
 interface WallPreviewProps {
   campaignId: string
+  /** Optional compose form, rendered between the heading and the entries (PBI-SPL-007: the Active Scene fills it). */
+  composer?: ReactNode
 }
 
-/** The latest Wall Entries on the overview, read-only, with live arrivals announced (specs/campaign-wall/ux.md sections 4.5 and 7). */
-export function WallPreview({ campaignId }: WallPreviewProps) {
+/** The latest Wall Entries on the overview, with live arrivals announced (specs/campaign-wall/ux.md sections 4.5 and 7). */
+export function WallPreview({ campaignId, composer }: WallPreviewProps) {
   const preview = useWallPreview(campaignId)
   const headingId = useId()
   const announcement = useWallEntryAnnouncement(preview.data?.entries, preview.isFetchedAfterMount)
@@ -25,6 +27,7 @@ export function WallPreview({ campaignId }: WallPreviewProps) {
       <h2 id={headingId} className="text-lg font-semibold">
         Wall
       </h2>
+      {composer}
       <PreviewBody entries={preview.data?.entries} failed={preview.isError} onRetry={() => void preview.refetch()} />
       {!preview.isPending && !preview.isError && (
         <Link to="/campaigns/$campaignId/wall" params={{ campaignId }} className={buttonVariants({ variant: 'link', className: 'self-start px-0' })}>

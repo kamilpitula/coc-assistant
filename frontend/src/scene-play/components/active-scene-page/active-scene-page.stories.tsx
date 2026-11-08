@@ -4,6 +4,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import { keeperCampaign, keeperRosterAllApproved, playerCampaign, STORY_CAMPAIGN_ID } from '@/campaign-play/test-support/rosterFixtures'
+import type { WallEntryPage } from '@/campaign-play/types/WallEntry'
 import { handoutQueryKeys } from '@/scenario-preparation/services/handoutApi'
 import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
 import type { SceneHandoutOwner } from '@/scenario-preparation/services/handoutOwner'
@@ -83,6 +84,20 @@ const material: Scene = {
 type StoryTab = 'run' | 'to-reveal' | 'reference' | 'revealed'
 
 const handoutOwner: SceneHandoutOwner = { type: 'scene', campaignId: STORY_CAMPAIGN_ID, scenarioId: 'story-scenario', sceneId: 'story-scene' }
+
+const storyWall: WallEntryPage = {
+  nextCursor: null,
+  entries: [
+    {
+      id: 'w1',
+      text: 'The front door slams shut behind Harvey.',
+      visibility: 'Public',
+      createdAt: '2026-10-28T19:14:00Z',
+      authorDisplayName: 'Keeper',
+    },
+  ],
+}
+
 const frontDoorHandout: Handout = {
   id: 'h1',
   kind: 'ReadAloud',
@@ -121,6 +136,7 @@ function storyCampaignOf(role: 'Keeper' | 'Player') {
 function seedPageStory(client: QueryClient, role: 'Keeper' | 'Player', scene: ActiveScene | null, loading: boolean): void {
   client.setQueryData(campaignQueryKeys.detail(STORY_CAMPAIGN_ID), storyCampaignOf(role))
   client.setQueryData(campaignQueryKeys.members(STORY_CAMPAIGN_ID), keeperRosterAllApproved)
+  client.setQueryData(campaignQueryKeys.wallPreview(STORY_CAMPAIGN_ID), storyWall)
   if (loading) {
     return
   }

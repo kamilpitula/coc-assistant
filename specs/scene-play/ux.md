@@ -649,17 +649,18 @@ Items                                         (h3, from PBI-SPL-003; section 22.
 ### 21.8 Wall on the Active Scene (`active-scene-wall`, PBI-SPL-007)
 
 ```
-Wall                                (h2)          Open the Wall
+Wall                                          (h2)
 [ New Wall Entry                            ]
-(o) Public  ( ) Keeper only                     (Keeper only)
+(o) Public  ( ) Keeper only
 0 / 2000                              [Add to the Wall]
 19:14  Keeper     The front door slams shut behind Harvey.
 19:10  Keeper  [Keeper only]  Corbitt has noticed Cy.
 ...  (5 latest)
+Open the Wall
 ```
 
-- **Entries:** the `wall-preview` of [campaign-wall ux](../campaign-wall/ux.md) section 7 (5 latest the viewer may read, clamped to 3 lines, live, announced as there), with "Open the Wall".
-- **Compose:** the Wall page's compose form (campaign-wall ux section 4.2), reused, with a 2-row Textarea. The Keeper gets the "Who can read this?" group; Players get "Everyone in this Campaign can read this.". Success puts the entry at the top of the list and shows "Wall Entry added." in the page's `role=status` paragraph.
+- **Entries:** the `wall-preview` of [campaign-wall ux](../campaign-wall/ux.md) section 7 (5 latest the viewer may read, clamped to 3 lines, live, announced as there), with "Open the Wall" after the entries (WallPreview's placement, not the heading row).
+- **Compose:** the Wall page's compose form (campaign-wall ux section 4.2), reused through WallPreview's composer slot between the heading and the entries, with a 2-row Textarea. The Keeper gets the "Who can read this?" group; Players get "Everyone in this Campaign can read this.". Success puts the entry at the top of the list and shows "Wall Entry added." in the page's `role=status` paragraph.
 - No "Remove" and no "Show older entries" here; both stay on the Wall page.
 - Entries are the Campaign's, not this Scene's; there is no link between a Wall Entry and a Scene.
 - **Players:** from 1024px the Player view (section 4.1) becomes two columns with this region on the right; below, it comes last. A Player whose Investigator is not present (section 4.2) sees the region too: it shows only Campaign Wall Entries, never Scene details.
