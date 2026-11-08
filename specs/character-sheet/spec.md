@@ -13,7 +13,18 @@ A Player builds the Character Sheet for their Investigator before the Keeper can
   - Skill specializations ([section 6.2](../../docs/game-rules/coc7_character_creation_and_development_rules.md#62-common-specialization-base-values)) follow [project_ruleset.md section 4.2](../../docs/game-rules/project_ruleset.md#42-weapons-gear-and-specializations-without-catalogs): Fighting and Firearms specializations are chosen from the specialization catalog, and the other specialized skills are free text with suggestions. A specialized skill may appear more than once with different specializations.
   - Portrait is not captured. Fellow Investigators is stored as an empty list and not edited during creation. Conditions and advancement fields exist with their creation defaults ([section 13](../../docs/game-rules/coc7_character_creation_and_development_rules.md#13-conditions-and-tracked-state)) and are not shown in the creator.
 - **Creation Methods:** Standard Rolling ([section 2.1](../../docs/game-rules/coc7_character_creation_and_development_rules.md#21-standard-rolling-method)), Point Buy ([section 2.2](../../docs/game-rules/coc7_character_creation_and_development_rules.md#22-point-buy-alternative)), and Quick Fire ([section 2.3](../../docs/game-rules/coc7_character_creation_and_development_rules.md#23-quick-fire-alternative), [section 18](../../docs/game-rules/coc7_character_creation_and_development_rules.md#18-ruleset-separation-standard-vs-quick-fire)). The Player selects one from the Creation Methods the Campaign allows; when only one is allowed, the selection is not shown.
-- **Roll Records:** Every dice result rolled during creation is stored as a Roll Record ([project_ruleset.md section 4.3](../../docs/game-rules/project_ruleset.md#43-dice-results-at-creation)) with purpose (for example `Characteristic:STR`, `Luck`, `Luck:SecondRoll`, `EduImprovement[1].Check`, `EduImprovement[1].Gain`), dice expression, raw result, and source. Results enter through an `IRollSource` abstraction; v1 provides only the `PlayerEntered` source, where the Player types results rolled at the table. A `Server` source is added later without changing the Character Sheet shape. Final characteristic, Luck, and EDU values are computed from the Roll Records. Point Buy and Quick Fire store the chosen characteristic values directly, but their Luck rolls ([section 5.5](../../docs/game-rules/coc7_character_creation_and_development_rules.md#55-luck)) and EDU improvement checks ([section 3.2](../../docs/game-rules/coc7_character_creation_and_development_rules.md#32-edu-improvement-check)) are dice results and are stored as Roll Records under every Creation Method.
+- **Roll Records:** Every dice result rolled during creation is stored as a Roll Record ([project_ruleset.md section 4.3](../../docs/game-rules/project_ruleset.md#43-dice-results-at-creation)) with purpose (for example `Characteristic:STR`, `Luck`, `Luck:SecondRoll`, `EduImprovement[1].Check`, `EduImprovement[1].Gain`), dice expression, raw result, and source. **[DEPRECATED 2026-11-08]** ~~Results enter through an `IRollSource` abstraction; v1 provides only the `PlayerEntered` source, where the Player types results rolled at the table. A `Server` source is added later without changing the Character Sheet shape.~~ Replaced by: the server rolls every creation dice result through the [Dice](../dice/spec.md) module when the Player asks for it (see Creation rolling below), with source `Server`. Existing `PlayerEntered` Roll Records are kept as they are and shown as entered by the Player. Final characteristic, Luck, and EDU values are computed from the Roll Records. Point Buy and Quick Fire store the chosen characteristic values directly, but their Luck rolls ([section 5.5](../../docs/game-rules/coc7_character_creation_and_development_rules.md#55-luck)) and EDU improvement checks ([section 3.2](../../docs/game-rules/coc7_character_creation_and_development_rules.md#32-edu-improvement-check)) are dice results and are stored as Roll Records under every Creation Method.
+- **Creation rolling (dice system):** the Player triggers each roll; the server rolls, stores the Roll Records, and returns the recomputed sheet. Each roll is final.
+  - Roll characteristics: one action rolls every Standard Rolling characteristic ([section 2.1](../../docs/game-rules/coc7_character_creation_and_development_rules.md#21-standard-rolling-method)) that has no Roll Record yet. Standard Rolling only.
+  - Roll Luck: one action rolls Luck, and the second Luck roll when the age bracket has two ([section 5.5](../../docs/game-rules/coc7_character_creation_and_development_rules.md#55-luck)). Every Creation Method. Needs a valid age.
+  - Roll an EDU improvement check: one action rolls the next EDU check's D100 and, when the check improves EDU, its 1D10 gain ([section 3.2](../../docs/game-rules/coc7_character_creation_and_development_rules.md#32-edu-improvement-check)). Checks are rolled in order, up to the number the age bracket requires. Needs a valid age and an EDU value.
+  - A Draft that already has some `PlayerEntered` Roll Records keeps them; the actions roll only what is missing.
+- **Creation locks:** rolled results cannot be escaped by changing the inputs they depend on.
+  - The Creation Method cannot change once any characteristic has a Roll Record.
+  - The age bracket cannot change once Luck or any EDU improvement check has a Roll Record. The age may still change within the bracket.
+  - EDU cannot change once any EDU improvement check has a Roll Record (Point Buy and Quick Fire; under Standard Rolling EDU is already rolled).
+  - A `PUT` that breaks a lock returns 409 and changes nothing.
+- **Re-roll grant:** when the Keeper returns a Submitted Investigator with a Change Request, they may grant a re-roll for any of the groups `Characteristics`, `Luck`, and `EduImprovementChecks` ([campaign-play spec](../campaign-play/spec.md), `request-changes`). Granting a group marks its current Roll Records as replaced, which lifts the matching locks, and the Player rolls that group again with the same actions. Replaced Roll Records are kept and shown to the Keeper only; they never count toward values. Without a grant, the Player can never re-roll.
 - **Age:** Age is captured with identity. The Player chooses only how the age-bracket physical deduction is distributed ([section 3.1](../../docs/game-rules/coc7_character_creation_and_development_rules.md#31-character-creation-age-brackets)); age effects and EDU improvement checks are applied in the order of [section 3.3](../../docs/game-rules/coc7_character_creation_and_development_rules.md#33-age-modifier-ordering).
 - **Derived values:** Hard and Extreme values ([section 4](../../docs/game-rules/coc7_character_creation_and_development_rules.md#4-characteristic-derived-values)), all [secondary attributes](../../docs/game-rules/coc7_character_creation_and_development_rules.md#5-secondary--derived-attributes), occupation and personal interest point budgets ([section 7.1](../../docs/game-rules/coc7_character_creation_and_development_rules.md#71-occupation-skill-points), [section 8](../../docs/game-rules/coc7_character_creation_and_development_rules.md#8-personal-interest-skills)), skill post-processing ([section 9](../../docs/game-rules/coc7_character_creation_and_development_rules.md#9-skill-post-processing)), and wealth ([section 11](../../docs/game-rules/coc7_character_creation_and_development_rules.md#11-finances-gear-and-possessions)) are computed by the system and read-only. Each calculation lives in one domain service per rule section and carries a comment pointing to that section.
 - **Delivery scope (PBI-CP-003):** The first delivery supports Point Buy only and covers identity, characteristics, age effects ([section 3.1](../../docs/game-rules/coc7_character_creation_and_development_rules.md#31-character-creation-age-brackets), [section 3.3](../../docs/game-rules/coc7_character_creation_and_development_rules.md#33-age-modifier-ordering), [project_ruleset.md section 4.4](../../docs/game-rules/project_ruleset.md#44-characteristic-floor-after-age-effects)), EDU improvement checks ([section 3.2](../../docs/game-rules/coc7_character_creation_and_development_rules.md#32-edu-improvement-check)), and Luck ([section 5.5](../../docs/game-rules/coc7_character_creation_and_development_rules.md#55-luck)).
@@ -43,19 +54,19 @@ A Player builds the Character Sheet for their Investigator before the Keeper can
     | `PointBuyValueOutOfRange` | `characteristics.{C}` | Error | [section 2.2](../../docs/game-rules/coc7_character_creation_and_development_rules.md#22-point-buy-alternative) | {C} must be between {minimum} and {maximum}. | shared |
     | `PointBuyTotalMismatch` | `characteristics` | Error | section 2.2 | Your characteristics must add up to {budget}. They add up to {total}. | shared |
     | `PointBuyBelowRecommendation` | `characteristics.INT`, `characteristics.SIZ` | Warning | section 2.2 | {C} is below the recommended {recommended}. Check with your Keeper. | shared |
-    | `LuckRollRequired` | `luckRolls[0]` | Error | [section 5.5](../../docs/game-rules/coc7_character_creation_and_development_rules.md#55-luck) | Enter your Luck roll. | shared |
-    | `LuckSecondRollRequired` | `luckRolls[1]` | Error | section 5.5 | Enter your second Luck roll. | shared |
+    | `LuckRollRequired` | `luckRolls[0]` | Error | [section 5.5](../../docs/game-rules/coc7_character_creation_and_development_rules.md#55-luck) | Roll Luck. | shared |
+    | `LuckSecondRollRequired` | `luckRolls[1]` | Error | section 5.5 | Roll your second Luck roll. | shared |
     | `LuckSecondRollNotAllowed` | `luckRolls[1]` | Error | section 5.5 | Only one Luck roll is used at this age. | shared |
     | `DiceResultOutOfRange` | the dice field | Error | dice expression | Enter a {dice} result between {minimum} and {maximum}. | shared |
     | `AgeDeductionTotalMismatch` | `ageEffects.deductions` | Error | [section 3.1](../../docs/game-rules/coc7_character_creation_and_development_rules.md#31-character-creation-age-brackets) | Deduct exactly {total} points in total. You have deducted {deducted}. | shared |
     | `AgeDeductionNotAllowed` | `ageEffects.deductions.{C}` | Error | section 3.1 | {C} can't take the age deduction at this age. | shared |
     | `AgeDeductionNegative` | `ageEffects.deductions.{C}` | Error | section 3.1 | Enter 0 or more for {C}. | shared |
     | `CharacteristicBelowFloor` | `ageEffects.deductions.{C}` for a deducted characteristic, otherwise `characteristics.{C}` | Error | [project_ruleset.md section 4.4](../../docs/game-rules/project_ruleset.md#44-characteristic-floor-after-age-effects) | {C} can't go below {floor} after age effects. | server |
-    | `EduImprovementCheckRequired` | `ageEffects.eduImprovementChecks[n].check` | Error | [section 3.2](../../docs/game-rules/coc7_character_creation_and_development_rules.md#32-edu-improvement-check) | Enter the D100 roll for EDU check {n}. | shared |
+    | `EduImprovementCheckRequired` | `ageEffects.eduImprovementChecks[n].check` | Error | [section 3.2](../../docs/game-rules/coc7_character_creation_and_development_rules.md#32-edu-improvement-check) | Roll EDU check {n}. | shared |
     | `EduImprovementCheckNotRequired` | `ageEffects.eduImprovementChecks[n]` | Error | section 3.1 | EDU check {n} isn't needed at this age. | shared |
-    | `EduImprovementGainRequired` | `ageEffects.eduImprovementChecks[n].gain` | Error | section 3.2 | Enter the 1D10 gain for EDU check {n}. | server |
+    | `EduImprovementGainRequired` | `ageEffects.eduImprovementChecks[n].gain` | Error | section 3.2 | EDU check {n} is missing its 1D10 gain. Ask your Keeper. | server |
     | `EduImprovementGainNotAllowed` | `ageEffects.eduImprovementChecks[n].gain` | Error | section 3.2 | EDU check {n} has no gain because the roll isn't above EDU. | server |
-    | `CharacteristicRollRequired` | `characteristicRolls.{C}` | Error | [section 2.1](../../docs/game-rules/coc7_character_creation_and_development_rules.md#21-standard-rolling-method) | Enter the {dice} total for {C}. | shared |
+    | `CharacteristicRollRequired` | `characteristicRolls.{C}` | Error | [section 2.1](../../docs/game-rules/coc7_character_creation_and_development_rules.md#21-standard-rolling-method) | Roll characteristics. {C} has no {dice} roll yet. | shared |
     | `QuickFireValueNotInPool` | `characteristics.{C}` | Error | [section 2.3](../../docs/game-rules/coc7_character_creation_and_development_rules.md#23-quick-fire-alternative) | {C} must be one of the Quick fire values: {values}. | shared |
     | `QuickFireAssignmentMismatch` | `characteristics` | Error | section 2.3 | Use each Quick fire value exactly once: {values}. | shared |
     | `OccupationRequired` | `occupation` | Error | section 15 | Choose an occupation. | shared |
@@ -92,6 +103,8 @@ A Player builds the Character Sheet for their Investigator before the Keeper can
     | `WeaponNameRequired` | `weapons[i].name` | Error | [ux.md section 6.7](ux.md#67-sheet-and-submit-sheet) | Enter a name for this weapon. | shared |
     | `SkillAboveWarningThreshold` | `skills` | Warning | [ux.md section 12](ux.md#12-open-decisions-and-research-gaps) (app-level advice, not a rule) | {skill} is above {threshold}. Check with your Keeper. | server |
 
+    Since the dice system (2026-11-08), `DiceResultOutOfRange`, `EduImprovementGainRequired`, and `EduImprovementGainNotAllowed` can only arise from `PlayerEntered` Roll Records typed in before it, because the server rolls a gain exactly when a check needs one. The messages of the Roll-required codes now ask the Player to roll instead of to enter a result.
+
     The `expected` and `actual` values are strings or null. Age-dependent checks are skipped while the age is missing or out of range, because the age error already blocks submission. `PointBuyTotalMismatch` is reported only once all eight values are present. `QuickFireAssignmentMismatch` is reported only once all eight values are present and in the pool. Checks that need the occupation point or personal interest budget are skipped until the budget can be calculated. Occupation point, personal interest, and Credit Rating range checks apply to Standard Rolling and Point Buy; the Quick Fire skill checks apply to Quick Fire only ([section 2.3](../../docs/game-rules/coc7_character_creation_and_development_rules.md#23-quick-fire-alternative)). `{skill}` is the skill's display name: `Skill (Specialization)`, or `Skill: Specialization` when the skill name already ends in parentheses.
   - **Rule parameters reach the frontend from the API.** Point Buy parameters, the Standard Rolling formulas, the Quick Fire values, the occupation point formulas, the Credit Rating bounds, the age range, the characteristic floor, the dice expressions for Luck and EDU checks, the EDU maximum of section 3.2, the Luck multiplier of section 5.5, and the Investigator's age bracket are returned by the character-sheet endpoints (`rules` and `ageEffects.bracket`), so the frontend validator never hard-codes a rule value.
   - **Parity fixtures.** `specs/character-sheet/validation-fixtures.json` lists Character Sheet inputs with their expected `ValidationError` items. The backend validator must produce exactly the expected items for every case; the frontend validator must do the same for every case with scope `shared`.
@@ -99,17 +112,18 @@ A Player builds the Character Sheet for their Investigator before the Keeper can
   - A step wizard covers the mechanics in this order: Concept and Identity (including age), Creation Method and Characteristics, Age Effects, Occupation, Occupation Skills, Personal Interests. A progress indicator shows completed steps and the Player can return to any completed step.
   - A sheet view then covers narrative sections (backstory with one Key Connection per [section 12](../../docs/game-rules/coc7_character_creation_and_development_rules.md#12-backstory-fields), weapons, gear) and Review and Submit. The same read-only sheet view is used by the Keeper for review.
   - The Draft is saved to the server whenever the Player completes a step or navigates between steps, and the Player can leave and resume.
-  - Changing an earlier choice keeps later inputs, recomputes all derived values, and surfaces now-invalid inputs as validation errors on their steps. Changing the Creation Method clears characteristics after the Player confirms.
+  - Changing an earlier choice keeps later inputs, recomputes all derived values, and surfaces now-invalid inputs as validation errors on their steps. Changing the Creation Method clears characteristics after the Player confirms, unless a creation lock forbids the change (see Creation locks).
   - UX specification: [ux.md](ux.md).
-- **Persistence:** The Character Sheet is a value object of the `Investigator` aggregate, stored as a JSON column with an explicit schema version so new Eras and roll sources evolve without table migrations. Schema version 2 added the Occupation, skill allocations, and Quick Fire skills; version 3 stores the Quick Fire extra skill explicitly (an upgraded earlier document has none, so a value it left on that skill is reported until the Player removes it); version 4 adds the Backstory, Key Connection, Custom Weapons, and Gear (an upgraded earlier document has none of them).
+- **Persistence:** The Character Sheet is a value object of the `Investigator` aggregate, stored as a JSON column with an explicit schema version so new Eras and roll sources evolve without table migrations. Schema version 2 added the Occupation, skill allocations, and Quick Fire skills; version 3 stores the Quick Fire extra skill explicitly (an upgraded earlier document has none, so a value it left on that skill is reported until the Player removes it); version 4 adds the Backstory, Key Connection, Custom Weapons, and Gear (an upgraded earlier document has none of them); version 5 stores Roll Records in the [Dice](../dice/spec.md) shape with faces, who rolled, when, and whether they are replaced, plus the Keeper's open re-roll grants (an upgraded earlier document keeps its `PlayerEntered` Roll Records without faces or times).
 - **API Contracts:**
   - `GET /api/campaigns/{campaignId}/investigators/mine/character-sheet` - returns the caller's Character Sheet, its computed values, and its `ValidationError` list.
   - `PUT /api/campaigns/{campaignId}/investigators/mine/character-sheet` - replaces the Draft or Changes Requested Character Sheet with the Player's inputs; returns the recomputed sheet and `ValidationError` list. Rejected when the Investigator is Submitted or Approved.
   - `GET /api/campaigns/{campaignId}/rules/occupations` - returns the Occupation catalog for the Campaign's Era to Campaign members.
   - `GET /api/campaigns/{campaignId}/rules/skills` - returns the skill catalog for the Campaign's Era and the specialization catalog to Campaign members: `{era, skills: [{skill, specialization, base}], closedFamilies: [{skill, specializations: [{specialization, base}]}], openFamilies: [string], specializationSuggestions: {skill: [string]}}`, where `base` is `{kind: fixed, value}` or `{kind: characteristic, characteristic, divisor}`.
-  - Both character-sheet endpoints are for the owning Player only and return 404 to anyone else. `PUT` returns 409 when the Investigator is Submitted or Approved and 400 for a malformed body (for example an unknown Creation Method, or inputs that belong to another Creation Method: `characteristics` under Standard Rolling, `characteristicRolls` under Point Buy or Quick Fire, `quickFire` under Standard Rolling or Point Buy, or `skills` under Quick Fire).
+  - `POST /api/campaigns/{campaignId}/investigators/mine/character-sheet/rolls/characteristics`, `.../rolls/luck`, and `.../rolls/edu-improvement-checks` - roll the next missing results of that group (see Creation rolling) and return the same response as `PUT`. 409 when the Investigator is Submitted or Approved, when the group has nothing left to roll, or when its prerequisites are missing (Standard Rolling for characteristics; a valid age for Luck; a valid age and EDU for EDU checks).
+  - Both character-sheet endpoints and the roll endpoints are for the owning Player only and return 404 to anyone else. `PUT` returns 409 when the Investigator is Submitted or Approved and 400 for a malformed body (for example an unknown Creation Method, or inputs that belong to another Creation Method: `characteristics` under Standard Rolling, `characteristicRolls` under Point Buy or Quick Fire, `quickFire` under Standard Rolling or Point Buy, or `skills` under Quick Fire).
   - `PUT` body (the Player's inputs only; derived values are never accepted): `{identity: {name, age, gender, residence, birthplace}, creationMethod, characteristics: {"STR": int|null, ...}, characteristicRolls: {"STR": int|null, ...}, ageEffects: {deductions: {"STR": int|null, ...}, eduImprovementChecks: [{check: int|null, gain: int|null}]}, luckRolls: [int|null], occupation, skills, quickFire, backstory, keyConnection, weapons, gear}`. Dice inputs are raw dice totals.
-    - `characteristicRolls` (Standard Rolling) are raw dice totals; each becomes a Roll Record with purpose `Characteristic:{C}`.
+    - **[DEPRECATED 2026-11-08]** ~~`characteristicRolls` (Standard Rolling) are raw dice totals; each becomes a Roll Record with purpose `Characteristic:{C}`.~~ Replaced by: the body no longer carries dice results. `characteristicRolls`, `ageEffects.eduImprovementChecks`, and `luckRolls` are removed from it, and a body that carries them is malformed (400). Dice results come only from the roll endpoints.
     - `occupation`: null or `{catalogId, custom, formulaCharacteristics: [code|null], skillChoices: [[skillReference]]}`; `custom` is null or `{name, formulaId, skills: [skillReference|null], creditRatingMin, creditRatingMax}`. `formulaCharacteristics` has one entry per formula term; `skillChoices` has one list per occupation skill slot, holding the Player's picks for that slot. A `skillReference` is `{skill, specialization}`.
     - `skills` (Standard Rolling and Point Buy): `[{skill, specialization, occupationPoints: int|null, personalInterestPoints: int|null}]`.
     - `backstory`: `{myStory, personalDescription, traits, ideologyAndBeliefs, injuriesAndScars, significantPeople, phobiasAndManias, meaningfulLocations, arcaneTomesAndSpells, treasuredPossessions, encountersWithStrangeEntities}`, each a string or null of at most 2000 characters. `keyConnection` is null or the name of one Background entry (any key except `myStory`) that is filled in; any other value is a malformed body (400).
@@ -125,7 +139,8 @@ A Player builds the Character Sheet for their Investigator before the Keeper can
       - `backstory`, `keyConnection`, and `gear`: as sent. `weapons`: as sent, each with `isCustom: true`, because every v1 weapon is a Custom Weapon ([project_ruleset.md section 4.2](../../docs/game-rules/project_ruleset.md#42-weapons-gear-and-specializations-without-catalogs)).
       - `ageEffects`: `{bracket, deductions, eduImprovementChecks}`; `bracket` is `{minimumAge, maximumAge, physicalDeductionTotal, physicalDeductionCharacteristics, appearanceModifier, eduImprovementChecks, luckRolls}` or null while the age is missing or out of range; each EDU check is `{check, gain, eduBefore, eduAfter}`.
       - `derived`: `{luck, idea, know, hitPoints, magicPoints, sanity: {current, maximum}, dodge, movementRate, damageBonus, build, occupationPoints, personalInterestPoints, creditRating, wealth}`; a value is null until it can be calculated. `occupationPoints` and `personalInterestPoints` are `{budget, spent, left}` (Standard Rolling and Point Buy only). `wealth` is `{currency, spendingLevel, cash, assets}`, each amount `{amount, orMore}`, with `assets` null for none.
-      - `rollRecords`: `[{purpose, dice, result, source}]`.
+      - `rollRecords`: `[{purpose, dice, faces, result, source, rolledByDisplayName, rolledAt, isReplaced}]`; `faces` and `rolledAt` are null for `PlayerEntered` records. The Player's view leaves out replaced records.
+      - `locks`: `{creationMethod, ageBracket, edu}`, each true while that creation lock applies. `rerollGrants`: the groups the Keeper granted that the Player has not rolled again yet.
     - `rules`: `{pointBuyBudget, pointBuyMinimum, pointBuyMaximum, pointBuyRecommendedMinimum, minimumAge, maximumAge, characteristicFloor, luckDice, eduImprovementCheckDice, eduImprovementGainDice, eduMaximum, luckMultiplier, standardRolling, quickFireCharacteristicValues, quickFireSkillValues, quickFirePersonalInterestBonus, quickFirePersonalInterestCount, occupationPointFormulas, customOccupationSkillCount, creditRatingMinimum, creditRatingMaximum, skillValueWarningThreshold, creditRatingSkill, cthulhuMythosSkill}`. `standardRolling` is `{"STR": {dice, bonus, multiplier}, ...}` per section 2.1; `occupationPointFormulas` is `[{id, terms: [{characteristics, multiplier}]}]` per section 7.1.
     - `validationErrors`: `ValidationError` items `{code, field, message, expected, actual, severity}` with severity `Error` or `Warning`.
 - **Data Models:**
@@ -142,12 +157,17 @@ A Player builds the Character Sheet for their Investigator before the Keeper can
 - Derived values are always computed from inputs and are never accepted from the client.
 - The validator reports invalid input as `ValidationError` items and never silently corrects it.
 - Every Roll Record carries its source.
+- Every new creation dice result is rolled by the server through the [Dice](../dice/spec.md) module; no API accepts a dice result from the Player.
+- A Player can roll each creation dice result once; only a Keeper's re-roll grant allows rolling it again, and the replaced Roll Records are kept.
 
 ## Contract
 
 ### Definition of Done
 - [ ] A Player can create a Character Sheet with each of Standard Rolling, Point Buy, and Quick Fire when the Campaign allows that Creation Method.
-- [ ] Standard Rolling stores one Roll Record per dice result with source `PlayerEntered`, and final characteristic, Luck, and EDU values are computed from them.
+- [ ] **[DEPRECATED 2026-11-08]** ~~Standard Rolling stores one Roll Record per dice result with source `PlayerEntered`, and final characteristic, Luck, and EDU values are computed from them.~~ Replaced by: Standard Rolling, Luck, and EDU improvement checks are rolled by the server on the Player's action, each stored as a Roll Record with source `Server`, and final characteristic, Luck, and EDU values are computed from them.
+- [ ] The wizard has no field where a Player types a dice result.
+- [ ] Changing the Creation Method, the age bracket, or EDU against a creation lock is refused with 409.
+- [ ] The Keeper can grant a re-roll for Characteristics, Luck, or EDU improvement checks with a Change Request; the replaced Roll Records stay visible to the Keeper.
 - [ ] Every derived value listed under Architecture is computed by the backend and matches the referenced rule section in unit tests named after that section.
 - [ ] A Player can select a catalog Occupation for the Campaign's Era or define a custom Occupation.
 - [ ] `PUT .../character-sheet` returns every applicable error and warning listed under Validation, and submission is rejected while any error remains.
@@ -162,6 +182,8 @@ A Player builds the Character Sheet for their Investigator before the Keeper can
 - No creation points are ever accepted on Cthulhu Mythos under the standard rules.
 - Rule data used at runtime comes from catalogs under `docs/game-rules/`, not from values hard-coded in more than one place.
 - Adding an Era or a roll source does not change the stored shape of existing Character Sheets beyond a schema version upgrade.
+- A Roll Record is never changed or deleted; a re-roll only marks it replaced.
+- A `PlayerEntered` Roll Record from before the dice system stays on the sheet and keeps counting toward values until a re-roll grant replaces it.
 
 ### Scenarios
 ```gherkin
@@ -172,11 +194,62 @@ Scenario: Player creates a Point Buy Character Sheet
   Then the Character Sheet has no characteristic validation errors
   And the derived values shown match sections 4 and 5 of the character rules
 
-Scenario: Standard Rolling records every Player-entered roll
+# [DEPRECATED 2026-11-08] "Standard Rolling records every Player-entered roll" is
+# replaced by "Standard Rolling characteristics are rolled by the server".
+
+Scenario: Standard Rolling characteristics are rolled by the server
+  # Rule: character rules section 2.1
   Given a Campaign allows the Standard Rolling Creation Method
-  When the Player enters dice results for every characteristic and for Luck
-  Then the Character Sheet stores one Roll Record per result with source PlayerEntered
+  And a Player's Draft uses Standard Rolling
+  When the Player rolls characteristics
+  Then the Character Sheet stores one Roll Record per characteristic with source Server and its dice faces
   And each characteristic value is computed from its Roll Record
+
+Scenario: Characteristics are rolled only once
+  Given a Player has rolled characteristics
+  When the Player rolls characteristics again
+  Then the request returns 409 and the Roll Records are unchanged
+
+Scenario: Rolled characteristics lock the Creation Method
+  Given a Player has rolled characteristics with Standard Rolling
+  When the Player changes the Creation Method to Point Buy
+  Then the request returns 409 and the Draft still uses Standard Rolling
+
+Scenario: An EDU check rolls its gain in the same action
+  # Rule: character rules section 3.2
+  Given a Player's Investigator is in a bracket with one EDU improvement check
+  When the Player rolls the EDU check and the server rolls a D100 above EDU
+  Then the Character Sheet stores the check and its 1D10 gain as Roll Records
+  And EDU after age effects includes the gain
+
+Scenario: A rolled EDU check locks the age bracket and EDU
+  Given a Player with Point Buy has rolled an EDU improvement check
+  When the Player changes the age to another bracket or changes EDU
+  Then the request returns 409 and nothing changes
+
+Scenario: A rolled Luck locks the age bracket
+  Given a Player has rolled Luck
+  When the Player changes the age to another bracket
+  Then the request returns 409
+  And a change of age within the same bracket is accepted
+
+Scenario: Keeper grants a characteristics re-roll
+  Given a Submitted Investigator rolled with Standard Rolling
+  When the Keeper requests changes and grants a re-roll for Characteristics
+  And the Player rolls characteristics again
+  Then the new Roll Records give the characteristic values
+  And the Keeper sees the earlier Roll Records marked as replaced
+
+Scenario: Dice results are never accepted from the Player
+  Given a Player's Draft uses Standard Rolling
+  When the Player sends a Character Sheet with characteristic roll totals
+  Then the request returns 400 and nothing changes
+
+Scenario: Typed-in rolls from before the dice system are kept
+  Given a Draft has a PlayerEntered Roll Record for Luck and none for its EDU check
+  When the Player rolls the EDU check
+  Then the Luck Roll Record is still PlayerEntered and counts toward Luck
+  And the EDU check Roll Record has source Server
 
 Scenario: Quick Fire rejects an invalid assignment
   Given a Player is creating a Character Sheet with Quick Fire
@@ -210,7 +283,7 @@ Scenario: Age effects cannot take a characteristic below the floor
 Scenario: Young Investigator keeps the higher Luck roll
   Given a Player is creating a Character Sheet with any Creation Method
   And the Investigator's age is 17
-  When the Player enters two Luck Roll Records
+  When the Player rolls Luck and the server stores two Luck Roll Records
   Then the Investigator's Luck is the higher of the two as defined in section 5.5 of the character rules
 
 Scenario: Overspent occupation points block submission
