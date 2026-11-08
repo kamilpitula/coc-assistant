@@ -33,6 +33,13 @@ All optional rules are **disabled** and cannot be enabled per Campaign yet:
   ([section 9](coc7_character_creation_and_development_rules.md#9-skill-post-processing)).
 - Keeper permission for Cthulhu Mythos creation points
   ([section 8](coc7_character_creation_and_development_rules.md#8-personal-interest-skills)).
+- Spending Luck to change a roll's result
+  ([skill rolls section 7](coc7_skill_rolls_rules.md#7-luck-rolls)); it is not
+  documented yet.
+
+Opposed rolls, combined rolls, Sanity rolls during play, and combat rolls are
+not supported yet
+([skill rolls section 8](coc7_skill_rolls_rules.md#8-not-covered)).
 
 # 4. Project restrictions (house rules)
 
@@ -108,6 +115,22 @@ allows Personal Interest points on any skill except Cthulhu Mythos, while
 sets Credit Rating to the allocated occupation points. In this project Credit
 Rating is raised only with occupation points; Personal Interest points spent on
 Credit Rating are reported as a validation error.
+
+## 4.7 Rolls against a target value of 0
+
+**House rule (resolves a rules gap).**
+[Skill rolls section 9](coc7_skill_rolls_rules.md#9-rules-gaps) notes that the
+rules do not say how a roll against a target value of 0 resolves. In this
+project a result of 01 is a Critical and succeeds at every Difficulty, as for
+any other target value
+([skill rolls section 4.3](coc7_skill_rolls_rules.md#43-resolving-a-roll));
+every other result fails.
+
+## 4.8 Luck rolls
+
+**House rule (resolves a rules gap).** A Luck roll
+([skill rolls section 7](coc7_skill_rolls_rules.md#7-luck-rolls)) is always made
+at Regular Difficulty with no Bonus or Penalty Dice.
 
 # 5. Non-Player Entity profiles
 

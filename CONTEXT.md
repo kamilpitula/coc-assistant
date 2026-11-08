@@ -148,8 +148,32 @@ The Active and Finished Scenes of a Campaign in the order they were started, acr
 _Avoid_: Timeline, log, play order
 
 **Roll Request**:
-The Keeper's request that an Investigator make a roll, whose result is a Roll Record. Not yet specified: the rules for [skill rolls during play](docs/game-rules/README.md) are not yet documented.
+The Keeper's request, in the Active Scene, that one or more Investigators present roll the same skill, characteristic, or Luck, with an optional message and a visibility of Public or Keeper-only. It is made of one Requested Roll per Investigator and is recorded on the Campaign Wall.
 _Avoid_: Skill test, check request
+
+**Requested Roll**:
+One Investigator's part of a Roll Request, with its own Difficulty, Bonus Dice, Penalty Dice, status, and resulting Roll Records.
+_Avoid_: Roll task, pending roll
+
+**Hidden roll**:
+A Keeper-only Roll Request, rolled by the app when the Keeper creates it, that no Player sees.
+_Avoid_: Secret roll, blind roll
+
+**Difficulty**:
+The Regular, Hard, or Extreme level a roll must reach to succeed, set by the Keeper per the [Difficulty rules](docs/game-rules/coc7_skill_rolls_rules.md#3-difficulty). Investigator Difficulty is the Difficulty an Opposing Value sets.
+_Avoid_: Difficulty class, DC
+
+**Success Level**:
+How well a roll went: Fumble, Failure, Regular, Hard, Extreme, or Critical, per the [Success Level rules](docs/game-rules/coc7_skill_rolls_rules.md#4-success-levels).
+_Avoid_: Degree of success, result tier
+
+**Bonus Die** / **Penalty Die**:
+An extra tens die the Keeper adds to a roll for favourable or unfavourable circumstances, per the [Bonus and Penalty Dice rules](docs/game-rules/coc7_skill_rolls_rules.md#5-bonus-and-penalty-dice).
+_Avoid_: Advantage, disadvantage
+
+**Pushed roll**:
+A second attempt at a failed roll that the Player justifies and the Keeper agrees to, per the [pushing rules](docs/game-rules/coc7_skill_rolls_rules.md#6-pushing-a-roll).
+_Avoid_: Re-roll, retry
 
 **Combat**:
 A fight between Investigators and Non-Player Entities. Not yet specified: combat resolution is not yet documented in [docs/game-rules](docs/game-rules/README.md).
@@ -228,8 +252,16 @@ The significant possessions an Investigator carries, recorded as free text per t
 _Avoid_: Inventory, equipment list. An Item is a different concept.
 
 **Roll Record**:
-A recorded dice result used to create or develop an Investigator, naming what it was rolled for, the dice, the result, and who produced it.
+A dice result the app produced, for creating or developing an Investigator or during play, naming what it was rolled for, the dice and every die face, the result, who produced it, and when. Results typed in before the app rolled dice are kept as Player-entered Roll Records.
 _Avoid_: Dice log, roll history
+
+**Creation lock**:
+A creation input that can no longer change because a Roll Record depends on it: the Creation Method after a characteristic roll, the age bracket after a Luck roll or an EDU improvement check, and EDU after an EDU improvement check.
+_Avoid_: Freeze, locked field
+
+**Re-roll grant**:
+The Keeper's permission, given with a Change Request, for the Player to roll Characteristics, Luck, or EDU improvement checks again. The replaced Roll Records are kept for the Keeper.
+_Avoid_: Re-roll token, reset
 
 **Validation Error**:
 A problem the [creation validation rules](docs/game-rules/coc7_character_creation_and_development_rules.md#15-character-creation-validation-rules) find on a Character Sheet, with a code, the field it concerns, a message, and a severity. An Error blocks submission; a Warning never does and is shown to both the Player and the Keeper.
