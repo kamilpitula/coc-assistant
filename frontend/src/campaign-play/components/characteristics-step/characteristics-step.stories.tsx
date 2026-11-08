@@ -55,7 +55,21 @@ export const StandardRolling: Story = {
 }
 
 const legacySheet: CharacterSheetView = {
-  ...sheetView({ creationMethod: 'StandardRolling', characteristicRolls: { STR: 11 } }),
+  ...sheetView({
+    creationMethod: 'StandardRolling',
+    characteristicRolls: { STR: 11 },
+    rollRecords: [
+      {
+        purpose: 'Characteristic:STR',
+        dice: '3D6',
+        faces: null,
+        result: 11,
+        source: 'PlayerEntered',
+        rolledByDisplayName: 'Ada Lovelace',
+        rolledAt: null,
+      },
+    ],
+  }),
   characteristics: Object.fromEntries(
     CHARACTERISTIC_CODES.map((code) => [
       code,

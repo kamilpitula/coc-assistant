@@ -16,6 +16,7 @@ import {
 import {
   CHARACTERISTIC_CODES,
   type CharacterSheetView,
+  type RollRecord,
   type ValidationError,
 } from '@/campaign-play/types/CharacterSheet'
 
@@ -42,7 +43,37 @@ function base(overrides: { rollStatus?: RollStatus } = {}) {
 const standardInputs = { ...emptyInputs, creationMethod: 'StandardRolling' as const }
 const standardSheet = { ...emptySheetView(), creationMethod: 'StandardRolling' as const }
 const rolledInputs = { ...standardInputs, characteristics: { ...validInputs.characteristics } }
-const rolledSheet = sheetView({ creationMethod: 'StandardRolling', characteristicRolls: {}, locks: { creationMethod: true } })
+/** One Server Roll Record per characteristic; the faces add up to the raw total, as the roll response returns them. */
+const SERVER_CHARACTERISTICS: [code: (typeof CHARACTERISTIC_CODES)[number], dice: string, faces: number[]][] = [
+  ['STR', '3D6', [4, 4, 4]],
+  ['CON', '3D6', [4, 4, 4]],
+  ['DEX', '3D6', [4, 4, 4]],
+  ['APP', '3D6', [3, 3, 4]],
+  ['POW', '3D6', [4, 4, 4]],
+  ['SIZ', '2D6', [3, 3]],
+  ['INT', '2D6', [3, 3]],
+  ['EDU', '2D6', [2, 2]],
+]
+
+function serverCharacteristicRecords(): RollRecord[] {
+  return SERVER_CHARACTERISTICS.map(([code, dice, faces]) => ({
+    purpose: `Characteristic:${code}`,
+    dice,
+    faces,
+    result: faces.reduce((total, face) => total + face, 0),
+    source: 'Server',
+    rolledByDisplayName: 'Ada Lovelace',
+    rolledAt: '2026-11-08T14:30:00+00:00',
+  }))
+}
+
+/** A fully server-rolled sheet, as the roll response returns it: raw totals kept, Server records attached. */
+const rolledSheet = sheetView({
+  creationMethod: 'StandardRolling',
+  characteristicRolls: { STR: 12, CON: 12, DEX: 12, APP: 10, POW: 12, SIZ: 6, INT: 6, EDU: 4 },
+  rollRecords: serverCharacteristicRecords(),
+  locks: { creationMethod: true },
+})
 
 /** specs/character-sheet/ux.md section 6.2 (Point buy with its Luck rows); UX-9, UX-10, UX-20. */
 describe('CharacteristicsStep', () => {
@@ -181,7 +212,21 @@ describe('CharacteristicsStep Standard rolling', () => {
   it('UX-33: lists legacy typed-in values and rolls only the remaining characteristics', async () => {
     const props = base()
     const legacySheet: CharacterSheetView = {
-      ...sheetView({ creationMethod: 'StandardRolling', characteristicRolls: { STR: 11 } }),
+      ...sheetView({
+        creationMethod: 'StandardRolling',
+        characteristicRolls: { STR: 11 },
+        rollRecords: [
+          {
+            purpose: 'Characteristic:STR',
+            dice: '3D6',
+            faces: null,
+            result: 11,
+            source: 'PlayerEntered',
+            rolledByDisplayName: 'Ada Lovelace',
+            rolledAt: null,
+          },
+        ],
+      }),
       characteristics: Object.fromEntries(
         CHARACTERISTIC_CODES.map((code) => [
           code,

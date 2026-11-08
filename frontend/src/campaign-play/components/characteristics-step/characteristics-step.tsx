@@ -86,6 +86,11 @@ export function CharacteristicsStep(props: CharacteristicsStepProps) {
 const ROLL_TRIGGER_ID = fieldId('characteristicRolls')
 const ROLL_ERROR_ID = errorId('characteristicRolls')
 
+/** True when the sheet keeps a Player-entered Roll Record for the characteristic: a legacy typed-in total. Server rolls never count. */
+function enteredByYou(sheet: CharacterSheetView, code: CharacteristicCode): boolean {
+  return sheet.rollRecords.some((record) => record.purpose === `Characteristic:${code}` && record.source === 'PlayerEntered')
+}
+
 /** "STR, CON (3D6); SIZ (2D6)": the missing characteristics grouped by their dice. */
 function rollList(missing: readonly CharacteristicCode[], rules: CharacterSheetRules): string {
   const groups = new Map<string, CharacteristicCode[]>()
@@ -121,7 +126,7 @@ function StandardRollingSection({ inputs, errors, rules, sheet, roll }: Characte
           {CHARACTERISTIC_CODES.map((code) => (
             <li key={code} className="text-sm">
               {code} {inputs.characteristics[code]}
-              {sheet.characteristicRolls[code] !== null && sheet.characteristicRolls[code] !== undefined ? ' (entered by you)' : ''}
+              {enteredByYou(sheet, code) ? ' (entered by you)' : ''}
             </li>
           ))}
         </ul>
@@ -150,7 +155,7 @@ function StandardRollingSection({ inputs, errors, rules, sheet, roll }: Characte
           {CHARACTERISTIC_CODES.filter((code) => (inputs.characteristics[code] ?? null) !== null).map((code) => (
             <li key={code} className="text-sm">
               {code} {inputs.characteristics[code]}
-              {sheet.characteristicRolls[code] !== null && sheet.characteristicRolls[code] !== undefined ? ' (entered by you)' : ''}
+              {enteredByYou(sheet, code) ? ' (entered by you)' : ''}
             </li>
           ))}
         </ul>

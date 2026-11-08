@@ -1,15 +1,18 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 
 import { newAccount, signIn } from '../fixtures/auth'
 import { createCampaignViaUi, issueInviteViaUi } from '../fixtures/campaigns'
 import {
+  API_ORIGIN,
   chooseAntiquarianViaUi,
   chooseCreationMethod,
   chooseOption,
   fillPointBuy,
   joinAsNewPlayer,
+  openAndCaptureBearer,
   pickAntiquarianSkillsViaUi,
   pressWizardAction,
+  rollCharacteristicsViaUi,
   saveDraftUpToAgeEffectsViaUi,
   spendAntiquarianPointsViaUi,
   VALID_POINT_BUY,
@@ -20,12 +23,14 @@ import { attentionList, memberRow, ownRow } from '../fixtures/overview'
  * Traces to specs/campaign-play/spec.md "Investigator lifecycle" and Scenarios "Player starts a Draft Investigator",
  * "Player submits a valid Character Sheet", "Keeper requests changes", "Request changes requires a comment", and
  * "Keeper approves an Investigator"; to specs/character-sheet/spec.md Scenarios "Point Buy Investigator applies age
- * effects before Hard and Extreme values", "Draft resumes after leaving the wizard", "Standard Rolling records every
- * Player-entered roll", "Changing characteristics keeps later allocations", "Changing the Creation Method clears
- * characteristics after confirmation", and "Unspent personal interest points only warn"; and to
- * specs/character-sheet/ux.md sections 3 to 7 (UX-3, UX-4, UX-5, UX-7, UX-8, UX-9, UX-10, UX-11, UX-12, UX-13, UX-14,
- * UX-15, UX-20, UX-22, UX-23, UX-24, UX-25, UX-26, UX-27, UX-28, UX-29, UX-30), with the Campaign page as the overview of
- * specs/campaign-overview/ux.md (CO-UX-4, CO-UX-6, CO-UX-9).
+ * effects before Hard and Extreme values", "Draft resumes after leaving the wizard", "Standard Rolling characteristics
+ * are rolled by the server", "Characteristics are rolled only once", "Rolled characteristics lock the Creation Method",
+ * "Changing characteristics keeps later allocations", "Changing the Creation Method clears characteristics after
+ * confirmation", and "Unspent personal interest points only warn"; and to specs/character-sheet/ux.md sections 3 to 7
+ * (UX-3, UX-4, UX-5, UX-7, UX-8, UX-10, UX-11, UX-12, UX-13, UX-14, UX-15, UX-20, UX-22, UX-23, UX-24, UX-25, UX-26,
+ * UX-27, UX-28, UX-29, UX-30, UX-31, UX-32, UX-34, UX-35; UX-33 has no API to create its legacy state and is covered by
+ * storage and integration tests), with the Campaign page as the overview of specs/campaign-overview/ux.md (CO-UX-4,
+ * CO-UX-6, CO-UX-9).
  */
 test.describe('Investigator lifecycle', () => {
   test('A Player creates, saves, resumes, and submits an Investigator; the Keeper requests changes, then approves it', async ({
@@ -115,6 +120,25 @@ test.describe('Investigator lifecycle', () => {
         await spendAntiquarianPointsViaUi(playerPage)
       })
 
+      await test.step('UX-7: lowering EDU keeps the allocations and marks Occupation skills as needing attention', async () => {
+        await playerPage.getByRole('link', { name: /^Characteristics ?, completed$/ }).click()
+        await playerPage.getByLabel('EDU', { exact: true }).fill('40')
+        await playerPage.getByLabel('APP', { exact: true }).fill('60')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByRole('status').filter({ hasText: 'Some later steps need attention.' })).toBeVisible()
+        await playerPage.getByRole('link', { name: /^Occupation skills ?, needs attention$/ }).click()
+        await expect(playerPage.getByText("You've spent 200 occupation points. You have 160.")).toBeVisible()
+        await expect(playerPage.getByLabel('Library Use, occupation points')).toHaveValue('50')
+      })
+
+      await test.step('the Player restores EDU and APP and returns to the summary', async () => {
+        await playerPage.getByRole('link', { name: /^Characteristics ?, completed$/ }).click()
+        await playerPage.getByLabel('EDU', { exact: true }).fill('50')
+        await playerPage.getByLabel('APP', { exact: true }).fill('50')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await playerPage.getByRole('link', { name: /^Sheet and submit ?, completed$/ }).click()
+      })
+
       await test.step('the summary shows values after age effects with Hard and Extreme values', async () => {
         await expect(playerPage.getByRole('heading', { level: 1, name: 'Sheet and submit' })).toBeVisible()
         const strength = playerPage.getByRole('row', { name: /^STR/ })
@@ -143,9 +167,13 @@ test.describe('Investigator lifecycle', () => {
         await expect(page.getByText(`Player: ${player.account.name}`)).toBeVisible()
       })
 
-      await test.step('the Keeper sees the dice results the Player entered', async () => {
+      await test.step("the Keeper sees the Player-entered Luck with no recorded faces", async () => {
         await page.getByRole('button', { name: 'Dice results' }).click()
-        await expect(page.getByRole('row', { name: /^Luck 3D6 11 Player$/ })).toBeVisible()
+        await expect(
+          page.getByRole('row', {
+            name: new RegExp(`^Luck 3D6 Not recorded 11 ${player.account.name} \\(entered\\) Not recorded$`),
+          }),
+        ).toBeVisible()
       })
 
       await test.step('UX-15: a Change Request needs a comment, then goes to the Player', async () => {
@@ -269,14 +297,18 @@ test.describe('Investigator lifecycle', () => {
         await expect(page.getByRole('table', { name: 'Weapons' }).getByRole('row', { name: /\.38 Revolver/ })).toBeVisible()
         await expect(page.getByRole('textbox')).toHaveCount(0)
         await page.getByRole('button', { name: 'Dice results' }).click()
-        await expect(page.getByRole('row', { name: /^Luck 3D6 11 Player$/ })).toBeVisible()
+        await expect(
+          page.getByRole('row', {
+            name: new RegExp(`^Luck 3D6 Not recorded 11 ${player.account.name} \\(entered\\) Not recorded$`),
+          }),
+        ).toBeVisible()
       })
     } finally {
       await player.context.close()
     }
   })
 
-  test('A Player creates a Standard rolling Investigator from Player-entered rolls, and lowering EDU flags the skill points', async ({
+  test('A Player rolls Standard rolling characteristics on the server; the roll happens once and locks the Creation Method', async ({
     page,
     browser,
   }) => {
@@ -287,61 +319,144 @@ test.describe('Investigator lifecycle', () => {
     const campaignId = await createCampaignViaUi(page, `Rolling ${keeper.oid.slice(0, 6)}`)
     const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, campaignId))
     const playerPage = player.page
+    const bearer = await openAndCaptureBearer(playerPage, `/campaigns/${campaignId}`)
+    let rolledValues: string[] = []
 
     try {
       await test.step('the Player names a 25-year-old Investigator', async () => {
-        await playerPage.goto(`/campaigns/${campaignId}`)
         await attentionList(playerPage).getByRole('button', { name: 'Create Investigator' }).click()
         await playerPage.getByLabel('Investigator name').fill('Mae Doyle')
         await playerPage.getByLabel('Age').fill('25')
         await pressWizardAction(playerPage, 'Save and continue')
       })
 
-      await test.step('UX-9: the Player chooses Standard rolling and enters raw dice totals', async () => {
+      await test.step('UX-31: the Player chooses Standard rolling and sees no characteristic inputs', async () => {
         await chooseCreationMethod(playerPage, 'Standard rolling')
-        for (const [code, dice, total] of STANDARD_ROLLS) {
-          await playerPage.getByLabel(`${code}, ${dice} total`).fill(total)
-        }
-        await expect(playerPage.getByLabel('SIZ, 2D6 total')).toHaveValue('6')
-        await playerPage.getByLabel('Luck, 3D6 total').fill('11')
-        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByText('The app rolls each characteristic for you:')).toBeVisible()
+        await expect(playerPage.getByRole('button', { name: 'Roll characteristics' })).toBeVisible()
+        await expect(playerPage.getByLabel('STR', { exact: true })).toHaveCount(0)
       })
 
-      await test.step('the Player makes the EDU check, then picks the Antiquarian and spends the points', async () => {
-        await playerPage.getByRole('group', { name: 'EDU check 1 of 1' }).getByLabel('D100 roll').fill('30')
+      await test.step('"Not yet" closes the dialog and nothing is rolled', async () => {
+        await playerPage.getByRole('button', { name: 'Roll characteristics' }).click()
+        const dialog = playerPage.getByRole('alertdialog', { name: 'Roll characteristics?' })
+        await expect(dialog).toBeVisible()
+        await dialog.getByRole('button', { name: 'Not yet' }).click()
+        await expect(playerPage.getByRole('button', { name: 'Roll characteristics' })).toBeVisible()
+        await expect(playerPage.getByRole('heading', { name: 'Your characteristics' })).toHaveCount(0)
+      })
+
+      await test.step('UX-34: "Roll now" shows the eight values, announces the roll, and the action is gone', async () => {
+        await rollCharacteristicsViaUi(playerPage)
+        await expect(playerPage.getByRole('status').filter({ hasText: 'Characteristics rolled.' })).toBeVisible()
+        await expect(playerPage.getByRole('button', { name: 'Roll characteristics' })).toHaveCount(0)
+        rolledValues = (await characteristicValueItems(playerPage).allTextContents()).map(normalizeValueItem)
+        expect(rolledValues).toHaveLength(8)
+      })
+
+      await test.step('a second roll is refused and a reload shows the same eight values', async () => {
+        const second = await playerPage.request.post(rollCharacteristicsUrl(campaignId), {
+          headers: { Authorization: bearer },
+        })
+        expect(second.status()).toBe(409)
+        await playerPage.reload()
+        await expect(playerPage.getByRole('heading', { name: 'Your characteristics' })).toBeVisible()
+        const reloaded = (await characteristicValueItems(playerPage).allTextContents()).map(normalizeValueItem)
+        expect(reloaded).toEqual(rolledValues)
+      })
+
+      await test.step('UX-32: the rolled characteristics lock the Creation Method', async () => {
+        await expect(playerPage.getByText('Creation method: Standard rolling')).toBeVisible()
+        await expect(playerPage.getByText('Locked because your characteristics are rolled.')).toBeVisible()
+        await expect(playerPage.getByRole('radio')).toHaveCount(0)
+      })
+
+      await test.step('switching to Point buy through the API is refused and Standard rolling stays', async () => {
+        const change = await playerPage.request.put(characterSheetUrl(campaignId), {
+          headers: { Authorization: bearer },
+          data: { identity: { name: 'Mae Doyle', age: 25 }, creationMethod: 'PointBuy' },
+        })
+        expect(change.status()).toBe(409)
+        await playerPage.reload()
+        await expect(playerPage.getByText('Creation method: Standard rolling')).toBeVisible()
+      })
+
+      await test.step('the Player enters Luck, makes the EDU check, then picks the Antiquarian and spends the minimum', async () => {
+        await playerPage.getByLabel('Luck, 3D6 total').fill('11')
+        await pressWizardAction(playerPage, 'Save and continue')
+        const eduText = rolledValues.find((text) => text.startsWith('EDU ')) ?? 'EDU 10'
+        const edu = parseInt(eduText.split(' ')[1], 10)
+        await playerPage.getByRole('group', { name: 'EDU check 1 of 1' }).getByLabel('D100 roll').fill(String(edu - 5))
         await pressWizardAction(playerPage, 'Save and continue')
         await chooseAntiquarianViaUi(playerPage)
         await pickAntiquarianSkillsViaUi(playerPage)
-        await spendAntiquarianPointsViaUi(playerPage)
+        await playerPage.getByLabel('Credit Rating, occupation points').fill('30')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Personal interests' })).toBeVisible()
       })
 
-      await test.step('UX-7: lowering EDU keeps the allocations and marks Occupation skills as needing attention', async () => {
-        await playerPage.getByRole('link', { name: /^Characteristics ?, completed$/ }).click()
-        await playerPage.getByLabel('EDU, 2D6 total').fill('2')
+      await test.step('the Player leaves the rest unspent and submits whatever the rolls are', async () => {
         await pressWizardAction(playerPage, 'Save and continue')
-        await expect(playerPage.getByRole('status').filter({ hasText: 'Some later steps need attention.' })).toBeVisible()
-        await playerPage.getByRole('link', { name: /^Occupation skills ?, needs attention$/ }).click()
-        await expect(playerPage.getByText("You've spent 200 occupation points. You have 160.")).toBeVisible()
-        await expect(playerPage.getByLabel('Library Use, occupation points')).toHaveValue('50')
-      })
-
-      await test.step('the Player restores EDU and submits', async () => {
-        await playerPage.getByRole('link', { name: /^Characteristics ?, completed$/ }).click()
-        await playerPage.getByLabel('EDU, 2D6 total').fill('4')
-        await pressWizardAction(playerPage, 'Save and continue')
-        await playerPage.getByRole('link', { name: /^Sheet and submit ?, completed$/ }).click()
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Sheet and submit' })).toBeVisible()
         await playerPage.getByRole('button', { name: 'Submit to Keeper' }).click()
         await expect(ownRow(playerPage)).toContainText('Submitted - waiting for your Keeper')
       })
 
-      await test.step('the Keeper sees one Player-entered result per roll', async () => {
+      await test.step("the Keeper sees the server's eight characteristic rolls and the Player-entered Luck", async () => {
         await page.goto(`/campaigns/${campaignId}`)
         await attentionList(page).getByRole('link', { name: 'Review Mae Doyle' }).click()
         await page.getByRole('button', { name: 'Dice results' }).click()
-        for (const [code, dice, total] of STANDARD_ROLLS) {
-          await expect(page.getByRole('row', { name: new RegExp(`^${code} ${dice} ${total} Player$`) })).toBeVisible()
+        for (const [code, dice] of CHARACTERISTIC_DICE) {
+          await expect(
+            page.getByRole('row', {
+              name: new RegExp(`^${code} ${dice} \\d+(, \\d+)+ \\d+ Server, for ${player.account.name} .+$`),
+            }),
+          ).toBeVisible()
         }
-        await expect(page.getByRole('row', { name: /^Luck 3D6 11 Player$/ })).toBeVisible()
+        await expect(
+          page.getByRole('row', {
+            name: new RegExp(`^Luck 3D6 Not recorded 11 ${player.account.name} \\(entered\\) Not recorded$`),
+          }),
+        ).toBeVisible()
+      })
+    } finally {
+      await player.context.close()
+    }
+  })
+
+  test('UX-35: a Player whose roll fails to send retries and rolls', async ({ page, browser }) => {
+    test.slow()
+
+    const keeper = newAccount('Keeper')
+    await signIn(page, keeper)
+    const campaignId = await createCampaignViaUi(page, `Retry roll ${keeper.oid.slice(0, 6)}`)
+    const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, campaignId))
+    const playerPage = player.page
+
+    try {
+      await test.step('the Player names a 25-year-old Investigator and chooses Standard rolling', async () => {
+        await playerPage.goto(`/campaigns/${campaignId}`)
+        await attentionList(playerPage).getByRole('button', { name: 'Create Investigator' }).click()
+        await playerPage.getByLabel('Investigator name').fill('Tommy Doyle')
+        await playerPage.getByLabel('Age').fill('25')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await chooseCreationMethod(playerPage, 'Standard rolling')
+      })
+
+      await test.step('an aborted roll shows "We couldn\'t roll your characteristics. Try again."', async () => {
+        await playerPage.route('**/mine/character-sheet/rolls/characteristics', (route) => route.abort())
+        await playerPage.getByRole('button', { name: 'Roll characteristics' }).click()
+        await playerPage.getByRole('alertdialog').getByRole('button', { name: 'Roll now' }).click()
+        const alert = playerPage.getByRole('alert').filter({ hasText: "We couldn't roll your characteristics. Try again." })
+        await expect(alert).toBeVisible()
+      })
+
+      await test.step('the retry rolls and shows the eight values', async () => {
+        await playerPage.unroute('**/mine/character-sheet/rolls/characteristics')
+        const alert = playerPage.getByRole('alert').filter({ hasText: "We couldn't roll your characteristics. Try again." })
+        await alert.getByRole('button', { name: 'Try again' }).click()
+        await expect(playerPage.getByRole('heading', { name: 'Your characteristics' })).toBeVisible()
+        await expect(characteristicValueItems(playerPage)).toHaveCount(8)
       })
     } finally {
       await player.context.close()
@@ -493,17 +608,37 @@ test.describe('Investigator lifecycle', () => {
   })
 })
 
-/** Raw totals for STR 60, CON 60, DEX 60, APP 50, POW 60, SIZ 60, INT 60, EDU 50 (section 2.1). */
-const STANDARD_ROLLS: [code: string, dice: string, total: string][] = [
-  ['STR', '3D6', '12'],
-  ['CON', '3D6', '12'],
-  ['DEX', '3D6', '12'],
-  ['APP', '3D6', '10'],
-  ['POW', '3D6', '12'],
-  ['SIZ', '2D6', '6'],
-  ['INT', '2D6', '6'],
-  ['EDU', '2D6', '4'],
+/** Every characteristic with the dice the server rolls for it (docs/game-rules coc7_character_creation_and_development_rules.md section 2.1). */
+const CHARACTERISTIC_DICE: [code: string, dice: string][] = [
+  ['STR', '3D6'],
+  ['CON', '3D6'],
+  ['DEX', '3D6'],
+  ['APP', '3D6'],
+  ['POW', '3D6'],
+  ['SIZ', '2D6'],
+  ['INT', '2D6'],
+  ['EDU', '2D6'],
 ]
+
+/** The Player's character-sheet endpoint and the characteristics-roll endpoint for direct API checks. */
+function characterSheetUrl(campaignId: string): string {
+  return `${API_ORIGIN}/api/campaigns/${campaignId}/investigators/mine/character-sheet`
+}
+
+/** The characteristics-roll endpoint for direct API checks. */
+function rollCharacteristicsUrl(campaignId: string): string {
+  return `${characterSheetUrl(campaignId)}/rolls/characteristics`
+}
+
+/** The eight "CODE value" items of the rolled characteristics list. */
+function characteristicValueItems(page: Page): Locator {
+  return page.getByRole('listitem').filter({ hasText: /^[A-Z]{3} \d+$/ })
+}
+
+/** Collapses JSX whitespace so a value item reads "CODE value" before and after a reload. */
+function normalizeValueItem(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
+}
 
 /** One of each section 2.3 pool value. */
 const QUICK_FIRE_CHARACTERISTICS: [code: string, value: string][] = [
