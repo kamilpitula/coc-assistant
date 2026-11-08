@@ -4,17 +4,30 @@ import {
   bracket17,
   bracket25,
   emptyInputs,
+  emptySheetView,
   problem,
   rules,
+  sheetView,
   validInputs,
 } from '@/campaign-play/test-support/characterSheetFixtures'
+import { CHARACTERISTIC_CODES, type CharacterSheetView } from '@/campaign-play/types/CharacterSheet'
 
 import { CharacteristicsStep } from './characteristics-step'
 
 const meta = {
   title: 'CampaignPlay/CharacteristicsStep',
   component: CharacteristicsStep,
-  args: { rules, errors: {}, warnings: [], allowedMethods: ['PointBuy'], onAction: () => {}, onBlur: () => {} },
+  args: {
+    rules,
+    errors: {},
+    warnings: [],
+    allowedMethods: ['PointBuy'],
+    sheet: sheetView(),
+    status: 'Draft',
+    roll: { status: { state: 'idle' }, onRoll: () => {}, onRetry: () => {} },
+    onAction: () => {},
+    onBlur: () => {},
+  },
 } satisfies Meta<typeof CharacteristicsStep>
 
 export default meta
@@ -34,9 +47,55 @@ export const ChoosingAMethod: Story = {
 
 export const StandardRolling: Story = {
   args: {
-    inputs: { ...emptyInputs, creationMethod: 'StandardRolling', characteristicRolls: { STR: 12, SIZ: 7 } },
+    inputs: { ...emptyInputs, creationMethod: 'StandardRolling' },
     bracket: bracket25,
     allowedMethods: ['StandardRolling', 'PointBuy', 'QuickFire'],
+    sheet: { ...emptySheetView(), creationMethod: 'StandardRolling' },
+  },
+}
+
+const legacySheet: CharacterSheetView = {
+  ...sheetView({
+    creationMethod: 'StandardRolling',
+    characteristicRolls: { STR: 11 },
+    rollRecords: [
+      {
+        purpose: 'Characteristic:STR',
+        dice: '3D6',
+        faces: null,
+        result: 11,
+        source: 'PlayerEntered',
+        rolledByDisplayName: 'Ada Lovelace',
+        rolledAt: null,
+      },
+    ],
+  }),
+  characteristics: Object.fromEntries(
+    CHARACTERISTIC_CODES.map((code) => [
+      code,
+      code === 'STR'
+        ? { assigned: 55, value: 55, hard: 27, extreme: 11 }
+        : { assigned: null, value: null, hard: null, extreme: null },
+    ]),
+  ) as CharacterSheetView['characteristics'],
+}
+
+export const StandardRollingLegacyPartial: Story = {
+  args: {
+    inputs: { ...emptyInputs, creationMethod: 'StandardRolling', characteristics: { STR: 55 } },
+    bracket: bracket25,
+    allowedMethods: ['StandardRolling'],
+    sheet: legacySheet,
+  },
+}
+
+export const StandardRollingRolled: Story = {
+  args: {
+    inputs: { ...emptyInputs, creationMethod: 'StandardRolling', characteristics: { ...validInputs.characteristics } },
+    bracket: bracket25,
+    allowedMethods: ['StandardRolling'],
+    sheet: sheetView({ creationMethod: 'StandardRolling', characteristicRolls: {}, locks: { creationMethod: true } }),
+    roll: { status: { state: 'rolled' }, onRoll: () => {}, onRetry: () => {} },
   },
 }
 

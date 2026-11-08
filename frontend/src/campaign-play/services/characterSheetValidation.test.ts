@@ -10,6 +10,7 @@ import type {
   CharacterSheetInputs,
   CharacterSheetRules,
   CharacteristicCode,
+  CharacteristicInputs,
   ValidationError,
 } from '@/campaign-play/types/CharacterSheet'
 
@@ -20,7 +21,10 @@ interface FixtureCase {
   name: string
   scope: 'shared' | 'server'
   // The PUT body may leave out the Backstory, Key Connection, weapons, and gear (schema version 4).
-  sheet: Omit<CharacterSheetInputs, 'backstory' | 'keyConnection' | 'weapons' | 'gear'> & Partial<CharacterSheetInputs>
+  // The stored typed-in characteristic rolls ride along for the validator but are not PUT inputs.
+  sheet: (Omit<CharacterSheetInputs, 'backstory' | 'keyConnection' | 'weapons' | 'gear'> & Partial<CharacterSheetInputs>) & {
+    characteristicRolls?: CharacteristicInputs
+  }
   expected: ValidationError[]
 }
 
@@ -87,8 +91,9 @@ describe('validateCharacterSheet parity with the shared fixtures', () => {
   })
 
   it.each(sharedCases.map((fixtureCase) => [fixtureCase.name, fixtureCase] as const))('%s', (_name, fixtureCase) => {
-    const sheet: CharacterSheetInputs = { backstory: EMPTY_BACKSTORY, keyConnection: null, weapons: [], gear: null, ...fixtureCase.sheet }
-    const actual = validateCharacterSheet(sheet, fixtures.rules, bracketFor(sheet.identity.age))
+    const { characteristicRolls, ...rest } = fixtureCase.sheet
+    const sheet: CharacterSheetInputs = { backstory: EMPTY_BACKSTORY, keyConnection: null, weapons: [], gear: null, ...rest }
+    const actual = validateCharacterSheet(sheet, fixtures.rules, bracketFor(sheet.identity.age), characteristicRolls ?? {})
 
     expect(sorted(actual)).toEqual(sorted(fixtureCase.expected))
   })

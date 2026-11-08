@@ -1,10 +1,13 @@
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
-import { useDeleteInvestigator, useSaveCharacterSheet, useSubmitInvestigator } from '@/campaign-play/hooks/useMyInvestigator'
+import { useDeleteInvestigator, useMyCharacterSheet, useRollCharacteristics, useSaveCharacterSheet, useSubmitInvestigator } from '@/campaign-play/hooks/useMyInvestigator'
+import { InvestigatorConflictError } from '@/campaign-play/services/investigatorApi'
 import { errorsOfStep } from '@/campaign-play/services/visibleErrors'
 import { stepStates, WIZARD_STEPS, type WizardStep } from '@/campaign-play/services/wizardProgress'
+import { inputsFromSheet } from '@/campaign-play/state/characterSheetForm'
 import type { CharacterSheetInputs, ValidationError } from '@/campaign-play/types/CharacterSheet'
+import { CHARACTERISTIC_CODES } from '@/campaign-play/types/CharacterSheet'
 import type { MyCharacterSheet } from '@/campaign-play/types/Investigator'
 import '@/campaign-play/types/navigationState'
 
@@ -16,6 +19,17 @@ export type WizardMove =
   | { kind: 'stepper'; target: WizardStep }
 
 export type PendingAction = WizardMove['kind'] | 'submit' | 'delete'
+
+/** Where a characteristics roll stands (specs/character-sheet/ux.md section 6.8). */
+export type RollStatus =
+  | { state: 'idle' }
+  | { state: 'pending' }
+  | { state: 'rolled' }
+  | { state: 'saveFailed' }
+  | { state: 'rollFailed' }
+  | { state: 'saveConflict' }
+  | { state: 'rollConflict' }
+  | { state: 'alreadyRolled' }
 
 /** An action that saves first and can be retried after its save failed: a move, or Submit to Keeper (ux.md 6.7). */
 export type SavingAction = WizardMove | { kind: 'submit' }
@@ -64,11 +78,14 @@ interface WizardMovesOptions {
 export function useWizardMoves({ campaignId, step, sheet, onStayWithErrors, onSaved, onSubmitRejected }: WizardMovesOptions) {
   const navigate = useNavigate()
   const save = useSaveCharacterSheet(campaignId)
+  const roll = useRollCharacteristics(campaignId)
+  const sheetQuery = useMyCharacterSheet(campaignId)
   const submit = useSubmitInvestigator(campaignId)
   const remove = useDeleteInvestigator(campaignId)
   const [pending, setPending] = useState<PendingAction | null>(null)
   const [failedMove, setFailedMove] = useState<SavingAction | null>(null)
   const [actionFailed, setActionFailed] = useState(false)
+  const [rollStatus, setRollStatus] = useState<RollStatus>({ state: 'idle' })
 
   const toCampaignPage = (statusMessage: string) =>
     void navigate({ to: '/campaigns/$campaignId', params: { campaignId }, state: { statusMessage } })
@@ -161,5 +178,82 @@ export function useWizardMoves({ campaignId, step, sheet, onStayWithErrors, onSa
   const retry = (inputs: CharacterSheetInputs) =>
     failedMove?.kind === 'submit' ? submitToKeeper(inputs) : failedMove ? move(failedMove, inputs) : Promise.resolve()
 
-  return { move, submitToKeeper, retry, startOver, toStep, pending, failedMove, actionFailed }
+  /** Reloads the sheet and resets the form to it, after a 409 (ux.md section 6.8). */
+  const reloadSheet = async (): Promise<MyCharacterSheet | null> => {
+    const fresh = (await sheetQuery.refetch()).data ?? null
+    if (fresh) {
+      onSaved(inputsFromSheet(fresh.characterSheet))
+    }
+
+    return fresh
+  }
+
+  /** Saves the step's inputs first, without leaving the step; a 409 reloads the sheet instead. */
+  const saveBeforeRoll = async (toSave: CharacterSheetInputs): Promise<boolean> => {
+    try {
+      await save.mutateAsync(toSave)
+      onSaved(toSave)
+      return true
+    } catch (error) {
+      if (error instanceof InvestigatorConflictError) {
+        await reloadSheet()
+        setRollStatus({ state: 'saveConflict' })
+      } else {
+        setRollStatus({ state: 'saveFailed' })
+      }
+
+      return false
+    }
+  }
+
+  /** Sends the roll without the dialog, after a 409 shows what the reload found. */
+  const reloadAfterRollConflict = async (): Promise<void> => {
+    const fresh = await reloadSheet()
+    const hasResults =
+      fresh !== null &&
+      CHARACTERISTIC_CODES.every((code) => fresh.characterSheet.characteristics[code].assigned !== null)
+    setRollStatus({ state: hasResults ? 'alreadyRolled' : 'rollConflict' })
+  }
+
+  /** Sends the roll; the caller saved first, or the save already succeeded on a retry. */
+  const sendRoll = async (): Promise<void> => {
+    try {
+      const rolled = await roll.mutateAsync()
+      onSaved(inputsFromSheet(rolled.characterSheet))
+      setRollStatus({ state: 'rolled' })
+    } catch (error) {
+      if (error instanceof InvestigatorConflictError) {
+        await reloadAfterRollConflict()
+      } else {
+        setRollStatus({ state: 'rollFailed' })
+      }
+    }
+  }
+
+  /**
+   * Rolls the characteristics (ux.md section 6.8): saves the step's inputs and stays, then sends the roll.
+   * A 409 reloads the sheet and keeps the Player on the step.
+   */
+  const rollCharacteristics = async (toSave: CharacterSheetInputs): Promise<void> => {
+    if (rollStatus.state === 'pending') {
+      return
+    }
+
+    setRollStatus({ state: 'pending' })
+    if (await saveBeforeRoll(toSave)) {
+      await sendRoll()
+    }
+  }
+
+  /** Retries a failed roll without the dialog (the save already succeeded). */
+  const retryRoll = async (): Promise<void> => {
+    if (rollStatus.state === 'pending') {
+      return
+    }
+
+    setRollStatus({ state: 'pending' })
+    await sendRoll()
+  }
+
+  return { move, submitToKeeper, retry, startOver, toStep, rollCharacteristics, retryRoll, pending, failedMove, actionFailed, rollStatus }
 }

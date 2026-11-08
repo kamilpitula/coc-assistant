@@ -52,4 +52,28 @@ describe('CreationMethodChoice', () => {
 
     expect(onChange).toHaveBeenCalledWith('QuickFire')
   })
+
+  it('UX-32: shows the locked method as text with the reason, and no radios, once characteristics are rolled', () => {
+    render(<CreationMethodChoice allowed={[...allMethods]} value="StandardRolling" locked needsConfirmation={false} clearsSkills={() => false} onChange={vi.fn()} />)
+
+    expect(screen.getByText('Creation method: Standard rolling')).toBeInTheDocument()
+    expect(screen.getByText('Locked because your characteristics are rolled.')).toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
+  })
+
+  it('UX-32: tells a Draft that starting over is the way to another method', () => {
+    render(
+      <CreationMethodChoice
+        allowed={[...allMethods]}
+        value="StandardRolling"
+        locked
+        canStartOver
+        needsConfirmation={false}
+        clearsSkills={() => false}
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Locked because your characteristics are rolled. To use another method, start over.')).toBeInTheDocument()
+  })
 })

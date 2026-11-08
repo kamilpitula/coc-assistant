@@ -48,7 +48,8 @@ public record CharacterSheetViewResponse(
     IReadOnlyList<CustomWeaponResponse> Weapons,
     string? Gear,
     DerivedResponse Derived,
-    IReadOnlyList<RollRecordResponse> RollRecords);
+    IReadOnlyList<RollRecordResponse> RollRecords,
+    CharacterSheetLocksResponse Locks);
 
 /// <summary>A Custom Weapon as entered; every v1 weapon is custom (docs/game-rules/project_ruleset.md section 4.2).</summary>
 public record CustomWeaponResponse(
@@ -149,7 +150,17 @@ public record DerivedResponse(
 
 public record SanityResponse(int? Current, int? Maximum);
 
-public record RollRecordResponse(string Purpose, string Dice, int Result, string Source);
+public record RollRecordResponse(
+    string Purpose,
+    string Dice,
+    IReadOnlyList<int>? Faces,
+    int Result,
+    string Source,
+    string? RolledByDisplayName,
+    DateTimeOffset? RolledAt);
+
+/// <summary>Which creation inputs the Roll Records already on the sheet lock (more groups follow in later PBIs).</summary>
+public record CharacterSheetLocksResponse(bool CreationMethod);
 
 /// <summary>Rule parameters the frontend needs, so it never hard-codes a rule value.</summary>
 public record RulesResponse(

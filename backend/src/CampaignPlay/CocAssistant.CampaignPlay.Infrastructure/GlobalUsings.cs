@@ -18,3 +18,4 @@ global using Microsoft.EntityFrameworkCore.Diagnostics;
 global using CocAssistant.CampaignPlay.Domain.Presence;
 global using CocAssistant.CampaignPlay.Domain.Wall;
 global using CocAssistant.GameRules.Domain;
+global using CocAssistant.GameRules.Domain.Dice;

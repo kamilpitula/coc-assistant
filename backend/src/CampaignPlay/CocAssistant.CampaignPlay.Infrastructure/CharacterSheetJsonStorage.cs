@@ -4,8 +4,8 @@ namespace CocAssistant.CampaignPlay.Infrastructure;
 /// Stored JSON form of the Character Sheet with an explicit schema version (ADR 0005, ADR 0007). Only the Player's
 /// inputs are stored; a future schema version adds an upgrade step in <see cref="FromStorage"/>. Version 2 adds the
 /// Occupation, the skill allocations, and the Quick Fire skills; version 3 the Quick Fire extra skill; version 4 the
-/// Backstory, Key Connection, Custom Weapons, and Gear. Earlier documents are upgraded on read with the missing fields
-/// empty.
+/// Backstory, Key Connection, Custom Weapons, and Gear; version 5 the Roll Record faces, who rolled, and when.
+/// Earlier documents are upgraded on read with the missing fields empty.
 /// </summary>
 public static class CharacterSheetJsonStorage
 {
@@ -105,11 +105,20 @@ public static class CharacterSheetJsonStorage
         public CustomWeapon ToWeapon() => new(Name, Skill, Damage, Attacks, Range, Ammo, Malfunction);
     }
 
-    private sealed record RollRecordDocument(string Purpose, string Dice, int Result, RollSource Source)
+    private sealed record RollRecordDocument(
+        string Purpose,
+        string Dice,
+        int Result,
+        RollSource Source,
+        IReadOnlyList<int>? Faces,
+        Guid? RolledByAccountId,
+        DateTimeOffset? RolledAt)
     {
-        public static RollRecordDocument From(RollRecord record) => new(record.Purpose, record.Dice, record.Result, record.Source);
+        public static RollRecordDocument From(RollRecord record) =>
+            new(record.Purpose, record.Dice, record.Result, record.Source, record.Faces, record.RolledByAccountId, record.RolledAt);
 
-        public RollRecord ToRollRecord() => new(Purpose, Dice, Result, Source);
+        public RollRecord ToRollRecord() =>
+            new(Purpose, Dice, Result, Source, Faces, RolledByAccountId, RolledAt);
     }
 
     private sealed record SkillDocument(string Skill, string? Specialization)

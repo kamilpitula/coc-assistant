@@ -4619,7 +4619,7 @@
         {
           "code": "CharacteristicRollRequired",
           "field": "characteristicRolls.STR",
-          "message": "Enter the 3D6 total for STR.",
+          "message": "Roll characteristics. STR has no 3D6 roll yet.",
           "expected": null,
           "actual": null,
           "severity": "Error"

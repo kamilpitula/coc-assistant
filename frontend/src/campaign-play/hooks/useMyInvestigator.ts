@@ -7,6 +7,7 @@ import {
   getMyCharacterSheet,
   getMyInvestigator,
   InvestigatorConflictError,
+  rollMyCharacteristics,
   saveMyCharacterSheet,
   submitMyInvestigator,
 } from '@/campaign-play/services/investigatorApi'
@@ -72,8 +73,21 @@ export function useSaveCharacterSheet(campaignId: string) {
   })
 }
 
-/** Submits the Investigator to the Keeper; a 422 resolves with the remaining errors instead of throwing. */
-export function useSubmitInvestigator(campaignId: string) {
+/** Rolls the characteristics the sheet still has no Roll Record for and stores the recomputed sheet (ux.md 6.8). */
+export function useRollCharacteristics(campaignId: string) {
+  const getAccessToken = useAccessToken()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => rollMyCharacteristics(await getAccessToken(), campaignId),
+    onSuccess: (sheet) => {
+      queryClient.setQueryData(campaignQueryKeys.myCharacterSheet(campaignId), sheet)
+      return queryClient.invalidateQueries({ queryKey: campaignQueryKeys.myInvestigator(campaignId), exact: true })
+    },
+  })
+}
+
+/** Submits the Investigator to the Keeper; a 422 resolves with the remaining errors instead of throwing. */export function useSubmitInvestigator(campaignId: string) {
   const getAccessToken = useAccessToken()
   const queryClient = useQueryClient()
 

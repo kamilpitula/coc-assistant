@@ -1,6 +1,6 @@
 ---
 id: PBI-DICE-002
-status: todo
+status: done
 blocked_by: []
 ---
 
@@ -27,12 +27,12 @@ Read: [dice spec](../../../specs/dice/spec.md); [character-sheet spec](../../../
 - Point Buy and Quick Fire are unchanged.
 
 ## Verification
-- [ ] The UX specification is recorded in the character-sheet ux.md and linked from its spec.
-- [ ] Rolling characteristics stores one Roll Record per characteristic with source Server and faces, and a second roll returns 409.
-- [ ] Changing the Creation Method after a characteristic roll returns 409.
-- [ ] A Draft with typed-in characteristic totals from before keeps them.
-- [ ] No backend code outside the secure roller produces random numbers.
-- [ ] Unit tests cover the roller, dice expression rolling, the action, and the lock; Playwright E2E covers the character-sheet scenarios "Standard Rolling characteristics are rolled by the server", "Characteristics are rolled only once", and "Rolled characteristics lock the Creation Method".
+- [x] The UX specification is recorded in the character-sheet ux.md and linked from its spec.
+- [x] Rolling characteristics stores one Roll Record per characteristic with source Server and faces, and a second roll returns 409.
+- [x] Changing the Creation Method after a characteristic roll returns 409.
+- [x] A Draft with typed-in characteristic totals from before keeps them.
+- [x] No backend code outside the secure roller produces random numbers.
+- [x] Unit tests cover the roller, dice expression rolling, the action, and the lock; Playwright E2E covers the character-sheet scenarios "Standard Rolling characteristics are rolled by the server", "Characteristics are rolled only once", and "Rolled characteristics lock the Creation Method".
 
 ## Refinement Protocol
 A change to dice behavior updates the dice spec; a change to creation rolling updates the character-sheet spec and ux.md, its validation fixtures, and tests together.

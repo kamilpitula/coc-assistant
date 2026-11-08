@@ -11,6 +11,7 @@ import {
   type CharacterSheetRules,
   type CharacterSheetView,
   type CharacteristicCode,
+  type CharacteristicInputs,
   type CustomOccupationInputs,
   type CustomWeaponInputs,
   type EduImprovementCheckInputs,
@@ -28,7 +29,6 @@ export type CharacterSheetFormAction =
   | { type: 'identity'; field: keyof IdentityInputs; value: string | number | null }
   | { type: 'creationMethod'; method: CreationMethod }
   | { type: 'characteristic'; code: CharacteristicCode; value: number | null }
-  | { type: 'characteristicRoll'; code: CharacteristicCode; value: number | null }
   | { type: 'luckRoll'; index: number; value: number | null }
   | { type: 'deduction'; code: CharacteristicCode; value: number | null }
   | { type: 'eduCheck'; index: number; part: keyof EduImprovementCheckInputs; value: number | null }
@@ -69,12 +69,14 @@ export function sameSkill(first: SkillReference, second: SkillReference): boolea
 
 /** The editable inputs of a saved sheet; computed values are left out. */
 export function inputsFromSheet(sheet: CharacterSheetView): CharacterSheetInputs {
-  const rolling = sheet.creationMethod === 'StandardRolling'
   return {
     identity: { ...sheet.identity },
     creationMethod: sheet.creationMethod,
-    characteristics: rolling ? {} : Object.fromEntries(CHARACTERISTIC_CODES.map((code) => [code, sheet.characteristics[code].assigned])),
-    characteristicRolls: { ...sheet.characteristicRolls },
+    // Every method starts from the saved assigned values, including the server-rolled ones under Standard rolling;
+    // the PUT drops them again for Standard rolling (methodInputsOnly), because the server owns those values.
+    characteristics: Object.fromEntries(
+      CHARACTERISTIC_CODES.map((code) => [code, sheet.characteristics[code].assigned]),
+    ) as CharacteristicInputs,
     ageEffects: {
       deductions: { ...sheet.ageEffects.deductions },
       eduImprovementChecks: sheet.ageEffects.eduImprovementChecks.map(({ check, gain }) => ({ check, gain })),
@@ -112,9 +114,9 @@ function setAt<T>(values: readonly T[], index: number, value: T, filler: T): T[]
   return copy
 }
 
-/** True when the Player has entered any characteristic value or roll, so switching method needs confirmation (ux.md 5.5). */
+/** True when the Player has entered any characteristic value, so switching method needs confirmation (ux.md 5.5). */
 export function hasCharacteristicInputs(inputs: CharacterSheetInputs): boolean {
-  return [...Object.values(inputs.characteristics), ...Object.values(inputs.characteristicRolls)].some((value) => value !== null && value !== undefined)
+  return Object.values(inputs.characteristics).some((value) => value !== null && value !== undefined)
 }
 
 /**
@@ -137,7 +139,6 @@ function withCreationMethod(inputs: CharacterSheetInputs, method: CreationMethod
     ...inputs,
     creationMethod: method,
     characteristics: {},
-    characteristicRolls: {},
     skills: method === 'QuickFire' ? [] : inputs.skills,
     quickFire: method === 'QuickFire' ? inputs.quickFire : NO_QUICK_FIRE,
   }
@@ -237,8 +238,6 @@ export function characterSheetFormReducer(inputs: CharacterSheetInputs, action: 
       return withCreationMethod(inputs, action.method)
     case 'characteristic':
       return { ...inputs, characteristics: { ...inputs.characteristics, [action.code]: action.value } }
-    case 'characteristicRoll':
-      return { ...inputs, characteristicRolls: { ...inputs.characteristicRolls, [action.code]: action.value } }
     case 'luckRoll':
       return { ...inputs, luckRolls: setAt(inputs.luckRolls, action.index, action.value, null) }
     case 'deduction':
@@ -258,18 +257,12 @@ export function characterSheetFormReducer(inputs: CharacterSheetInputs, action: 
 }
 
 /**
- * The value a characteristic starts from before age effects: assigned (Point buy, Quick fire) or computed from its
- * Standard rolling roll (docs/game-rules section 2.1). The wizard uses it for display only; the server computes the
- * real values.
+ * The value a characteristic starts from before age effects: the saved assigned value, which the server computed from
+ * the Player's entry or the server's roll (docs/game-rules section 2.1). The wizard uses it for display only; the
+ * server computes the real values.
  */
-export function assignedValue(inputs: CharacterSheetInputs, code: CharacteristicCode, rules: CharacterSheetRules): number | null {
-  if (inputs.creationMethod !== 'StandardRolling') {
-    return inputs.characteristics[code] ?? null
-  }
-
-  const roll = inputs.characteristicRolls[code] ?? null
-  const formula = rules.standardRolling[code]
-  return roll === null ? null : (roll + formula.bonus) * formula.multiplier
+export function assignedValue(inputs: CharacterSheetInputs, code: CharacteristicCode): number | null {
+  return inputs.characteristics[code] ?? null
 }
 
 /**
@@ -292,14 +285,14 @@ export function eduBeforeEachCheck(
   })
 }
 
-// Only the selected method's inputs are saved (specs/character-sheet/spec.md, API Contracts).
+// Only the selected method's inputs are saved (specs/character-sheet/spec.md, API Contracts). Under Standard rolling
+// the characteristics are the saved assigned values for display, but the PUT never carries them: the server owns them.
 function methodInputsOnly(inputs: CharacterSheetInputs): CharacterSheetInputs {
   const rolling = inputs.creationMethod === 'StandardRolling'
   const quickFire = inputs.creationMethod === 'QuickFire'
   return {
     ...inputs,
     characteristics: rolling ? {} : inputs.characteristics,
-    characteristicRolls: rolling ? inputs.characteristicRolls : {},
     skills: quickFire ? [] : inputs.skills,
     quickFire: quickFire ? inputs.quickFire : NO_QUICK_FIRE,
   }
@@ -323,7 +316,9 @@ export function inputsForSave(
   }
 
   if (step === 'age' && bracket) {
-    return { ...methodInputs, ageEffects: shownAgeInputs(methodInputs, bracket, rules) }
+    // The shown age inputs are worked out before the Standard rolling values are stripped, so the EDU checks are
+    // rolled against the saved assigned EDU.
+    return { ...methodInputs, ageEffects: shownAgeInputs(inputs, bracket, rules) }
   }
 
   return methodInputs
@@ -337,7 +332,7 @@ function shownAgeInputs(inputs: CharacterSheetInputs, bracket: AgeBracket, rules
     }),
   )
   const checks = inputs.ageEffects.eduImprovementChecks.slice(0, bracket.eduImprovementChecks)
-  const before = eduBeforeEachCheck(assignedValue(inputs, 'EDU', rules), checks, rules.eduMaximum)
+  const before = eduBeforeEachCheck(assignedValue(inputs, 'EDU'), checks, rules.eduMaximum)
   const shownChecks = checks.map((check, index) => {
     const educationBefore = before[index]
     const gainShown = check.check !== null && educationBefore !== null && check.check > educationBefore

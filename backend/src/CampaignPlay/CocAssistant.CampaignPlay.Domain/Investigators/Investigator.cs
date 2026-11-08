@@ -68,6 +68,11 @@ public class Investigator : AggregateRoot
         return investigator;
     }
 
+    /// <summary>
+    /// Replaces the sheet with the Player's inputs. Every stored characteristic Roll Record and every Server record is
+    /// kept; only the Player-entered Luck and EDU records are rebuilt. A Creation Method change after any characteristic
+    /// was rolled returns false and changes nothing.
+    /// </summary>
     public bool ReplaceCharacterSheet(CharacterSheet characterSheet, DateTimeOffset now)
     {
         if (!CanBeEditedByPlayer)
@@ -75,7 +80,42 @@ public class Investigator : AggregateRoot
             return false;
         }
 
-        CharacterSheet = characterSheet;
+        if (characterSheet.CreationMethod != CharacterSheet.CreationMethod && CreationLocks.Of(CharacterSheet).CreationMethod)
+        {
+            return false;
+        }
+
+        CharacterSheet = characterSheet with
+        {
+            RollRecords = [.. KeptRollRecords(CharacterSheet), .. characterSheet.RollRecords],
+        };
+        Touch(now);
+        return true;
+    }
+
+    private static IEnumerable<RollRecord> KeptRollRecords(CharacterSheet stored) =>
+        stored.RollRecords.Where(record =>
+            record.Source == RollSource.Server || RollPurposes.IsCharacteristicPurpose(record.Purpose));
+
+    /// <summary>
+    /// Rolls every characteristic missing a Roll Record (specs/character-sheet/spec.md, Creation rolling). Succeeds only
+    /// in Draft or Changes Requested, under Standard Rolling, while something is missing; otherwise returns false and
+    /// changes nothing.
+    /// </summary>
+    public bool RollCharacteristics(IDiceRoller roller, Guid rolledByAccountId, DateTimeOffset now)
+    {
+        if (!CanBeEditedByPlayer || CharacterSheet.CreationMethod != CreationMethod.StandardRolling)
+        {
+            return false;
+        }
+
+        var records = CharacteristicRolling.RollMissing(CharacterSheet, roller, rolledByAccountId, now);
+        if (records.Count == 0)
+        {
+            return false;
+        }
+
+        CharacterSheet = CharacterSheet.WithAddedRollRecords(records);
         Touch(now);
         return true;
     }

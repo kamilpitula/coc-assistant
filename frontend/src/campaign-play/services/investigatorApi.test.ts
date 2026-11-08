@@ -13,6 +13,7 @@ import {
   getMyInvestigator,
   InvestigatorConflictError,
   requestChanges,
+  rollMyCharacteristics,
   saveMyCharacterSheet,
   submitMyInvestigator,
 } from './investigatorApi'
@@ -60,7 +61,6 @@ const inputs: CharacterSheetInputs = {
   identity: { name: 'Harvey Walters', age: 25, gender: null, residence: null, birthplace: null },
   creationMethod: 'PointBuy',
   characteristics: { STR: 60 },
-  characteristicRolls: {},
   ageEffects: { deductions: {}, eduImprovementChecks: [{ check: 30, gain: null }] },
   luckRolls: [11],
   occupation: null,
@@ -153,6 +153,22 @@ describe('investigatorApi', () => {
     fetchMock.mockResolvedValue(jsonResponse(409, { status: 409 }))
 
     await expect(saveMyCharacterSheet('token', 'c1', inputs)).rejects.toBeInstanceOf(InvestigatorConflictError)
+  })
+
+  it('rolls the missing characteristics with a POST and returns the recomputed sheet', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, myCharacterSheet))
+
+    expect(await rollMyCharacteristics('token', 'c1')).toEqual(myCharacterSheet)
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/campaigns/c1/investigators/mine/character-sheet/rolls/characteristics',
+      expect.objectContaining({ method: 'POST' }),
+    )
+  })
+
+  it('throws a conflict error when there is nothing left to roll (409)', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(409, { status: 409 }))
+
+    await expect(rollMyCharacteristics('token', 'c1')).rejects.toBeInstanceOf(InvestigatorConflictError)
   })
 
   it('reads an Investigator for the Keeper, or null outside their visibility', async () => {

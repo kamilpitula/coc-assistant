@@ -48,7 +48,6 @@ public static class CharacterSheetWireFormat
                 .Select(check => new EduImprovementCheckInput(check.Check, check.Gain))
                 .ToList(),
             request.LuckRolls ?? [],
-            ToValues(request.CharacteristicRolls),
             request.Occupation is null ? null : ToOccupation(request.Occupation),
             (request.Skills ?? [])
                 .Select(skill => new SkillAllocation(ToSkill(skill.Skill, skill.Specialization), skill.OccupationPoints, skill.PersonalInterestPoints))
@@ -126,8 +125,21 @@ public static class CharacterSheetWireFormat
             sheet.BackstoryAndPossessions.Weapons.Select(BackstoryWireFormat.ToWeaponResponse).ToList(),
             sheet.BackstoryAndPossessions.Gear,
             ToDerived(computation.Derived),
-            sheet.RollRecords.Select(record => new RollRecordResponse(record.Purpose, record.Dice, record.Result, record.Source.ToString())).ToList());
+            view.Investigator.CharacterSheet.RollRecords.Select(record => ToRollRecord(record, view)).ToList(),
+            new CharacterSheetLocksResponse(CreationLocks.Of(sheet).CreationMethod));
     }
+
+    private static RollRecordResponse ToRollRecord(RollRecord record, CharacterSheetView view) =>
+        new(
+            record.Purpose,
+            record.Dice,
+            record.Faces,
+            record.Result,
+            record.Source.ToString(),
+            record.RolledByAccountId is { } accountId
+                ? view.RolledByDisplayNames.GetValueOrDefault(accountId)
+                : view.PlayerName,
+            record.RolledAt);
 
     private static CharacteristicResponse ToCharacteristic(Characteristic characteristic, CharacterSheetComputation computation)
     {

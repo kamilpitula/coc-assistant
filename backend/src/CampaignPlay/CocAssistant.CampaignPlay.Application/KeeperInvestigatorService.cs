@@ -122,9 +122,6 @@ public class KeeperInvestigatorService
         return investigator is { IsVisibleToKeeper: true } ? (investigator, campaign!) : null;
     }
 
-    private async Task<CharacterSheetView> ViewAsync(Investigator investigator, Campaign campaign, CancellationToken cancellationToken)
-    {
-        var names = await _displayNames.GetDisplayNamesAsync([investigator.PlayerAccountId], cancellationToken);
-        return _evaluator.View(investigator, campaign, names.GetValueOrDefault(investigator.PlayerAccountId));
-    }
+    private Task<CharacterSheetView> ViewAsync(Investigator investigator, Campaign campaign, CancellationToken cancellationToken) =>
+        CharacterSheetViews.ViewAsync(_evaluator, _displayNames, investigator, campaign, cancellationToken);
 }

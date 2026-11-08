@@ -22,7 +22,7 @@ public readonly record struct DiceNotationTerm(DiceNotationTermKind Kind, int Si
 
 /// <summary>
 /// Recorded dice text such as 1D6+1D4+DB or 2D6-1 (docs/game-rules/project_ruleset.md section 5.5).
-/// It is checked and kept, never rolled (section 5.1).
+/// Preparation never rolls notation (section 5.1); the Dice module rolls it through DiceRolling with an IDiceRoller.
 /// </summary>
 public sealed partial record DiceNotation
 {

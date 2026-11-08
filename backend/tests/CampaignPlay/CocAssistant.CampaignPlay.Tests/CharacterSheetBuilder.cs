@@ -55,7 +55,7 @@ public sealed class CharacterSheetBuilder
     private CharacteristicValues _deductions = CharacteristicValues.Empty;
     private IReadOnlyList<EduImprovementCheckInput> _eduChecks = [new EduImprovementCheckInput(30, null)];
     private IReadOnlyList<int?> _luckRolls = [11];
-    private CharacteristicValues _characteristicRolls = CharacteristicValues.Empty;
+    private IReadOnlyList<RollRecord> _storedRolls = [];
     private OccupationSelection? _occupation = ValidAntiquarian;
     private IReadOnlyList<SkillAllocation> _skills = ValidAllocations;
     private QuickFireSkills _quickFire = QuickFireSkills.Empty;
@@ -103,12 +103,20 @@ public sealed class CharacterSheetBuilder
         return this;
     }
 
-    /// <summary>Switches to Standard Rolling with these raw totals (section 2.1), clearing the assigned values.</summary>
+    /// <summary>Switches to Standard Rolling with these stored Player-entered totals (section 2.1), as a legacy Draft kept them.</summary>
     public CharacterSheetBuilder WithCharacteristicRolls(IReadOnlyDictionary<Characteristic, int?> rawTotals)
     {
         _creationMethod = CreationMethod.StandardRolling;
         _assigned = CharacteristicValues.Empty;
-        _characteristicRolls = CharacteristicValues.From(rawTotals);
+        _storedRolls =
+        [
+            .. rawTotals
+                .Where(pair => pair.Value is not null)
+                .Select(pair => RollRecord.PlayerEntered(
+                    RollPurposes.Characteristic(pair.Key),
+                    StandardRolling.FormulaFor(pair.Key).Dice.ToString(),
+                    pair.Value!.Value)),
+        ];
         return this;
     }
 
@@ -168,7 +176,11 @@ public sealed class CharacterSheetBuilder
     }
 
     public CharacterSheetInputs BuildInputs() =>
-        new(_identity, _creationMethod, _assigned, _deductions, _eduChecks, _luckRolls, _characteristicRolls, _occupation, _skills, _quickFire, _backstoryAndPossessions);
+        new(_identity, _creationMethod, _assigned, _deductions, _eduChecks, _luckRolls, _occupation, _skills, _quickFire, _backstoryAndPossessions);
 
-    public CharacterSheet Build() => BuildInputs().ToCharacterSheet(new PlayerEnteredRollSource());
+    public CharacterSheet Build()
+    {
+        var sheet = BuildInputs().ToCharacterSheet(new PlayerEnteredRollSource());
+        return sheet with { RollRecords = [.. sheet.RollRecords, .. _storedRolls] };
+    }
 }

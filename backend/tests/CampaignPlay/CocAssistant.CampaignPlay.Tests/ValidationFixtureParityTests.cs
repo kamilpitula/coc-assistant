@@ -30,6 +30,17 @@ public class ValidationFixtureParityTests
         var fixtureCase = Fixtures.Value.RootElement.GetProperty("cases").EnumerateArray()
             .Single(candidate => candidate.GetProperty("name").GetString() == caseName);
         var sheet = FixtureSheet.ToInputs(fixtureCase.GetProperty("sheet")).ToCharacterSheet(new PlayerEnteredRollSource());
+        if (fixtureCase.GetProperty("sheet").TryGetProperty("characteristicRolls", out var rolls))
+        {
+            // The fixture's characteristicRolls are stored Player-entered Roll Records, not PUT input.
+            sheet = sheet.WithAddedRollRecords(
+                rolls.EnumerateObject()
+                    .Where(property => property.Value.ValueKind != JsonValueKind.Null)
+                    .Select(property => RollRecord.PlayerEntered(
+                        RollPurposes.Characteristic(Characteristic(property.Name)),
+                        StandardRolling.FormulaFor(Characteristic(property.Name)).Dice.ToString(),
+                        property.Value.GetInt32())));
+        }
         var allowed = AllowedCreationMethods.Create(fixtureCase.GetProperty("allowedCreationMethods").EnumerateArray()
             .Select(method => Enum.Parse<CreationMethod>(method.GetString()!)));
 
@@ -80,6 +91,11 @@ public class ValidationFixtureParityTests
 
     private static List<int> Ints(JsonElement values) => values.EnumerateArray().Select(value => value.GetInt32()).ToList();
 
+    private static Characteristic Characteristic(string code) =>
+        CharacteristicCodes.TryParse(code, out var characteristic)
+            ? characteristic
+            : throw new InvalidOperationException($"Unknown characteristic '{code}'.");
+
     private static List<ValidationError> Sorted(IEnumerable<ValidationError> errors) =>
         errors
             .OrderBy(error => error.Field, StringComparer.Ordinal)
@@ -108,7 +124,6 @@ public class ValidationFixtureParityTests
                     .Select(check => new EduImprovementCheckInput(OptionalInt(check, "check"), OptionalInt(check, "gain")))
                     .ToList(),
                 sheet.GetProperty("luckRolls").EnumerateArray().Select(Int).ToList(),
-                sheet.TryGetProperty("characteristicRolls", out var rolls) ? Characteristics(rolls) : null,
                 Occupation(sheet),
                 OptionalArray(sheet, "skills").Select(Allocation).ToList(),
                 QuickFire(sheet),

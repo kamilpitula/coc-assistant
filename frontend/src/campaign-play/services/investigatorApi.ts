@@ -183,8 +183,17 @@ const characterSheetViewSchema = z.object({
       .nullable(),
   }),
   rollRecords: z.array(
-    z.object({ purpose: z.string(), dice: z.string(), result: z.number().int(), source: z.string() }),
+    z.object({
+      purpose: z.string(),
+      dice: z.string(),
+      faces: z.array(z.number().int()).nullable(),
+      result: z.number().int(),
+      source: z.string(),
+      rolledByDisplayName: z.string().nullable(),
+      rolledAt: z.string().nullable(),
+    }),
   ),
+  locks: z.object({ creationMethod: z.boolean() }),
 })
 
 const rulesSchema = z.object({
@@ -316,6 +325,15 @@ export async function saveMyCharacterSheet(
     body: JSON.stringify(inputs),
   })
   ensureOk(response, 'save your Investigator')
+  return myCharacterSheetSchema.parse(await response.json())
+}
+
+/** POST .../investigators/mine/character-sheet/rolls/characteristics: rolls what is still missing; 409 when refused. */
+export async function rollMyCharacteristics(accessToken: string, campaignId: string): Promise<MyCharacterSheet> {
+  const response = await send(accessToken, `${investigatorsUrl(campaignId)}/mine/character-sheet/rolls/characteristics`, {
+    method: 'POST',
+  })
+  ensureOk(response, 'roll your characteristics')
   return myCharacterSheetSchema.parse(await response.json())
 }
 

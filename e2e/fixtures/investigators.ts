@@ -66,6 +66,16 @@ export async function chooseCreationMethod(page: Page, label: 'Standard rolling'
   await page.getByRole('radio', { name: label }).click()
 }
 
+/**
+ * Rolls the characteristics through the wizard's confirmation dialog ("Roll now"), and waits for
+ * the eight server-rolled values to appear.
+ */
+export async function rollCharacteristicsViaUi(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Roll characteristics' }).click()
+  await page.getByRole('alertdialog', { name: 'Roll characteristics?' }).getByRole('button', { name: 'Roll now' }).click()
+  await expect(page.getByRole('heading', { name: 'Your characteristics' })).toBeVisible()
+}
+
 /** Picks the 1920s Antiquarian on the Occupation step and moves on to Occupation skills. */
 export async function chooseAntiquarianViaUi(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { level: 1, name: 'Occupation' })).toBeVisible()

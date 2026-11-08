@@ -7,12 +7,13 @@ import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import { InvestigatorConflictError } from '@/campaign-play/services/investigatorApi'
 import { EMPTY_BACKSTORY } from '@/campaign-play/state/characterSheetForm'
 
-import { useCreateInvestigator, useDeleteInvestigator, useSaveCharacterSheet } from './useMyInvestigator'
+import { useCreateInvestigator, useDeleteInvestigator, useRollCharacteristics, useSaveCharacterSheet } from './useMyInvestigator'
 
-const { mockCreate, mockSave, mockDelete } = vi.hoisted(() => ({
+const { mockCreate, mockSave, mockDelete, mockRoll } = vi.hoisted(() => ({
   mockCreate: vi.fn(),
   mockSave: vi.fn(),
   mockDelete: vi.fn(),
+  mockRoll: vi.fn(),
 }))
 
 vi.mock('@/shared/hooks/useAccessToken', () => ({ useAccessToken: () => async () => 'token' }))
@@ -22,6 +23,7 @@ vi.mock('@/campaign-play/services/investigatorApi', async (importOriginal) => ({
   createInvestigator: mockCreate,
   saveMyCharacterSheet: mockSave,
   deleteMyInvestigator: mockDelete,
+  rollMyCharacteristics: mockRoll,
 }))
 
 function setup() {
@@ -48,8 +50,7 @@ describe('useMyInvestigator mutations', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: campaignQueryKeys.myInvestigator('c1') })
   })
 
-  it('stores the recomputed Character Sheet after a save', async () => {
-    const saved = { investigatorId: 'i1', status: 'Draft' }
+  it('stores the recomputed Character Sheet after a save', async () => {    const saved = { investigatorId: 'i1', status: 'Draft' }
     mockSave.mockResolvedValue(saved)
     const { queryClient, wrapper } = setup()
     const { result } = renderHook(() => useSaveCharacterSheet('c1'), { wrapper })
@@ -59,7 +60,6 @@ describe('useMyInvestigator mutations', () => {
         identity: { name: 'Harvey', age: 25, gender: null, residence: null, birthplace: null },
         creationMethod: 'PointBuy',
         characteristics: {},
-        characteristicRolls: {},
         occupation: null,
         skills: [],
         quickFire: { values: [], personalInterests: [] },
@@ -73,6 +73,20 @@ describe('useMyInvestigator mutations', () => {
     })
 
     expect(queryClient.getQueryData(campaignQueryKeys.myCharacterSheet('c1'))).toEqual(saved)
+  })
+
+  it('stores the recomputed Character Sheet after rolling the characteristics', async () => {
+    const rolled = { investigatorId: 'i1', status: 'Draft' }
+    mockRoll.mockResolvedValue(rolled)
+    const { queryClient, wrapper } = setup()
+    const { result } = renderHook(() => useRollCharacteristics('c1'), { wrapper })
+
+    await act(async () => {
+      await result.current.mutateAsync()
+    })
+
+    expect(mockRoll).toHaveBeenCalledWith('token', 'c1')
+    expect(queryClient.getQueryData(campaignQueryKeys.myCharacterSheet('c1'))).toEqual(rolled)
   })
 
   it('forgets the Investigator after "Start over"', async () => {

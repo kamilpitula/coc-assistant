@@ -92,7 +92,7 @@ public class CreationValidationTests
 
         var errors = Validate(new CharacterSheetBuilder().WithCharacteristicRolls(rolls));
 
-        Assert.Contains(Error("CharacteristicRollRequired", "characteristicRolls.STR", "Enter the 3D6 total for STR."), errors);
+        Assert.Contains(Error("CharacteristicRollRequired", "characteristicRolls.STR", "Roll characteristics. STR has no 3D6 roll yet."), errors);
         Assert.Contains(Error("DiceResultOutOfRange", "characteristicRolls.SIZ", "Enter a 2D6 result between 2 and 12.", "2-12", "13"), errors);
         Assert.DoesNotContain(errors, error => error.Code == "CharacteristicRequired");
     }

@@ -140,11 +140,11 @@ describe('characterSheetForm', () => {
     ])
   })
 
-  it('starts a Standard rolling sheet from its raw rolls, not the computed values', () => {
-    const inputs = inputsFromSheet({ ...view, creationMethod: 'StandardRolling', characteristicRolls: { STR: 12, SIZ: 6 } })
+  it('starts a Standard rolling sheet from its saved assigned values, not from raw rolls', () => {
+    const inputs = inputsFromSheet({ ...view, creationMethod: 'StandardRolling' })
 
-    expect(inputs.characteristicRolls).toEqual({ STR: 12, SIZ: 6 })
-    expect(inputs.characteristics).toEqual({})
+    expect(inputs.characteristics).toMatchObject({ STR: 60, EDU: null })
+    expect(inputs).not.toHaveProperty('characteristicRolls')
   })
 
   it('starts from the saved occupation, allocations, and Quick fire skills without the computed values', () => {
@@ -162,11 +162,10 @@ describe('characterSheetForm', () => {
   })
 
   it('clears the characteristic values when the creation method changes', () => {
-    const switched = characterSheetFormReducer({ ...validInputs, characteristicRolls: { STR: 10 } }, { type: 'creationMethod', method: 'StandardRolling' })
+    const switched = characterSheetFormReducer(validInputs, { type: 'creationMethod', method: 'StandardRolling' })
 
     expect(switched.creationMethod).toBe('StandardRolling')
     expect(switched.characteristics).toEqual({})
-    expect(switched.characteristicRolls).toEqual({})
     expect(switched.skills).toEqual(validInputs.skills)
   })
 
@@ -185,12 +184,12 @@ describe('characterSheetForm', () => {
 
   it('knows when characteristic values have been entered, so a switch needs confirmation', () => {
     expect(hasCharacteristicInputs(validInputs)).toBe(true)
-    expect(hasCharacteristicInputs({ ...validInputs, characteristics: {}, characteristicRolls: { STR: null } })).toBe(false)
+    expect(hasCharacteristicInputs({ ...validInputs, characteristics: { STR: null } })).toBe(false)
   })
 
   it('applies the occupation and skill changes, keeping later inputs when the occupation changes', () => {
     let inputs: CharacterSheetInputs = { ...validInputs }
-    inputs = characterSheetFormReducer(inputs, { type: 'characteristicRoll', code: 'STR', value: 12 })
+    inputs = characterSheetFormReducer(inputs, { type: 'characteristic', code: 'STR', value: 61 })
     inputs = characterSheetFormReducer(inputs, { type: 'occupation', catalogId: 'police-detective', custom: null })
     inputs = characterSheetFormReducer(inputs, { type: 'formulaCharacteristic', index: 1, value: 'DEX' })
     inputs = characterSheetFormReducer(inputs, { type: 'skillChoice', slot: 5, picks: [skill('Persuade')] })
@@ -198,7 +197,7 @@ describe('characterSheetForm', () => {
     inputs = characterSheetFormReducer(inputs, { type: 'skillPoints', skill: skill('Drive Auto'), column: 'personalInterestPoints', value: null })
     inputs = characterSheetFormReducer(inputs, { type: 'skillPoints', skill: skill('Firearms', 'Rifle/Shotgun'), column: 'occupationPoints', value: 20 })
 
-    expect(inputs.characteristicRolls).toEqual({ STR: 12 })
+    expect(inputs.characteristics).toMatchObject({ STR: 61 })
     expect(inputs.occupation).toEqual({ ...antiquarianInputs, catalogId: 'police-detective', formulaCharacteristics: [null, 'DEX'], skillChoices: [
       ...antiquarianInputs.skillChoices.slice(0, 5),
       [skill('Persuade')],
@@ -242,14 +241,14 @@ describe('characterSheetForm', () => {
     const mixed: CharacterSheetInputs = {
       ...validInputs,
       creationMethod: 'StandardRolling',
-      characteristicRolls: { STR: 12 },
+      characteristics: { STR: 60 },
       quickFire: { values: [{ ...skill('Law'), value: 70 }], personalInterests: [] },
     }
 
     const saved = inputsForSave(mixed, 'occupation', null, rules)
 
     expect(saved.characteristics).toEqual({})
-    expect(saved.characteristicRolls).toEqual({ STR: 12 })
+    expect(saved).not.toHaveProperty('characteristicRolls')
     expect(saved.quickFire).toEqual({ values: [], personalInterests: [], extraSkill: null })
     expect(saved.skills).toEqual(validInputs.skills)
   })
@@ -258,8 +257,7 @@ describe('characterSheetForm', () => {
     const inputs: CharacterSheetInputs = {
       ...validInputs,
       creationMethod: 'StandardRolling',
-      characteristics: {},
-      characteristicRolls: { EDU: 4 },
+      characteristics: { EDU: 50 },
       ageEffects: { deductions: {}, eduImprovementChecks: [{ check: 60, gain: 5 }, { check: 10, gain: 3 }] },
     }
 

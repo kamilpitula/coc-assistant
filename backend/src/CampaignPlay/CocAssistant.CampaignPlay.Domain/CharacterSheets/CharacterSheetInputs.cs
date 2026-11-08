@@ -5,7 +5,8 @@ public sealed record EduImprovementCheckInput(int? Check, int? Gain);
 
 /// <summary>
 /// Everything the Player enters for a Character Sheet, with dice results as raw totals. Dice results become Roll
-/// Records through an <see cref="IRollSource"/>.
+/// Records through an <see cref="IRollSource"/>. Characteristics are rolled by the server (specs/character-sheet/spec.md,
+/// Creation rolling), so they are never an input.
 /// </summary>
 public sealed record CharacterSheetInputs(
     InvestigatorIdentity Identity,
@@ -14,7 +15,6 @@ public sealed record CharacterSheetInputs(
     CharacteristicValues AgeDeductions,
     IReadOnlyList<EduImprovementCheckInput> EduImprovementChecks,
     IReadOnlyList<int?> LuckRolls,
-    CharacteristicValues? CharacteristicRolls = null,
     OccupationSelection? Occupation = null,
     IReadOnlyList<SkillAllocation>? SkillAllocations = null,
     QuickFireSkills? QuickFire = null,
@@ -22,13 +22,6 @@ public sealed record CharacterSheetInputs(
 {
     public CharacterSheet ToCharacterSheet(IRollSource rollSource)
     {
-        // Section 2.1: each Standard Rolling characteristic roll is a dice result of its own.
-        var characteristicRolls = CharacteristicRolls ?? CharacteristicValues.Empty;
-        var characteristicRecords = CharacteristicCodes.All.Select(characteristic => rollSource.Record(
-            RollPurposes.Characteristic(characteristic),
-            StandardRolling.FormulaFor(characteristic).Dice,
-            characteristicRolls[characteristic]));
-
         var luckRecords = new[]
         {
             rollSource.Record(RollPurposes.Luck, CreationDice.Luck, LuckRolls.ElementAtOrDefault(0)),
@@ -41,7 +34,7 @@ public sealed record CharacterSheetInputs(
             rollSource.Record(RollPurposes.EduImprovementGain(index + 1), CreationDice.EduImprovementGain, check.Gain),
         });
 
-        var rollRecords = characteristicRecords.Concat(luckRecords).Concat(eduRecords).OfType<RollRecord>().ToList();
+        var rollRecords = luckRecords.Concat(eduRecords).OfType<RollRecord>().ToList();
         return new CharacterSheet(
             Identity,
             CreationMethod,

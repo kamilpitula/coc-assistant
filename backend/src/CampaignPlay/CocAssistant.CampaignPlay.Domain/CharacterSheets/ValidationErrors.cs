@@ -128,7 +128,7 @@ public static class ValidationErrors
         Error(
             "CharacteristicRollRequired",
             CharacteristicRollField(characteristic),
-            $"Enter the {StandardRolling.FormulaFor(characteristic).Dice} total for {characteristic.ToCode()}.");
+            $"Roll characteristics. {characteristic.ToCode()} has no {StandardRolling.FormulaFor(characteristic).Dice} roll yet.");
 
     public static ValidationError QuickFireValueNotInPool(Characteristic characteristic, int value)
     {

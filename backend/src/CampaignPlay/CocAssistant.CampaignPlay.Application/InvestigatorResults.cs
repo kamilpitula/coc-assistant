@@ -29,12 +29,13 @@ public sealed record InvestigatorResult(
     Investigator? Investigator = null,
     IReadOnlyList<ValidationError>? ValidationErrors = null);
 
-/// <summary>An Investigator with its computed Character Sheet values, its problems, and its Player's name.</summary>
+/// <summary>An Investigator with its computed Character Sheet values, its problems, its Player's name, and the names behind its Server rolls.</summary>
 public sealed record CharacterSheetView(
     Investigator Investigator,
     string? PlayerName,
     CharacterSheetComputation Computation,
-    IReadOnlyList<ValidationError> ValidationErrors);
+    IReadOnlyList<ValidationError> ValidationErrors,
+    IReadOnlyDictionary<Guid, string> RolledByDisplayNames);
 
 public sealed record CharacterSheetResult(InvestigatorCommandOutcome Outcome, CharacterSheetView? View = null);
 

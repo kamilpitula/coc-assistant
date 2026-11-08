@@ -44,7 +44,7 @@ public class CharacterSheetJsonStorageTests
         var stored = CharacterSheetJsonStorage.ToStorage(new CharacterSheetBuilder().Build());
 
         using var document = JsonDocument.Parse(stored);
-        Assert.Equal(4, document.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(5, document.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("PointBuy", document.RootElement.GetProperty("creationMethod").GetString());
         Assert.Equal(60, document.RootElement.GetProperty("assignedCharacteristics").GetProperty("STR").GetInt32());
     }
@@ -165,11 +165,62 @@ public class CharacterSheetJsonStorageTests
     }
 
     [Fact]
+    public void Given_a_schema_version_4_document_When_reading_it_Then_the_player_entered_records_and_values_are_unchanged()
+    {
+        const string stored = """
+            {
+              "schemaVersion": 4,
+              "identity": { "name": "Harvey Walters", "age": 25 },
+              "creationMethod": "StandardRolling",
+              "assignedCharacteristics": { "STR": 60 },
+              "ageDeductions": {},
+              "rollRecords": [ { "purpose": "Characteristic:STR", "dice": "3D6", "result": 12, "source": "PlayerEntered" } ]
+            }
+            """;
+
+        var read = CharacterSheetJsonStorage.FromStorage(stored);
+
+        Assert.Equal(
+            [RollRecord.PlayerEntered("Characteristic:STR", "3D6", 12)],
+            read.RollRecords);
+        Assert.Equal(12, read.CharacteristicRolls[Characteristic.Strength]);
+        Assert.Equal(60, read.AssignedCharacteristics[Characteristic.Strength]);
+    }
+
+    [Fact]
+    public void Given_a_server_roll_When_storing_and_reading_it_Then_faces_who_and_when_round_trip()
+    {
+        var rolledBy = Guid.NewGuid();
+        var rolledAt = new DateTimeOffset(2026, 11, 8, 12, 0, 0, TimeSpan.Zero);
+        var sheet = new CharacterSheetBuilder().Build() with
+        {
+            RollRecords = [RollRecord.FromServer("Luck", new DiceRoll("3D6", [2, 5, 6], 13), rolledBy, rolledAt)],
+        };
+
+        var read = CharacterSheetJsonStorage.FromStorage(CharacterSheetJsonStorage.ToStorage(sheet));
+
+        var record = Assert.Single(read.RollRecords);
+        Assert.Equal(RollSource.Server, record.Source);
+        Assert.Equal([2, 5, 6], record.Faces);
+        Assert.Equal(rolledBy, record.RolledByAccountId);
+        Assert.Equal(rolledAt, record.RolledAt);
+    }
+
+    [Fact]
     public void Given_a_document_with_an_unknown_schema_version_When_reading_it_Then_it_fails_loudly()
     {
         const string stored = """{ "schemaVersion": 99, "identity": {}, "assignedCharacteristics": {} }""";
 
         var exception = Assert.Throws<InvalidOperationException>(() => CharacterSheetJsonStorage.FromStorage(stored));
         Assert.Contains("99", exception.Message);
+    }
+
+    [Fact]
+    public void Given_a_schema_version_6_document_When_reading_it_Then_it_fails_loudly()
+    {
+        const string stored = """{ "schemaVersion": 6, "identity": {}, "assignedCharacteristics": {} }""";
+
+        var exception = Assert.Throws<InvalidOperationException>(() => CharacterSheetJsonStorage.FromStorage(stored));
+        Assert.Contains("6", exception.Message);
     }
 }

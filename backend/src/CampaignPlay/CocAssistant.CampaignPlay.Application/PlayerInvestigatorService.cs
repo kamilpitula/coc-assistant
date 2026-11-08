@@ -11,6 +11,7 @@ public class PlayerInvestigatorService
     private readonly IAccountDisplayNames _displayNames;
     private readonly CharacterSheetEvaluator _evaluator;
     private readonly IRollSource _rollSource;
+    private readonly IDiceRoller _diceRoller;
     private readonly TimeProvider _timeProvider;
 
     public PlayerInvestigatorService(
@@ -19,6 +20,7 @@ public class PlayerInvestigatorService
         IAccountDisplayNames displayNames,
         CharacterSheetEvaluator evaluator,
         IRollSource rollSource,
+        IDiceRoller diceRoller,
         TimeProvider timeProvider)
     {
         _campaigns = campaigns;
@@ -26,6 +28,7 @@ public class PlayerInvestigatorService
         _displayNames = displayNames;
         _evaluator = evaluator;
         _rollSource = rollSource;
+        _diceRoller = diceRoller;
         _timeProvider = timeProvider;
     }
 
@@ -102,6 +105,35 @@ public class PlayerInvestigatorService
             : new CharacterSheetResult(saved.Outcome);
     }
 
+    public async Task<CharacterSheetResult> RollMyCharacteristicsAsync(
+        Guid campaignId,
+        Guid playerAccountId,
+        CancellationToken cancellationToken)
+    {
+        var mine = await FindMineAsync(campaignId, playerAccountId, cancellationToken);
+        if (mine is null)
+        {
+            return new CharacterSheetResult(InvestigatorCommandOutcome.NotFound);
+        }
+
+        var (investigator, campaign) = mine.Value;
+        if (!investigator.RollCharacteristics(_diceRoller, playerAccountId, _timeProvider.GetUtcNow()))
+        {
+            return new CharacterSheetResult(InvestigatorCommandOutcome.StatusConflict);
+        }
+
+        try
+        {
+            await _investigators.SaveChangesAsync(cancellationToken);
+        }
+        catch (InvestigatorConflictException)
+        {
+            return new CharacterSheetResult(InvestigatorCommandOutcome.StatusConflict);
+        }
+
+        return new CharacterSheetResult(InvestigatorCommandOutcome.Succeeded, await ViewAsync(investigator, campaign, cancellationToken));
+    }
+
     public async Task<InvestigatorResult> SubmitMineAsync(Guid campaignId, Guid playerAccountId, CancellationToken cancellationToken)
     {
         var mine = await FindMineAsync(campaignId, playerAccountId, cancellationToken);
@@ -143,11 +175,8 @@ public class PlayerInvestigatorService
         return investigator is null ? null : (investigator, campaign!);
     }
 
-    private async Task<CharacterSheetView> ViewAsync(Investigator investigator, Campaign campaign, CancellationToken cancellationToken)
-    {
-        var names = await _displayNames.GetDisplayNamesAsync([investigator.PlayerAccountId], cancellationToken);
-        return _evaluator.View(investigator, campaign, names.GetValueOrDefault(investigator.PlayerAccountId));
-    }
+    private Task<CharacterSheetView> ViewAsync(Investigator investigator, Campaign campaign, CancellationToken cancellationToken) =>
+        CharacterSheetViews.ViewAsync(_evaluator, _displayNames, investigator, campaign, cancellationToken);
 
     private async Task<InvestigatorResult> SaveAsync(
         Investigator investigator,

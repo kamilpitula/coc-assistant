@@ -15,3 +15,4 @@ global using CocAssistant.CampaignPlay.Domain.Presence;
 global using System.Text.RegularExpressions;
 global using CocAssistant.CampaignPlay.Domain.Wall;
 global using CocAssistant.GameRules.Domain;
+global using CocAssistant.GameRules.Domain.Dice;
