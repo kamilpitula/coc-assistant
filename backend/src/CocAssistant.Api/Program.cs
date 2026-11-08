@@ -18,6 +18,7 @@ builder.Services.AddScenarioPreparationInfrastructure(builder.Configuration);
 builder.Services.AddScenePlayInfrastructure();
 builder.Services.AddCampaignPlayLiveUpdates();
 builder.Services.AddLiveTransport(builder.Configuration);
+builder.Services.AddSingleton<CocAssistant.GameRules.Domain.Dice.IDiceRoller, CocAssistant.GameRules.Domain.Dice.SecureDiceRoller>();
 
 builder.Services
     .AddAuthentication(Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)
