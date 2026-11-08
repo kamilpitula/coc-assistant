@@ -11,6 +11,7 @@ instead of restating rules.
 | --- | --- |
 | [coc7_character_creation_and_development_rules.md](coc7_character_creation_and_development_rules.md) | Investigator data model, characteristics, age, derived attributes, skills, occupations, combat and weapon fields, finances, backstory, conditions, creation algorithm, validation, and development |
 | [coc_7e_npc_and_monster_creation_ruleset.md](coc_7e_npc_and_monster_creation_ruleset.md) | Non-Player Entity creation: Human NPC preparation profiles, Mythos Creature (monster) profiles, opposing values and difficulty, creature movement, attacks, armour, immunities, spells and powers, Sanity loss notation, and defeat outcomes. Shared formulas are referenced from the character rules |
+| [coc7_skill_rolls_rules.md](coc7_skill_rolls_rules.md) | Skill, characteristic, and Luck rolls during play: the percentile roll, target values, Difficulty, Success Levels, Critical and Fumble, Bonus and Penalty Dice, and pushing a roll. Verified 2026-11-08; page references still to be added |
 | [project_ruleset.md](project_ruleset.md) | Supported Eras and Creation Methods, disabled optional rules, and project house rules |
 | [catalogs/occupations.1920s.json](catalogs/occupations.1920s.json) | 1920s Occupation catalog (section 7 data), with provenance per section 20. Verified 2026-10-02; page references still to be added |
 | [catalogs/skills.1920s.json](catalogs/skills.1920s.json) | 1920s skill bases (section 6.1 data), with provenance per section 20. Moved unchanged from section 6.1 and verified 2026-10-02; page references still to be added |
@@ -20,9 +21,10 @@ instead of restating rules.
 | [catalogs/characteristics-rules.json](catalogs/characteristics-rules.json) | Damage Bonus and Build table (section 5.8 data), with provenance per section 20. Moved unchanged from section 5.8 on 2026-10-02; awaiting project owner verification; page references still to be added |
 
 Not yet covered: Sanity rolls during play (Sanity loss notation for Mythos
-Creatures is covered), skill rolls and difficulty levels
-during play, combat resolution, and the Cthulhu Mythos tome and spell rules (no spell
+Creatures is covered), opposed and combined rolls, spending Luck, combat
+resolution, and the Cthulhu Mythos tome and spell rules (no spell
 catalog exists; see [project_ruleset.md section 5.6](project_ruleset.md#56-spells-and-powers-without-a-catalog)).
+See also [coc7_skill_rolls_rules.md section 8](coc7_skill_rolls_rules.md#8-not-covered).
 Add a document here before specifying or implementing behavior that depends
 on one of these.
 
