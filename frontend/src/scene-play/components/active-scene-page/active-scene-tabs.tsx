@@ -8,9 +8,9 @@ import { useActiveSceneTab } from './active-scene-tab-context'
 
 /** The Run sub-tab body: the Keeper's run view (specs/scene-play/ux.md section 21.3). */
 export function RunTab() {
-  const { campaignId, scene, onPresentSaved, onFinishedMeanwhile } = useActiveSceneTab()
+  const { campaignId, scene, onPresentSaved, onWallEntryAdded, onFinishedMeanwhile } = useActiveSceneTab()
 
-  return <RunView campaignId={campaignId} scene={scene} onPresentSaved={onPresentSaved} onFinishedMeanwhile={onFinishedMeanwhile} />
+  return <RunView campaignId={campaignId} scene={scene} onPresentSaved={onPresentSaved} onWallEntryAdded={onWallEntryAdded} onFinishedMeanwhile={onFinishedMeanwhile} />
 }
 
 /** The "To reveal" sub-tab body (specs/scene-play/ux.md sections 21.4 and 22.1). */

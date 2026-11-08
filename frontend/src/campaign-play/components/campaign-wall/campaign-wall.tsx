@@ -3,9 +3,9 @@ import { useMemo, useState } from 'react'
 import { WALL_COMPOSER_TEXT_ID, WallEntryComposer } from '@/campaign-play/components/wall-entry-composer/wall-entry-composer'
 import { WallEntryList } from '@/campaign-play/components/wall-entry-list/wall-entry-list'
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
-import { useAddWallEntry, useRemoveWallEntry, useWallEntries } from '@/campaign-play/hooks/useWallEntries'
+import { useAddWallEntryForm, WALL_ENTRY_ADDED_MESSAGE } from '@/campaign-play/hooks/useAddWallEntryForm'
+import { useRemoveWallEntry, useWallEntries } from '@/campaign-play/hooks/useWallEntries'
 import { useWallEntryAnnouncement } from '@/campaign-play/hooks/useWallEntryAnnouncement'
-import type { NewWallEntry } from '@/campaign-play/types/WallEntry'
 import { Button } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 
@@ -21,27 +21,14 @@ interface CampaignWallProps {
 export function CampaignWall({ campaignId }: CampaignWallProps) {
   const campaign = useCampaign(campaignId)
   const wall = useWallEntries(campaignId)
-  const addEntry = useAddWallEntry(campaignId)
   const removeEntry = useRemoveWallEntry(campaignId)
   const [status, setStatus] = useState('')
-  const [addFailed, setAddFailed] = useState(false)
+  const add = useAddWallEntryForm(campaignId, () => setStatus(WALL_ENTRY_ADDED_MESSAGE))
   const entries = useMemo(() => wall.data?.pages.flatMap((page) => page.entries), [wall.data])
   const announcement = useWallEntryAnnouncement(entries, wall.isFetchedAfterMount)
 
   if (!campaign.data) {
     return null
-  }
-
-  const add = async (entry: NewWallEntry) => {
-    setAddFailed(false)
-    try {
-      await addEntry.mutateAsync(entry)
-      setStatus('Wall Entry added.')
-      return true
-    } catch {
-      setAddFailed(true)
-      return false
-    }
   }
 
   const remove = async (entryId: string) => {
@@ -57,7 +44,7 @@ export function CampaignWall({ campaignId }: CampaignWallProps) {
   return (
     <div className="flex w-full max-w-3xl flex-col gap-6">
       <h1 className="text-2xl font-semibold">Wall</h1>
-      <WallEntryComposer viewerRole={campaign.data.role} pending={addEntry.isPending} failed={addFailed} onSubmit={add} />
+      <WallEntryComposer viewerRole={campaign.data.role} pending={add.pending} failed={add.failed} onSubmit={add.submit} />
       <p role="status" className="text-sm empty:hidden">
         {status}
       </p>

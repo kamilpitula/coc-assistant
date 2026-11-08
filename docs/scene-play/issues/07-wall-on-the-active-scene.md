@@ -25,11 +25,11 @@ Read: [scene-play ux](../../../specs/scene-play/ux.md) sections 21.3 and 21.8; [
 - A Player must never receive a Keeper-only entry; the preview's query already guarantees this.
 
 ## Verification
-- [ ] SPL-UX-49 and SPL-UX-50 hold, and the campaign-wall criteria for compose and live updates hold in the new place.
-- [ ] Unit tests cover the region for Keeper, present Player, and absent Player.
-- [ ] Storybook stories for the region in each role.
-- [ ] Playwright E2E covers the scene-play spec scenarios "The Keeper posts to the Wall from the Active Scene" and "A Player never sees a Keeper-only Wall Entry on the Active Scene".
-- [ ] Screenshots of Run (Keeper) and the Player view match the prototype's Wall placement.
+- [x] SPL-UX-49 and SPL-UX-50 hold, and the campaign-wall criteria for compose and live updates hold in the new place.
+- [x] Unit tests cover the region for Keeper, present Player, and absent Player.
+- [x] Storybook stories for the region in each role.
+- [x] Playwright E2E covers the scene-play spec scenarios "The Keeper posts to the Wall from the Active Scene" and "A Player never sees a Keeper-only Wall Entry on the Active Scene".
+- [x] Screenshots of Run (Keeper) and the Player view match the prototype's Wall placement.
 
 ## Refinement Protocol
 A change to the region updates scene-play ux section 21.8, the note in campaign-wall ux section 7, the shared compose component, and tests together.

@@ -17,6 +17,8 @@ export interface ActiveSceneTabContextValue {
   onTakeBack: (request: TakeBackItemRequest, context: TakeBackItemContext) => void
   /** The Investigators present were saved, so the page says "Investigators present saved.". */
   onPresentSaved: () => void
+  /** A Wall Entry was added from Run, so the page says "Wall Entry added.". */
+  onWallEntryAdded: () => void
   /** A present change found the Scene finished, so the page refetches. */
   onFinishedMeanwhile: () => void
 }

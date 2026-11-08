@@ -112,4 +112,16 @@ describe('WallEntryComposer', () => {
 
     expect(onSubmit).toHaveBeenCalledWith({ text: 'Quick entry', visibility: 'Public' })
   })
+
+  it('uses 3 rows by default and honours rows={2} (SPL-UX-49)', () => {
+    const { textbox } = renderComposer()
+
+    expect(textbox).toHaveAttribute('rows', '3')
+  })
+
+  it('renders a 2-row Textarea when asked', () => {
+    renderComposer({ rows: 2 })
+
+    expect(screen.getByRole('textbox', { name: 'New Wall Entry' })).toHaveAttribute('rows', '2')
+  })
 })

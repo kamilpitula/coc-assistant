@@ -32,7 +32,7 @@ export function useWallPreview(campaignId: string) {
   })
 }
 
-/** Adds an entry; the confirmed entry goes to the top of the Wall, and the preview reloads next time it is shown. */
+/** Adds an entry; the confirmed entry goes to the top of the Wall, and the preview refreshes in place. */
 export function useAddWallEntry(campaignId: string) {
   const getAccessToken = useAccessToken()
   const queryClient = useQueryClient()

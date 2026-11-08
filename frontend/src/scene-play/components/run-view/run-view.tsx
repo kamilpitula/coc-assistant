@@ -1,4 +1,6 @@
+import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import { useScene } from '@/scenario-preparation/hooks/useScenes'
+import { ActiveSceneWall } from '@/scene-play/components/active-scene-wall/active-scene-wall'
 import { InvestigatorsPresentSection } from '@/scene-play/components/investigators-present-section/investigators-present-section'
 import { KeeperNotesSection } from '@/scene-play/components/keeper-notes-section/keeper-notes-section'
 import { MaterialLoadState } from '@/scene-play/components/material-load-state/material-load-state'
@@ -10,24 +12,37 @@ interface RunViewProps {
   scene: KeeperActiveScene
   /** Called after the Investigators present are saved, so the page can say "Investigators present saved.". */
   onPresentSaved: () => void
+  /** Called after a Wall Entry is added from Run, so the page can say "Wall Entry added.". */
+  onWallEntryAdded: () => void
   /** Called when a present change found the Scene finished, so the page can refetch. */
   onFinishedMeanwhile: () => void
 }
 
 /**
- * Run (specs/scene-play/ux.md section 21.3): Keeper notes and Investigators present as bordered cards, one column
- * below 1024px and two above. Handouts, Non-Player Entities, and Items never show here; the Wall region lands with
- * PBI-SPL-007 and play tools with the first one.
+ * Run (specs/scene-play/ux.md sections 21.3 and 21.8): Keeper notes, Investigators present, and the Wall as bordered cards,
+ * in that DOM order; from 1024px the Wall sits above Investigators present in the right column. Handouts, Non-Player
+ * Entities, and Items never show here.
  */
-export function RunView({ campaignId, scene, onPresentSaved, onFinishedMeanwhile }: RunViewProps) {
+export function RunView({ campaignId, scene, onPresentSaved, onWallEntryAdded, onFinishedMeanwhile }: RunViewProps) {
+  const campaign = useCampaign(campaignId)
+
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <RunCard>
-        <KeeperNotesRegion campaignId={campaignId} scene={scene} />
-      </RunCard>
-      <RunCard>
-        <InvestigatorsPresentSection campaignId={campaignId} scene={scene} onSaved={onPresentSaved} onFinishedMeanwhile={onFinishedMeanwhile} />
-      </RunCard>
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[auto_1fr] lg:[grid-template-areas:'notes_wall'_'notes_present']">
+      <div className="min-w-0 lg:[grid-area:notes]">
+        <RunCard>
+          <KeeperNotesRegion campaignId={campaignId} scene={scene} />
+        </RunCard>
+      </div>
+      <div className="min-w-0 lg:[grid-area:present]">
+        <RunCard>
+          <InvestigatorsPresentSection campaignId={campaignId} scene={scene} onSaved={onPresentSaved} onFinishedMeanwhile={onFinishedMeanwhile} />
+        </RunCard>
+      </div>
+      {campaign.data && (
+        <div className="min-w-0 lg:[grid-area:wall]">
+          <ActiveSceneWall campaignId={campaignId} viewerRole={campaign.data.role} onWallEntryAdded={onWallEntryAdded} />
+        </div>
+      )}
     </div>
   )
 }

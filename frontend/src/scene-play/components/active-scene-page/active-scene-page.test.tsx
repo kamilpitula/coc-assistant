@@ -506,6 +506,25 @@ describe('ActiveScenePage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Investigators present saved.')
   })
 
+  it('says "Wall Entry added." after a Wall post from Run (SPL-UX-49)', () => {
+    render(<ActiveScenePage campaignId="c1" />)
+
+    act(() => tabValue?.onWallEntryAdded())
+
+    expect(screen.getByRole('status')).toHaveTextContent('Wall Entry added.')
+  })
+
+  it('passes the Wall add callback to the Player view, and says "Wall Entry added." after a Player post (SPL-UX-49)', () => {
+    mockUseCampaign.mockReturnValue({ data: { id: 'c1', role: 'Player' } })
+    mockUseActive.mockReturnValue(query(playerScene))
+    render(<ActiveScenePage campaignId="c1" />)
+
+    expect(playerProps.current).toMatchObject({ campaignId: 'c1', scene: playerScene })
+    act(() => (playerProps.current?.onWallEntryAdded as () => void)())
+
+    expect(screen.getByRole('status')).toHaveTextContent('Wall Entry added.')
+  })
+
   it('refetches when a present change found the Scene finished', () => {
     render(<ActiveScenePage campaignId="c1" />)
 

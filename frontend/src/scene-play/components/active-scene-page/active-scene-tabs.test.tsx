@@ -56,6 +56,7 @@ const value: ActiveSceneTabContextValue = {
   onGive: vi.fn(),
   onTakeBack: vi.fn(),
   onPresentSaved: vi.fn(),
+  onWallEntryAdded: vi.fn(),
   onFinishedMeanwhile: vi.fn(),
 }
 
@@ -71,7 +72,7 @@ describe('ActiveSceneTabs', () => {
   it('forwards the tab data to each sub-tab body', () => {
     renderTab('run')
     expect(screen.getByTestId('run-view')).toBeInTheDocument()
-    expect(runProps).toEqual({ campaignId: 'c1', scene, onPresentSaved: value.onPresentSaved, onFinishedMeanwhile: value.onFinishedMeanwhile })
+    expect(runProps).toEqual({ campaignId: 'c1', scene, onPresentSaved: value.onPresentSaved, onWallEntryAdded: value.onWallEntryAdded, onFinishedMeanwhile: value.onFinishedMeanwhile })
 
     renderTab('to-reveal')
     expect(toRevealProps).toEqual({ campaignId: 'c1', scene, onReveal: value.onReveal, onGive: value.onGive })

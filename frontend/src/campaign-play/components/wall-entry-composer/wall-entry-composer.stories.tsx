@@ -18,3 +18,5 @@ export const Player: Story = { args: { viewerRole: 'Player' } }
 export const Adding: Story = { args: { pending: true } }
 
 export const PostFailed: Story = { args: { failed: true } }
+
+export const Compact: Story = { args: { rows: 2 } }
