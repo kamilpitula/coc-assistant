@@ -143,11 +143,8 @@ public class PlayerInvestigatorService
         return investigator is null ? null : (investigator, campaign!);
     }
 
-    private async Task<CharacterSheetView> ViewAsync(Investigator investigator, Campaign campaign, CancellationToken cancellationToken)
-    {
-        var names = await _displayNames.GetDisplayNamesAsync([investigator.PlayerAccountId], cancellationToken);
-        return _evaluator.View(investigator, campaign, names.GetValueOrDefault(investigator.PlayerAccountId));
-    }
+    private Task<CharacterSheetView> ViewAsync(Investigator investigator, Campaign campaign, CancellationToken cancellationToken) =>
+        CharacterSheetViews.ViewAsync(_evaluator, _displayNames, investigator, campaign, cancellationToken);
 
     private async Task<InvestigatorResult> SaveAsync(
         Investigator investigator,

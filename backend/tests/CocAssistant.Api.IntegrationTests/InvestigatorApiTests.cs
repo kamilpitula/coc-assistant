@@ -134,7 +134,7 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         Assert.Equal("Draft", body.GetProperty("status").GetString());
         Assert.Equal(0, body.GetProperty("validationErrors").GetArrayLength());
         var sheet = body.GetProperty("characterSheet");
-        Assert.Equal(4, sheet.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(5, sheet.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("Boston", sheet.GetProperty("identity").GetProperty("residence").GetString());
         var strength = sheet.GetProperty("characteristics").GetProperty("STR");
         Assert.Equal((60, 60, 30, 12), (strength.GetProperty("assigned").GetInt32(), strength.GetProperty("value").GetInt32(), strength.GetProperty("hard").GetInt32(), strength.GetProperty("extreme").GetInt32()));
@@ -143,6 +143,11 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         Assert.Equal(55, sheet.GetProperty("derived").GetProperty("luck").GetInt32());
         Assert.Equal(99, sheet.GetProperty("derived").GetProperty("sanity").GetProperty("maximum").GetInt32());
         Assert.Equal("PlayerEntered", sheet.GetProperty("rollRecords")[0].GetProperty("source").GetString());
+        var firstRecord = sheet.GetProperty("rollRecords")[0];
+        Assert.Equal(JsonValueKind.Null, firstRecord.GetProperty("faces").ValueKind);
+        Assert.Equal(DisplayNameFor(Player), firstRecord.GetProperty("rolledByDisplayName").GetString());
+        Assert.Equal(JsonValueKind.Null, firstRecord.GetProperty("rolledAt").ValueKind);
+        Assert.False(sheet.GetProperty("locks").GetProperty("creationMethod").GetBoolean());
         Assert.Equal(460, body.GetProperty("rules").GetProperty("pointBuyBudget").GetInt32());
         Assert.Equal("3D6", body.GetProperty("rules").GetProperty("luckDice").GetString());
         Assert.Equal(99, body.GetProperty("rules").GetProperty("eduMaximum").GetInt32());
@@ -335,7 +340,7 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var sheet = (await JsonAsync(response)).GetProperty("characterSheet");
-        Assert.Equal(4, sheet.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(5, sheet.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("Grew up above a bookshop.", sheet.GetProperty("backstory").GetProperty("myStory").GetString());
         Assert.Equal("My sister Ada", sheet.GetProperty("backstory").GetProperty("significantPeople").GetString());
         Assert.Equal(JsonValueKind.Null, sheet.GetProperty("backstory").GetProperty("traits").ValueKind);

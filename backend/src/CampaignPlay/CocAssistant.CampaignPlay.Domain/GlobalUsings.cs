@@ -3,3 +3,4 @@ global using CocAssistant.CampaignPlay.Domain.CharacterSheets;
 global using CocAssistant.CampaignPlay.Domain.Investigators;
 global using CocAssistant.CampaignPlay.Domain.RuleData;
 global using CocAssistant.GameRules.Domain;
+global using CocAssistant.GameRules.Domain.Dice;

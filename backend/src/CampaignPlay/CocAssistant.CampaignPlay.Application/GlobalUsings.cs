@@ -8,3 +8,4 @@ global using System.Diagnostics.CodeAnalysis;
 global using System.Globalization;
 global using System.Text;
 global using CocAssistant.GameRules.Domain;
+global using CocAssistant.GameRules.Domain.Dice;

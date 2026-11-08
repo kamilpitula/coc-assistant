@@ -20,10 +20,14 @@ public sealed class CharacterSheetEvaluator
         return (computation, CharacterSheetValidator.Validate(sheet, campaign.AllowedCreationMethods, computation, rules));
     }
 
-    public CharacterSheetView View(Investigator investigator, Campaign campaign, string? playerName)
+    public CharacterSheetView View(
+        Investigator investigator,
+        Campaign campaign,
+        string? playerName,
+        IReadOnlyDictionary<Guid, string> rolledByDisplayNames)
     {
         var (computation, errors) = Evaluate(investigator.CharacterSheet, campaign);
-        return new CharacterSheetView(investigator, playerName, computation, errors);
+        return new CharacterSheetView(investigator, playerName, computation, errors, rolledByDisplayNames);
     }
 }
 

@@ -20,7 +20,7 @@ public sealed record CharacterSheet(
     BackstoryAndPossessions BackstoryAndPossessions)
 {
     /// <summary>The schema version of the stored Character Sheet (ADR 0005, ADR 0007).</summary>
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     public static readonly CharacterSheet Empty =
         new(InvestigatorIdentity.Empty, null, CharacteristicValues.Empty, CharacteristicValues.Empty, [], null, [], QuickFireSkills.Empty, BackstoryAndPossessions.Empty);
