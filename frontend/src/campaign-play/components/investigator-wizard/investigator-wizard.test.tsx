@@ -2,6 +2,8 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { InvestigatorConflictError } from '@/campaign-play/services/investigatorApi'
+
 import {
   emptySheetView,
   myCharacterSheet,
@@ -16,10 +18,11 @@ import { navigateSpy, routerState } from '@/shared/test-support/routerMock'
 
 import { InvestigatorWizard } from './investigator-wizard'
 
-const { mockUseSheet, mockSave, mockSubmit, mockDelete, mockUseCampaign } = vi.hoisted(() => ({
+const { mockUseSheet, mockSave, mockRoll, mockSubmit, mockDelete, mockUseCampaign } = vi.hoisted(() => ({
   mockUseSheet: vi.fn(),
   mockUseCampaign: vi.fn(),
   mockSave: vi.fn(),
+  mockRoll: vi.fn(),
   mockSubmit: vi.fn(),
   mockDelete: vi.fn(),
 }))
@@ -28,6 +31,7 @@ vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-suppo
 vi.mock('@/campaign-play/hooks/useMyInvestigator', () => ({
   useMyCharacterSheet: mockUseSheet,
   useSaveCharacterSheet: () => ({ mutateAsync: mockSave, isPending: false }),
+  useRollCharacteristics: () => ({ mutateAsync: mockRoll, isPending: false }),
   useSubmitInvestigator: () => ({ mutateAsync: mockSubmit, isPending: false }),
   useDeleteInvestigator: () => ({ mutateAsync: mockDelete, isPending: false }),
 }))
@@ -42,8 +46,13 @@ function allowing(...methods: string[]) {
   mockUseCampaign.mockReturnValue({ data: { allowedCreationMethods: methods }, isPending: false, isError: false })
 }
 
-function withSheet(sheet: MyCharacterSheet | null) {
-  mockUseSheet.mockReturnValue({ data: sheet, isPending: false, isError: false, refetch: vi.fn() })
+function withSheet(sheet: MyCharacterSheet | null, refetch?: ReturnType<typeof vi.fn>) {
+  mockUseSheet.mockReturnValue({
+    data: sheet,
+    isPending: false,
+    isError: false,
+    refetch: refetch ?? vi.fn().mockResolvedValue({ data: sheet }),
+  })
 }
 
 const nameError = problem('InvestigatorNameRequired', 'identity.name', "Enter your Investigator's name.")
@@ -395,6 +404,79 @@ describe('InvestigatorWizard', () => {
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(title)
     expect(screen.getByRole(role, { name })).toBeInTheDocument()
+  })
+
+  it('UX-31: confirming the roll saves first, then rolls, and announces the results', async () => {
+    allowing('StandardRolling')
+    const draft = myCharacterSheet({ characterSheet: { ...emptySheetView(), creationMethod: 'StandardRolling' }, validationErrors: [] })
+    const rolled = myCharacterSheet({
+      characterSheet: sheetView({ creationMethod: 'StandardRolling', characteristicRolls: {}, locks: { creationMethod: true } }),
+      validationErrors: [],
+    })
+    withSheet(draft)
+    mockSave.mockResolvedValue(draft)
+    mockRoll.mockResolvedValue(rolled)
+    render(<InvestigatorWizard campaignId="c1" step="characteristics" />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Roll characteristics' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Roll now' }))
+
+    await waitFor(() => expect(mockRoll).toHaveBeenCalledTimes(1))
+    expect(mockSave).toHaveBeenCalledTimes(1)
+    expect(await screen.findByRole('heading', { name: 'Your characteristics' })).toBeInTheDocument()
+    expect(screen.getByText('Characteristics rolled.')).toBeInTheDocument()
+  })
+
+  it('UX-31: when the roll finds existing results, it reloads and says they were already rolled', async () => {
+    allowing('StandardRolling')
+    const draft = myCharacterSheet({ characterSheet: { ...emptySheetView(), creationMethod: 'StandardRolling' }, validationErrors: [] })
+    const rolled = myCharacterSheet({
+      characterSheet: sheetView({ creationMethod: 'StandardRolling', characteristicRolls: {}, locks: { creationMethod: true } }),
+      validationErrors: [],
+    })
+    const refetch = vi.fn().mockResolvedValue({ data: rolled })
+    withSheet(draft, refetch)
+    mockSave.mockResolvedValue(draft)
+    mockRoll.mockRejectedValue(new InvestigatorConflictError())
+    render(<InvestigatorWizard campaignId="c1" step="characteristics" />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Roll characteristics' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Roll now' }))
+
+    expect(await screen.findByText('Your characteristics were already rolled.')).toBeInTheDocument()
+    expect(refetch).toHaveBeenCalled()
+  })
+
+  it('UX-35: when the roll conflicts with nothing rolled, it asks for a reload instead of retrying', async () => {
+    allowing('StandardRolling')
+    const draft = myCharacterSheet({ characterSheet: { ...emptySheetView(), creationMethod: 'StandardRolling' }, validationErrors: [] })
+    withSheet(draft)
+    mockSave.mockResolvedValue(draft)
+    mockRoll.mockRejectedValue(new InvestigatorConflictError())
+    render(<InvestigatorWizard campaignId="c1" step="characteristics" />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Roll characteristics' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Roll now' }))
+
+    expect(await screen.findByText("We couldn't roll your characteristics. Reload the page and try again.")).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
+  })
+
+  it('A11Y-12: the error summary link for a roll error focuses the roll action', async () => {
+    allowing('StandardRolling')
+    const rollError = problem('CharacteristicsRequired', 'characteristicRolls.STR', 'Roll your characteristics.')
+    const draft = myCharacterSheet({
+      characterSheet: { ...emptySheetView(), creationMethod: 'StandardRolling' },
+      validationErrors: [rollError],
+    })
+    withSheet(draft)
+    mockSave.mockResolvedValue(draft)
+    render(<InvestigatorWizard campaignId="c1" step="characteristics" />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }))
+    await userEvent.click(within(await screen.findByRole('alert')).getByRole('link', { name: 'Roll your characteristics.' }))
+
+    expect(screen.getByRole('button', { name: 'Roll characteristics' })).toHaveFocus()
   })
 
   it('saves the occupation picked on the Occupation step', async () => {

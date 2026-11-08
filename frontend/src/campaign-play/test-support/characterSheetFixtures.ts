@@ -117,7 +117,6 @@ export const validInputs: CharacterSheetInputs = {
   identity: { name: 'Harvey Walters', age: 25, gender: null, residence: 'Boston', birthplace: null },
   creationMethod: 'PointBuy',
   characteristics: { ...pointBuy },
-  characteristicRolls: {},
   ageEffects: { deductions: {}, eduImprovementChecks: [{ check: 30, gain: null }] },
   luckRolls: [11],
   occupation: antiquarianInputs,
@@ -137,7 +136,6 @@ export const emptyInputs: CharacterSheetInputs = {
   identity: { name: null, age: null, gender: null, residence: null, birthplace: null },
   creationMethod: 'PointBuy',
   characteristics: {},
-  characteristicRolls: {},
   ageEffects: { deductions: {}, eduImprovementChecks: [] },
   luckRolls: [],
   occupation: null,
@@ -299,9 +297,18 @@ export function sheetView(overrides: Partial<CharacterSheetView> = {}): Characte
       wealth: { currency: 'USD', spendingLevel: { amount: 10, orMore: false }, cash: { amount: 60, orMore: false }, assets: { amount: 1500, orMore: false } },
     },
     rollRecords: [
-      { purpose: 'Luck', dice: '3D6', result: 11, source: 'PlayerEntered' },
-      { purpose: 'EduImprovement[1].Check', dice: 'D100', result: 30, source: 'PlayerEntered' },
+      { purpose: 'Luck', dice: '3D6', faces: null, result: 11, source: 'PlayerEntered', rolledByDisplayName: 'Ada Lovelace', rolledAt: null },
+      {
+        purpose: 'EduImprovement[1].Check',
+        dice: 'D100',
+        faces: null,
+        result: 30,
+        source: 'PlayerEntered',
+        rolledByDisplayName: 'Ada Lovelace',
+        rolledAt: null,
+      },
     ],
+    locks: { creationMethod: false },
     ...overrides,
   }
 }

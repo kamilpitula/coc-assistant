@@ -205,7 +205,7 @@ function WizardForm({ campaignId, step, sheet, allowedMethods, occupationCatalog
       return
     }
     setTouched((previous) => new Set(previous).add(field))
-    setClientErrors(validateCharacterSheet(inputs, sheet.rules, bracket))
+    setClientErrors(validateCharacterSheet(inputs, sheet.rules, bracket, sheet.characterSheet.characteristicRolls))
   }
 
   const saveInputs = () => inputsForSave(inputs, step, bracket, sheet.rules)
@@ -214,7 +214,8 @@ function WizardForm({ campaignId, step, sheet, allowedMethods, occupationCatalog
   const selectError = (field: string) => {
     const owner = stepOfField(field)
     if (owner === step) {
-      document.getElementById(fieldId(field))?.focus()
+      // Characteristic roll errors focus the inline roll action (ux.md 6.8; A11Y-12).
+      document.getElementById(field.startsWith('characteristicRolls.') ? fieldId('characteristicRolls') : fieldId(field))?.focus()
     } else {
       moves.toStep(owner)
     }
@@ -250,7 +251,20 @@ function WizardForm({ campaignId, step, sheet, allowedMethods, occupationCatalog
 
           {step === 'identity' && <IdentityStep {...stepProps} playerName={sheet.playerName} />}
           {step === 'characteristics' && (
-            <CharacteristicsStep {...stepProps} rules={sheet.rules} bracket={bracket} warnings={warnings} allowedMethods={allowedMethods} />
+            <CharacteristicsStep
+              {...stepProps}
+              rules={sheet.rules}
+              bracket={bracket}
+              warnings={warnings}
+              allowedMethods={allowedMethods}
+              sheet={sheet.characterSheet}
+              status={sheet.status}
+              roll={{
+                status: moves.rollStatus,
+                onRoll: () => void moves.rollCharacteristics(saveInputs()),
+                onRetry: () => void moves.retryRoll(),
+              }}
+            />
           )}
           {step === 'age' && <AgeEffectsStep {...stepProps} rules={sheet.rules} bracket={bracket} />}
           {step === 'occupation' && <OccupationStep {...skillStepProps} />}

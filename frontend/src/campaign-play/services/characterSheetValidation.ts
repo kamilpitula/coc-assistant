@@ -15,17 +15,20 @@ import { validationError } from '@/campaign-play/services/validationErrorFactory
  * The frontend's instant-feedback validator. It mirrors the backend for the checks with scope "shared" in the
  * ValidationError catalog of specs/character-sheet/spec.md, using the same codes, fields, and messages; the server
  * stays authoritative and alone runs the "server" checks. Rule values come only from `rules` and `bracket`.
+ * `storedCharacteristicRolls` are the saved sheet's typed rolls: under Standard rolling the PUT carries no dice
+ * results, so the validator reads the stored records instead.
  * Parity: specs/character-sheet/validation-fixtures.json.
  */
 export function validateCharacterSheet(
   inputs: CharacterSheetInputs,
   rules: CharacterSheetRules,
   bracket: AgeBracket | null,
+  storedCharacteristicRolls: CharacteristicInputs,
 ): ValidationError[] {
   return [
     ...identityProblems(inputs, rules),
     ...(inputs.creationMethod === null ? [error('CreationMethodRequired', 'creationMethod', 'Choose a creation method.')] : []),
-    ...characteristicProblems(inputs, rules),
+    ...characteristicProblems(inputs, rules, storedCharacteristicRolls),
     ...luckProblems(inputs.luckRolls, rules, bracket),
     ...(bracket ? deductionProblems(inputs.ageEffects.deductions, bracket) : []),
     ...(bracket ? eduImprovementProblems(inputs.ageEffects.eduImprovementChecks, rules, bracket) : []),
@@ -43,10 +46,14 @@ function weaponProblems(inputs: CharacterSheetInputs): ValidationError[] {
 }
 
 // docs/game-rules section 15: eight characteristics, valid under the Creation Method (sections 2.1 to 2.3).
-function characteristicProblems(inputs: CharacterSheetInputs, rules: CharacterSheetRules): ValidationError[] {
+function characteristicProblems(
+  inputs: CharacterSheetInputs,
+  rules: CharacterSheetRules,
+  storedCharacteristicRolls: CharacteristicInputs,
+): ValidationError[] {
   switch (inputs.creationMethod) {
     case 'StandardRolling':
-      return standardRollingProblems(inputs.characteristicRolls, rules)
+      return standardRollingProblems(storedCharacteristicRolls, rules)
     case 'PointBuy':
       return [...characteristicPresenceProblems(inputs.characteristics), ...pointBuyProblems(inputs.characteristics, rules)]
     case 'QuickFire':

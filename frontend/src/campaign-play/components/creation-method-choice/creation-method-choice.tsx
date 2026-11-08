@@ -19,6 +19,10 @@ interface CreationMethodChoiceProps {
   /** The Campaign's allowed Creation Methods. */
   allowed: CreationMethod[]
   value: CreationMethod | null
+  /** True when a characteristic already has a Roll Record: the method shows as text with the lock reason (ux.md 6.2). */
+  locked?: boolean
+  /** True in Draft, where starting over is the way to another method once locked. */
+  canStartOver?: boolean
   /** True when values have been entered, so switching asks for confirmation first. */
   needsConfirmation: boolean
   /** True when switching to the method also clears skill values (Quick fire versus the point methods). */
@@ -30,15 +34,27 @@ interface CreationMethodChoiceProps {
 /**
  * The creation method choice (specs/character-sheet/ux.md sections 5.5 and 6.2): text when the Campaign allows one
  * method (UX-10), otherwise a RadioGroup; switching after values were entered needs confirmation (UX-8), and
- * cancelling keeps the method and returns focus to the radio that opened the dialog (A11Y-8).
+ * cancelling keeps the method and returns focus to the radio that opened the dialog (A11Y-8). Once characteristics
+ * are rolled the method is locked and shows as text with the reason (UX-32).
  */
-export function CreationMethodChoice({ allowed, value, needsConfirmation, clearsSkills, error, onChange }: CreationMethodChoiceProps) {
+export function CreationMethodChoice({ allowed, value, locked = false, canStartOver = false, needsConfirmation, clearsSkills, error, onChange }: CreationMethodChoiceProps) {
   const labelId = useId()
   const [pending, setPending] = useState<CreationMethod | null>(null)
   const methods = inCanonicalOrder(allowed)
 
-  if (methods.length === 1) {
+  if (methods.length === 1 && !locked) {
     return <p className="text-sm">Creation method: {creationMethodLabels[methods[0]].name}</p>
+  }
+
+  if (locked && value !== null) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-sm">Creation method: {creationMethodLabels[value].name}</p>
+        <p className="text-sm text-muted-foreground">
+          Locked because your characteristics are rolled.{canStartOver ? ' To use another method, start over.' : ''}
+        </p>
+      </div>
+    )
   }
 
   const choose = (method: string) => {

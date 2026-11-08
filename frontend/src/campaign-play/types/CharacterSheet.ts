@@ -98,12 +98,11 @@ export interface CustomWeaponInputs {
   malfunction: string | null
 }
 
-/** The body of PUT .../investigators/mine/character-sheet: the Player's inputs only; dice results are raw totals. */
+/** The body of PUT .../investigators/mine/character-sheet: the Player's inputs only; the server rolls every dice result. */
 export interface CharacterSheetInputs {
   identity: IdentityInputs
   creationMethod: CreationMethod | null
   characteristics: CharacteristicInputs
-  characteristicRolls: CharacteristicInputs
   ageEffects: {
     deductions: CharacteristicInputs
     eduImprovementChecks: EduImprovementCheckInputs[]
@@ -182,8 +181,14 @@ export interface DerivedValues {
 export interface RollRecord {
   purpose: string
   dice: string
+  /** The individual dice faces; null for Player-entered rows, which keep only the total. */
+  faces: number[] | null
   result: number
   source: string
+  /** Who rolled, resolved by the API; null when unknown. */
+  rolledByDisplayName: string | null
+  /** When the roll happened; null for Player-entered rows, which record no time. */
+  rolledAt: string | null
 }
 
 /** The Occupation inputs plus what they resolve to; resolved values are null while unknown. */
@@ -231,6 +236,8 @@ export interface CharacterSheetView {
   gear: string | null
   derived: DerivedValues
   rollRecords: RollRecord[]
+  /** Which creation inputs the Roll Records already on the sheet lock. */
+  locks: { creationMethod: boolean }
 }
 
 /** A Standard rolling formula: (raw dice total + bonus) x multiplier (docs/game-rules section 2.1). */
