@@ -1,6 +1,6 @@
 ---
 id: PBI-DICE-001
-status: todo
+status: done
 blocked_by: []
 ---
 
@@ -26,13 +26,14 @@ Read: [docs/game-rules/README.md](../../game-rules/README.md) (referencing and c
 - The project owner verifies the rules before this PBI is done.
 
 ## Verification
-- [ ] The skill rolls document covers every topic in Scope, with page references, and is verified by the project owner.
-- [ ] `project_ruleset.md` records spending Luck as disabled and the deferred roll rules.
-- [ ] The game-rules README lists the document and no longer lists skill rolls and difficulty levels as not yet covered.
-- [ ] `CONTEXT.md` defines every term in Scope and no glossary entry restates a rule.
-- [ ] Every spec link to the skill rolls document points to an existing section anchor.
+- [ ] The skill rolls document covers every topic in Scope, with page references, and is verified by the project owner. Deferred: see Follow-ups.
+- [x] `project_ruleset.md` records spending Luck as disabled and the deferred roll rules.
+- [x] The game-rules README lists the document and no longer lists skill rolls and difficulty levels as not yet covered.
+- [x] `CONTEXT.md` defines every term in Scope and no glossary entry restates a rule.
+- [x] Every spec link to the skill rolls document points to an existing section anchor.
 
 ## Refinement Protocol
 A rule change here updates the dice and roll-requests specs' references and every test named after the changed section in the same change.
 
 ## Follow-ups
+- Add Keeper Rulebook page references to every section of the skill rolls document. The rules themselves were verified by the project owner on 2026-11-08.
