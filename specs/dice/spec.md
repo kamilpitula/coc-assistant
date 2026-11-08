@@ -32,10 +32,10 @@ Every dice result in the app is produced by the server, so no Player or Keeper c
 ## Contract
 
 ### Definition of Done
-- [ ] `SecureDiceRoller` returns faces from 1 to the number of sides using `RandomNumberGenerator`, and it is the only `IDiceRoller` registered in the API.
-- [ ] Rolling a `DiceExpression` returns every face and the total, and unit tests cover every expression form in project_ruleset.md section 5.5.
+- [x] `SecureDiceRoller` returns faces from 1 to the number of sides using `RandomNumberGenerator`, and it is the only `IDiceRoller` registered in the API.
+- [x] Rolling a `DiceExpression` returns every face and the total, and unit tests cover every expression form in project_ruleset.md section 5.5.
 - [ ] The percentile roll resolver has unit tests for every Success Level, for each Difficulty, and for Bonus and Penalty Dice, each naming its section of the skill rolls document.
-- [ ] No backend code outside `SecureDiceRoller` creates `Random` or calls `RandomNumberGenerator`.
+- [x] No backend code outside `SecureDiceRoller` creates `Random` or calls `RandomNumberGenerator`.
 
 ### Regression Guardrails
 - No dice result is ever accepted from a client.

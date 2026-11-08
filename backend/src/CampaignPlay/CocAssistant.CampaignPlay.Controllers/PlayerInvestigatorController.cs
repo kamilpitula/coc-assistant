@@ -83,6 +83,22 @@ public class PlayerInvestigatorController : InvestigatorControllerBase
         return view is null ? NotFound() : Ok(CharacterSheetWireFormat.ToCharacterSheetResponse(view));
     }
 
+    /// <summary>Rolls the characteristics the sheet still has no Roll Record for and returns the sheet.</summary>
+    [HttpPost("mine/character-sheet/rolls/characteristics")]
+    public async Task<ActionResult<CharacterSheetResponse>> RollMyCharacteristics(Guid campaignId, CancellationToken cancellationToken)
+    {
+        var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
+        if (accountId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _service.RollMyCharacteristicsAsync(campaignId, accountId.Value, cancellationToken);
+        return result.Outcome == InvestigatorCommandOutcome.Succeeded
+            ? Ok(CharacterSheetWireFormat.ToCharacterSheetResponse(result.View!))
+            : Failure(result.Outcome);
+    }
+
     /// <summary>Replaces a Draft or Changes Requested Character Sheet and returns it recomputed with its problems.</summary>
     [HttpPut("mine/character-sheet")]
     public async Task<ActionResult<CharacterSheetResponse>> ReplaceMyCharacterSheet(

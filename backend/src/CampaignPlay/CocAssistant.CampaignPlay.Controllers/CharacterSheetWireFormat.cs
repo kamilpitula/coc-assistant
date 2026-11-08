@@ -48,7 +48,6 @@ public static class CharacterSheetWireFormat
                 .Select(check => new EduImprovementCheckInput(check.Check, check.Gain))
                 .ToList(),
             request.LuckRolls ?? [],
-            ToValues(request.CharacteristicRolls),
             request.Occupation is null ? null : ToOccupation(request.Occupation),
             (request.Skills ?? [])
                 .Select(skill => new SkillAllocation(ToSkill(skill.Skill, skill.Specialization), skill.OccupationPoints, skill.PersonalInterestPoints))

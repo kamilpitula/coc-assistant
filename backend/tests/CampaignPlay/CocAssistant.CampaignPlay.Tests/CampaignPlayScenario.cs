@@ -44,13 +44,17 @@ public sealed class CampaignPlayScenario : IDisposable
 
     public static readonly ICreationRuleData RuleData = new EmbeddedResourceCreationRuleData();
 
-    public PlayerInvestigatorService PlayerService(CampaignPlayDbContext context, IInvestigatorRepository? investigators = null) =>
+    public PlayerInvestigatorService PlayerService(
+        CampaignPlayDbContext context,
+        IInvestigatorRepository? investigators = null,
+        IDiceRoller? roller = null) =>
         new(
             Fixture.CreateRepository(context),
             investigators ?? Fixture.CreateInvestigatorRepository(context),
             new InMemoryAccountDisplayNames(),
             new CharacterSheetEvaluator(new CreationRuleSets(RuleData, [EmbeddedResourceEraRuleData.For1920s()])),
             new PlayerEnteredRollSource(),
+            roller ?? new ScriptedDiceRoller([]),
             TimeProvider);
 
     public KeeperInvestigatorService KeeperService(CampaignPlayDbContext context) =>

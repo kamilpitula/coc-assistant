@@ -134,8 +134,8 @@ public static class CharacterSheetRequestRules
     {
         var method = request.CreationMethod is { } name && RulesOptionsWireFormat.IsCreationMethodName(name) ? Enum.Parse<CreationMethod>(name) : (CreationMethod?)null;
         var problems = new List<string>();
-        AddIf(problems, method == CreationMethod.StandardRolling && HasValues(request.Characteristics), "Standard rolling takes characteristicRolls, not characteristics.");
-        AddIf(problems, method != CreationMethod.StandardRolling && HasValues(request.CharacteristicRolls), "Only Standard rolling takes characteristicRolls.");
+        AddIf(problems, method == CreationMethod.StandardRolling && HasValues(request.Characteristics), "Standard rolling takes no characteristics; they are rolled by the server.");
+        AddIf(problems, HasValues(request.CharacteristicRolls), "characteristicRolls takes no values; characteristics are rolled by the server.");
         AddIf(problems, method == CreationMethod.QuickFire && request.Skills is { Length: > 0 }, "Quick fire takes quickFire, not skills.");
         AddIf(problems, method != CreationMethod.QuickFire && HasQuickFireInputs(request.QuickFire), "Only Quick fire takes quickFire.");
         AddIf(problems, request.Occupation is { CatalogId: not null, Custom: not null }, "Choose a catalog occupation or a custom one, not both.");

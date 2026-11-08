@@ -59,24 +59,20 @@ public class RollRecordTests
     }
 
     [Fact]
-    public void Section_2_1_Given_eight_characteristic_rolls_and_a_luck_roll_When_building_the_sheet_Then_there_is_one_player_entered_roll_record_per_result()
+    public void Section_2_1_Given_eight_characteristic_rolls_When_building_the_sheet_Then_there_is_one_player_entered_roll_record_per_result()
     {
         var rolls = CharacteristicValues.From(CharacteristicCodes.All.Select(characteristic => KeyValuePair.Create(characteristic, (int?)7)));
-        var inputs = new CharacterSheetInputs(
-            InvestigatorIdentity.Empty,
-            CreationMethod.StandardRolling,
-            CharacteristicValues.Empty,
-            CharacteristicValues.Empty,
-            [],
-            [11],
-            CharacteristicRolls: rolls);
 
-        var sheet = inputs.ToCharacterSheet(new PlayerEnteredRollSource());
+        var sheet = new CharacterSheetBuilder()
+            .WithCharacteristicRolls(rolls.Present.ToDictionary(characteristic => characteristic, characteristic => rolls[characteristic]))
+            .WithLuckRolls(11)
+            .WithEduImprovementChecks()
+            .Build();
 
         Assert.Equal(9, sheet.RollRecords.Count);
         Assert.All(sheet.RollRecords, record => Assert.Equal(RollSource.PlayerEntered, record.Source));
-        Assert.Contains(new RollRecord("Characteristic:STR", "3D6", 7, RollSource.PlayerEntered), sheet.RollRecords);
-        Assert.Contains(new RollRecord("Characteristic:SIZ", "2D6", 7, RollSource.PlayerEntered), sheet.RollRecords);
+        Assert.Contains(RollRecord.PlayerEntered("Characteristic:STR", "3D6", 7), sheet.RollRecords);
+        Assert.Contains(RollRecord.PlayerEntered("Characteristic:SIZ", "2D6", 7), sheet.RollRecords);
         Assert.Equal(rolls, sheet.CharacteristicRolls);
         Assert.Equal(CharacteristicValues.Empty, sheet.AssignedCharacteristics);
     }

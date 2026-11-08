@@ -25,6 +25,13 @@ public static class RollPurposes
     /// <summary>The Standard Rolling roll of a characteristic (section 2.1), for example "Characteristic:STR".</summary>
     public static string Characteristic(Characteristic characteristic) => $"Characteristic:{characteristic.ToCode()}";
 
+    /// <summary>Whether the purpose is a characteristic roll, which the Creation Method lock and PUT merging keep.</summary>
+    public static bool IsCharacteristicPurpose(string purpose) =>
+        CharacteristicPurposes.Contains(purpose);
+
+    private static readonly HashSet<string> CharacteristicPurposes =
+        CharacteristicCodes.All.Select(characteristic => $"Characteristic:{characteristic.ToCode()}").ToHashSet(StringComparer.Ordinal);
+
     /// <summary>The D100 roll of the 1-based EDU improvement check.</summary>
     public static string EduImprovementCheck(int checkNumber) => $"EduImprovement[{checkNumber}].Check";
 

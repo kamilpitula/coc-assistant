@@ -45,6 +45,10 @@ public sealed record CharacterSheet(
     public int? ResultFor(string purpose) =>
         RollRecords.Where(record => record.Purpose == purpose).Select(record => (int?)record.Result).SingleOrDefault();
 
+    /// <summary>Adds new Roll Records to the sheet; records already on it are never changed.</summary>
+    public CharacterSheet WithAddedRollRecords(IEnumerable<RollRecord> records) =>
+        this with { RollRecords = [.. RollRecords, .. records] };
+
     public bool Equals(CharacterSheet? other) =>
         other is not null
         && Identity == other.Identity

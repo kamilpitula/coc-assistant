@@ -66,7 +66,7 @@ function standardRollingProblems(rolls: CharacteristicInputs, rules: CharacterSh
     const dice = rules.standardRolling[code].dice
     const roll = rolls[code] ?? null
     return roll === null
-      ? [validationError('CharacteristicRollRequired', characteristicRollField(code), `Enter the ${dice} total for ${code}.`)]
+      ? [validationError('CharacteristicRollRequired', characteristicRollField(code), `Roll characteristics. ${code} has no ${dice} roll yet.`)]
       : diceProblems(characteristicRollField(code), diceRange(dice), roll)
   })
 }

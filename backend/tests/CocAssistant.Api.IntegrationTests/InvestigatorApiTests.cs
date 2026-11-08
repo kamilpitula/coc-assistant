@@ -189,35 +189,198 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         Assert.Equal(HttpStatusCode.BadRequest, (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body)).StatusCode);
     }
 
-    // Scenario: Standard Rolling records every Player-entered roll
+    // Scenario: the PUT body never carries dice results; characteristics are rolled by the server
     [Fact]
-    public async Task Given_standard_rolling_rolls_When_saving_the_sheet_Then_each_roll_is_a_player_entered_record_and_values_are_computed_from_them()
+    public async Task Given_characteristic_roll_values_When_saving_the_sheet_Then_it_is_a_bad_request()
     {
         await CreateDraftAsync();
         var body = new
         {
             identity = new { name = "Harvey Walters", age = 25 },
             creationMethod = "StandardRolling",
-            characteristicRolls = new Dictionary<string, int?> { ["STR"] = 12, ["CON"] = 12, ["DEX"] = 12, ["APP"] = 10, ["POW"] = 12, ["SIZ"] = 6, ["INT"] = 6, ["EDU"] = 4 },
-            ageEffects = new { deductions = new Dictionary<string, int?>(), eduImprovementChecks = new[] { new { check = (int?)30, gain = (int?)null } } },
-            luckRolls = new int?[] { 11 },
-            occupation = ValidAntiquarian,
-            skills = ValidSkillAllocations,
+            characteristicRolls = new Dictionary<string, int?> { ["STR"] = 12 },
         };
 
-        var response = await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body);
+        Assert.Equal(HttpStatusCode.BadRequest, (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body)).StatusCode);
+    }
+
+    private static object StandardRollingSheet() => new
+    {
+        identity = new { name = "Harvey Walters", age = 25 },
+        creationMethod = "StandardRolling",
+        ageEffects = new { deductions = new Dictionary<string, int?>(), eduImprovementChecks = new[] { new { check = (int?)30, gain = (int?)null } } },
+        luckRolls = new int?[] { 11 },
+    };
+
+    private Task<HttpResponseMessage> PutStandardRollingSheetAsync() =>
+        SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, StandardRollingSheet());
+
+    private static (int Count, int Sides) DiceParts(string dice)
+    {
+        var parts = dice.Split('D');
+        return (int.Parse(parts[0]), int.Parse(parts[1]));
+    }
+
+    // Scenario: Standard Rolling characteristics are rolled by the server
+    [Fact]
+    public async Task Given_a_standard_rolling_draft_When_rolling_characteristics_Then_all_eight_are_server_rolled()
+    {
+        await CreateDraftAsync();
+        (await PutStandardRollingSheetAsync()).EnsureSuccessStatusCode();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/characteristics", Player);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var json = await JsonAsync(response);
-        Assert.Equal(0, json.GetProperty("validationErrors").GetArrayLength());
-        var sheet = json.GetProperty("characterSheet");
-        Assert.Equal(6, sheet.GetProperty("characteristicRolls").GetProperty("SIZ").GetInt32());
-        Assert.Equal(60, sheet.GetProperty("characteristics").GetProperty("SIZ").GetProperty("assigned").GetInt32());
+        var sheet = (await JsonAsync(response)).GetProperty("characterSheet");
+        var records = sheet.GetProperty("rollRecords").EnumerateArray()
+            .Where(record => record.GetProperty("purpose").GetString()!.StartsWith("Characteristic:", StringComparison.Ordinal))
+            .ToList();
+        Assert.Equal(
+            new[] { "APP", "CON", "DEX", "EDU", "INT", "POW", "SIZ", "STR" },
+            records.Select(record => record.GetProperty("purpose").GetString()!.Replace("Characteristic:", string.Empty, StringComparison.Ordinal)).Order());
+        Assert.All(records, record =>
+        {
+            Assert.StartsWith("Characteristic:", record.GetProperty("purpose").GetString());
+            Assert.Equal("Server", record.GetProperty("source").GetString());
+            var (count, sides) = DiceParts(record.GetProperty("dice").GetString()!);
+            var faces = record.GetProperty("faces").EnumerateArray().Select(face => face.GetInt32()).ToList();
+            Assert.Equal(count, faces.Count);
+            Assert.All(faces, face => Assert.InRange(face, 1, sides));
+            Assert.Equal(faces.Sum(), record.GetProperty("result").GetInt32());
+            Assert.Equal(DisplayNameFor(Player), record.GetProperty("rolledByDisplayName").GetString());
+            Assert.NotEqual(JsonValueKind.Null, record.GetProperty("rolledAt").ValueKind);
+        });
+        Assert.True(sheet.GetProperty("locks").GetProperty("creationMethod").GetBoolean());
+        Assert.All(
+            new[] { "STR", "CON", "DEX", "APP", "POW", "SIZ", "INT", "EDU" },
+            code => Assert.NotEqual(JsonValueKind.Null, sheet.GetProperty("characteristicRolls").GetProperty(code).ValueKind));
+    }
+
+    // Scenario: characteristics are rolled only once
+    [Fact]
+    public async Task Given_rolled_characteristics_When_rolling_again_Then_it_conflicts_and_the_records_are_unchanged()
+    {
+        await CreateDraftAsync();
+        (await PutStandardRollingSheetAsync()).EnsureSuccessStatusCode();
+        var before = (await JsonAsync(await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/characteristics", Player)))
+            .GetProperty("characterSheet").GetProperty("rollRecords").ToString();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/characteristics", Player);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var after = (await JsonAsync(await SendAsync(HttpMethod.Get, $"{Investigators}/mine/character-sheet", Player)))
+            .GetProperty("characterSheet").GetProperty("rollRecords").ToString();
+        Assert.Equal(before, after);
+    }
+
+    // Scenario: rolls are refused outside a Standard Rolling Draft
+    [Fact]
+    public async Task Given_a_point_buy_draft_When_rolling_characteristics_Then_it_conflicts()
+    {
+        await CreateDraftAsync();
+        (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, ValidSheet())).EnsureSuccessStatusCode();
+
+        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/characteristics", Player)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_a_submitted_investigator_When_rolling_characteristics_Then_it_conflicts()
+    {
+        await CreateSubmittedAsync();
+
+        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/characteristics", Player)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_no_own_investigator_When_rolling_characteristics_Then_it_is_not_found()
+    {
+        await JoinAsPlayerAsync(_client, _campaignId, Keeper, OtherPlayer);
+        await CreateDraftAsync();
+
+        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/characteristics", OtherPlayer)).StatusCode);
+    }
+
+    // Scenario: rolled characteristics lock the Creation Method
+    [Fact]
+    public async Task Given_rolled_characteristics_When_saving_another_creation_method_Then_it_conflicts_and_nothing_changes()
+    {
+        await CreateDraftAsync();
+        (await PutStandardRollingSheetAsync()).EnsureSuccessStatusCode();
+        (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/characteristics", Player)).EnsureSuccessStatusCode();
+
+        var response = await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, ValidSheet());
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var sheet = (await JsonAsync(await SendAsync(HttpMethod.Get, $"{Investigators}/mine/character-sheet", Player))).GetProperty("characterSheet");
+        Assert.Equal("StandardRolling", sheet.GetProperty("creationMethod").GetString());
+        Assert.Equal(8, sheet.GetProperty("rollRecords").EnumerateArray().Count(record => record.GetProperty("purpose").GetString()!.StartsWith("Characteristic:", StringComparison.Ordinal)));
+    }
+
+    // Scenario: a Draft with typed-in characteristic totals from before keeps them
+    [Fact]
+    public async Task Given_a_legacy_draft_with_player_entered_rolls_When_rolling_Then_the_entered_rolls_are_kept_and_the_rest_are_server_rolled()
+    {
+        await CreateDraftAsync();
+        (await PutStandardRollingSheetAsync()).EnsureSuccessStatusCode();
+        await SeedPlayerEnteredCharacteristicRollsAsync([("STR", 12), ("CON", 11)]);
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/characteristics", Player);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var sheet = (await JsonAsync(response)).GetProperty("characterSheet");
         var records = sheet.GetProperty("rollRecords").EnumerateArray().ToList();
-        Assert.Equal(10, records.Count);
-        Assert.All(records, record => Assert.Equal("PlayerEntered", record.GetProperty("source").GetString()));
-        var size = records.Single(record => record.GetProperty("purpose").GetString() == "Characteristic:SIZ");
-        Assert.Equal(("2D6", 6), (size.GetProperty("dice").GetString(), size.GetProperty("result").GetInt32()));
+        Assert.Equal(8, records.Count(record => record.GetProperty("purpose").GetString()!.StartsWith("Characteristic:", StringComparison.Ordinal)));
+        foreach (var code in new[] { "STR", "CON" })
+        {
+            var record = records.Single(record => record.GetProperty("purpose").GetString() == $"Characteristic:{code}");
+            Assert.Equal("PlayerEntered", record.GetProperty("source").GetString());
+            Assert.Equal(JsonValueKind.Null, record.GetProperty("faces").ValueKind);
+            Assert.Equal(DisplayNameFor(Player), record.GetProperty("rolledByDisplayName").GetString());
+            Assert.Equal(JsonValueKind.Null, record.GetProperty("rolledAt").ValueKind);
+        }
+
+        Assert.Equal(6, records.Count(record => record.GetProperty("source").GetString() == "Server"));
+        Assert.Equal(12, sheet.GetProperty("characteristicRolls").GetProperty("STR").GetInt32());
+
+        // A PUT keeps them all.
+        (await PutStandardRollingSheetAsync()).EnsureSuccessStatusCode();
+        var kept = (await JsonAsync(await SendAsync(HttpMethod.Get, $"{Investigators}/mine/character-sheet", Player)))
+            .GetProperty("characterSheet").GetProperty("rollRecords").EnumerateArray().ToList();
+        Assert.Equal(8, kept.Count(record => record.GetProperty("purpose").GetString()!.StartsWith("Characteristic:", StringComparison.Ordinal)));
+        Assert.Equal(12, kept.Single(record => record.GetProperty("purpose").GetString() == "Characteristic:STR").GetProperty("result").GetInt32());
+    }
+
+    private async Task SeedPlayerEnteredCharacteristicRollsAsync((string Code, int Result)[] rolls)
+    {
+        var playerAccountId = await AccountIdAsync(Player);
+        using var scope = _factory.Services.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IInvestigatorRepository>();
+        var investigator = await repository.FindForPlayerAsync(_campaignId, playerAccountId, CancellationToken.None);
+        var sheet = CharacterSheet.Empty with
+        {
+            CreationMethod = CreationMethod.StandardRolling,
+            RollRecords = rolls.Select(roll =>
+            {
+                if (!CharacteristicCodes.TryParse(roll.Code, out var characteristic))
+                {
+                    throw new InvalidOperationException($"Unknown characteristic '{roll.Code}'.");
+                }
+
+                return RollRecord.PlayerEntered(
+                    RollPurposes.Characteristic(characteristic),
+                    StandardRolling.FormulaFor(characteristic).Dice.ToString(),
+                    roll.Result);
+            }).ToList(),
+        };
+        Assert.True(investigator!.ReplaceCharacterSheet(sheet, DateTimeOffset.UtcNow));
+        await repository.SaveChangesAsync(CancellationToken.None);
+    }
+
+    private async Task<Guid> AccountIdAsync(string oid)
+    {
+        var response = await _client.SendAsync(BuildRequest(HttpMethod.Get, "/api/account/me", oid));
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
     }
 
     [Fact]
