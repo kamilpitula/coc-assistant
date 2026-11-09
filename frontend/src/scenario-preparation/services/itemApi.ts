@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { handoutSummarySchema, richTextSchema, sceneStatusSchema } from '@/scenario-preparation/services/sceneApi'
 import { readValidationProblems } from '@/scenario-preparation/services/validationProblem'
@@ -107,7 +108,7 @@ const toBody = (input: ItemInput): string =>
 
 /** Calls GET .../items: the Campaign's Items with their Scene counts, ordered by name (Keeper only). */
 export async function getItems(accessToken: string, campaignId: string): Promise<ItemSummary[]> {
-  const response = await fetch(itemsUrl(campaignId), { headers: authHeaders(accessToken) })
+  const response = await apiFetch(itemsUrl(campaignId), { headers: authHeaders(accessToken) })
 
   if (response.status === 404) {
     throw new ItemNotFoundError()
@@ -121,7 +122,7 @@ export async function getItems(accessToken: string, campaignId: string): Promise
 
 /** Calls GET .../items/{itemId}; null when the API answers 404. */
 export async function getItem(accessToken: string, campaignId: string, itemId: string): Promise<Item | null> {
-  const response = await fetch(`${itemsUrl(campaignId)}/${itemId}`, { headers: authHeaders(accessToken) })
+  const response = await apiFetch(`${itemsUrl(campaignId)}/${itemId}`, { headers: authHeaders(accessToken) })
 
   if (response.status === 404) {
     return null
@@ -135,7 +136,7 @@ export async function getItem(accessToken: string, campaignId: string, itemId: s
 
 /** Calls POST .../items, which creates an Item. */
 export async function createItem(accessToken: string, campaignId: string, input: ItemInput): Promise<Item> {
-  const response = await fetch(itemsUrl(campaignId), { method: 'POST', headers: authHeaders(accessToken), body: toBody(input) })
+  const response = await apiFetch(itemsUrl(campaignId), { method: 'POST', headers: authHeaders(accessToken), body: toBody(input) })
 
   if (!response.ok) {
     return failWrite(response, 'create the Item')
@@ -146,7 +147,7 @@ export async function createItem(accessToken: string, campaignId: string, input:
 
 /** Calls PUT .../items/{itemId}, which replaces the name, Player-facing description, and Keeper notes. */
 export async function editItem(accessToken: string, campaignId: string, itemId: string, input: ItemInput): Promise<Item> {
-  const response = await fetch(`${itemsUrl(campaignId)}/${itemId}`, { method: 'PUT', headers: authHeaders(accessToken), body: toBody(input) })
+  const response = await apiFetch(`${itemsUrl(campaignId)}/${itemId}`, { method: 'PUT', headers: authHeaders(accessToken), body: toBody(input) })
 
   if (!response.ok) {
     return failWrite(response, 'save the Item')
@@ -163,7 +164,7 @@ async function readDeleteReason(response: Response): Promise<ItemInPlayReason> {
 
 /** Calls DELETE .../items/{itemId}. An Item that is already gone (404) counts as deleted; a 409 says why it is refused. */
 export async function deleteItem(accessToken: string, campaignId: string, itemId: string): Promise<void> {
-  const response = await fetch(`${itemsUrl(campaignId)}/${itemId}`, { method: 'DELETE', headers: authHeaders(accessToken) })
+  const response = await apiFetch(`${itemsUrl(campaignId)}/${itemId}`, { method: 'DELETE', headers: authHeaders(accessToken) })
 
   if (response.status === 409) {
     throw new ItemNotDeletableError(await readDeleteReason(response))

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { SCENARIO_FIELD_MESSAGES, type ScenarioFieldErrors } from '@/scenario-preparation/services/scenarioForm'
 import { readErrorKeys } from '@/scenario-preparation/services/validationProblem'
@@ -74,7 +75,7 @@ async function failWrite(response: Response, description: string): Promise<never
 
 /** Calls GET /api/campaigns/{id}/scenarios: the Campaign's Scenarios in Campaign order (Keeper only). */
 export async function getScenarios(accessToken: string, campaignId: string): Promise<Scenario[]> {
-  const response = await fetch(scenariosUrl(campaignId), { headers: authHeaders(accessToken) })
+  const response = await apiFetch(scenariosUrl(campaignId), { headers: authHeaders(accessToken) })
 
   if (response.status === 404) {
     throw new ScenarioNotFoundError()
@@ -88,7 +89,7 @@ export async function getScenarios(accessToken: string, campaignId: string): Pro
 
 /** Calls GET /api/campaigns/{id}/scenarios/{scenarioId}; null when the API answers 404. */
 export async function getScenario(accessToken: string, campaignId: string, scenarioId: string): Promise<Scenario | null> {
-  const response = await fetch(`${scenariosUrl(campaignId)}/${scenarioId}`, { headers: authHeaders(accessToken) })
+  const response = await apiFetch(`${scenariosUrl(campaignId)}/${scenarioId}`, { headers: authHeaders(accessToken) })
 
   if (response.status === 404) {
     return null
@@ -102,7 +103,7 @@ export async function getScenario(accessToken: string, campaignId: string, scena
 
 /** Calls POST /api/campaigns/{id}/scenarios, which appends the Scenario after the existing ones. */
 export async function createScenario(accessToken: string, campaignId: string, input: ScenarioInput): Promise<Scenario> {
-  const response = await fetch(scenariosUrl(campaignId), {
+  const response = await apiFetch(scenariosUrl(campaignId), {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ title: input.title, keeperNotes: input.keeperNotes }),
@@ -122,7 +123,7 @@ export async function editScenario(
   scenarioId: string,
   input: ScenarioInput,
 ): Promise<Scenario> {
-  const response = await fetch(`${scenariosUrl(campaignId)}/${scenarioId}`, {
+  const response = await apiFetch(`${scenariosUrl(campaignId)}/${scenarioId}`, {
     method: 'PUT',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ title: input.title, keeperNotes: input.keeperNotes }),
@@ -137,7 +138,7 @@ export async function editScenario(
 
 /** Calls PUT /api/campaigns/{id}/scenarios/order with every Scenario id; returns the Scenarios in the new order. */
 export async function reorderScenarios(accessToken: string, campaignId: string, scenarioIds: string[]): Promise<Scenario[]> {
-  const response = await fetch(`${scenariosUrl(campaignId)}/order`, {
+  const response = await apiFetch(`${scenariosUrl(campaignId)}/order`, {
     method: 'PUT',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ scenarioIds }),

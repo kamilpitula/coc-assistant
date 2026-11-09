@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { richTextSchema } from '@/scenario-preparation/services/sceneApi'
 import { readValidationProblems } from '@/scenario-preparation/services/validationProblem'
@@ -112,7 +113,7 @@ async function failGive(response: Response): Promise<never> {
 
 /** Calls POST .../items/{itemId}/give (Keeper only); returns the created give Reveal as the Keeper sees it. */
 export async function giveItem(accessToken: string, campaignId: string, itemId: string, investigatorId: string): Promise<KeeperReveal> {
-  const response = await fetch(`${itemsUrl(campaignId)}/${itemId}/give`, {
+  const response = await apiFetch(`${itemsUrl(campaignId)}/${itemId}/give`, {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ investigatorId }),
@@ -123,7 +124,7 @@ export async function giveItem(accessToken: string, campaignId: string, itemId: 
 
 /** Calls POST .../items/{itemId}/take-back (Keeper only); taking back an unheld Item is a no-op (204). */
 export async function takeBackItem(accessToken: string, campaignId: string, itemId: string): Promise<void> {
-  const response = await fetch(`${itemsUrl(campaignId)}/${itemId}/take-back`, { method: 'POST', headers: authHeaders(accessToken) })
+  const response = await apiFetch(`${itemsUrl(campaignId)}/${itemId}/take-back`, { method: 'POST', headers: authHeaders(accessToken) })
 
   if (response.status === 404) {
     throw new TakeBackItemNotFoundError()
@@ -137,7 +138,7 @@ export async function takeBackItem(accessToken: string, campaignId: string, item
 }
 
 async function getHeldItems<T>(accessToken: string, url: string, schema: z.ZodType<T>): Promise<T | null> {
-  const response = await fetch(url, { headers: authHeaders(accessToken) })
+  const response = await apiFetch(url, { headers: authHeaders(accessToken) })
 
   if (response.status === 404) {
     return null

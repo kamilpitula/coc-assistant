@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { occupationPointTermSchema } from '@/campaign-play/services/investigatorApi'
 import type { OccupationCatalog, OccupationSkillSlot, SkillCatalog } from '@/campaign-play/types/RuleData'
@@ -48,7 +49,7 @@ const skillCatalogSchema = z.object({
 })
 
 async function getRuleData<T>(accessToken: string, url: string, schema: z.ZodType<T>, what: string): Promise<T> {
-  const response = await fetch(url, { headers: authHeaders(accessToken) })
+  const response = await apiFetch(url, { headers: authHeaders(accessToken) })
   if (!response.ok) {
     throw new Error(`Failed to load the ${what} (${response.status})`)
   }

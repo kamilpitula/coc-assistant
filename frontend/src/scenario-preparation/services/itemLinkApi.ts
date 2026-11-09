@@ -1,3 +1,4 @@
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { itemLinkSchema, SceneFinishedError } from '@/scenario-preparation/services/sceneApi'
 import { readValidationProblems } from '@/scenario-preparation/services/validationProblem'
@@ -30,7 +31,7 @@ const linksUrl = (campaignId: string, scenarioId: string, sceneId: string): stri
  * answers 200 with the existing link, which is a success here too (design record PBI-SP-008, D4).
  */
 export async function linkItem(accessToken: string, campaignId: string, scenarioId: string, sceneId: string, itemId: string): Promise<ItemLink> {
-  const response = await fetch(linksUrl(campaignId, scenarioId, sceneId), {
+  const response = await apiFetch(linksUrl(campaignId, scenarioId, sceneId), {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ itemId }),
@@ -55,7 +56,7 @@ export async function linkItem(accessToken: string, campaignId: string, scenario
 
 /** Calls DELETE .../item-links/{linkId}. A link that is already gone (404) counts as unlinked. */
 export async function unlinkItem(accessToken: string, campaignId: string, scenarioId: string, sceneId: string, linkId: string): Promise<void> {
-  const response = await fetch(`${linksUrl(campaignId, scenarioId, sceneId)}/${linkId}`, {
+  const response = await apiFetch(`${linksUrl(campaignId, scenarioId, sceneId)}/${linkId}`, {
     method: 'DELETE',
     headers: authHeaders(accessToken),
   })

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import {
   CREATION_METHODS,
@@ -96,7 +97,7 @@ export async function createCampaign(
   accessToken: string,
   input: CreateCampaignInput,
 ): Promise<Campaign> {
-  const response = await fetch('/api/campaigns', {
+  const response = await apiFetch('/api/campaigns', {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: JSON.stringify({
@@ -119,7 +120,7 @@ export async function createCampaign(
  * who is not a member (404).
  */
 export async function getCampaign(accessToken: string, campaignId: string): Promise<CampaignView | null> {
-  const response = await fetch(`/api/campaigns/${campaignId}`, {
+  const response = await apiFetch(`/api/campaigns/${campaignId}`, {
     headers: authHeaders(accessToken),
   })
 
@@ -139,7 +140,7 @@ export async function getCampaign(accessToken: string, campaignId: string): Prom
  * API), or null for anyone who is not a Campaign Member (404).
  */
 export async function getCampaignMembers(accessToken: string, campaignId: string): Promise<CampaignMember[] | null> {
-  const response = await fetch(`/api/campaigns/${campaignId}/members`, {
+  const response = await apiFetch(`/api/campaigns/${campaignId}/members`, {
     headers: authHeaders(accessToken),
   })
 
@@ -160,7 +161,7 @@ export async function changeAllowedCreationMethods(
   campaignId: string,
   allowedCreationMethods: CreationMethod[],
 ): Promise<Campaign> {
-  const response = await fetch(`/api/campaigns/${campaignId}/allowed-creation-methods`, {
+  const response = await apiFetch(`/api/campaigns/${campaignId}/allowed-creation-methods`, {
     method: 'PUT',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ allowedCreationMethods }),
@@ -178,7 +179,7 @@ export async function getActiveInvite(
   accessToken: string,
   campaignId: string,
 ): Promise<CampaignInvite | null> {
-  const response = await fetch(`/api/campaigns/${campaignId}/invite`, {
+  const response = await apiFetch(`/api/campaigns/${campaignId}/invite`, {
     headers: authHeaders(accessToken),
   })
 
@@ -195,7 +196,7 @@ export async function getActiveInvite(
 
 /** Calls POST /api/campaigns/{id}/invite to issue (or return the existing) active Campaign Invite. */
 export async function issueInvite(accessToken: string, campaignId: string): Promise<CampaignInvite> {
-  const response = await fetch(`/api/campaigns/${campaignId}/invite`, {
+  const response = await apiFetch(`/api/campaigns/${campaignId}/invite`, {
     method: 'POST',
     headers: authHeaders(accessToken),
   })
@@ -212,7 +213,7 @@ export async function replaceInvite(
   accessToken: string,
   campaignId: string,
 ): Promise<CampaignInvite> {
-  const response = await fetch(`/api/campaigns/${campaignId}/invite/replace`, {
+  const response = await apiFetch(`/api/campaigns/${campaignId}/invite/replace`, {
     method: 'POST',
     headers: authHeaders(accessToken),
   })
@@ -226,7 +227,7 @@ export async function replaceInvite(
 
 /** Calls DELETE /api/campaigns/{id}/invite to revoke the active Campaign Invite. */
 export async function revokeInvite(accessToken: string, campaignId: string): Promise<void> {
-  const response = await fetch(`/api/campaigns/${campaignId}/invite`, {
+  const response = await apiFetch(`/api/campaigns/${campaignId}/invite`, {
     method: 'DELETE',
     headers: authHeaders(accessToken),
   })
@@ -238,7 +239,7 @@ export async function revokeInvite(accessToken: string, campaignId: string): Pro
 
 /** Calls POST /api/campaigns/join to admit the caller as a Player, mapping invite-state responses to an outcome. */
 export async function joinCampaign(accessToken: string, token: string): Promise<JoinResult> {
-  const response = await fetch('/api/campaigns/join', {
+  const response = await apiFetch('/api/campaigns/join', {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ token }),

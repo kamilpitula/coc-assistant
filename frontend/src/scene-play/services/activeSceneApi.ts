@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { keeperRevealSchema, playerRevealSchema } from '@/scene-play/services/revealSchemas'
 import type { ActiveScene, KeeperActiveScene, StartSceneInput } from '@/scene-play/types/ActiveScene'
@@ -74,7 +75,7 @@ const NOT_PREPARED_TITLE = 'Only a Prepared Scene can be started.'
 
 /** Calls GET .../active-scene: the Active Scene as the caller may see it, or null when no Scene is Active (204). */
 export async function getActiveScene(accessToken: string, campaignId: string): Promise<ActiveScene | null> {
-  const response = await fetch(`/api/campaigns/${campaignId}/active-scene`, { headers: authHeaders(accessToken) })
+  const response = await apiFetch(`/api/campaigns/${campaignId}/active-scene`, { headers: authHeaders(accessToken) })
 
   if (response.status === 204) {
     return null
@@ -92,7 +93,7 @@ export function parseKeeperScene(body: unknown): KeeperActiveScene {
 
 /** Calls POST .../scenes/{sceneId}/start (Keeper only); finishActiveScene finishes the Active Scene in the same transaction. */
 export async function startScene(accessToken: string, campaignId: string, sceneId: string, input: StartSceneInput): Promise<KeeperActiveScene> {
-  const response = await fetch(`/api/campaigns/${campaignId}/scenes/${sceneId}/start`, {
+  const response = await apiFetch(`/api/campaigns/${campaignId}/scenes/${sceneId}/start`, {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: JSON.stringify(input),
@@ -114,7 +115,7 @@ export async function startScene(accessToken: string, campaignId: string, sceneI
 
 /** Calls POST .../active-scene/finish (Keeper only). */
 export async function finishActiveScene(accessToken: string, campaignId: string): Promise<void> {
-  const response = await fetch(`/api/campaigns/${campaignId}/active-scene/finish`, { method: 'POST', headers: authHeaders(accessToken) })
+  const response = await apiFetch(`/api/campaigns/${campaignId}/active-scene/finish`, { method: 'POST', headers: authHeaders(accessToken) })
 
   if (response.status === 409) {
     throw new NoActiveSceneError()
@@ -126,7 +127,7 @@ export async function finishActiveScene(accessToken: string, campaignId: string)
 
 /** Calls PUT .../active-scene/present-investigators (Keeper only): the complete new list. */
 export async function changeInvestigatorsPresent(accessToken: string, campaignId: string, presentInvestigatorIds: string[]): Promise<KeeperActiveScene> {
-  const response = await fetch(`/api/campaigns/${campaignId}/active-scene/present-investigators`, {
+  const response = await apiFetch(`/api/campaigns/${campaignId}/active-scene/present-investigators`, {
     method: 'PUT',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ presentInvestigatorIds }),

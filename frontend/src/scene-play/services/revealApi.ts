@@ -1,3 +1,4 @@
+import { apiFetch } from '@/shared/services/apiFetch'
 import { bearerHeaders, authHeaders } from '@/campaign-play/services/authHeaders'
 import { readValidationProblems } from '@/scenario-preparation/services/validationProblem'
 import { keeperRevealSchema } from '@/scene-play/services/revealSchemas'
@@ -64,7 +65,7 @@ async function failReveal(response: Response): Promise<never> {
 
 /** Calls POST .../active-scene/reveals (Keeper only); returns the created Reveal as the Keeper sees it (PBI-SPL-002 D5). */
 export async function revealToInvestigators(accessToken: string, campaignId: string, input: RevealInput): Promise<KeeperReveal> {
-  const response = await fetch(`/api/campaigns/${campaignId}/active-scene/reveals`, {
+  const response = await apiFetch(`/api/campaigns/${campaignId}/active-scene/reveals`, {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ subject: { type: input.subjectType, id: input.subjectId }, investigatorIds: input.investigatorIds }),
@@ -75,7 +76,7 @@ export async function revealToInvestigators(accessToken: string, campaignId: str
 
 /** Calls GET .../reveals/{revealId}/file with the bearer token and returns the snapshotted bytes; an img tag cannot send the header. */
 export async function getRevealFile(accessToken: string, campaignId: string, revealId: string): Promise<Blob> {
-  const response = await fetch(`/api/campaigns/${campaignId}/reveals/${revealId}/file`, { headers: bearerHeaders(accessToken) })
+  const response = await apiFetch(`/api/campaigns/${campaignId}/reveals/${revealId}/file`, { headers: bearerHeaders(accessToken) })
 
   if (response.status === 404) {
     throw new RevealFileNotFoundError()

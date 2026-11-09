@@ -1,6 +1,6 @@
 ---
 id: PBI-DEP-002
-status: todo
+status: done
 blocked_by: []
 ---
 
@@ -25,11 +25,12 @@ Read: `specs/deployment/spec.md` (Application changes, API configuration in `dev
 - Keep startup migrations and OpenAPI limited to `Development`.
 
 ## Verification
-- [ ] Unit tests cover `/health` (200, no database access), the CORS policy (configured origin allowed, other origin refused, no origins configured), each DbContext's retry configuration, the scene transaction under the execution strategy, and the API base URL (set and unset) for API calls and the hub.
-- [ ] `docker build -f backend/Dockerfile .` succeeds and the container answers `/health` on port 8080.
-- [ ] The full E2E suite passes in CI.
+- [x] Unit tests cover `/health` (200, no database access), the CORS policy (configured origin allowed, other origin refused, no origins configured), each DbContext's retry configuration, the scene transaction under the execution strategy, and the API base URL (set and unset) for API calls and the hub.
+- [x] `docker build -f backend/Dockerfile .` succeeds and the container answers `/health` on port 8080.
+- [ ] The full E2E suite passes in CI. Deferred: see Follow-ups.
 
 ## Refinement Protocol
 Change `specs/deployment/spec.md` and ADR 0031 together with the code; ADR 0009 if the hub URL handling changes.
 
 ## Follow-ups
+- Run the full E2E suite in CI on the merge to `master` (the local worktree has no E2E prerequisites installed: no `e2e/node_modules`, no `e2e/.certs`, so the suite was not run locally).

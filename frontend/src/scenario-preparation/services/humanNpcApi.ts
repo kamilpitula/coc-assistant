@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { failNonPlayerEntityWrite, NonPlayerEntityInUseError, NonPlayerEntityNotFoundError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import { difficultySchema, richTextSchema } from '@/scenario-preparation/services/profileSchemas'
@@ -78,7 +79,7 @@ const humanNpcsUrl = (campaignId: string): string => `/api/campaigns/${campaignI
 
 /** Calls GET .../human-npcs/{humanNpcId}; null when the API answers 404. */
 export async function getHumanNpc(accessToken: string, campaignId: string, humanNpcId: string): Promise<HumanNpc | null> {
-  const response = await fetch(`${humanNpcsUrl(campaignId)}/${humanNpcId}`, { headers: authHeaders(accessToken) })
+  const response = await apiFetch(`${humanNpcsUrl(campaignId)}/${humanNpcId}`, { headers: authHeaders(accessToken) })
 
   if (response.status === 404) {
     return null
@@ -92,7 +93,7 @@ export async function getHumanNpc(accessToken: string, campaignId: string, human
 
 /** Calls POST .../human-npcs, which creates a Human NPC from its name and age. */
 export async function createHumanNpc(accessToken: string, campaignId: string, name: string, age: number): Promise<HumanNpc> {
-  const response = await fetch(humanNpcsUrl(campaignId), {
+  const response = await apiFetch(humanNpcsUrl(campaignId), {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ name, age }),
@@ -107,7 +108,7 @@ export async function createHumanNpc(accessToken: string, campaignId: string, na
 
 /** Calls PUT .../human-npcs/{humanNpcId}, which replaces the name and the whole NPC Profile. */
 export async function editHumanNpc(accessToken: string, campaignId: string, humanNpcId: string, input: HumanNpcInput): Promise<HumanNpc> {
-  const response = await fetch(`${humanNpcsUrl(campaignId)}/${humanNpcId}`, {
+  const response = await apiFetch(`${humanNpcsUrl(campaignId)}/${humanNpcId}`, {
     method: 'PUT',
     headers: authHeaders(accessToken),
     body: JSON.stringify(input),
@@ -122,7 +123,7 @@ export async function editHumanNpc(accessToken: string, campaignId: string, huma
 
 /** Calls POST .../human-npcs/{humanNpcId}/duplicate, which creates a copy in the same Campaign; the server names it. */
 export async function duplicateHumanNpc(accessToken: string, campaignId: string, humanNpcId: string): Promise<HumanNpc> {
-  const response = await fetch(`${humanNpcsUrl(campaignId)}/${humanNpcId}/duplicate`, {
+  const response = await apiFetch(`${humanNpcsUrl(campaignId)}/${humanNpcId}/duplicate`, {
     method: 'POST',
     headers: authHeaders(accessToken),
   })
@@ -136,7 +137,7 @@ export async function duplicateHumanNpc(accessToken: string, campaignId: string,
 
 /** Calls DELETE .../human-npcs/{humanNpcId}. */
 export async function deleteHumanNpc(accessToken: string, campaignId: string, humanNpcId: string): Promise<void> {
-  const response = await fetch(`${humanNpcsUrl(campaignId)}/${humanNpcId}`, {
+  const response = await apiFetch(`${humanNpcsUrl(campaignId)}/${humanNpcId}`, {
     method: 'DELETE',
     headers: authHeaders(accessToken),
   })

@@ -12,9 +12,9 @@ builder.Services.AddControllers()
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-builder.Services.AddIdentityInfrastructure(builder.Configuration);
-builder.Services.AddCampaignPlayInfrastructure(builder.Configuration);
-builder.Services.AddScenarioPreparationInfrastructure(builder.Configuration);
+builder.Services.AddIdentityInfrastructure(builder.Configuration, DatabaseRetryPolicy.Apply);
+builder.Services.AddCampaignPlayInfrastructure(builder.Configuration, DatabaseRetryPolicy.Apply);
+builder.Services.AddScenarioPreparationInfrastructure(builder.Configuration, DatabaseRetryPolicy.Apply);
 builder.Services.AddScenePlayInfrastructure();
 builder.Services.AddCampaignPlayLiveUpdates();
 builder.Services.AddLiveTransport(builder.Configuration);
@@ -23,8 +23,13 @@ builder.Services.AddSingleton<CocAssistant.GameRules.Domain.Dice.IDiceRoller, Co
 builder.Services
     .AddAuthentication(Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("EntraId"));
+builder.Services.AddHealthChecks();
+builder.Services.AddCrossOrigin(builder.Configuration);
+builder.Services.AddIngressForwardedHeaders();
 
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -43,11 +48,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseCors();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
-app.MapCampaignHub();
+app.MapHealthChecks("/health").AllowAnonymous();
+app.MapControllers().RequireCors(CrossOriginRegistration.PolicyName);
+app.MapCampaignHub().RequireCors(CrossOriginRegistration.PolicyName);
 
 app.Run();
 

@@ -13,7 +13,7 @@ public class HandoutFileStoreRegistrationTests
     {
         var services = new ServiceCollection();
         services.AddSingleton(configuration);
-        services.AddScenarioPreparationInfrastructure(configuration);
+        services.AddScenarioPreparationInfrastructure(configuration, _ => { });
         return services.BuildServiceProvider().GetRequiredService<IHandoutFileStore>();
     }
 
@@ -52,7 +52,7 @@ public class HandoutFileStoreRegistrationTests
     {
         var services = new ServiceCollection();
 
-        var registration = Record.Exception(() => services.AddScenarioPreparationInfrastructure(Configuration()));
+        var registration = Record.Exception(() => services.AddScenarioPreparationInfrastructure(Configuration(), _ => { }));
 
         Assert.Null(registration);
     }

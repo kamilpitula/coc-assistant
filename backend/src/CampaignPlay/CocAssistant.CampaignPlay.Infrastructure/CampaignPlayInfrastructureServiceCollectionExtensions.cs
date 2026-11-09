@@ -2,7 +2,7 @@ namespace CocAssistant.CampaignPlay.Infrastructure;
 
 public static class CampaignPlayInfrastructureServiceCollectionExtensions
 {
-    public static IServiceCollection AddCampaignPlayInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddCampaignPlayInfrastructure(this IServiceCollection services, IConfiguration configuration, Action<SqlServerDbContextOptionsBuilder> configureSqlServer)
     {
         services.AddScoped<IDomainEventDispatcher, ServiceProviderDomainEventDispatcher>();
         services.AddScoped<DomainEventDispatchInterceptor>();
@@ -10,7 +10,11 @@ public static class CampaignPlayInfrastructureServiceCollectionExtensions
             options
                 .UseSqlServer(
                     configuration.GetConnectionString("CampaignPlayDb"),
-                    sql => sql.MigrationsHistoryTable("__CampaignPlayMigrationsHistory"))
+                    sql =>
+                    {
+                        sql.MigrationsHistoryTable("__CampaignPlayMigrationsHistory");
+                        configureSqlServer(sql);
+                    })
                 .AddInterceptors(serviceProvider.GetRequiredService<DomainEventDispatchInterceptor>()));
 
         services.AddScoped<ICampaignRepository, EfCampaignRepository>();

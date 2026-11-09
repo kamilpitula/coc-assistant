@@ -1,3 +1,4 @@
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { cluesSchema } from '@/scene-play/services/revealSchemas'
 import type { Clues } from '@/scene-play/types/Reveal'
@@ -24,13 +25,13 @@ async function readClues(response: Response, description: string): Promise<Clues
 
 /** Calls GET .../investigators/mine/clues (Player only); null when the API answers 404 (no Approved Investigator). */
 export async function getMyClues(accessToken: string, campaignId: string): Promise<Clues | null> {
-  return readClues(await fetch(`/api/campaigns/${campaignId}/investigators/mine/clues`, { headers: authHeaders(accessToken) }), 'the Clues')
+  return readClues(await apiFetch(`/api/campaigns/${campaignId}/investigators/mine/clues`, { headers: authHeaders(accessToken) }), 'the Clues')
 }
 
 /** Calls GET .../investigators/{investigatorId}/clues (Keeper only); null when the API answers 404. */
 export async function getInvestigatorClues(accessToken: string, campaignId: string, investigatorId: string): Promise<Clues | null> {
   return readClues(
-    await fetch(`/api/campaigns/${campaignId}/investigators/${investigatorId}/clues`, { headers: authHeaders(accessToken) }),
+    await apiFetch(`/api/campaigns/${campaignId}/investigators/${investigatorId}/clues`, { headers: authHeaders(accessToken) }),
     'the Clues',
   )
 }

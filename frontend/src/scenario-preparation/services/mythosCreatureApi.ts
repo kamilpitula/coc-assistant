@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { failNonPlayerEntityWrite, NonPlayerEntityInUseError, NonPlayerEntityNotFoundError } from '@/scenario-preparation/services/nonPlayerEntityApi'
 import { difficultySchema, richTextSchema } from '@/scenario-preparation/services/profileSchemas'
@@ -107,7 +108,7 @@ const mythosCreaturesUrl = (campaignId: string): string => `/api/campaigns/${cam
 
 /** Calls GET .../mythos-creatures/{mythosCreatureId}; null when the API answers 404. */
 export async function getMythosCreature(accessToken: string, campaignId: string, mythosCreatureId: string): Promise<MythosCreature | null> {
-  const response = await fetch(`${mythosCreaturesUrl(campaignId)}/${mythosCreatureId}`, { headers: authHeaders(accessToken) })
+  const response = await apiFetch(`${mythosCreaturesUrl(campaignId)}/${mythosCreatureId}`, { headers: authHeaders(accessToken) })
 
   if (response.status === 404) {
     return null
@@ -121,7 +122,7 @@ export async function getMythosCreature(accessToken: string, campaignId: string,
 
 /** Calls POST .../mythos-creatures, which creates a Mythos Creature from its name alone. */
 export async function createMythosCreature(accessToken: string, campaignId: string, name: string): Promise<MythosCreature> {
-  const response = await fetch(mythosCreaturesUrl(campaignId), {
+  const response = await apiFetch(mythosCreaturesUrl(campaignId), {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ name }),
@@ -141,7 +142,7 @@ export async function editMythosCreature(
   mythosCreatureId: string,
   input: MythosCreatureInput,
 ): Promise<MythosCreature> {
-  const response = await fetch(`${mythosCreaturesUrl(campaignId)}/${mythosCreatureId}`, {
+  const response = await apiFetch(`${mythosCreaturesUrl(campaignId)}/${mythosCreatureId}`, {
     method: 'PUT',
     headers: authHeaders(accessToken),
     body: JSON.stringify(input),
@@ -156,7 +157,7 @@ export async function editMythosCreature(
 
 /** Calls POST .../mythos-creatures/{mythosCreatureId}/duplicate, which creates a copy in the same Campaign; the server names it. */
 export async function duplicateMythosCreature(accessToken: string, campaignId: string, mythosCreatureId: string): Promise<MythosCreature> {
-  const response = await fetch(`${mythosCreaturesUrl(campaignId)}/${mythosCreatureId}/duplicate`, {
+  const response = await apiFetch(`${mythosCreaturesUrl(campaignId)}/${mythosCreatureId}/duplicate`, {
     method: 'POST',
     headers: authHeaders(accessToken),
   })
@@ -170,7 +171,7 @@ export async function duplicateMythosCreature(accessToken: string, campaignId: s
 
 /** Calls DELETE .../mythos-creatures/{mythosCreatureId}. */
 export async function deleteMythosCreature(accessToken: string, campaignId: string, mythosCreatureId: string): Promise<void> {
-  const response = await fetch(`${mythosCreaturesUrl(campaignId)}/${mythosCreatureId}`, {
+  const response = await apiFetch(`${mythosCreaturesUrl(campaignId)}/${mythosCreatureId}`, {
     method: 'DELETE',
     headers: authHeaders(accessToken),
   })

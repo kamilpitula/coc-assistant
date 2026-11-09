@@ -97,21 +97,25 @@ public class EfSceneRepository : ISceneRepository
     public Task SaveChangesAsync(CancellationToken cancellationToken) => SceneSaveChanges.SaveAsync(_dbContext, cancellationToken);
 
     // The only transaction in the codebase (ADR 0025). Disposing it without a commit rolls both saves back.
+    // It runs inside the execution strategy as a single attempt: a replay would repeat an in-memory start.
     public Task SaveFinishThenStartAsync(Func<SceneTransitionOutcome> startScene, CancellationToken cancellationToken) =>
         SceneSaveChanges.ExecuteAsync(
             _dbContext,
-            async () =>
-            {
-                await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-                await _dbContext.SaveChangesAsync(cancellationToken);
-                if (startScene() != SceneTransitionOutcome.Transitioned)
+            () => SingleAttemptExecution.ExecuteOnceAsync(
+                _dbContext.Database.CreateExecutionStrategy(),
+                async () =>
                 {
-                    throw new InvalidOperationException("The Scene was checked before the finish and must start.");
-                }
+                    await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                    if (startScene() != SceneTransitionOutcome.Transitioned)
+                    {
+                        throw new InvalidOperationException("The Scene was checked before the finish and must start.");
+                    }
 
-                await _dbContext.SaveChangesAsync(cancellationToken);
-                await transaction.CommitAsync(cancellationToken);
-            });
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                    await transaction.CommitAsync(cancellationToken);
+                },
+                cancellationToken));
 
     private IQueryable<Scene> WithChildren() =>
         _dbContext.Scenes

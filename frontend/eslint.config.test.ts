@@ -68,3 +68,24 @@ describe('ADR-0028 slice direction', () => {
     expect(await ruleIdsFor(code, 'src/scene-play/components/active-scene-panel/active-scene-panel.tsx')).not.toContain('no-restricted-imports')
   })
 })
+
+describe('bare fetch ban', () => {
+  it('flags a bare fetch call in a service', async () => {
+    const code = "export async function me(token: string): Promise<unknown> {\n  return fetch('/api/account/me', { headers: { Authorization: `Bearer ${token}` } })\n}\n"
+    expect(await ruleIdsFor(code, 'src/shared/services/accountApi.ts')).toContain('no-restricted-globals')
+  })
+
+  it('accepts the fetch call inside apiFetch', async () => {
+    const code = "export function apiFetch(input: string, init?: RequestInit): Promise<Response> {\n  return fetch(input, init)\n}\n"
+    expect(await ruleIdsFor(code, 'src/shared/services/apiFetch.ts')).not.toContain('no-restricted-globals')
+  })
+
+  it.each([
+    'src/shared/services/accountApi.test.ts',
+    'src/campaign-play/components/investigator-wizard/investigator-wizard.stories.tsx',
+    'src/shared/test-support/fakeFetch.ts',
+  ])('accepts a bare fetch call in %s', async (filePath) => {
+    const code = "export const fakeFetch = (): Promise<Response> => fetch('/api/account/me')\n"
+    expect(await ruleIdsFor(code, filePath)).not.toContain('no-restricted-globals')
+  })
+})

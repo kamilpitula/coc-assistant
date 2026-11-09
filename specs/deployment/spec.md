@@ -45,12 +45,12 @@ The environment is built for near-zero cost. It runs in a Visual Studio subscrip
   - `ConnectionStrings__IdentityDb`, `ConnectionStrings__CampaignPlayDb`, `ConnectionStrings__ScenarioPreparationDb`: the same database, `Authentication=Active Directory Managed Identity` with the API identity's client id. No password.
   - `EntraId__Instance`, `EntraId__TenantId`, `EntraId__ClientId`: the existing Entra External ID tenant (`docs/entra-external-id-setup.md`), from `dev.tfvars`.
   - Secrets: `Azure__SignalR__ConnectionString` (`backend/src/CocAssistant.Api/LiveTransportRegistration.cs`) and `Azure__Storage__ConnectionString` (`backend/src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Infrastructure/HandoutFileStoreRegistration.cs`), held as Container Apps secrets. No Key Vault.
-  - `Cors__AllowedOrigins`: the Static Web App URL.
+  - `Cors__AllowedOrigins__0`: the Static Web App URL.
 - **Application changes:**
   - `GET /health`: anonymous, returns 200 when the process is up, and does not open a database connection, so probes never keep the database awake. Used by the Container App's liveness and readiness probes.
   - CORS policy in the API: allows the origins in `Cors:AllowedOrigins` with credentials, for `/api/**` and the SignalR hub including negotiate. With no origins configured, no cross-origin request is allowed.
   - The API honours `X-Forwarded-Proto` and `X-Forwarded-For` from the Container Apps ingress, which terminates TLS.
-  - All three DbContexts use `EnableRetryOnFailure` with a retry window of at least 60 seconds, covering a free-offer database resume. Code that opens its own transaction (`backend/src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Infrastructure/EfSceneRepository.cs`) runs it inside the context's execution strategy.
+  - All three DbContexts use `EnableRetryOnFailure` with a retry window of at least 60 seconds, covering a free-offer database resume. Code that opens its own transaction (`backend/src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Infrastructure/EfSceneRepository.cs`) runs it inside the context's execution strategy as a single attempt, never replayed (ADR 0025).
   - Frontend: `VITE_API_BASE_URL` prefixes every `/api` request and the SignalR hub URL. When it is unset or empty, URLs stay relative, so local development and the E2E harness keep using the Vite proxy unchanged.
   - `frontend/public/staticwebapp.config.json`: navigation fallback to `index.html` for client-side routes.
 - **GitHub variables in `dev`:** repository variables `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_PLAN_CLIENT_ID` (the plan workflow uses no environment); Environment `dev` variables `AZURE_DEPLOY_CLIENT_ID` plus `VITE_ENTRA_CLIENT_ID`, `VITE_ENTRA_AUTHORITY`, `VITE_API_SCOPE`; `VITE_ENTRA_REDIRECT_URI` and `VITE_API_BASE_URL` come from the Terraform outputs in the same run.

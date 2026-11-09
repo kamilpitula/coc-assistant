@@ -23,6 +23,13 @@ export default defineConfig([
     },
     rules: {
       complexity: ['error', 10],
+      'no-restricted-globals': [
+        'error',
+        {
+          name: 'fetch',
+          message: 'Use apiFetch from @/shared/services/apiFetch so the call honors VITE_API_BASE_URL.',
+        },
+      ],
       'no-restricted-syntax': [
         'error',
         {
@@ -35,6 +42,13 @@ export default defineConfig([
           message: 'Import packages before local (@/ or relative) modules.',
         },
       ],
+    },
+  },
+  {
+    // apiFetch wraps the fetch global; tests, stories, and shared test-support fakes may call it directly.
+    files: ['src/shared/services/apiFetch.ts', 'src/shared/test-support/**', '**/*.test.{ts,tsx}', '**/*.stories.tsx'],
+    rules: {
+      'no-restricted-globals': 'off',
     },
   },
   {
