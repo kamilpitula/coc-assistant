@@ -20,13 +20,13 @@ import { ValidationErrorSummary } from '@/campaign-play/components/validation-er
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import { useMyCharacterSheet } from '@/campaign-play/hooks/useMyInvestigator'
 import { useOccupationCatalog, useSkillCatalog } from '@/campaign-play/hooks/useRuleData'
-import { useWizardMoves, type PendingAction, type WizardMove } from '@/campaign-play/hooks/useWizardMoves'
+import { useWizardMoves, type CreationRollGroup, type PendingAction, type RollStatus, type WizardMove } from '@/campaign-play/hooks/useWizardMoves'
 import { validateCharacterSheet } from '@/campaign-play/services/characterSheetValidation'
 import { fieldId } from '@/campaign-play/services/fieldIds'
 import { skillValuesLeft } from '@/campaign-play/services/quickFireValues'
 import { inlineErrorsForStep, isFieldTouched, mergeClientAndServerErrors } from '@/campaign-play/services/visibleErrors'
 import { stepOfField, stepStates, WIZARD_STEPS, type WizardStep } from '@/campaign-play/services/wizardProgress'
-import { characterSheetFormReducer, inputsForSave, inputsFromSheet } from '@/campaign-play/state/characterSheetForm'
+import { characterSheetFormReducer, inputsForSave, inputsFromSheet, savedRollsFromSheet } from '@/campaign-play/state/characterSheetForm'
 import type { CreationMethod } from '@/campaign-play/types/Campaign'
 import type { CharacterSheetInputs, CharacterSheetView as CharacterSheetData, ValidationError } from '@/campaign-play/types/CharacterSheet'
 import type { MyCharacterSheet } from '@/campaign-play/types/Investigator'
@@ -205,17 +205,27 @@ function WizardForm({ campaignId, step, sheet, allowedMethods, occupationCatalog
       return
     }
     setTouched((previous) => new Set(previous).add(field))
-    setClientErrors(validateCharacterSheet(inputs, sheet.rules, bracket, sheet.characterSheet.characteristicRolls))
+    setClientErrors(validateCharacterSheet(inputs, sheet.rules, bracket, savedRollsFromSheet(sheet.characterSheet)))
   }
 
-  const saveInputs = () => inputsForSave(inputs, step, bracket, sheet.rules)
+  const saveInputs = () => inputsForSave(inputs, step, bracket)
   const go = (move: WizardMove) => void moves.move(move, saveInputs())
+
+  // The props of one creation roll group: its own status, or idle while another group is rolling.
+  const rollProps = (group: CreationRollGroup) => ({
+    status: (
+      moves.rollStatus.group === null || moves.rollStatus.group === group
+        ? moves.rollStatus
+        : { state: 'idle', group: null }
+    ) as RollStatus,
+    onRoll: () => void moves.roll(group, saveInputs()),
+    onRetry: () => void moves.retryRoll(),
+  })
 
   const selectError = (field: string) => {
     const owner = stepOfField(field)
     if (owner === step) {
-      // Characteristic roll errors focus the inline roll action (ux.md 6.8; A11Y-12).
-      document.getElementById(field.startsWith('characteristicRolls.') ? fieldId('characteristicRolls') : fieldId(field))?.focus()
+      rollFocusTarget(field)?.focus()
     } else {
       moves.toStep(owner)
     }
@@ -242,6 +252,12 @@ function WizardForm({ campaignId, step, sheet, allowedMethods, occupationCatalog
             <ValidationErrorSummary ref={summary} errors={summaryErrors} onSelect={selectError} />
           )}
           {moves.failedMove && <SaveFailed onRetry={() => void moves.retry(saveInputs())} />}
+          {moves.moveConflict && (
+            <Alert role="alert">
+              <CircleAlert aria-hidden="true" />
+              <AlertDescription>Your Investigator changed elsewhere, so we reloaded it.</AlertDescription>
+            </Alert>
+          )}
           {moves.actionFailed && (
             <Alert variant="destructive" role="alert">
               <CircleAlert aria-hidden="true" />
@@ -249,7 +265,7 @@ function WizardForm({ campaignId, step, sheet, allowedMethods, occupationCatalog
             </Alert>
           )}
 
-          {step === 'identity' && <IdentityStep {...stepProps} playerName={sheet.playerName} />}
+          {step === 'identity' && <IdentityStep {...stepProps} playerName={sheet.playerName} sheet={sheet.characterSheet} />}
           {step === 'characteristics' && (
             <CharacteristicsStep
               {...stepProps}
@@ -259,14 +275,19 @@ function WizardForm({ campaignId, step, sheet, allowedMethods, occupationCatalog
               allowedMethods={allowedMethods}
               sheet={sheet.characterSheet}
               status={sheet.status}
-              roll={{
-                status: moves.rollStatus,
-                onRoll: () => void moves.rollCharacteristics(saveInputs()),
-                onRetry: () => void moves.retryRoll(),
-              }}
+              roll={rollProps('characteristics')}
+              luckRoll={rollProps('luck')}
             />
           )}
-          {step === 'age' && <AgeEffectsStep {...stepProps} rules={sheet.rules} bracket={bracket} />}
+          {step === 'age' && (
+            <AgeEffectsStep
+              {...stepProps}
+              rules={sheet.rules}
+              bracket={bracket}
+              sheet={sheet.characterSheet}
+              roll={rollProps('eduImprovementCheck')}
+            />
+          )}
           {step === 'occupation' && <OccupationStep {...skillStepProps} />}
           {step === 'occupation-skills' && <OccupationSkillsStep {...skillStepProps} />}
           {step === 'personal-interests' && (
@@ -317,6 +338,30 @@ interface StepActionsProps {
   pending: PendingAction | null
   onMove: (move: WizardMove) => void
   onSubmit: () => void
+}
+
+/**
+ * The element an error summary link focuses on the current step for a creation roll field: the inline roll action,
+ * or the results heading when there is no action (ux.md section 6.8; A11Y-12).
+ */
+function rollFocusTarget(field: string): HTMLElement | null {
+  if (field.startsWith('characteristicRolls.')) {
+    return document.getElementById(fieldId('characteristicRolls'))
+  }
+
+  if (field.startsWith('luckRolls')) {
+    return document.getElementById(fieldId('luckRolls')) ?? document.getElementById(fieldId('luckHeading'))
+  }
+
+  const edu = /^ageEffects\.eduImprovementChecks\[(\d+)\]/.exec(field)
+  if (edu) {
+    return (
+      document.getElementById(fieldId('eduImprovementCheckRoll')) ??
+      document.getElementById(fieldId(`ageEffects.eduImprovementChecks[${edu[1]}]`))
+    )
+  }
+
+  return document.getElementById(fieldId(field))
 }
 
 /** Back, Save and exit, and Save and continue or Submit to Keeper (ux.md section 4.3); none is sticky (A11Y-7). */

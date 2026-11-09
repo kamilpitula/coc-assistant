@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { InvestigatorConflictError } from '@/campaign-play/services/investigatorApi'
 
 import {
+  bracket45,
   emptySheetView,
   myCharacterSheet,
   occupationCatalog,
@@ -18,11 +19,13 @@ import { navigateSpy, routerState } from '@/shared/test-support/routerMock'
 
 import { InvestigatorWizard } from './investigator-wizard'
 
-const { mockUseSheet, mockSave, mockRoll, mockSubmit, mockDelete, mockUseCampaign } = vi.hoisted(() => ({
+const { mockUseSheet, mockSave, mockRoll, mockRollLuck, mockRollEdu, mockSubmit, mockDelete, mockUseCampaign } = vi.hoisted(() => ({
   mockUseSheet: vi.fn(),
   mockUseCampaign: vi.fn(),
   mockSave: vi.fn(),
   mockRoll: vi.fn(),
+  mockRollLuck: vi.fn(),
+  mockRollEdu: vi.fn(),
   mockSubmit: vi.fn(),
   mockDelete: vi.fn(),
 }))
@@ -32,6 +35,8 @@ vi.mock('@/campaign-play/hooks/useMyInvestigator', () => ({
   useMyCharacterSheet: mockUseSheet,
   useSaveCharacterSheet: () => ({ mutateAsync: mockSave, isPending: false }),
   useRollCharacteristics: () => ({ mutateAsync: mockRoll, isPending: false }),
+  useRollLuck: () => ({ mutateAsync: mockRollLuck, isPending: false }),
+  useRollEduImprovementCheck: () => ({ mutateAsync: mockRollEdu, isPending: false }),
   useSubmitInvestigator: () => ({ mutateAsync: mockSubmit, isPending: false }),
   useDeleteInvestigator: () => ({ mutateAsync: mockDelete, isPending: false }),
 }))
@@ -410,7 +415,7 @@ describe('InvestigatorWizard', () => {
     allowing('StandardRolling')
     const draft = myCharacterSheet({ characterSheet: { ...emptySheetView(), creationMethod: 'StandardRolling' }, validationErrors: [] })
     const rolled = myCharacterSheet({
-      characterSheet: sheetView({ creationMethod: 'StandardRolling', characteristicRolls: {}, locks: { creationMethod: true } }),
+      characterSheet: sheetView({ creationMethod: 'StandardRolling', characteristicRolls: {}, locks: { creationMethod: true, ageBracket: false, edu: false } }),
       validationErrors: [],
     })
     withSheet(draft)
@@ -431,7 +436,7 @@ describe('InvestigatorWizard', () => {
     allowing('StandardRolling')
     const draft = myCharacterSheet({ characterSheet: { ...emptySheetView(), creationMethod: 'StandardRolling' }, validationErrors: [] })
     const rolled = myCharacterSheet({
-      characterSheet: sheetView({ creationMethod: 'StandardRolling', characteristicRolls: {}, locks: { creationMethod: true } }),
+      characterSheet: sheetView({ creationMethod: 'StandardRolling', characteristicRolls: {}, locks: { creationMethod: true, ageBracket: false, edu: false } }),
       validationErrors: [],
     })
     const refetch = vi.fn().mockResolvedValue({ data: rolled })
@@ -477,6 +482,98 @@ describe('InvestigatorWizard', () => {
     await userEvent.click(within(await screen.findByRole('alert')).getByRole('link', { name: 'Roll your characteristics.' }))
 
     expect(screen.getByRole('button', { name: 'Roll characteristics' })).toHaveFocus()
+  })
+
+  it('reloads and stays on the step with a notice when a move meets a conflict', async () => {
+    const draft = myCharacterSheet({ characterSheet: sheetView(), validationErrors: [] })
+    const refetch = vi.fn().mockResolvedValue({ data: draft })
+    withSheet(draft, refetch)
+    mockSave.mockRejectedValue(new InvestigatorConflictError())
+    render(<InvestigatorWizard campaignId="c1" step="identity" />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }))
+
+    expect(await screen.findByText('Your Investigator changed elsewhere, so we reloaded it.')).toBeInTheDocument()
+    expect(refetch).toHaveBeenCalled()
+    expect(navigateSpy).not.toHaveBeenCalled()
+  })
+
+  it('UX-36: confirming the Luck roll saves first, then rolls, and announces the result', async () => {
+    const draft = myCharacterSheet({ characterSheet: sheetView({ luckRolls: [] }), validationErrors: [] })
+    const rolled = myCharacterSheet({ characterSheet: sheetView({ luckRolls: [11] }), validationErrors: [] })
+    withSheet(draft)
+    mockSave.mockResolvedValue(draft)
+    mockRollLuck.mockResolvedValue(rolled)
+    render(<InvestigatorWizard campaignId="c1" step="characteristics" />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Roll Luck' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Roll now' }))
+
+    await waitFor(() => expect(mockRollLuck).toHaveBeenCalledTimes(1))
+    expect(mockSave).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText('Luck rolled.')).toBeInTheDocument()
+  })
+
+  it('A11Y-12: the error summary link for a Luck error focuses the roll action', async () => {
+    const luckError = problem('LuckRequired', 'luckRolls[0]', 'Roll your Luck.')
+    const draft = myCharacterSheet({ characterSheet: sheetView({ luckRolls: [] }), validationErrors: [luckError] })
+    withSheet(draft)
+    mockSave.mockResolvedValue(draft)
+    render(<InvestigatorWizard campaignId="c1" step="characteristics" />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }))
+    await userEvent.click(within(await screen.findByRole('alert')).getByRole('link', { name: 'Roll your Luck.' }))
+
+    expect(screen.getByRole('button', { name: 'Roll Luck' })).toHaveFocus()
+  })
+
+  it('UX-37: confirming the EDU check roll saves first, then rolls, and announces the result', async () => {
+    const draft = myCharacterSheet({
+      characterSheet: sheetView({
+        identity: { ...validInputs.identity, age: 45 },
+        ageEffects: { bracket: bracket45, deductions: {}, eduImprovementChecks: [] },
+        luckRolls: [11],
+      }),
+      validationErrors: [],
+    })
+    const rolled = myCharacterSheet({
+      characterSheet: sheetView({
+        identity: { ...validInputs.identity, age: 45 },
+        luckRolls: [11],
+      }),
+      validationErrors: [],
+    })
+    withSheet(draft)
+    mockSave.mockResolvedValue(draft)
+    mockRollEdu.mockResolvedValue(rolled)
+    render(<InvestigatorWizard campaignId="c1" step="age" />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Roll EDU check 1' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Roll now' }))
+
+    await waitFor(() => expect(mockRollEdu).toHaveBeenCalledTimes(1))
+    expect(mockSave).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText('EDU check 1 rolled.')).toBeInTheDocument()
+  })
+
+  it('A11Y-12: the error summary link for an EDU check error focuses the roll action', async () => {
+    const eduError = problem('EduImprovementCheckRequired', 'ageEffects.eduImprovementChecks[0].check', 'Roll EDU check 1.')
+    const draft = myCharacterSheet({
+      characterSheet: sheetView({
+        identity: { ...validInputs.identity, age: 45 },
+        ageEffects: { bracket: bracket45, deductions: {}, eduImprovementChecks: [] },
+        luckRolls: [11],
+      }),
+      validationErrors: [eduError],
+    })
+    withSheet(draft)
+    mockSave.mockResolvedValue(draft)
+    render(<InvestigatorWizard campaignId="c1" step="age" />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }))
+    await userEvent.click(within(await screen.findByRole('alert')).getByRole('link', { name: 'Roll EDU check 1.' }))
+
+    expect(screen.getByRole('button', { name: 'Roll EDU check 1' })).toHaveFocus()
   })
 
   it('saves the occupation picked on the Occupation step', async () => {

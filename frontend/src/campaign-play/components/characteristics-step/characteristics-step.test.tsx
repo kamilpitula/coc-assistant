@@ -22,7 +22,7 @@ import {
 
 import { CharacteristicsStep } from './characteristics-step'
 
-function base(overrides: { rollStatus?: RollStatus } = {}) {
+function base(overrides: { rollStatus?: RollStatus; luckRollStatus?: RollStatus } = {}) {
   return {
     onAction: vi.fn(),
     onBlur: vi.fn(),
@@ -34,6 +34,11 @@ function base(overrides: { rollStatus?: RollStatus } = {}) {
     status: 'Draft' as const,
     roll: {
       status: overrides.rollStatus ?? ({ state: 'idle' } as RollStatus),
+      onRoll: vi.fn(),
+      onRetry: vi.fn(),
+    },
+    luckRoll: {
+      status: overrides.luckRollStatus ?? ({ state: 'idle' } as RollStatus),
       onRoll: vi.fn(),
       onRetry: vi.fn(),
     },
@@ -67,12 +72,33 @@ function serverCharacteristicRecords(): RollRecord[] {
   }))
 }
 
+/** A sheet whose Luck rolls are Server records, as the roll response returns them. */
+function serverLucked(rolls: (number | null)[]): CharacterSheetView {
+  const purposes = ['Luck', 'Luck:SecondRoll']
+  return sheetView({
+    luckRolls: rolls,
+    rollRecords: rolls.flatMap((result, index) =>
+      result === null
+        ? []
+        : [{
+            purpose: purposes[index],
+            dice: '3D6',
+            faces: [3, 3, 3],
+            result,
+            source: 'Server',
+            rolledByDisplayName: 'Ada Lovelace',
+            rolledAt: '2026-11-08T14:30:00+00:00',
+          }],
+    ),
+  })
+}
+
 /** A fully server-rolled sheet, as the roll response returns it: raw totals kept, Server records attached. */
 const rolledSheet = sheetView({
   creationMethod: 'StandardRolling',
   characteristicRolls: { STR: 12, CON: 12, DEX: 12, APP: 10, POW: 12, SIZ: 6, INT: 6, EDU: 4 },
   rollRecords: serverCharacteristicRecords(),
-  locks: { creationMethod: true },
+  locks: { creationMethod: true, ageBracket: false, edu: false },
 })
 
 /** specs/character-sheet/ux.md section 6.2 (Point buy with its Luck rows); UX-9, UX-10, UX-20. */
@@ -93,34 +119,20 @@ describe('CharacteristicsStep', () => {
     expect(screen.getByText('Points used: 460 of 460')).toBeInTheDocument()
   })
 
-  it('UX-20: takes Luck as a 3D6 roll outside the points, with one row at age 25', () => {
-    render(<CharacteristicsStep inputs={validInputs} errors={{}} {...base()} />)
-
-    expect(screen.getByRole('heading', { name: 'Luck' })).toBeInTheDocument()
-    expect(screen.getByText("Luck isn't bought with points. Roll 3D6 at the table and enter the total.")).toBeInTheDocument()
-    expect(screen.getByLabelText('Luck, 3D6 total')).toHaveValue(11)
-    expect(screen.getByText('= 55')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Luck, second roll, 3D6 total')).not.toBeInTheDocument()
-  })
-
-  it('UX-20: adds the second Luck row and the kept value in the two-roll age bracket', () => {
-    const inputs = { ...validInputs, identity: { ...validInputs.identity, age: 17 }, luckRolls: [11, 13] }
-    render(<CharacteristicsStep inputs={inputs} errors={{}} {...base()} bracket={bracket17} />)
-
-    expect(screen.getByLabelText('Luck, second roll, 3D6 total')).toHaveValue(13)
-    expect(screen.getByText('Your age lets you roll Luck twice and keep the higher result.')).toBeInTheDocument()
-    expect(screen.getByText('Luck kept: 65')).toBeInTheDocument()
-  })
-
-  it('reports characteristic and Luck changes', async () => {
+  it('reports characteristic changes', async () => {
     const props = base()
     render(<CharacteristicsStep inputs={emptyInputs} errors={{}} {...props} onAction={props.onAction} />)
 
     await userEvent.type(screen.getByLabelText('STR'), '6')
-    await userEvent.type(screen.getByLabelText('Luck, 3D6 total'), '9')
 
     expect(props.onAction).toHaveBeenCalledWith({ type: 'characteristic', code: 'STR', value: 6 })
-    expect(props.onAction).toHaveBeenCalledWith({ type: 'luckRoll', index: 0, value: 9 })
+  })
+
+  it('UX-36: Luck is not counted in "Points used"', () => {
+    render(<CharacteristicsStep inputs={validInputs} errors={{}} {...base()} sheet={serverLucked([11])} />)
+
+    expect(screen.getByText('Points used: 460 of 460')).toBeInTheDocument()
+    expect(screen.getByText('Luck 55')).toBeInTheDocument()
   })
 
   it('lists warnings under "Worth checking" without announcing them as an alert', () => {
@@ -177,6 +189,245 @@ describe('CharacteristicsStep', () => {
     await userEvent.click(screen.getByRole('option', { name: '70' }))
 
     expect(props.onAction).toHaveBeenCalledWith({ type: 'characteristic', code: 'DEX', value: 70 })
+  })
+})
+
+/** specs/character-sheet/ux.md section 6.2 "Luck, rolled by the app" (UX-36; PBI-DICE-003). */
+describe('CharacteristicsStep Luck', () => {
+  const unrolled25 = sheetView({
+    identity: { ...validInputs.identity, age: 25 },
+    ageEffects: { bracket: bracket25, deductions: {}, eduImprovementChecks: [] },
+    luckRolls: [],
+    rollRecords: [],
+  })
+  const unrolled17 = sheetView({
+    identity: { ...validInputs.identity, age: 17 },
+    ageEffects: { bracket: bracket17, deductions: {}, eduImprovementChecks: [] },
+    luckRolls: [],
+    rollRecords: [],
+  })
+
+  it('UX-36: asks for a valid age first when none is saved', () => {
+    render(<CharacteristicsStep inputs={validInputs} errors={{}} {...base()} sheet={emptySheetView()} bracket={null} />)
+
+    expect(screen.getByText('Enter a valid age on the Identity step to roll Luck.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Roll/ })).not.toBeInTheDocument()
+  })
+
+  it('UX-36: confirms once before rolling, naming the age range that becomes fixed', async () => {
+    const props = base()
+    render(
+      <CharacteristicsStep inputs={validInputs} errors={{}} {...props} sheet={unrolled25} luckRoll={props.luckRoll} />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Roll Luck' }))
+
+    const dialog = screen.getByRole('alertdialog', { name: 'Roll Luck?' })
+    expect(dialog).toHaveTextContent(
+      "The app rolls Luck (3D6) once. You can't roll it again, and your age must then stay between 20 and 39.",
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Roll now' }))
+
+    expect(props.luckRoll.onRoll).toHaveBeenCalledTimes(1)
+  })
+
+  it('UX-36: names both rolls in the two-roll age bracket', async () => {
+    const props = base()
+    render(
+      <CharacteristicsStep inputs={validInputs} errors={{}} {...props} sheet={unrolled17} bracket={bracket17} luckRoll={props.luckRoll} />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Roll Luck' }))
+
+    expect(screen.getByRole('alertdialog', { name: 'Roll Luck?' })).toHaveTextContent(
+      "The app rolls Luck (3D6) twice at your age, keeping the higher result. You can't roll it again, and your age must then stay between 15 and 19.",
+    )
+  })
+
+  it('UX-36: after rolling, shows the value, announces it, and focuses the heading', () => {
+    render(
+      <CharacteristicsStep
+        inputs={validInputs}
+        errors={{}}
+        {...base({ luckRollStatus: { state: 'rolled', group: 'luck' } })}
+        sheet={serverLucked([11])}
+      />,
+    )
+
+    expect(screen.getByText('Luck 55')).toBeInTheDocument()
+    expect(screen.getByText('Luck rolled.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Luck' })).toHaveFocus()
+    expect(screen.queryByRole('button', { name: /Roll/ })).not.toBeInTheDocument()
+  })
+
+  it('UX-36: shows both rolls and the kept value in the two-roll bracket', () => {
+    const sheet = sheetView({
+      identity: { ...validInputs.identity, age: 17 },
+      ageEffects: { bracket: bracket17, deductions: {}, eduImprovementChecks: [] },
+      luckRolls: [9, 11],
+      rollRecords: [
+        { purpose: 'Luck', dice: '3D6', faces: [3, 3, 3], result: 9, source: 'Server', rolledByDisplayName: 'Ada Lovelace', rolledAt: '2026-11-08T14:30:00+00:00' },
+        { purpose: 'Luck:SecondRoll', dice: '3D6', faces: [4, 4, 3], result: 11, source: 'Server', rolledByDisplayName: 'Ada Lovelace', rolledAt: '2026-11-08T14:30:00+00:00' },
+      ],
+    })
+    render(
+      <CharacteristicsStep
+        inputs={validInputs}
+        errors={{}}
+        {...base()}
+        sheet={sheet}
+        bracket={bracket17}
+      />,
+    )
+
+    expect(screen.getByText('Luck rolls 45 and 55, kept 55')).toBeInTheDocument()
+  })
+
+  it('G2: marks a typed-in Luck as entered by you', () => {
+    render(<CharacteristicsStep inputs={validInputs} errors={{}} {...base()} />)
+
+    expect(screen.getByText('Luck 55 (entered by you)')).toBeInTheDocument()
+  })
+
+  it('G2: rolls only the second roll when the first was typed in', async () => {
+    const props = base()
+    const sheet = sheetView({
+      identity: { ...validInputs.identity, age: 17 },
+      ageEffects: { bracket: bracket17, deductions: {}, eduImprovementChecks: [] },
+      luckRolls: [11, null],
+    })
+    render(
+      <CharacteristicsStep inputs={validInputs} errors={{}} {...props} sheet={sheet} bracket={bracket17} luckRoll={props.luckRoll} />,
+    )
+
+    expect(screen.getByText('Luck 55 (entered by you)')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Roll your second Luck roll' }))
+
+    const dialog = screen.getByRole('alertdialog', { name: 'Roll your second Luck roll?' })
+    expect(dialog).toHaveTextContent('The app rolls your second Luck roll (3D6) once, keeping the higher result.')
+    expect(dialog.textContent).not.toContain('twice')
+  })
+
+  it('shows the inline error once, under the action', () => {
+    const message = 'Roll Luck.'
+    render(
+      <CharacteristicsStep inputs={validInputs} errors={{ 'luckRolls[0]': message }} {...base()} sheet={unrolled25} />,
+    )
+
+    const inline = screen.getByText(message)
+    expect(screen.getByRole('button', { name: 'Roll Luck' })).toHaveAttribute('aria-describedby', inline.id)
+  })
+
+  it('says the Luck was already rolled after a 409 that found results', () => {
+    render(
+      <CharacteristicsStep
+        inputs={validInputs}
+        errors={{}}
+        {...base({ luckRollStatus: { state: 'alreadyRolled', group: 'luck' } })}
+        sheet={sheetView({ luckRolls: [11] })}
+      />,
+    )
+
+    expect(screen.getByText('Your Luck was already rolled.')).toBeInTheDocument()
+  })
+
+  it('retries a failed save and a failed roll', async () => {
+    const saveFailed = base({ luckRollStatus: { state: 'saveFailed', group: 'luck' } })
+    const { rerender } = render(
+      <CharacteristicsStep inputs={validInputs} errors={{}} {...saveFailed} sheet={unrolled25} luckRoll={saveFailed.luckRoll} />,
+    )
+
+    expect(screen.getByText("We couldn't save your Investigator. Your changes are still here - try again.")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(saveFailed.luckRoll.onRoll).toHaveBeenCalledTimes(1)
+
+    const rollFailed = base({ luckRollStatus: { state: 'rollFailed', group: 'luck' } })
+    rerender(
+      <CharacteristicsStep inputs={validInputs} errors={{}} {...rollFailed} sheet={unrolled25} luckRoll={rollFailed.luckRoll} />,
+    )
+
+    expect(screen.getByText("We couldn't roll your Luck. Try again.")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(rollFailed.luckRoll.onRetry).toHaveBeenCalledTimes(1)
+  })
+
+  it('reloads instead of retrying after a conflict', () => {
+    const { rerender } = render(
+      <CharacteristicsStep
+        inputs={validInputs}
+        errors={{}}
+        {...base({ luckRollStatus: { state: 'saveConflict', group: 'luck' } })}
+        sheet={unrolled25}
+      />,
+    )
+
+    expect(screen.getByText('Your Investigator changed elsewhere, so we reloaded it.')).toBeInTheDocument()
+
+    rerender(
+      <CharacteristicsStep
+        inputs={validInputs}
+        errors={{}}
+        {...base({ luckRollStatus: { state: 'rollConflict', group: 'luck' } })}
+        sheet={unrolled25}
+      />,
+    )
+
+    expect(screen.getByText("We couldn't roll your Luck. Reload the page and try again.")).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
+  })
+
+  it('disables the roll action while the roll is pending', () => {
+    render(
+      <CharacteristicsStep
+        inputs={validInputs}
+        errors={{}}
+        {...base({ luckRollStatus: { state: 'pending', group: 'luck' } })}
+        sheet={unrolled25}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Roll Luck' })).toBeDisabled()
+  })
+})
+
+/** specs/character-sheet/ux.md section 6.8 "Creation locks" under Point buy and Quick fire (UX-38, G1; PBI-DICE-003). */
+describe('CharacteristicsStep EDU lock', () => {
+  it('disables the Point buy EDU input with the reason once an EDU check is rolled', () => {
+    const sheet = sheetView({ locks: { creationMethod: false, ageBracket: true, edu: true } })
+    render(<CharacteristicsStep inputs={validInputs} errors={{}} {...base()} sheet={sheet} />)
+
+    expect(screen.getByLabelText('EDU')).toBeDisabled()
+    expect(screen.getByText('Locked because you rolled an EDU check.')).toBeInTheDocument()
+  })
+
+  it('replaces the Quick fire EDU Select with text and the reason once an EDU check is rolled', () => {
+    const inputs = { ...emptyInputs, creationMethod: 'QuickFire' as const, characteristics: { EDU: 80 } }
+    const sheet = { ...emptySheetView(), creationMethod: 'QuickFire' as const, locks: { creationMethod: false, ageBracket: true, edu: true } }
+    render(
+      <CharacteristicsStep inputs={inputs} errors={{}} {...base()} sheet={sheet} allowedMethods={['QuickFire']} />,
+    )
+
+    expect(screen.queryByRole('combobox', { name: 'EDU' })).not.toBeInTheDocument()
+    expect(screen.getByText('EDU 80')).toBeInTheDocument()
+    expect(screen.getByText('Locked because you rolled an EDU check.')).toBeInTheDocument()
+  })
+
+  it('shows the method as text with the EDU reason once an EDU check is rolled', () => {
+    const sheet = sheetView({ locks: { creationMethod: false, ageBracket: true, edu: true } })
+    render(
+      <CharacteristicsStep
+        inputs={validInputs}
+        errors={{}}
+        {...base()}
+        sheet={sheet}
+        allowedMethods={['StandardRolling', 'PointBuy', 'QuickFire']}
+        status="Draft"
+      />,
+    )
+
+    expect(screen.getByText('Creation method: Point buy')).toBeInTheDocument()
+    expect(screen.getByText('Locked because you rolled an EDU check. To use another method, start over.')).toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
   })
 })
 
@@ -277,7 +528,7 @@ describe('CharacteristicsStep Standard rolling', () => {
       <CharacteristicsStep
         inputs={rolledInputs}
         errors={{}}
-        {...base({ rollStatus: { state: 'rolled' } })}
+        {...base({ rollStatus: { state: 'rolled', group: 'characteristics' } })}
         sheet={rolledSheet}
         allowedMethods={['StandardRolling']}
       />,
@@ -292,7 +543,7 @@ describe('CharacteristicsStep Standard rolling', () => {
       <CharacteristicsStep
         inputs={rolledInputs}
         errors={{}}
-        {...base({ rollStatus: { state: 'alreadyRolled' } })}
+        {...base({ rollStatus: { state: 'alreadyRolled', group: 'characteristics' } })}
         sheet={rolledSheet}
         allowedMethods={['StandardRolling']}
       />,
@@ -318,7 +569,7 @@ describe('CharacteristicsStep Standard rolling', () => {
   })
 
   it('UX-35: a failed save keeps the changes and retries the roll action', async () => {
-    const props = base({ rollStatus: { state: 'saveFailed' } })
+    const props = base({ rollStatus: { state: 'saveFailed', group: 'characteristics' } })
     render(
       <CharacteristicsStep
         inputs={standardInputs}
@@ -337,7 +588,7 @@ describe('CharacteristicsStep Standard rolling', () => {
   })
 
   it('UX-35: a failed roll retries without the dialog', async () => {
-    const props = base({ rollStatus: { state: 'rollFailed' } })
+    const props = base({ rollStatus: { state: 'rollFailed', group: 'characteristics' } })
     render(
       <CharacteristicsStep
         inputs={standardInputs}
@@ -360,7 +611,7 @@ describe('CharacteristicsStep Standard rolling', () => {
       <CharacteristicsStep
         inputs={standardInputs}
         errors={{}}
-        {...base({ rollStatus: { state: 'saveConflict' } })}
+        {...base({ rollStatus: { state: 'saveConflict', group: 'characteristics' } })}
         sheet={standardSheet}
         allowedMethods={['StandardRolling']}
       />,
@@ -374,7 +625,7 @@ describe('CharacteristicsStep Standard rolling', () => {
       <CharacteristicsStep
         inputs={standardInputs}
         errors={{}}
-        {...base({ rollStatus: { state: 'rollConflict' } })}
+        {...base({ rollStatus: { state: 'rollConflict', group: 'characteristics' } })}
         sheet={standardSheet}
         allowedMethods={['StandardRolling']}
       />,
@@ -407,7 +658,7 @@ describe('CharacteristicsStep Standard rolling', () => {
       <CharacteristicsStep
         inputs={standardInputs}
         errors={{}}
-        {...base({ rollStatus: { state: 'pending' } })}
+        {...base({ rollStatus: { state: 'pending', group: 'characteristics' } })}
         sheet={standardSheet}
         allowedMethods={['StandardRolling']}
       />,

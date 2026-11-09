@@ -61,8 +61,7 @@ describe('CreationMethodChoice', () => {
     expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
   })
 
-  it('UX-32: tells a Draft that starting over is the way to another method', () => {
-    render(
+  it('UX-32: tells a Draft that starting over is the way to another method', () => {    render(
       <CreationMethodChoice
         allowed={[...allMethods]}
         value="StandardRolling"
@@ -75,5 +74,24 @@ describe('CreationMethodChoice', () => {
     )
 
     expect(screen.getByText('Locked because your characteristics are rolled. To use another method, start over.')).toBeInTheDocument()
+  })
+
+  it('UX-38 and G1: shows the method as text with the EDU reason once an EDU check is rolled', () => {
+    render(
+      <CreationMethodChoice
+        allowed={[...allMethods]}
+        value="PointBuy"
+        locked
+        lockReason="eduCheck"
+        canStartOver
+        needsConfirmation={false}
+        clearsSkills={() => false}
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Creation method: Point buy')).toBeInTheDocument()
+    expect(screen.getByText('Locked because you rolled an EDU check. To use another method, start over.')).toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
   })
 })

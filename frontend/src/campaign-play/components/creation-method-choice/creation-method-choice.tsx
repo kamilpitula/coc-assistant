@@ -21,6 +21,8 @@ interface CreationMethodChoiceProps {
   value: CreationMethod | null
   /** True when a characteristic already has a Roll Record: the method shows as text with the lock reason (ux.md 6.2). */
   locked?: boolean
+  /** Which lock applies: rolled characteristics, or a rolled EDU check under Point buy or Quick fire (ux.md 6.2, G1). */
+  lockReason?: 'characteristics' | 'eduCheck'
   /** True in Draft, where starting over is the way to another method once locked. */
   canStartOver?: boolean
   /** True when values have been entered, so switching asks for confirmation first. */
@@ -34,12 +36,15 @@ interface CreationMethodChoiceProps {
 /**
  * The locked creation method text (UX-32): the method name plus the lock reason.
  */
-function LockedCreationMethod({ value, canStartOver }: { value: CreationMethod; canStartOver: boolean }) {
+function LockedCreationMethod({ value, lockReason, canStartOver }: { value: CreationMethod; lockReason: 'characteristics' | 'eduCheck'; canStartOver: boolean }) {
+  const reason =
+    lockReason === 'eduCheck' ? 'Locked because you rolled an EDU check.' : 'Locked because your characteristics are rolled.'
   return (
     <div className="flex flex-col gap-2">
       <p className="text-sm">Creation method: {creationMethodLabels[value].name}</p>
       <p className="text-sm text-muted-foreground">
-        Locked because your characteristics are rolled.{canStartOver ? ' To use another method, start over.' : ''}
+        {reason}
+        {canStartOver ? ' To use another method, start over.' : ''}
       </p>
     </div>
   )
@@ -100,7 +105,7 @@ function SwitchConfirmationDialog({
  * cancelling keeps the method and returns focus to the radio that opened the dialog (A11Y-8). Once characteristics
  * are rolled the method is locked and shows as text with the reason (UX-32).
  */
-export function CreationMethodChoice({ allowed, value, locked = false, canStartOver = false, needsConfirmation, clearsSkills, error, onChange }: CreationMethodChoiceProps) {
+export function CreationMethodChoice({ allowed, value, locked = false, lockReason = 'characteristics', canStartOver = false, needsConfirmation, clearsSkills, error, onChange }: CreationMethodChoiceProps) {
   const labelId = useId()
   const [pending, setPending] = useState<CreationMethod | null>(null)
   const methods = inCanonicalOrder(allowed)
@@ -110,7 +115,7 @@ export function CreationMethodChoice({ allowed, value, locked = false, canStartO
   }
 
   if (locked && value !== null) {
-    return <LockedCreationMethod value={value} canStartOver={canStartOver} />
+    return <LockedCreationMethod value={value} lockReason={lockReason} canStartOver={canStartOver} />
   }
 
   const choose = (method: string) => {
