@@ -200,7 +200,7 @@ No API can create a PlayerEntered record after this PBI, and E2E has no DB seedi
 10. **Tests and E2E,** as listed below.
 
 ## Reuse
-- **Using:** `creation-roll-action`; `EduImprovement.Evaluate`; `CreationDice`; `RollPurposes`; `DiceRolling.Roll`; `CharacterSheet.WithAddedRollRecords`; `CharacterSheetCalculator.AssignedValuesOf`; `QuickFireRules.CharacteristicValues`; `PointBuyRules`; `eduBeforeEachCheck` (characterSheetForm.ts) for the dialog's "{eduBefore}"; `rollCharacteristicsViaUi` as the template for `rollLuckViaUi` and `rollEduCheckViaUi`; `SeedPlayerEnteredCharacteristicRollsAsync`, generalised to any purpose.
+- **Using:** `creation-roll-action`; `EduImprovement.Evaluate`; `CreationDice`; `RollPurposes`; `DiceRolling.Roll`; `CharacterSheet.WithAddedRollRecords`; `CharacterSheetCalculator.AssignedValuesOf`; `QuickFireRules.CharacteristicValues`; `PointBuyRules`; `eduBeforeEachCheck` (characterSheetForm.ts) for the dialog's "{eduBefore}"; `rollCharacteristicsViaUi` as the template for `rollLuckViaUi` and `rollEduCheckViaUi`; `SeedPlayerEnteredCharacteristicRollsAsync`, generalised to any purpose and reworked to seed through the EF change tracker (Revisions, 2026-11-09).
 - **Not using:** `IRollSource` (deleted); `dice-roll-input` (retired); `PublishInvestigatorChanges` (no SignalR).
 
 ## TDD units
@@ -250,3 +250,28 @@ File: `e2e/tests/investigator-lifecycle.spec.ts`; the header trace gains UX-36 t
   - Overall: approved as written. D1 to D6, D8, and every single-option decision are unchanged.
 
 ## Revisions
+
+### 2026-11-09: how tests place legacy PlayerEntered Roll Records (clarification)
+- **Escalation (Developer, Phase 1):**
+  - `ReplaceCharacterSheet` now keeps only the stored records (`next = sheet with { RollRecords = stored.RollRecords }`), so it drops the records on the sheet passed in.
+  - That breaks two tests: `InvestigatorReplaceCharacterSheetLockTests` (stored-records case) and the `InvestigatorPersistenceTests` round trip.
+  - It also silently breaks the DICE-002 seeder `SeedPlayerEnteredCharacteristicRollsAsync` (InvestigatorApiTests.cs:353-375 on master). That seeder placed records through `ReplaceCharacterSheet`.
+  - No production path can place a PlayerEntered record any more, so D7 could not be implemented as written.
+- **Ruling: the seam is the EF change tracker, in integration tests only.**
+  - The Investigator's `CharacterSheet` is a mapped property with a value conversion (CampaignPlayDbContext.cs:94-100).
+  - The seeder loads the Investigator through `CampaignPlayDbContext` in a service scope. Integration tests already use DbContexts this way (for example `ScenePlaySeed.PlayAsync(dbContext, ...)`, HandoutApiTests.cs:108).
+  - It sets `dbContext.Entry(investigator).Property(investigator => investigator.CharacterSheet).CurrentValue` to the current sheet `with { RollRecords = [.. stored, .. RollRecord.PlayerEntered(...)] }`, then calls `SaveChangesAsync`.
+  - The production converter (`CharacterSheetJsonStorage`) writes the row, so the test never hand-edits the stored JSON.
+  - Generalise the seeder to take `(purpose, dice, result)` tuples. The DICE-002 legacy integration test and the D7 test both use it.
+- **Domain unit tests seed without a seam:**
+  - Pure functions take a `CharacterSheet` value built with `RollRecord.PlayerEntered` directly: `CreationLocks.Of`, `CreationLocks.Refuses`, `LuckRolling`, and `EduImprovementRolling`. This covers D4 (PlayerEntered records lock) and the "roll only what is missing" legacy cases.
+  - Aggregate tests (`Investigator` lock, keep-records, and persistence round trip) seed Server records through `RollCharacteristics`, `RollLuck`, and `RollEduImprovementCheck` with `ScriptedDiceRoller`, and compare against the sheet after the roll. This accepts the Developer's proposal for `InvestigatorPersistenceTests`.
+  - The aggregate must not be given a test-only way to place records.
+- **Rejected:**
+  - **Developer option A (editing the stored JSON document in tests).** It couples tests to the storage document's field names, a second representation that ADR 0005 and ADR 0007 keep behind `CharacterSheetJsonStorage`. The change tracker reaches the same row through the production converter.
+  - **Developer option B (Server-seeded records instead of PlayerEntered in D7).** It would change the approved D7 and leave the PlayerEntered keep-and-count path untested end to end.
+  - **A production method or constructor that places PlayerEntered records.** It would reopen a domain path that writes dice results, against ADR 0030 and the "no client dice results" invariant.
+- **What changes:**
+  - No chosen option, rejected option, or invariant changes. D7 stays as approved.
+  - The Reuse entry for the seeder now names the mechanism.
+  - The "a PUT never adds, changes, or removes a Roll Record" invariant applies to `ReplaceCharacterSheet` itself: it ignores the records on the sheet passed in.
