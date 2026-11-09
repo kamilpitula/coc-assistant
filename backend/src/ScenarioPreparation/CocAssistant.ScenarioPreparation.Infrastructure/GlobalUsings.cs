@@ -7,6 +7,8 @@ global using CocAssistant.ScenarioPreparation.Application;
 global using CocAssistant.ScenarioPreparation.Domain;
 global using CocAssistant.CampaignPlay.Application;
 global using Microsoft.EntityFrameworkCore;
+global using Microsoft.EntityFrameworkCore.Infrastructure;
+global using Microsoft.EntityFrameworkCore.Storage;
 global using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;

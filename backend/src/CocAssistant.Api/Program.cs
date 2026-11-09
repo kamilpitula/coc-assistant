@@ -12,9 +12,9 @@ builder.Services.AddControllers()
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-builder.Services.AddIdentityInfrastructure(builder.Configuration);
-builder.Services.AddCampaignPlayInfrastructure(builder.Configuration);
-builder.Services.AddScenarioPreparationInfrastructure(builder.Configuration);
+builder.Services.AddIdentityInfrastructure(builder.Configuration, DatabaseRetryPolicy.Apply);
+builder.Services.AddCampaignPlayInfrastructure(builder.Configuration, DatabaseRetryPolicy.Apply);
+builder.Services.AddScenarioPreparationInfrastructure(builder.Configuration, DatabaseRetryPolicy.Apply);
 builder.Services.AddScenePlayInfrastructure();
 builder.Services.AddCampaignPlayLiveUpdates();
 builder.Services.AddLiveTransport(builder.Configuration);

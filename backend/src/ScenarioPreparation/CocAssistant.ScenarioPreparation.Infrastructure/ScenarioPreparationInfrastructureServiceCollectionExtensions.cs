@@ -2,12 +2,16 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure;
 
 public static class ScenarioPreparationInfrastructureServiceCollectionExtensions
 {
-    public static IServiceCollection AddScenarioPreparationInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddScenarioPreparationInfrastructure(this IServiceCollection services, IConfiguration configuration, Action<SqlServerDbContextOptionsBuilder> configureSqlServer)
     {
         services.AddDbContext<ScenarioPreparationDbContext>(options =>
             options.UseSqlServer(
                 configuration.GetConnectionString("ScenarioPreparationDb"),
-                sql => sql.MigrationsHistoryTable("__ScenarioPreparationMigrationsHistory")));
+                sql =>
+                {
+                    sql.MigrationsHistoryTable("__ScenarioPreparationMigrationsHistory");
+                    configureSqlServer(sql);
+                }));
 
         services.AddScoped<IScenarioRepository, EfScenarioRepository>();
         services.AddScoped<ISceneRepository, EfSceneRepository>();

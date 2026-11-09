@@ -8,3 +8,7 @@ global using Microsoft.AspNetCore.Http;
 global using Microsoft.AspNetCore.SignalR;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.Options;
+global using Microsoft.EntityFrameworkCore;
+global using CocAssistant.Identity.Infrastructure;
+global using CocAssistant.CampaignPlay.Infrastructure;
+global using CocAssistant.ScenarioPreparation.Infrastructure;
