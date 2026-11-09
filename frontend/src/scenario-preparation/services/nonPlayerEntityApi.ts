@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { readValidationProblems } from '@/scenario-preparation/services/validationProblem'
 import type { NonPlayerEntitySummary } from '@/scenario-preparation/types/NonPlayerEntity'
@@ -61,7 +62,7 @@ export async function failNonPlayerEntityWrite(response: Response, description: 
 
 /** Calls GET .../non-player-entities: every Human NPC and Mythos Creature of the Campaign (Keeper only). */
 export async function getNonPlayerEntities(accessToken: string, campaignId: string): Promise<NonPlayerEntitySummary[]> {
-  const response = await fetch(`/api/campaigns/${campaignId}/non-player-entities`, { headers: authHeaders(accessToken) })
+  const response = await apiFetch(`/api/campaigns/${campaignId}/non-player-entities`, { headers: authHeaders(accessToken) })
 
   if (response.status === 404) {
     throw new NonPlayerEntityNotFoundError()

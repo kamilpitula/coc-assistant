@@ -85,6 +85,19 @@ describe('CampaignLiveConnection', () => {
     expect(liveConnection.stop).toHaveBeenCalled()
   })
 
+  it('prefixes the hub URL with VITE_API_BASE_URL when it is set', () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example/')
+    try {
+      const { unmount } = setup()
+
+      expect(captured.options?.url).toBe('https://api.example/hubs/campaign')
+
+      unmount()
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
   it('subscribes to the Campaign once connected and shares the Presence snapshot', async () => {
     setup()
 

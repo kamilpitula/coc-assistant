@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import {
   WALL_ENTRY_VISIBILITIES,
@@ -45,7 +46,7 @@ export async function getWallEntries(
   campaignId: string,
   query: WallEntryQuery = {},
 ): Promise<WallEntryPage> {
-  const response = await fetch(wallEntriesUrl(campaignId, query), { headers: authHeaders(accessToken) })
+  const response = await apiFetch(wallEntriesUrl(campaignId, query), { headers: authHeaders(accessToken) })
 
   if (!response.ok) {
     throw new Error(`Failed to load the Wall (${response.status})`)
@@ -56,7 +57,7 @@ export async function getWallEntries(
 
 /** Calls POST /api/campaigns/{id}/wall-entries and returns the created entry. */
 export async function addWallEntry(accessToken: string, campaignId: string, entry: NewWallEntry): Promise<WallEntry> {
-  const response = await fetch(wallEntriesUrl(campaignId), {
+  const response = await apiFetch(wallEntriesUrl(campaignId), {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: JSON.stringify(entry),
@@ -71,7 +72,7 @@ export async function addWallEntry(accessToken: string, campaignId: string, entr
 
 /** Calls DELETE /api/campaigns/{id}/wall-entries/{entryId} (Keeper only); an entry that is already gone counts as removed. */
 export async function removeWallEntry(accessToken: string, campaignId: string, entryId: string): Promise<void> {
-  const response = await fetch(`${wallEntriesUrl(campaignId)}/${entryId}`, {
+  const response = await apiFetch(`${wallEntriesUrl(campaignId)}/${entryId}`, {
     method: 'DELETE',
     headers: authHeaders(accessToken),
   })

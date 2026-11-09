@@ -1,3 +1,4 @@
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { nonPlayerEntityLinkSchema, SceneFinishedError } from '@/scenario-preparation/services/sceneApi'
 import { readValidationProblems } from '@/scenario-preparation/services/validationProblem'
@@ -72,7 +73,7 @@ export async function linkNonPlayerEntity(
   sceneId: string,
   input: NewNonPlayerEntityLinkInput,
 ): Promise<NonPlayerEntityLink> {
-  const response = await fetch(linksUrl(campaignId, scenarioId, sceneId), {
+  const response = await apiFetch(linksUrl(campaignId, scenarioId, sceneId), {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: JSON.stringify({
@@ -98,7 +99,7 @@ export async function editNonPlayerEntityLink(
   linkId: string,
   input: NonPlayerEntityLinkInput,
 ): Promise<NonPlayerEntityLink> {
-  const response = await fetch(`${linksUrl(campaignId, scenarioId, sceneId)}/${linkId}`, {
+  const response = await apiFetch(`${linksUrl(campaignId, scenarioId, sceneId)}/${linkId}`, {
     method: 'PUT',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ playerFacingName: input.playerFacingName, playerFacingDescription: input.playerFacingDescription }),
@@ -119,7 +120,7 @@ export async function unlinkNonPlayerEntity(
   sceneId: string,
   linkId: string,
 ): Promise<void> {
-  const response = await fetch(`${linksUrl(campaignId, scenarioId, sceneId)}/${linkId}`, {
+  const response = await apiFetch(`${linksUrl(campaignId, scenarioId, sceneId)}/${linkId}`, {
     method: 'DELETE',
     headers: authHeaders(accessToken),
   })

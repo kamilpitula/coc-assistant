@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { keeperRevealSchema, playerRevealSchema } from '@/scene-play/services/revealSchemas'
 import type { KeeperSceneHistory, PlayerSceneHistory, SceneHistory } from '@/scene-play/types/SceneHistory'
@@ -47,7 +48,7 @@ export class SceneHistoryNotFoundError extends Error {
 
 /** Calls GET .../scene-history: the Campaign's played Scenes as the caller may see them, newest started first. */
 export async function getSceneHistory(accessToken: string, campaignId: string): Promise<SceneHistory> {
-  const response = await fetch(`/api/campaigns/${campaignId}/scene-history`, { headers: authHeaders(accessToken) })
+  const response = await apiFetch(`/api/campaigns/${campaignId}/scene-history`, { headers: authHeaders(accessToken) })
 
   if (response.status === 404) {
     throw new SceneHistoryNotFoundError()

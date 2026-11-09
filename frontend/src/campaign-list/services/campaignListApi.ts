@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { campaignQueryKeys, eraSchema } from '@/campaign-play/services/campaignApi'
 import { INVESTIGATOR_STATUSES } from '@/campaign-play/types/Investigator'
@@ -43,7 +44,7 @@ export const campaignListQueryKeys = {
 
 /** Calls GET /api/campaigns: every Campaign the caller is a Campaign Member of, Keeper items first, newest first. */
 export async function getCampaignList(accessToken: string): Promise<CampaignListItem[]> {
-  const response = await fetch('/api/campaigns', {
+  const response = await apiFetch('/api/campaigns', {
     headers: authHeaders(accessToken),
   })
 

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from './apiFetch'
 import type { Account } from '@/shared/types/Account'
 
 export const accountResponseSchema = z.object({
@@ -14,7 +15,7 @@ export const accountQueryKeys = {
 
 /** Calls GET /api/account/me, which JIT-provisions the caller's Account from their bearer token. */
 export async function fetchCurrentAccount(accessToken: string): Promise<Account> {
-  const response = await fetch('/api/account/me', {
+  const response = await apiFetch('/api/account/me', {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
 

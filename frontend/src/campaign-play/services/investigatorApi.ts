@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { creationMethodSchema } from '@/campaign-play/services/campaignApi'
 import {
@@ -253,7 +254,7 @@ function investigatorsUrl(campaignId: string): string {
 }
 
 async function send(accessToken: string, url: string, init: RequestInit = {}): Promise<Response> {
-  return fetch(url, { ...init, headers: authHeaders(accessToken) })
+  return apiFetch(url, { ...init, headers: authHeaders(accessToken) })
 }
 
 /** Throws a conflict error for 409 and a generic error for any other failure. */

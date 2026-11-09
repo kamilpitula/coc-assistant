@@ -12,6 +12,7 @@ import { queryKeysForTopics } from '@/campaign-play/services/liveTopics'
 import { campaignPresenceReducer, initialCampaignPresenceState } from '@/campaign-play/state/campaignPresenceState'
 import { useAccessToken } from '@/shared/hooks/useAccessToken'
 import { createLiveConnection, type ConnectedReason, type LiveConnection } from '@/shared/services/liveConnection'
+import { apiUrl } from '@/shared/services/apiUrl'
 
 const CAMPAIGN_HUB_URL = '/hubs/campaign'
 
@@ -42,7 +43,7 @@ export function CampaignLiveConnection({ campaignId, children }: CampaignLiveCon
 
   useEffect(() => {
     const live = createLiveConnection({
-      url: CAMPAIGN_HUB_URL,
+      url: apiUrl(CAMPAIGN_HUB_URL),
       accessTokenFactory: () => accessTokenRef.current(),
       onStateChange: (state) => dispatch({ type: 'connectionChanged', state }),
       onConnected: (reason) => void subscribe(reason),

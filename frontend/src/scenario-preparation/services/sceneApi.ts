@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { SCENE_FIELD_MESSAGES, type SceneFieldErrors } from '@/scenario-preparation/services/sceneForm'
 import { readErrorKeys } from '@/scenario-preparation/services/validationProblem'
@@ -151,7 +152,7 @@ const toBody = (input: SceneInput): string =>
 
 /** Calls GET .../scenes: the Scenario's Scenes in prepared order (Keeper only). */
 export async function getScenes(accessToken: string, campaignId: string, scenarioId: string): Promise<SceneSummary[]> {
-  const response = await fetch(scenesUrl(campaignId, scenarioId), { headers: authHeaders(accessToken) })
+  const response = await apiFetch(scenesUrl(campaignId, scenarioId), { headers: authHeaders(accessToken) })
 
   if (response.status === 404) {
     throw new SceneNotFoundError()
@@ -165,7 +166,7 @@ export async function getScenes(accessToken: string, campaignId: string, scenari
 
 /** Calls GET .../scenes/{sceneId}; null when the API answers 404. */
 export async function getScene(accessToken: string, campaignId: string, scenarioId: string, sceneId: string): Promise<Scene | null> {
-  const response = await fetch(`${scenesUrl(campaignId, scenarioId)}/${sceneId}`, { headers: authHeaders(accessToken) })
+  const response = await apiFetch(`${scenesUrl(campaignId, scenarioId)}/${sceneId}`, { headers: authHeaders(accessToken) })
 
   if (response.status === 404) {
     return null
@@ -179,7 +180,7 @@ export async function getScene(accessToken: string, campaignId: string, scenario
 
 /** Calls POST .../scenes, which appends a Prepared Scene after the existing ones. */
 export async function createScene(accessToken: string, campaignId: string, scenarioId: string, input: SceneInput): Promise<Scene> {
-  const response = await fetch(scenesUrl(campaignId, scenarioId), {
+  const response = await apiFetch(scenesUrl(campaignId, scenarioId), {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: toBody(input),
@@ -200,7 +201,7 @@ export async function editScene(
   sceneId: string,
   input: SceneInput,
 ): Promise<Scene> {
-  const response = await fetch(`${scenesUrl(campaignId, scenarioId)}/${sceneId}`, {
+  const response = await apiFetch(`${scenesUrl(campaignId, scenarioId)}/${sceneId}`, {
     method: 'PUT',
     headers: authHeaders(accessToken),
     body: toBody(input),
@@ -215,7 +216,7 @@ export async function editScene(
 
 /** Calls DELETE .../scenes/{sceneId}; a Scene that is no longer Prepared is refused with 409. */
 export async function removeScene(accessToken: string, campaignId: string, scenarioId: string, sceneId: string): Promise<void> {
-  const response = await fetch(`${scenesUrl(campaignId, scenarioId)}/${sceneId}`, {
+  const response = await apiFetch(`${scenesUrl(campaignId, scenarioId)}/${sceneId}`, {
     method: 'DELETE',
     headers: authHeaders(accessToken),
   })
@@ -238,7 +239,7 @@ export async function reorderScenes(
   scenarioId: string,
   sceneIds: string[],
 ): Promise<SceneSummary[]> {
-  const response = await fetch(`${scenesUrl(campaignId, scenarioId)}/order`, {
+  const response = await apiFetch(`${scenesUrl(campaignId, scenarioId)}/order`, {
     method: 'PUT',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ sceneIds }),

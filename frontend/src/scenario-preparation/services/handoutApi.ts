@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders, bearerHeaders } from '@/campaign-play/services/authHeaders'
 import { handoutFileTooLargeMessage, type HandoutFileFamily } from '@/scenario-preparation/services/handoutFile'
 import { describeHandoutOwner, type HandoutOwner } from '@/scenario-preparation/services/handoutOwner'
@@ -162,7 +163,7 @@ export async function getHandout(
   owner: HandoutOwner,
   handoutId: string,
 ): Promise<Handout | null> {
-  const response = await fetch(`${handoutsUrl(owner)}/${handoutId}`, { headers: authHeaders(accessToken) })
+  const response = await apiFetch(`${handoutsUrl(owner)}/${handoutId}`, { headers: authHeaders(accessToken) })
 
   if (response.status === 404) {
     return null
@@ -190,7 +191,7 @@ async function createRichTextHandout(
   owner: HandoutOwner,
   input: RichTextHandoutInput,
 ): Promise<Handout> {
-  const response = await fetch(handoutsUrl(owner), {
+  const response = await apiFetch(handoutsUrl(owner), {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: toBody(input),
@@ -221,7 +222,7 @@ async function editRichTextHandout(
   handoutId: string,
   input: RichTextHandoutInput,
 ): Promise<Handout> {
-  const response = await fetch(`${handoutsUrl(owner)}/${handoutId}`, {
+  const response = await apiFetch(`${handoutsUrl(owner)}/${handoutId}`, {
     method: 'PUT',
     headers: authHeaders(accessToken),
     body: toBody(input),
@@ -240,7 +241,7 @@ export async function createFileHandout(
   owner: HandoutOwner,
   input: FileHandoutInput,
 ): Promise<Handout> {
-  const response = await fetch(handoutsUrl(owner), {
+  const response = await apiFetch(handoutsUrl(owner), {
     method: 'POST',
     headers: bearerHeaders(accessToken),
     body: toFormData(input),
@@ -260,7 +261,7 @@ export async function editFileHandout(
   handoutId: string,
   input: FileHandoutInput,
 ): Promise<Handout> {
-  const response = await fetch(`${handoutsUrl(owner)}/${handoutId}`, {
+  const response = await apiFetch(`${handoutsUrl(owner)}/${handoutId}`, {
     method: 'PUT',
     headers: bearerHeaders(accessToken),
     body: toFormData(input),
@@ -279,7 +280,7 @@ export async function getHandoutFile(
   owner: HandoutOwner,
   handoutId: string,
 ): Promise<Blob> {
-  const response = await fetch(`${handoutsUrl(owner)}/${handoutId}/file`, { headers: bearerHeaders(accessToken) })
+  const response = await apiFetch(`${handoutsUrl(owner)}/${handoutId}/file`, { headers: bearerHeaders(accessToken) })
 
   if (response.status === 404) {
     throw new HandoutNotFoundError()
@@ -297,7 +298,7 @@ export async function deleteHandout(
   owner: HandoutOwner,
   handoutId: string,
 ): Promise<void> {
-  const response = await fetch(`${handoutsUrl(owner)}/${handoutId}`, {
+  const response = await apiFetch(`${handoutsUrl(owner)}/${handoutId}`, {
     method: 'DELETE',
     headers: authHeaders(accessToken),
   })
@@ -316,7 +317,7 @@ export async function reorderHandouts(
   owner: HandoutOwner,
   handoutIds: string[],
 ): Promise<HandoutSummary[]> {
-  const response = await fetch(`${handoutsUrl(owner)}/order`, {
+  const response = await apiFetch(`${handoutsUrl(owner)}/order`, {
     method: 'PUT',
     headers: authHeaders(accessToken),
     body: JSON.stringify({ handoutIds }),
