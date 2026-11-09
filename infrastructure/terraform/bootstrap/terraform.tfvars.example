@@ -1,0 +1,4 @@
+# Local-only values for the bootstrap stack. This file is gitignored; never commit it.
+subscription_id       = "00000000-0000-0000-0000-000000000000"
+budget_alert_emails   = ["owner@example.com"]
+# location defaults to "westeurope".

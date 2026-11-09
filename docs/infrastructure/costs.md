@@ -18,7 +18,7 @@ Every Azure resource the Terraform in `infrastructure/terraform/` creates, with 
 | Azure SQL logical server `sql-cocassistant-dev` | n/a | No charge for the server itself | n/a | $0 | Free tier | https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer |
 | Azure SignalR Service `sigr-cocassistant-dev` | Free, 1 unit | 20 concurrent connections, 20,000 messages per day, no SLA | No overage; Standard is $1.61 per unit per day (about $49/month) | $0 | Free tier | https://azure.microsoft.com/en-us/pricing/details/signalr-service/ |
 | Storage account `stcocassistantdev` (Handout files) | StorageV2, Standard LRS, Hot | None | Data $0.0196/GB-month; writes and lists $0.054 per 10K; reads and other $0.0043 per 10K; deletes free | Under $0.05 | Approved 2026-11-09 | https://azure.microsoft.com/en-us/pricing/details/storage/blobs/ |
-| Storage account for Terraform state (`rg-cocassistant-tfstate`) | StorageV2, Standard LRS, Hot, versioning and soft delete | None | As above | About $0.01 | Approved 2026-11-09 | https://azure.microsoft.com/en-us/pricing/details/storage/blobs/ |
+| Storage account `stcocassistanttfstate` for Terraform state (`rg-cocassistant-tfstate`, container `tfstate`) | StorageV2, Standard LRS, Hot, versioning and soft delete | None | As above | About $0.01 | Approved 2026-11-09 | https://azure.microsoft.com/en-us/pricing/details/storage/blobs/ |
 | Log Analytics workspace `log-cocassistant-dev` | Pay-as-you-go, daily cap 0.15 GB, 30-day retention | First 5 GB per billing account per month; 31 days retention | $2.99/GB ingestion; $0.13/GB-month retention beyond 31 days | $0 (cap keeps a month under 5 GB) | Free tier | https://azure.microsoft.com/en-us/pricing/details/monitor/ |
 | User-assigned identities (API, plan, deploy) | n/a | No charge | n/a | $0 | Free tier | https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/overview |
 | Budget and cost alerts | Cost Management | Listed as always free | n/a | $0 | Free tier | https://azure.microsoft.com/en-us/free/ |
@@ -31,6 +31,7 @@ Every Azure resource the Terraform in `infrastructure/terraform/` creates, with 
 | Entra External ID (existing tenant) | Free under 50,000 monthly active users. Avoid SMS phone authentication and M2M (client credentials) add-ons, which are charged per transaction. | $0 | https://learn.microsoft.com/en-us/entra/external-id/external-identities-pricing |
 | GitHub Container Registry, public package | Storage and bandwidth free | $0 | https://docs.github.com/en/billing/concepts/product-billing/github-packages |
 | GitHub Actions on a public repository | Standard hosted runners free | $0 | https://docs.github.com/en/billing/concepts/product-billing/github-actions |
+| Entra security group `sg-cocassistant-dev-sql-admins` | Entra ID Free, included with the Azure subscription | $0 | https://learn.microsoft.com/en-us/entra/fundamentals/licensing |
 
 ## Rejected paid options
 
@@ -46,5 +47,4 @@ Every Azure resource the Terraform in `infrastructure/terraform/` creates, with 
 ## Open checks
 
 - Whether Azure SignalR Service Free supports Default service mode is not yet confirmed from an official page. PBI-DEP-003 confirms it before the resource is applied.
-- The managed identity and GitHub Actions rows were not fetched in the 2026-11-09 check; re-verify their sources when PBI-DEP-001 is implemented.
 - That HTTPS on the default `*.azurecontainerapps.io` hostname carries no charge is implied by the absence of any meter, not stated on a page.
