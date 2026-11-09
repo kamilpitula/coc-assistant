@@ -31,7 +31,7 @@ Read: [character-sheet spec](../../../specs/character-sheet/spec.md), Creation r
 - [ ] Changing the age to another bracket after Luck or an EDU check, or changing EDU after an EDU check, returns 409; changing the age within the bracket is accepted.
 - [ ] A save carrying dice totals returns 400.
 - [ ] The backend and frontend validators agree on every shared parity fixture with the new messages.
-- [ ] Unit tests cover the actions and locks; Playwright E2E covers the character-sheet scenarios "An EDU check rolls its gain in the same action", "A rolled EDU check locks the age bracket and EDU", "A rolled Luck locks the age bracket", "Young Investigator keeps the higher Luck roll", "Dice results are never accepted from the Player", and "Typed-in rolls from before the dice system are kept".
+- [ ] Unit tests cover the actions and locks; Playwright E2E covers the character-sheet scenarios "An EDU check rolls its gain in the same action", "A rolled EDU check locks the age bracket and EDU", "A rolled Luck locks the age bracket", "Young Investigator keeps the higher Luck roll", and "Dice results are never accepted from the Player". "Typed-in rolls from before the dice system are kept" is covered by an API integration test instead, because no API can create a Player-entered Roll Record any more (design D7, approved 2026-11-09).
 
 ## Refinement Protocol
 A change to Luck or EDU rolling or the locks updates the character-sheet spec and ux.md, the parity fixtures, and tests together.
