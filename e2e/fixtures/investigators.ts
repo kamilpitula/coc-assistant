@@ -76,6 +76,41 @@ export async function rollCharacteristicsViaUi(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Your characteristics' })).toBeVisible()
 }
 
+/**
+ * Rolls Luck through the wizard's confirmation dialog ("Roll now"), and waits for the
+ * "Luck rolled." announcement. The roll saves the step first, like "Save and continue" does.
+ */
+export async function rollLuckViaUi(page: Page): Promise<void> {
+  const dialog = page.getByRole('alertdialog', { name: 'Roll Luck?' })
+  await page.getByRole('button', { name: 'Roll Luck' }).click()
+  // Fail fast when the trigger click is lost instead of hanging on the roll response below.
+  await expect(dialog).toBeVisible()
+  const rolled = page.waitForResponse(
+    (response) => response.url().endsWith('/mine/character-sheet/rolls/luck') && response.request().method() === 'POST',
+  )
+  await dialog.getByRole('button', { name: 'Roll now' }).click()
+  await rolled
+  await expect(page.getByRole('status').filter({ hasText: 'Luck rolled.' })).toBeVisible()
+}
+
+/**
+ * Rolls EDU check `n` through the wizard's confirmation dialog ("Roll now"), and waits for the
+ * "EDU check n rolled." announcement. A gain is rolled in the same action when the check improves EDU.
+ */
+export async function rollEduCheckViaUi(page: Page, n: number): Promise<void> {
+  const dialog = page.getByRole('alertdialog', { name: `Roll EDU check ${n}?` })
+  await page.getByRole('button', { name: `Roll EDU check ${n}` }).click()
+  // Fail fast when the trigger click is lost instead of hanging on the roll response below.
+  await expect(dialog).toBeVisible()
+  const rolled = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/mine/character-sheet/rolls/edu-improvement-checks') && response.request().method() === 'POST',
+  )
+  await dialog.getByRole('button', { name: 'Roll now' }).click()
+  await rolled
+  await expect(page.getByRole('status').filter({ hasText: `EDU check ${n} rolled.` })).toBeVisible()
+}
+
 /** Picks the 1920s Antiquarian on the Occupation step and moves on to Occupation skills. */
 export async function chooseAntiquarianViaUi(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { level: 1, name: 'Occupation' })).toBeVisible()
@@ -95,13 +130,14 @@ export async function pickAntiquarianSkillsViaUi(page: Page): Promise<void> {
 
 /**
  * Spends the 200 occupation points (EDU 50 x 4) with Credit Rating 30 and the 120 personal interest points (INT 60 x 2)
- * of a 25-year-old Antiquarian, leaving the wizard on Sheet and submit.
+ * of a 25-year-old Antiquarian, leaving the wizard on Sheet and submit. A rolled EDU check only raises EDU, so a fixed
+ * 200 still fits a larger budget; the counter assertion stays outcome-independent (D6).
  */
 export async function spendAntiquarianPointsViaUi(page: Page): Promise<void> {
   for (const [skill, points] of [['Credit Rating', '30'], ['Library Use', '50'], ['Appraise', '50'], ['History', '50'], ['Spot Hidden', '20']]) {
     await page.getByLabel(`${skill}, occupation points`).fill(points)
   }
-  await expect(page.getByText('Occupation points left: 0 of 200')).toBeVisible()
+  await expect(page.getByText(/Occupation points left: \d+ of \d+/)).toBeVisible()
   await pressWizardAction(page, 'Save and continue')
   await expect(page.getByRole('heading', { level: 1, name: 'Personal interests' })).toBeVisible()
   await page.getByLabel('Drive Auto, personal interest points').fill('60')
@@ -117,7 +153,7 @@ export async function spendAntiquarianPointsViaUi(page: Page): Promise<void> {
  */
 export async function submitValidInvestigatorViaUi(page: Page, campaignId: string, name: string): Promise<string> {
   await saveDraftUpToAgeEffectsViaUi(page, campaignId, name)
-  await page.getByRole('group', { name: 'EDU check 1 of 1' }).getByLabel('D100 roll').fill('30')
+  await rollEduCheckViaUi(page, 1)
   await pressWizardAction(page, 'Save and continue')
   await chooseAntiquarianViaUi(page)
   await pickAntiquarianSkillsViaUi(page)
@@ -135,7 +171,7 @@ export async function submitValidInvestigatorViaUi(page: Page, campaignId: strin
 
 /**
  * Creates the Player's Draft in a Campaign allowing every creation method, and completes Identity (age 25) and
- * Characteristics with Point buy, leaving the wizard on Age effects, the third step.
+ * Characteristics with Point buy and an app-rolled Luck, leaving the wizard on Age effects, the third step.
  */
 export async function saveDraftUpToAgeEffectsViaUi(page: Page, campaignId: string, name: string): Promise<void> {
   await page.goto(`/campaigns/${campaignId}`)
@@ -147,7 +183,7 @@ export async function saveDraftUpToAgeEffectsViaUi(page: Page, campaignId: strin
   // The Campaign allows every creation method by default, so the Player chooses one.
   await chooseCreationMethod(page, 'Point buy')
   await fillPointBuy(page, VALID_POINT_BUY)
-  await page.getByLabel('Luck, 3D6 total').fill('11')
+  await rollLuckViaUi(page)
   await pressWizardAction(page, 'Save and continue')
   await expect(page.getByRole('heading', { level: 1, name: 'Age effects' })).toBeVisible()
 }

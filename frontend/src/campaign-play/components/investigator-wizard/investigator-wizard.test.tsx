@@ -212,6 +212,35 @@ describe('InvestigatorWizard', () => {
     expect(mockSave).toHaveBeenCalled()
   })
 
+  it('does not re-check on blur when focus moves to a roll trigger, so the dialog still opens', async () => {
+    // STR 10 is below the Point Buy minimum, so blurring out of it would surface "STR must be between..." inline.
+    const partial = myCharacterSheet({
+      characterSheet: sheetView({
+        characteristics: {
+          STR: { assigned: 10, value: 10, hard: 5, extreme: 2 },
+          CON: { assigned: 60, value: 60, hard: 30, extreme: 12 },
+          DEX: { assigned: 60, value: 60, hard: 30, extreme: 12 },
+          APP: { assigned: 50, value: 50, hard: 25, extreme: 10 },
+          POW: { assigned: 60, value: 60, hard: 30, extreme: 12 },
+          SIZ: { assigned: 60, value: 60, hard: 30, extreme: 12 },
+          INT: { assigned: 60, value: 60, hard: 30, extreme: 12 },
+          EDU: { assigned: 50, value: 50, hard: 25, extreme: 10 },
+        },
+        luckRolls: [],
+        rollRecords: [],
+      }),
+      validationErrors: [],
+    })
+    withSheet(partial)
+    render(<InvestigatorWizard campaignId="c1" step="characteristics" />)
+
+    await userEvent.click(screen.getByLabelText('STR'))
+    await userEvent.click(screen.getByRole('button', { name: 'Roll Luck' }))
+
+    expect(screen.getByRole('alertdialog', { name: 'Roll Luck?' })).toBeInTheDocument()
+    expect(screen.queryByText(/STR must be between/)).not.toBeInTheDocument()
+  })
+
   it("shows the Keeper's comment on every step while changes are requested, without Start over", () => {
     withSheet(myCharacterSheet({ status: 'ChangesRequested', changeRequestComment: 'Lower the Credit Rating' }))
 

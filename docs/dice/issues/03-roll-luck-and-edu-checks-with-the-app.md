@@ -1,6 +1,6 @@
 ---
 id: PBI-DICE-003
-status: todo
+status: done
 blocked_by: [PBI-DICE-002]
 ---
 
@@ -27,11 +27,11 @@ Read: [character-sheet spec](../../../specs/character-sheet/spec.md), Creation r
 - Typed-in Roll Records from before stay valid and keep counting.
 
 ## Verification
-- [ ] Luck and EDU checks are rolled by the server, with the gain rolled in the same action exactly when the check improves EDU.
-- [ ] Changing the age to another bracket after Luck or an EDU check, or changing EDU after an EDU check, returns 409; changing the age within the bracket is accepted.
-- [ ] A save carrying dice totals returns 400.
-- [ ] The backend and frontend validators agree on every shared parity fixture with the new messages.
-- [ ] Unit tests cover the actions and locks; Playwright E2E covers the character-sheet scenarios "An EDU check rolls its gain in the same action", "A rolled EDU check locks the age bracket and EDU", "A rolled Luck locks the age bracket", "Young Investigator keeps the higher Luck roll", and "Dice results are never accepted from the Player". "Typed-in rolls from before the dice system are kept" is covered by an API integration test instead, because no API can create a Player-entered Roll Record any more (design D7, approved 2026-11-09).
+- [x] Luck and EDU checks are rolled by the server, with the gain rolled in the same action exactly when the check improves EDU. (EduImprovementRollingTests + E2E UX-37, lifecycle test 6 ok)
+- [x] Changing the age to another bracket after Luck or an EDU check, or changing EDU after an EDU check, returns 409; changing the age within the bracket is accepted. (E2E UX-38 and Luck-bracket tests 7-8 ok)
+- [x] A save carrying dice totals returns 400. (E2E "Dice results are never accepted", lifecycle test 10 ok)
+- [x] The backend and frontend validators agree on every shared parity fixture with the new messages. (ValidationFixtureParityTests green in the CampaignPlay suite, 570 tests)
+- [x] Unit tests cover the actions and locks; Playwright E2E covers the character-sheet scenarios "An EDU check rolls its gain in the same action", "A rolled EDU check locks the age bracket and EDU", "A rolled Luck locks the age bracket", "Young Investigator keeps the higher Luck roll", and "Dice results are never accepted from the Player". "Typed-in rolls from before the dice system are kept" is covered by an API integration test instead, because no API can create a Player-entered Roll Record any more (design D7, approved 2026-11-09).
 
 ## Refinement Protocol
 A change to Luck or EDU rolling or the locks updates the character-sheet spec and ux.md, the parity fixtures, and tests together.
