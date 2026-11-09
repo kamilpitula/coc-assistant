@@ -1,0 +1,16 @@
+# The API image build context: global.json, everything under backend except tests and build output, and the
+# embedded game-rule catalogs. A path under an excluded parent cannot be re-included, so docs is reopened level by
+# level instead of naming docs/game-rules/catalogs directly. No HEALTHCHECK: the image has no curl, and Container
+# Apps probes /health itself.
+*
+!global.json
+!backend/
+!docs/
+docs/*
+!docs/game-rules/
+!docs/game-rules/catalogs/
+!docs/game-rules/catalogs/*
+**/bin/
+**/obj/
+backend/tests/
+backend/src/CocAssistant.Api/App_Data/
