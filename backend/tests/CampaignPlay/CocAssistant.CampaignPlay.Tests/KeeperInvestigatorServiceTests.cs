@@ -62,7 +62,7 @@ public class KeeperInvestigatorServiceTests : IDisposable
 
         Assert.NotNull(view);
         Assert.Equal("Ada Lovelace", view.PlayerName);
-        Assert.Equal(55, view.Computation.Derived.Luck);
+        Assert.Equal(75, view.Computation.Derived.Luck);
         Assert.Single(view.Investigator.CharacterSheet.RollRecords, record => record.Purpose == RollPurposes.Luck);
     }
 

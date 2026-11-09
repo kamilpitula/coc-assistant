@@ -23,13 +23,17 @@ public class InvestigatorPersistenceTests : IDisposable
     public async Task Given_a_saved_investigator_with_a_character_sheet_When_reading_it_back_Then_everything_round_trips()
     {
         var campaignId = await _scenario.CreateCampaignAsync();
-        var sheet = new CharacterSheetBuilder().Build();
+        var sheet = new CharacterSheetBuilder().BuildInputs().ToCharacterSheet();
         Guid investigatorId;
+        CharacterSheet rolled;
         using (var context = _scenario.Fixture.CreateContext())
         {
             var repository = _scenario.Fixture.CreateInvestigatorRepository(context);
             var investigator = Investigator.Create(campaignId, CampaignPlayScenario.PlayerAccountId, Now);
-            investigator.ReplaceCharacterSheet(sheet, Now);
+            investigator.ReplaceCharacterSheet(sheet, TestRules.Creation.AgeRules, Now);
+            investigator.RollLuck(TestRules.Creation.AgeRules, new ScriptedDiceRoller([4, 5, 6]), CampaignPlayScenario.PlayerAccountId, Now);
+            investigator.RollEduImprovementCheck(TestRules.Creation.AgeRules, new ScriptedDiceRoller([30]), CampaignPlayScenario.PlayerAccountId, Now);
+            rolled = investigator.CharacterSheet;
             investigator.Submit([], Now);
             repository.Add(investigator);
             await repository.SaveChangesAsync(CancellationToken.None);
@@ -41,7 +45,7 @@ public class InvestigatorPersistenceTests : IDisposable
             .FindByIdAsync(campaignId, investigatorId, CancellationToken.None);
 
         Assert.NotNull(stored);
-        Assert.Equal(sheet, stored.CharacterSheet);
+        Assert.Equal(rolled, stored.CharacterSheet);
         Assert.Equal(InvestigatorStatus.Submitted, stored.Status);
         Assert.Equal(CampaignPlayScenario.PlayerAccountId, stored.PlayerAccountId);
     }

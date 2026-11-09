@@ -69,8 +69,11 @@ public sealed class CharacterSheetCalculator
     }
 
     /// <summary>The applicable bracket, only for an age the project allows (project_ruleset.md section 4.1).</summary>
-    public AgeBracket? BracketFor(InvestigatorIdentity identity) =>
-        identity.Age is { } age && InvestigatorAgeRange.Contains(age) ? _rules.AgeRules.BracketFor(age) : null;
+    public AgeBracket? BracketFor(InvestigatorIdentity identity) => BracketFor(identity, _rules.AgeRules);
+
+    /// <summary>The applicable bracket for the age rules the caller passes (specs/character-sheet/spec.md, Creation rolling).</summary>
+    public static AgeBracket? BracketFor(InvestigatorIdentity identity, AgeRules ageRules) =>
+        identity.Age is { } age && InvestigatorAgeRange.Contains(age) ? ageRules.BracketFor(age) : null;
 
     /// <summary>The characteristics before age effects: rolled under Standard Rolling (section 2.1), otherwise assigned.</summary>
     public static CharacteristicValues AssignedValuesOf(CharacterSheet sheet) =>

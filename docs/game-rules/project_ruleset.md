@@ -78,11 +78,7 @@ Player asks for them; the rules do not say who rolls, so this is a project
 choice rather than a deviation. Each result is kept as a Roll Record with its
 faces
 ([section 2.1](coc7_character_creation_and_development_rules.md#21-standard-rolling-method)).
-Results typed in before the app rolled them are kept as Player-entered. Luck
-([section 5.5](coc7_character_creation_and_development_rules.md#55-luck)) and
-EDU improvement check
-([section 3.2](coc7_character_creation_and_development_rules.md#32-edu-improvement-check))
-results are still entered by the Player until the app rolls them.
+Results typed in before the app rolled them are kept as Player-entered.
 
 ## 4.4 Characteristic floor after age effects
 

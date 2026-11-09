@@ -50,7 +50,7 @@ public class InvestigatorTests
     {
         var investigator = NewDraft();
 
-        var replaced = investigator.ReplaceCharacterSheet(NamedSheet, Later);
+        var replaced = investigator.ReplaceCharacterSheet(NamedSheet, TestRules.Creation.AgeRules, Later);
 
         Assert.True(replaced);
         Assert.Equal(NamedSheet, investigator.CharacterSheet);
@@ -78,7 +78,7 @@ public class InvestigatorTests
 
         Assert.True(submitted);
         Assert.Equal(InvestigatorStatus.Submitted, investigator.Status);
-        Assert.False(investigator.ReplaceCharacterSheet(NamedSheet, Later));
+        Assert.False(investigator.ReplaceCharacterSheet(NamedSheet, TestRules.Creation.AgeRules, Later));
         Assert.Equal(CharacterSheet.Empty, investigator.CharacterSheet);
     }
 
@@ -114,7 +114,7 @@ public class InvestigatorTests
         Assert.True(requested);
         Assert.Equal(InvestigatorStatus.ChangesRequested, investigator.Status);
         Assert.Equal("Credit Rating seems high for this Occupation", investigator.ChangeRequestComment);
-        Assert.True(investigator.ReplaceCharacterSheet(NamedSheet, Later));
+        Assert.True(investigator.ReplaceCharacterSheet(NamedSheet, TestRules.Creation.AgeRules, Later));
     }
 
     // Scenario: Request changes requires a comment
@@ -162,7 +162,7 @@ public class InvestigatorTests
         var investigator = Submitted();
         investigator.Approve(Later);
 
-        Assert.False(investigator.ReplaceCharacterSheet(NamedSheet, Later));
+        Assert.False(investigator.ReplaceCharacterSheet(NamedSheet, TestRules.Creation.AgeRules, Later));
         Assert.False(investigator.Submit(NoErrors, Later));
         Assert.False(investigator.RequestChanges("Too late", Later));
         Assert.False(investigator.Approve(Later));
@@ -271,7 +271,7 @@ public class InvestigatorTests
         var investigator = NewDraft();
         investigator.ClearDomainEvents();
 
-        investigator.ReplaceCharacterSheet(NamedSheet, Later);
+        investigator.ReplaceCharacterSheet(NamedSheet, TestRules.Creation.AgeRules, Later);
 
         Assert.Empty(investigator.DomainEvents);
     }

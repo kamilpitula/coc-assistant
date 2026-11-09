@@ -51,6 +51,8 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
     {
         var id = await CreateDraftAsync(playerOid);
         (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", playerOid, ValidSheet())).EnsureSuccessStatusCode();
+        (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", playerOid)).EnsureSuccessStatusCode();
+        (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/edu-improvement-checks", playerOid)).EnsureSuccessStatusCode();
         (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/submit", playerOid)).EnsureSuccessStatusCode();
         return id;
     }
@@ -132,29 +134,43 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         var body = await JsonAsync(response);
         Assert.Equal(DisplayNameFor(Player), body.GetProperty("playerName").GetString());
         Assert.Equal("Draft", body.GetProperty("status").GetString());
-        Assert.Equal(0, body.GetProperty("validationErrors").GetArrayLength());
         var sheet = body.GetProperty("characterSheet");
         Assert.Equal(5, sheet.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("Boston", sheet.GetProperty("identity").GetProperty("residence").GetString());
         var strength = sheet.GetProperty("characteristics").GetProperty("STR");
         Assert.Equal((60, 60, 30, 12), (strength.GetProperty("assigned").GetInt32(), strength.GetProperty("value").GetInt32(), strength.GetProperty("hard").GetInt32(), strength.GetProperty("extreme").GetInt32()));
         Assert.Equal(20, sheet.GetProperty("ageEffects").GetProperty("bracket").GetProperty("minimumAge").GetInt32());
-        Assert.Equal(50, sheet.GetProperty("ageEffects").GetProperty("eduImprovementChecks")[0].GetProperty("eduAfter").GetInt32());
-        Assert.Equal(55, sheet.GetProperty("derived").GetProperty("luck").GetInt32());
         Assert.Equal(99, sheet.GetProperty("derived").GetProperty("sanity").GetProperty("maximum").GetInt32());
-        Assert.Equal("PlayerEntered", sheet.GetProperty("rollRecords")[0].GetProperty("source").GetString());
-        var firstRecord = sheet.GetProperty("rollRecords")[0];
-        Assert.Equal(JsonValueKind.Null, firstRecord.GetProperty("faces").ValueKind);
-        Assert.Equal(DisplayNameFor(Player), firstRecord.GetProperty("rolledByDisplayName").GetString());
-        Assert.Equal(JsonValueKind.Null, firstRecord.GetProperty("rolledAt").ValueKind);
         Assert.False(sheet.GetProperty("locks").GetProperty("creationMethod").GetBoolean());
         Assert.Equal(460, body.GetProperty("rules").GetProperty("pointBuyBudget").GetInt32());
         Assert.Equal("3D6", body.GetProperty("rules").GetProperty("luckDice").GetString());
         Assert.Equal(99, body.GetProperty("rules").GetProperty("eduMaximum").GetInt32());
         Assert.Equal(5, body.GetProperty("rules").GetProperty("luckMultiplier").GetInt32());
 
+        (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", Player)).EnsureSuccessStatusCode();
+        (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/edu-improvement-checks", Player)).EnsureSuccessStatusCode();
         var reread = await JsonAsync(await SendAsync(HttpMethod.Get, $"{Investigators}/mine/character-sheet", Player));
+        // A rolled EDU improvement only grows the occupation budget, so the occupation warning depends on the dice.
+        var problems = reread.GetProperty("validationErrors").EnumerateArray().ToList();
+        Assert.DoesNotContain(problems, problem => problem.GetProperty("severity").GetString() == "Error");
+        Assert.All(problems, problem => Assert.Equal("OccupationPointsUnspent", problem.GetProperty("code").GetString()));
         Assert.Equal("Harvey Walters", reread.GetProperty("characterSheet").GetProperty("identity").GetProperty("name").GetString());
+        var rolled = reread.GetProperty("characterSheet");
+        var luck = Assert.Single(rolled.GetProperty("rollRecords").EnumerateArray()
+, record => record.GetProperty("purpose").GetString() == "Luck");
+        Assert.Equal("Server", luck.GetProperty("source").GetString());
+        var faces = luck.GetProperty("faces").EnumerateArray().Select(face => face.GetInt32()).ToList();
+        Assert.Equal(3, faces.Count);
+        Assert.All(faces, face => Assert.InRange(face, 1, 6));
+        Assert.Equal(faces.Sum(), luck.GetProperty("result").GetInt32());
+        Assert.Equal(faces.Sum() * 5, rolled.GetProperty("derived").GetProperty("luck").GetInt32());
+        Assert.Equal(DisplayNameFor(Player), luck.GetProperty("rolledByDisplayName").GetString());
+        Assert.NotEqual(JsonValueKind.Null, luck.GetProperty("rolledAt").ValueKind);
+        var check = rolled.GetProperty("ageEffects").GetProperty("eduImprovementChecks")[0];
+        var gain = check.GetProperty("gain").ValueKind == JsonValueKind.Null ? 0 : check.GetProperty("gain").GetInt32();
+        Assert.Equal(check.GetProperty("check").GetInt32() > 50 ? Math.Min(99, 50 + gain) : 50, check.GetProperty("eduAfter").GetInt32());
+        Assert.True(rolled.GetProperty("locks").GetProperty("ageBracket").GetBoolean());
+        Assert.True(rolled.GetProperty("locks").GetProperty("edu").GetBoolean());
     }
 
     [Fact]
@@ -208,8 +224,8 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
     {
         identity = new { name = "Harvey Walters", age = 25 },
         creationMethod = "StandardRolling",
-        ageEffects = new { deductions = new Dictionary<string, int?>(), eduImprovementChecks = new[] { new { check = (int?)30, gain = (int?)null } } },
-        luckRolls = new int?[] { 11 },
+        ageEffects = new { deductions = new Dictionary<string, int?>(), eduImprovementChecks = Array.Empty<object>() },
+        luckRolls = Array.Empty<int?>(),
     };
 
     private Task<HttpResponseMessage> PutStandardRollingSheetAsync() =>
@@ -350,31 +366,240 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         Assert.Equal(12, kept.Single(record => record.GetProperty("purpose").GetString() == "Characteristic:STR").GetProperty("result").GetInt32());
     }
 
-    private async Task SeedPlayerEnteredCharacteristicRollsAsync((string Code, int Result)[] rolls)
+    // Scenario: Luck is rolled by the server
+    [Fact]
+    public async Task Given_a_point_buy_draft_When_rolling_luck_Then_the_roll_is_server_rolled()
+    {
+        await CreateDraftAsync();
+        (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, ValidSheet())).EnsureSuccessStatusCode();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", Player);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var sheet = (await JsonAsync(response)).GetProperty("characterSheet");
+        var luck = Assert.Single(sheet.GetProperty("rollRecords").EnumerateArray()
+, record => record.GetProperty("purpose").GetString() == "Luck");
+        Assert.Equal("Server", luck.GetProperty("source").GetString());
+        var faces = luck.GetProperty("faces").EnumerateArray().Select(face => face.GetInt32()).ToList();
+        Assert.Equal(3, faces.Count);
+        Assert.All(faces, face => Assert.InRange(face, 1, 6));
+        Assert.Equal(faces.Sum(), luck.GetProperty("result").GetInt32());
+        Assert.Equal(faces.Sum() * 5, sheet.GetProperty("derived").GetProperty("luck").GetInt32());
+        Assert.Equal(DisplayNameFor(Player), luck.GetProperty("rolledByDisplayName").GetString());
+        Assert.NotEqual(JsonValueKind.Null, luck.GetProperty("rolledAt").ValueKind);
+        Assert.True(sheet.GetProperty("locks").GetProperty("ageBracket").GetBoolean());
+        Assert.False(sheet.GetProperty("locks").GetProperty("edu").GetBoolean());
+    }
+
+    // Scenario: a teenager rolls Luck twice
+    [Fact]
+    public async Task Given_a_fifteen_year_old_draft_When_rolling_luck_Then_both_rolls_are_server_rolled()
+    {
+        await CreateDraftAsync();
+        (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, SheetWith(("identity", new { name = "Harvey Walters", age = 17 })))).EnsureSuccessStatusCode();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", Player);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var records = (await JsonAsync(response)).GetProperty("characterSheet").GetProperty("rollRecords").EnumerateArray().ToList();
+        Assert.Equal(["Luck", "Luck:SecondRoll"], records.Select(record => record.GetProperty("purpose").GetString()).Order());
+        Assert.All(records, record => Assert.Equal("Server", record.GetProperty("source").GetString()));
+
+        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", Player)).StatusCode);
+    }
+
+    // Scenario: Luck is rolled only once
+    [Fact]
+    public async Task Given_rolled_luck_When_rolling_again_Then_it_conflicts_and_the_records_are_unchanged()
+    {
+        await CreateDraftAsync();
+        (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, ValidSheet())).EnsureSuccessStatusCode();
+        var before = (await JsonAsync(await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", Player)))
+            .GetProperty("characterSheet").GetProperty("rollRecords").ToString();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", Player);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var after = (await JsonAsync(await SendAsync(HttpMethod.Get, $"{Investigators}/mine/character-sheet", Player)))
+            .GetProperty("characterSheet").GetProperty("rollRecords").ToString();
+        Assert.Equal(before, after);
+    }
+
+    [Fact]
+    public async Task Given_a_submitted_investigator_When_rolling_luck_Then_it_conflicts()
+    {
+        await CreateSubmittedAsync();
+
+        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", Player)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_no_own_investigator_When_rolling_luck_Then_it_is_not_found()
+    {
+        await JoinAsPlayerAsync(_client, _campaignId, Keeper, OtherPlayer);
+        await CreateDraftAsync();
+
+        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", OtherPlayer)).StatusCode);
+    }
+
+    // Scenario: the EDU improvement check is rolled by the server
+    [Fact]
+    public async Task Given_a_point_buy_draft_When_rolling_the_edu_improvement_check_Then_the_check_is_server_rolled()
+    {
+        await CreateDraftAsync();
+        (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, ValidSheet())).EnsureSuccessStatusCode();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/edu-improvement-checks", Player);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var sheet = (await JsonAsync(response)).GetProperty("characterSheet");
+        var check = Assert.Single(sheet.GetProperty("rollRecords").EnumerateArray()
+, record => record.GetProperty("purpose").GetString() == "EduImprovement[1].Check");
+        Assert.Equal("Server", check.GetProperty("source").GetString());
+        Assert.Equal("D100", check.GetProperty("dice").GetString());
+        var total = check.GetProperty("result").GetInt32();
+        Assert.InRange(total, 1, 100);
+        Assert.Equal(DisplayNameFor(Player), check.GetProperty("rolledByDisplayName").GetString());
+        Assert.NotEqual(JsonValueKind.Null, check.GetProperty("rolledAt").ValueKind);
+        var outcome = sheet.GetProperty("ageEffects").GetProperty("eduImprovementChecks")[0];
+        var gain = outcome.GetProperty("gain").ValueKind == JsonValueKind.Null ? (int?)null : outcome.GetProperty("gain").GetInt32();
+        if (total > 50)
+        {
+            Assert.NotNull(gain);
+            Assert.InRange(gain.Value, 1, 10);
+            Assert.Equal(Math.Min(99, 50 + gain.Value), outcome.GetProperty("eduAfter").GetInt32());
+        }
+        else
+        {
+            Assert.Null(gain);
+            Assert.Equal(50, outcome.GetProperty("eduAfter").GetInt32());
+        }
+
+        Assert.True(sheet.GetProperty("locks").GetProperty("edu").GetBoolean());
+    }
+
+    // Scenario: each EDU improvement check is rolled only once
+    [Fact]
+    public async Task Given_a_rolled_edu_improvement_check_When_rolling_again_Then_it_conflicts_and_the_records_are_unchanged()
+    {
+        await CreateDraftAsync();
+        (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, ValidSheet())).EnsureSuccessStatusCode();
+        var before = (await JsonAsync(await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/edu-improvement-checks", Player)))
+            .GetProperty("characterSheet").GetProperty("rollRecords").ToString();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/edu-improvement-checks", Player);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var after = (await JsonAsync(await SendAsync(HttpMethod.Get, $"{Investigators}/mine/character-sheet", Player)))
+            .GetProperty("characterSheet").GetProperty("rollRecords").ToString();
+        Assert.Equal(before, after);
+    }
+
+    [Fact]
+    public async Task Given_a_submitted_investigator_When_rolling_the_edu_improvement_check_Then_it_conflicts()
+    {
+        await CreateSubmittedAsync();
+
+        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/edu-improvement-checks", Player)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_no_own_investigator_When_rolling_the_edu_improvement_check_Then_it_is_not_found()
+    {
+        await JoinAsPlayerAsync(_client, _campaignId, Keeper, OtherPlayer);
+        await CreateDraftAsync();
+
+        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/edu-improvement-checks", OtherPlayer)).StatusCode);
+    }
+
+    // Scenario: the PUT body never carries dice results; Luck and EDU improvement checks are rolled by the server
+    [Fact]
+    public async Task Given_luck_or_edu_values_When_saving_the_sheet_Then_it_is_a_bad_request()
+    {
+        await CreateDraftAsync();
+        var luckBody = SheetWith(("luckRolls", new int?[] { 11 }));
+        var eduBody = SheetWith(("ageEffects", new
+        {
+            deductions = new Dictionary<string, int?>(),
+            eduImprovementChecks = new[] { new { check = (int?)30, gain = (int?)null } },
+        }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, luckBody)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, eduBody)).StatusCode);
+    }
+
+    // Scenario: rolled Luck locks the age bracket
+    [Fact]
+    public async Task Given_rolled_luck_When_moving_to_another_age_bracket_Then_it_conflicts_and_nothing_changes()
+    {
+        await CreateDraftAsync();
+        (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, ValidSheet())).EnsureSuccessStatusCode();
+        (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", Player)).EnsureSuccessStatusCode();
+
+        var response = await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, SheetWith(("identity", new { name = "Harvey Walters", age = 45 })));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var age = (await JsonAsync(await SendAsync(HttpMethod.Get, $"{Investigators}/mine/character-sheet", Player)))
+            .GetProperty("characterSheet").GetProperty("identity").GetProperty("age").GetInt32();
+        Assert.Equal(25, age);
+    }
+
+    // Scenario: a Draft with typed-in Luck and EDU rolls from before the dice system keeps them
+    [Fact]
+    public async Task Given_a_legacy_draft_with_player_entered_luck_and_edu_When_rolling_Then_the_entered_rolls_are_kept()
+    {
+        await CreateDraftAsync();
+        (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, ValidSheet())).EnsureSuccessStatusCode();
+        await SeedPlayerEnteredRollsAsync(
+            (RollPurposes.Luck, CreationDice.Luck.ToString(), 11),
+            (RollPurposes.EduImprovementCheck(1), CreationDice.EduImprovementCheck.ToString(), 70),
+            (RollPurposes.EduImprovementGain(1), CreationDice.EduImprovementGain.ToString(), 4));
+
+        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", Player)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/edu-improvement-checks", Player)).StatusCode);
+
+        var sheet = (await JsonAsync(await SendAsync(HttpMethod.Get, $"{Investigators}/mine/character-sheet", Player))).GetProperty("characterSheet");
+        var records = sheet.GetProperty("rollRecords").EnumerateArray().ToList();
+        Assert.Equal(3, records.Count);
+        Assert.All(records, record => Assert.Equal("PlayerEntered", record.GetProperty("source").GetString()));
+        Assert.Equal(11, records.Single(record => record.GetProperty("purpose").GetString() == "Luck").GetProperty("result").GetInt32());
+        Assert.Equal(55, sheet.GetProperty("derived").GetProperty("luck").GetInt32());
+        Assert.Equal(54, sheet.GetProperty("ageEffects").GetProperty("eduImprovementChecks")[0].GetProperty("eduAfter").GetInt32());
+    }
+
+    /// <summary>Stores legacy Player-entered Roll Records on the Player's sheet, as a Draft from before the dice
+    /// system kept them (docs/game-rules/project_ruleset.md section 4.3).</summary>
+    private async Task SeedPlayerEnteredRollsAsync(params (string Purpose, string Dice, int Result)[] rolls)
     {
         var playerAccountId = await AccountIdAsync(Player);
         using var scope = _factory.Services.CreateScope();
-        var repository = scope.ServiceProvider.GetRequiredService<IInvestigatorRepository>();
-        var investigator = await repository.FindForPlayerAsync(_campaignId, playerAccountId, CancellationToken.None);
-        var sheet = CharacterSheet.Empty with
+        var dbContext = scope.ServiceProvider.GetRequiredService<CampaignPlayDbContext>();
+        var investigator = await dbContext.Investigators
+            .SingleAsync(record => record.CampaignId == _campaignId && record.PlayerAccountId == playerAccountId);
+        dbContext.Entry(investigator).Property(i => i.CharacterSheet).CurrentValue = investigator.CharacterSheet with
         {
-            CreationMethod = CreationMethod.StandardRolling,
-            RollRecords = rolls.Select(roll =>
-            {
-                if (!CharacteristicCodes.TryParse(roll.Code, out var characteristic))
-                {
-                    throw new InvalidOperationException($"Unknown characteristic '{roll.Code}'.");
-                }
-
-                return RollRecord.PlayerEntered(
-                    RollPurposes.Characteristic(characteristic),
-                    StandardRolling.FormulaFor(characteristic).Dice.ToString(),
-                    roll.Result);
-            }).ToList(),
+            RollRecords =
+            [
+                .. investigator.CharacterSheet.RollRecords,
+                .. rolls.Select(roll => RollRecord.PlayerEntered(roll.Purpose, roll.Dice, roll.Result)),
+            ],
         };
-        Assert.True(investigator!.ReplaceCharacterSheet(sheet, DateTimeOffset.UtcNow));
-        await repository.SaveChangesAsync(CancellationToken.None);
+        await dbContext.SaveChangesAsync(CancellationToken.None);
     }
+
+    private Task SeedPlayerEnteredCharacteristicRollsAsync((string Code, int Result)[] rolls) =>
+        SeedPlayerEnteredRollsAsync(rolls.Select(roll =>
+        {
+            if (!CharacteristicCodes.TryParse(roll.Code, out var characteristic))
+            {
+                throw new InvalidOperationException($"Unknown characteristic '{roll.Code}'.");
+            }
+
+            return (
+                RollPurposes.Characteristic(characteristic),
+                StandardRolling.FormulaFor(characteristic).Dice.ToString(),
+                roll.Result);
+        }).ToArray());
 
     private async Task<Guid> AccountIdAsync(string oid)
     {
@@ -392,8 +617,8 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
             identity = new { name = "Harvey Walters", age = 25 },
             creationMethod = "QuickFire",
             characteristics = new Dictionary<string, int?> { ["STR"] = 50, ["CON"] = 60, ["DEX"] = 50, ["APP"] = 40, ["POW"] = 60, ["SIZ"] = 50, ["INT"] = 80, ["EDU"] = 70 },
-            ageEffects = new { deductions = new Dictionary<string, int?>(), eduImprovementChecks = new[] { new { check = (int?)30, gain = (int?)null } } },
-            luckRolls = new int?[] { 11 },
+            ageEffects = new { deductions = new Dictionary<string, int?>(), eduImprovementChecks = Array.Empty<object>() },
+            luckRolls = Array.Empty<int?>(),
             occupation = ValidAntiquarian,
             quickFire = new
             {
@@ -410,7 +635,11 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
             },
         };
 
-        var response = await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body);
+        (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body)).EnsureSuccessStatusCode();
+        (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", Player)).EnsureSuccessStatusCode();
+        (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/edu-improvement-checks", Player)).EnsureSuccessStatusCode();
+
+        var response = await SendAsync(HttpMethod.Get, $"{Investigators}/mine/character-sheet", Player);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await JsonAsync(response);
@@ -558,11 +787,17 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
     public async Task Given_a_custom_weapon_without_a_name_When_saving_and_submitting_Then_it_is_saved_with_the_error_and_submission_is_rejected()
     {
         await CreateDraftAsync();
+        (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, ValidSheet())).EnsureSuccessStatusCode();
+        (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", Player)).EnsureSuccessStatusCode();
+        (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/edu-improvement-checks", Player)).EnsureSuccessStatusCode();
 
         var saved = await JsonAsync(await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, SheetWith(("weapons", new[] { Weapon(null) }))));
         var submitted = await SendAsync(HttpMethod.Post, $"{Investigators}/mine/submit", Player);
 
-        var error = Assert.Single(saved.GetProperty("validationErrors").EnumerateArray());
+        // A rolled EDU improvement only grows the occupation budget, so the occupation warning depends on the dice.
+        var error = Assert.Single(
+            saved.GetProperty("validationErrors").EnumerateArray(),
+            problem => problem.GetProperty("severity").GetString() == "Error");
         Assert.Equal(("WeaponNameRequired", "weapons[0].name"), (error.GetProperty("code").GetString(), error.GetProperty("field").GetString()));
         Assert.Equal(HttpStatusCode.UnprocessableEntity, submitted.StatusCode);
     }
@@ -580,14 +815,23 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
             ("weapons", new[] { Weapon("Knife") }),
             ("gear", "Lantern"));
         (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, body)).EnsureSuccessStatusCode();
+        (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", Player)).EnsureSuccessStatusCode();
+        (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/edu-improvement-checks", Player)).EnsureSuccessStatusCode();
 
         var submitted = await SendAsync(HttpMethod.Post, $"{Investigators}/mine/submit", Player);
         var review = await JsonAsync(await SendAsync(HttpMethod.Get, $"{Investigators}/{id}", Keeper));
 
         Assert.Equal(HttpStatusCode.OK, submitted.StatusCode);
         Assert.Equal("Submitted", review.GetProperty("status").GetString());
-        var warning = Assert.Single(review.GetProperty("warnings").EnumerateArray());
-        Assert.Equal("PersonalInterestPointsUnspent", warning.GetProperty("code").GetString());
+        var warnings = review.GetProperty("warnings").EnumerateArray().ToList();
+        var personal = Assert.Single(warnings, warning => warning.GetProperty("code").GetString() == "PersonalInterestPointsUnspent");
+        Assert.Equal("personalInterestPoints", personal.GetProperty("field").GetString());
+        // A rolled EDU improvement only grows the occupation budget, so the occupation warning depends on the dice.
+        var occupation = warnings.SingleOrDefault(warning => warning.GetProperty("code").GetString() == "OccupationPointsUnspent");
+        if (occupation.ValueKind != JsonValueKind.Undefined)
+        {
+            Assert.Equal("200", occupation.GetProperty("actual").GetString());
+        }
         var sheet = review.GetProperty("characterSheet");
         Assert.Equal("traits", sheet.GetProperty("keyConnection").GetString());
         Assert.Equal("Knife", Assert.Single(sheet.GetProperty("weapons").EnumerateArray()).GetProperty("name").GetString());
@@ -689,8 +933,16 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
             body.EnumerateObject().Select(property => property.Name).Order());
         Assert.Equal("Submitted", body.GetProperty("status").GetString());
         Assert.Equal(DisplayNameFor(Player), body.GetProperty("playerName").GetString());
-        Assert.Equal(0, body.GetProperty("warnings").GetArrayLength());
-        Assert.Equal(2, body.GetProperty("characterSheet").GetProperty("rollRecords").GetArrayLength());
+        // A rolled EDU improvement only grows the occupation budget, so the occupation warning depends on the dice.
+        var warnings = body.GetProperty("warnings").EnumerateArray().ToList();
+        Assert.All(warnings, warning => Assert.Equal("OccupationPointsUnspent", warning.GetProperty("code").GetString()));
+        var purposes = body.GetProperty("characterSheet").GetProperty("rollRecords").EnumerateArray()
+            .Select(record => record.GetProperty("purpose").GetString()).ToList();
+        Assert.Contains("Luck", purposes);
+        Assert.Contains("EduImprovement[1].Check", purposes);
+        Assert.All(
+            body.GetProperty("characterSheet").GetProperty("rollRecords").EnumerateArray(),
+            record => Assert.Equal("Server", record.GetProperty("source").GetString()));
     }
 
     // Scenario: Investigator is not reachable from another Campaign

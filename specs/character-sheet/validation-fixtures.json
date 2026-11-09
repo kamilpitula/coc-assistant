@@ -1905,7 +1905,7 @@
         {
           "code": "LuckRollRequired",
           "field": "luckRolls[0]",
-          "message": "Enter your Luck roll.",
+          "message": "Roll Luck.",
           "expected": null,
           "actual": null,
           "severity": "Error"
@@ -2295,7 +2295,7 @@
         {
           "code": "LuckSecondRollRequired",
           "field": "luckRolls[1]",
-          "message": "Enter your second Luck roll.",
+          "message": "Roll your second Luck roll.",
           "expected": null,
           "actual": null,
           "severity": "Error"
@@ -3121,7 +3121,7 @@
         {
           "code": "EduImprovementCheckRequired",
           "field": "ageEffects.eduImprovementChecks[1].check",
-          "message": "Enter the D100 roll for EDU check 2.",
+          "message": "Roll EDU check 2.",
           "expected": null,
           "actual": null,
           "severity": "Error"
@@ -3667,7 +3667,7 @@
         {
           "code": "EduImprovementGainRequired",
           "field": "ageEffects.eduImprovementChecks[0].gain",
-          "message": "Enter the 1D10 gain for EDU check 1.",
+          "message": "EDU check 1 is missing its 1D10 gain. Ask your Keeper.",
           "expected": null,
           "actual": null,
           "severity": "Error"
@@ -4074,7 +4074,7 @@
         {
           "code": "EduImprovementGainRequired",
           "field": "ageEffects.eduImprovementChecks[1].gain",
-          "message": "Enter the 1D10 gain for EDU check 2.",
+          "message": "EDU check 2 is missing its 1D10 gain. Ask your Keeper.",
           "expected": null,
           "actual": null,
           "severity": "Error"

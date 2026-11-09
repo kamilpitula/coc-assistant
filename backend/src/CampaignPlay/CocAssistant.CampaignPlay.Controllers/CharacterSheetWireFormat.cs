@@ -44,10 +44,6 @@ public static class CharacterSheetWireFormat
             request.CreationMethod is null ? null : Enum.Parse<CreationMethod>(request.CreationMethod),
             ToValues(request.Characteristics),
             ToValues(request.AgeEffects?.Deductions),
-            (request.AgeEffects?.EduImprovementChecks ?? [])
-                .Select(check => new EduImprovementCheckInput(check.Check, check.Gain))
-                .ToList(),
-            request.LuckRolls ?? [],
             request.Occupation is null ? null : ToOccupation(request.Occupation),
             (request.Skills ?? [])
                 .Select(skill => new SkillAllocation(ToSkill(skill.Skill, skill.Specialization), skill.OccupationPoints, skill.PersonalInterestPoints))
@@ -126,7 +122,13 @@ public static class CharacterSheetWireFormat
             sheet.BackstoryAndPossessions.Gear,
             ToDerived(computation.Derived),
             view.Investigator.CharacterSheet.RollRecords.Select(record => ToRollRecord(record, view)).ToList(),
-            new CharacterSheetLocksResponse(CreationLocks.Of(sheet).CreationMethod));
+            ToLocks(sheet, computation));
+    }
+
+    private static CharacterSheetLocksResponse ToLocks(CharacterSheet sheet, CharacterSheetComputation computation)
+    {
+        var locks = CreationLocks.Of(sheet, computation.Bracket);
+        return new CharacterSheetLocksResponse(locks.CreationMethod, locks.AgeBracket, locks.Edu);
     }
 
     private static RollRecordResponse ToRollRecord(RollRecord record, CharacterSheetView view) =>

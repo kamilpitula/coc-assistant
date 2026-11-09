@@ -1,21 +1,5 @@
 namespace CocAssistant.CampaignPlay.Domain.CharacterSheets;
 
-/// <summary>Turns a dice result the Player entered into a Roll Record.</summary>
-public interface IRollSource
-{
-    /// <summary>Returns the Roll Record for the purpose, or null when there is no result yet.</summary>
-    RollRecord? Record(string purpose, DiceExpression dice, int? playerEnteredResult);
-}
-
-/// <summary>Records results the Player rolled at the table. Impossible results are kept and reported by validation.</summary>
-public sealed class PlayerEnteredRollSource : IRollSource
-{
-    public RollRecord? Record(string purpose, DiceExpression dice, int? playerEnteredResult) =>
-        playerEnteredResult is null
-            ? null
-            : RollRecord.PlayerEntered(purpose, dice.ToString(), playerEnteredResult.Value);
-}
-
 /// <summary>The purposes Roll Records are stored under (specs/character-sheet/spec.md, Roll Records).</summary>
 public static class RollPurposes
 {

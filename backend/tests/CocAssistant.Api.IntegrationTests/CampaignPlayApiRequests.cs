@@ -38,7 +38,8 @@ public static class CampaignPlayApiRequests
         joinResponse.EnsureSuccessStatusCode();
     }
 
-    /// <summary>A valid Point Buy Character Sheet request body with the given Investigator name.</summary>
+    /// <summary>A valid Point Buy Character Sheet request body with the given Investigator name. Dice results are never
+    /// part of it; the caller rolls Luck and the EDU improvement check through the rolls endpoints.</summary>
     public static object ValidCharacterSheet(string name) => new
     {
         identity = new { name, age = 25, gender = (string?)null, residence = "Boston", birthplace = (string?)null },
@@ -54,8 +55,8 @@ public static class CampaignPlayApiRequests
             ["INT"] = 60,
             ["EDU"] = 50,
         },
-        ageEffects = new { deductions = new Dictionary<string, int?>(), eduImprovementChecks = new[] { new { check = (int?)30, gain = (int?)null } } },
-        luckRolls = new int?[] { 11 },
+        ageEffects = new { deductions = new Dictionary<string, int?>(), eduImprovementChecks = Array.Empty<object>() },
+        luckRolls = Array.Empty<int?>(),
         occupation = ValidAntiquarian,
         skills = ValidSkillAllocations,
     };
@@ -90,7 +91,8 @@ public static class CampaignPlayApiRequests
         new { skill = "Listen", personalInterestPoints = 60 },
     ];
 
-    /// <summary>Creates the Player's Draft with a valid, named Character Sheet and returns the Investigator id.</summary>
+    /// <summary>Creates the Player's Draft with a valid, named Character Sheet, rolls its Luck and EDU improvement
+    /// check, and returns the Investigator id.</summary>
     public static async Task<Guid> CreateNamedDraftAsync(HttpClient client, Guid campaignId, string playerOid, string name)
     {
         var investigators = $"/api/campaigns/{campaignId}/investigators";
@@ -98,6 +100,10 @@ public static class CampaignPlayApiRequests
         created.EnsureSuccessStatusCode();
         var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
         (await client.SendAsync(BuildRequest(HttpMethod.Put, $"{investigators}/mine/character-sheet", playerOid, ValidCharacterSheet(name))))
+            .EnsureSuccessStatusCode();
+        (await client.SendAsync(BuildRequest(HttpMethod.Post, $"{investigators}/mine/character-sheet/rolls/luck", playerOid)))
+            .EnsureSuccessStatusCode();
+        (await client.SendAsync(BuildRequest(HttpMethod.Post, $"{investigators}/mine/character-sheet/rolls/edu-improvement-checks", playerOid)))
             .EnsureSuccessStatusCode();
         return id;
     }

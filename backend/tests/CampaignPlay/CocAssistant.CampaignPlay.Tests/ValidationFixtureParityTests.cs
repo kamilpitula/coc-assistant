@@ -29,8 +29,11 @@ public class ValidationFixtureParityTests
     {
         var fixtureCase = Fixtures.Value.RootElement.GetProperty("cases").EnumerateArray()
             .Single(candidate => candidate.GetProperty("name").GetString() == caseName);
-        var sheet = FixtureSheet.ToInputs(fixtureCase.GetProperty("sheet")).ToCharacterSheet(new PlayerEnteredRollSource());
-        if (fixtureCase.GetProperty("sheet").TryGetProperty("characteristicRolls", out var rolls))
+        var sheetElement = fixtureCase.GetProperty("sheet");
+        var sheet = FixtureSheet.ToInputs(sheetElement).ToCharacterSheet();
+        // The fixture's luckRolls and eduImprovementChecks are stored Player-entered Roll Records, not PUT input.
+        sheet = sheet.WithAddedRollRecords(FixtureSheet.DiceRecords(sheetElement));
+        if (sheetElement.TryGetProperty("characteristicRolls", out var rolls))
         {
             // The fixture's characteristicRolls are stored Player-entered Roll Records, not PUT input.
             sheet = sheet.WithAddedRollRecords(
@@ -120,15 +123,35 @@ public class ValidationFixtureParityTests
                 OptionalString(sheet, "creationMethod") is { } method ? Enum.Parse<CreationMethod>(method) : null,
                 Characteristics(sheet.GetProperty("characteristics")),
                 Characteristics(ageEffects.GetProperty("deductions")),
-                ageEffects.GetProperty("eduImprovementChecks").EnumerateArray()
-                    .Select(check => new EduImprovementCheckInput(OptionalInt(check, "check"), OptionalInt(check, "gain")))
-                    .ToList(),
-                sheet.GetProperty("luckRolls").EnumerateArray().Select(Int).ToList(),
                 Occupation(sheet),
                 OptionalArray(sheet, "skills").Select(Allocation).ToList(),
                 QuickFire(sheet),
                 BackstoryAndPossessions(sheet));
         }
+
+        /// <summary>The fixture's Luck and EDU results as stored Player-entered Roll Records.</summary>
+        public static IReadOnlyList<RollRecord> DiceRecords(JsonElement sheet)
+        {
+            var ageEffects = sheet.GetProperty("ageEffects");
+            return sheet.GetProperty("luckRolls").EnumerateArray()
+                .Select((roll, index) => (roll, index))
+                .Where(pair => pair.roll.ValueKind != JsonValueKind.Null)
+                .Select(pair => RollRecord.PlayerEntered(
+                    pair.index == 0 ? RollPurposes.Luck : RollPurposes.LuckSecondRoll,
+                    CreationDice.Luck.ToString(),
+                    pair.roll.GetInt32()))
+                .Concat(ageEffects.GetProperty("eduImprovementChecks").EnumerateArray()
+                    .SelectMany((check, index) => new[]
+                    {
+                        DiceRecord(RollPurposes.EduImprovementCheck(index + 1), CreationDice.EduImprovementCheck.ToString(), check, "check"),
+                        DiceRecord(RollPurposes.EduImprovementGain(index + 1), CreationDice.EduImprovementGain.ToString(), check, "gain"),
+                    })
+                    .OfType<RollRecord>())
+                .ToList();
+        }
+
+        private static RollRecord? DiceRecord(string purpose, string dice, JsonElement check, string property) =>
+            OptionalInt(check, property) is { } result ? RollRecord.PlayerEntered(purpose, dice, result) : null;
 
         private static BackstoryAndPossessions BackstoryAndPossessions(JsonElement sheet)
         {

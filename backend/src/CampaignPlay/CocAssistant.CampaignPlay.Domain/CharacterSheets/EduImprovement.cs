@@ -1,5 +1,8 @@
 namespace CocAssistant.CampaignPlay.Domain.CharacterSheets;
 
+/// <summary>The rolls for one EDU improvement check (section 3.2), read from its Roll Records.</summary>
+public sealed record EduImprovementCheckInput(int? Check, int? Gain);
+
 /// <summary>The result of one EDU improvement check (section 3.2). <c>Improves</c> is true when the roll is above EDU.</summary>
 public sealed record EduImprovementOutcome(int Number, int? Check, int? Gain, int EduBefore, int EduAfter, bool Improves);
 

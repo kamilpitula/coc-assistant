@@ -176,11 +176,37 @@ public sealed class CharacterSheetBuilder
     }
 
     public CharacterSheetInputs BuildInputs() =>
-        new(_identity, _creationMethod, _assigned, _deductions, _eduChecks, _luckRolls, _occupation, _skills, _quickFire, _backstoryAndPossessions);
+        new(_identity, _creationMethod, _assigned, _deductions, _occupation, _skills, _quickFire, _backstoryAndPossessions);
 
-    public CharacterSheet Build()
-    {
-        var sheet = BuildInputs().ToCharacterSheet(new PlayerEnteredRollSource());
-        return sheet with { RollRecords = [.. sheet.RollRecords, .. _storedRolls] };
-    }
+    /// <summary>Builds the sheet with Player-entered Luck and EDU results as legacy stored records (project_ruleset.md section 4.3).</summary>
+    public CharacterSheet Build() =>
+        BuildInputs().ToCharacterSheet() with
+        {
+            RollRecords = [.. LuckRecords(), .. EduRecords(), .. _storedRolls],
+        };
+
+    private IReadOnlyList<RollRecord> LuckRecords() =>
+        _luckRolls
+            .Take(2)
+            .Select((roll, index) => roll is null
+                ? null
+                : RollRecord.PlayerEntered(
+                    index == 0 ? RollPurposes.Luck : RollPurposes.LuckSecondRoll,
+                    CreationDice.Luck.ToString(),
+                    roll.Value))
+            .OfType<RollRecord>()
+            .ToList();
+
+    private IReadOnlyList<RollRecord> EduRecords() =>
+        _eduChecks
+            .SelectMany((check, index) => new[]
+            {
+                RecordIf(RollPurposes.EduImprovementCheck(index + 1), CreationDice.EduImprovementCheck.ToString(), check.Check),
+                RecordIf(RollPurposes.EduImprovementGain(index + 1), CreationDice.EduImprovementGain.ToString(), check.Gain),
+            })
+            .OfType<RollRecord>()
+            .ToList();
+
+    private static RollRecord? RecordIf(string purpose, string dice, int? result) =>
+        result is null ? null : RollRecord.PlayerEntered(purpose, dice, result.Value);
 }

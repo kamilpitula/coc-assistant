@@ -69,33 +69,72 @@ public class Investigator : AggregateRoot
     }
 
     /// <summary>
-    /// Replaces the sheet with the Player's inputs. Every stored characteristic Roll Record and every Server record is
-    /// kept; only the Player-entered Luck and EDU records are rebuilt. A Creation Method change after any characteristic
-    /// was rolled returns false and changes nothing.
+    /// Replaces the sheet with the Player's inputs. Every stored Roll Record is kept; a PUT never adds, changes, or
+    /// removes one. A change that breaks a creation lock returns false and changes nothing.
     /// </summary>
-    public bool ReplaceCharacterSheet(CharacterSheet characterSheet, DateTimeOffset now)
+    public bool ReplaceCharacterSheet(CharacterSheet characterSheet, AgeRules ageRules, DateTimeOffset now)
     {
         if (!CanBeEditedByPlayer)
         {
             return false;
         }
 
-        if (characterSheet.CreationMethod != CharacterSheet.CreationMethod && CreationLocks.Of(CharacterSheet).CreationMethod)
+        var next = characterSheet with { RollRecords = [.. CharacterSheet.RollRecords] };
+        if (CreationLocks.Refuses(CharacterSheet, next, ageRules))
         {
             return false;
         }
 
-        CharacterSheet = characterSheet with
-        {
-            RollRecords = [.. KeptRollRecords(CharacterSheet), .. characterSheet.RollRecords],
-        };
+        CharacterSheet = next;
         Touch(now);
         return true;
     }
 
-    private static IEnumerable<RollRecord> KeptRollRecords(CharacterSheet stored) =>
-        stored.RollRecords.Where(record =>
-            record.Source == RollSource.Server || RollPurposes.IsCharacteristicPurpose(record.Purpose));
+    /// <summary>
+    /// Rolls Luck and, when the age bracket rolls twice, the second Luck roll (specs/character-sheet/spec.md, Creation
+    /// rolling). Succeeds only in Draft or Changes Requested, with a valid age, while something is missing; otherwise
+    /// returns false and changes nothing.
+    /// </summary>
+    public bool RollLuck(AgeRules ageRules, IDiceRoller roller, Guid rolledByAccountId, DateTimeOffset now)
+    {
+        if (!CanBeEditedByPlayer || CharacterSheet.Identity.Age is not { } age)
+        {
+            return false;
+        }
+
+        var bracket = ageRules.BracketFor(age);
+        return bracket is not null
+            && AddRollRecords(LuckRolling.RollMissing(CharacterSheet, bracket, roller, rolledByAccountId, now), now);
+    }
+
+    /// <summary>
+    /// Rolls the next EDU improvement check and, when it improves EDU, its gain (specs/character-sheet/spec.md,
+    /// Creation rolling). Succeeds only in Draft or Changes Requested, with a valid age and a usable EDU, while a
+    /// check is missing; otherwise returns false and changes nothing.
+    /// </summary>
+    public bool RollEduImprovementCheck(AgeRules ageRules, IDiceRoller roller, Guid rolledByAccountId, DateTimeOffset now)
+    {
+        if (!CanBeEditedByPlayer || CharacterSheet.Identity.Age is not { } age)
+        {
+            return false;
+        }
+
+        var bracket = ageRules.BracketFor(age);
+        return bracket is not null
+            && AddRollRecords(EduImprovementRolling.RollNext(CharacterSheet, bracket, roller, rolledByAccountId, now), now);
+    }
+
+    private bool AddRollRecords(IReadOnlyList<RollRecord> records, DateTimeOffset now)
+    {
+        if (records.Count == 0)
+        {
+            return false;
+        }
+
+        CharacterSheet = CharacterSheet.WithAddedRollRecords(records);
+        Touch(now);
+        return true;
+    }
 
     /// <summary>
     /// Rolls every characteristic missing a Roll Record (specs/character-sheet/spec.md, Creation rolling). Succeeds only
@@ -109,15 +148,7 @@ public class Investigator : AggregateRoot
             return false;
         }
 
-        var records = CharacteristicRolling.RollMissing(CharacterSheet, roller, rolledByAccountId, now);
-        if (records.Count == 0)
-        {
-            return false;
-        }
-
-        CharacterSheet = CharacterSheet.WithAddedRollRecords(records);
-        Touch(now);
-        return true;
+        return AddRollRecords(CharacteristicRolling.RollMissing(CharacterSheet, roller, rolledByAccountId, now), now);
     }
 
     /// <summary>Submits a Draft or Changes Requested Investigator whose Character Sheet has no errors; warnings are allowed.</summary>

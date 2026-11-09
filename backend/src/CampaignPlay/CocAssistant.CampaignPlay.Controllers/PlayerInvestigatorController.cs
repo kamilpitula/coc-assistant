@@ -83,6 +83,38 @@ public class PlayerInvestigatorController : InvestigatorControllerBase
         return view is null ? NotFound() : Ok(CharacterSheetWireFormat.ToCharacterSheetResponse(view));
     }
 
+    /// <summary>Rolls the Luck the sheet still has no Roll Record for and returns the sheet.</summary>
+    [HttpPost("mine/character-sheet/rolls/luck")]
+    public async Task<ActionResult<CharacterSheetResponse>> RollMyLuck(Guid campaignId, CancellationToken cancellationToken)
+    {
+        var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
+        if (accountId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _service.RollMyLuckAsync(campaignId, accountId.Value, cancellationToken);
+        return result.Outcome == InvestigatorCommandOutcome.Succeeded
+            ? Ok(CharacterSheetWireFormat.ToCharacterSheetResponse(result.View!))
+            : Failure(result.Outcome);
+    }
+
+    /// <summary>Rolls the next EDU improvement check and its gain and returns the sheet.</summary>
+    [HttpPost("mine/character-sheet/rolls/edu-improvement-checks")]
+    public async Task<ActionResult<CharacterSheetResponse>> RollMyEduImprovementCheck(Guid campaignId, CancellationToken cancellationToken)
+    {
+        var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
+        if (accountId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _service.RollMyEduImprovementCheckAsync(campaignId, accountId.Value, cancellationToken);
+        return result.Outcome == InvestigatorCommandOutcome.Succeeded
+            ? Ok(CharacterSheetWireFormat.ToCharacterSheetResponse(result.View!))
+            : Failure(result.Outcome);
+    }
+
     /// <summary>Rolls the characteristics the sheet still has no Roll Record for and returns the sheet.</summary>
     [HttpPost("mine/character-sheet/rolls/characteristics")]
     public async Task<ActionResult<CharacterSheetResponse>> RollMyCharacteristics(Guid campaignId, CancellationToken cancellationToken)
