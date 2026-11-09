@@ -45,8 +45,8 @@ export default defineConfig([
     },
   },
   {
-    // apiFetch is the single place allowed to call the fetch global.
-    files: ['src/shared/services/apiFetch.ts'],
+    // apiFetch wraps the fetch global; tests, stories, and shared test-support fakes may call it directly.
+    files: ['src/shared/services/apiFetch.ts', 'src/shared/test-support/**', '**/*.test.{ts,tsx}', '**/*.stories.tsx'],
     rules: {
       'no-restricted-globals': 'off',
     },
