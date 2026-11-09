@@ -28,3 +28,11 @@ The application needs a hosted `dev` environment ([specs/deployment/spec.md](../
 - The first request after an idle period waits for a cold start and, after 15 idle minutes, for the database to resume. The DbContexts retry on transient failures for at least 60 seconds, and `/health` does not touch the database so probes do not keep it awake.
 - If the free database allowance runs out, the database is offline until the next calendar month. This cannot be switched to billing and back.
 - **Revisit when** idle sessions lose live updates despite the cooldown (move to min replicas 1), when more than 20 concurrent connections are needed (SignalR Standard, about $49/month), or when a production environment is planned.
+
+## Amendment (2026-11-09, PBI-DEP-002)
+How the application side of this decision is built ([design record](../deployment/issues/02-prepare-the-api-and-spa-for-hosting.design.md)):
+- **API URL:** the SPA sends every API request through a shared `apiFetch`, and builds the hub URL with `apiUrl`. Both prefix `VITE_API_BASE_URL` and stay relative when it is unset. An ESLint rule forbids calling the global `fetch` anywhere else.
+- **CORS:** one named policy with the origins in the `Cors:AllowedOrigins` array (`Cors__AllowedOrigins__0` in the Container App), with credentials. It is attached to the controllers and the Campaign hub only. With no origins configured, no cross-origin request is allowed.
+- **Forwarded headers:** `X-Forwarded-For` and `X-Forwarded-Proto` are trusted from any proxy, because the Container Apps ingress is the only path to the API. No code may base an authorization decision on the client IP or the scheme.
+- **Retry:** the API host gives all three DbContexts `EnableRetryOnFailure` with 8 retries and a 15-second maximum delay, at least about 71 seconds of waiting in total.
+- **The finish-then-start transaction** ([ADR 0025](0025-one-active-scene-per-campaign-through-a-filtered-index-and-a-scene-version.md)) runs inside the execution strategy as a single attempt and is never replayed. A replay would repeat an in-memory start after the finish was already accepted. A transient failure inside it fails the request, and the Keeper starts the Scene again.

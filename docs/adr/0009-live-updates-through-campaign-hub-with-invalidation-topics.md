@@ -35,3 +35,6 @@ Campaign Play hosts one authenticated, strongly typed SignalR hub, `Hub<ICampaig
 - Missed events are recovered only by the refetch after a reconnect; there is no replay or sequence number.
 - Production hosting must allow cross-origin negotiate and WebSocket requests from Static Web Apps to the API, or use a linked backend. This is decided with the infrastructure, not here.
 - Removing a member from a Campaign, when introduced, must also remove their connections from that Campaign's groups.
+
+## Amendment (2026-11-09, PBI-DEP-002)
+The consequence about cross-origin hosting is resolved by [ADR 0031](0031-dev-environment-on-container-apps-static-web-apps-and-free-sql.md). The SPA and the API are separate origins; the API's CORS policy covers the Campaign hub, including negotiate. The hub URL is prefixed with `VITE_API_BASE_URL` where the Campaign slice builds it. `frontend/src/shared/services/liveConnection.ts` is unchanged and still receives a ready URL.
