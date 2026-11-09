@@ -11,7 +11,7 @@ Give the repository owner a one-time, locally run Terraform stack that creates e
 
 **Scope:**
 - **Bootstrap stack:** `infrastructure/terraform/bootstrap/` with `rg-cocassistant-tfstate`, the state storage account (Standard LRS, versioning and soft delete, Entra-authorized access), `rg-cocassistant-dev`, `id-cocassistant-github-plan` and `id-cocassistant-github-deploy` with their federated credentials and role assignments, the group `sg-cocassistant-dev-sql-admins` (deploy identity and the repository owner), and the EUR 5 subscription budget with alerts at 20% actual, 80% forecast, and 100% forecast.
-- **CI:** the `terraform` job in `.github/workflows/ci.yml` also runs `init -backend=false` and `validate` for `bootstrap/`.
+- **CI:** the `terraform` job in `.github/workflows/ci.yml` also runs `init -backend=false`, `validate`, and `test` for `bootstrap/`.
 - **Docs:** start `docs/infrastructure/dev-environment-setup.md` with the bootstrap run and the GitHub Environment `dev` setup.
 - **Out of scope:** the environment stack's resources (PBI-DEP-003) and workflows (PBI-DEP-004, PBI-DEP-005).
 
