@@ -1,9 +1,9 @@
 namespace CocAssistant.CampaignPlay.Controllers;
 
 /// <summary>
-/// The Player's Character Sheet inputs (PUT .../investigators/mine/character-sheet). Derived values are never accepted.
-/// Dice results are raw totals. Inputs that belong to another Creation Method are a malformed body. Shape:
-/// specs/character-sheet/spec.md, API Contracts.
+/// The Player's Character Sheet inputs (PUT .../investigators/mine/character-sheet). Derived values are never accepted,
+/// and dice results are never accepted: `luckRolls` and `ageEffects.eduImprovementChecks` remain only to be rejected
+/// as a malformed body. Shape: specs/character-sheet/spec.md, API Contracts.
 /// </summary>
 public record CharacterSheetRequest(
     [Required] IdentityRequest Identity,
@@ -134,8 +134,7 @@ public static class CharacterSheetRequestRules
     {
         var method = request.CreationMethod is { } name && RulesOptionsWireFormat.IsCreationMethodName(name) ? Enum.Parse<CreationMethod>(name) : (CreationMethod?)null;
         var problems = new List<string>();
-        AddIf(problems, method == CreationMethod.StandardRolling && HasValues(request.Characteristics), "Standard rolling takes no characteristics; they are rolled by the server.");
-        AddIf(problems, HasValues(request.CharacteristicRolls), "characteristicRolls takes no values; characteristics are rolled by the server.");
+        AddDiceProblems(problems, method, request);
         AddIf(problems, method == CreationMethod.QuickFire && request.Skills is { Length: > 0 }, "Quick fire takes quickFire, not skills.");
         AddIf(problems, method != CreationMethod.QuickFire && HasQuickFireInputs(request.QuickFire), "Only Quick fire takes quickFire.");
         AddIf(problems, request.Occupation is { CatalogId: not null, Custom: not null }, "Choose a catalog occupation or a custom one, not both.");
@@ -153,7 +152,18 @@ public static class CharacterSheetRequestRules
         }
     }
 
+    private static void AddDiceProblems(List<string> problems, CreationMethod? method, CharacterSheetRequest request)
+    {
+        AddIf(problems, method == CreationMethod.StandardRolling && HasValues(request.Characteristics), "Standard rolling takes no characteristics; they are rolled by the server.");
+        AddIf(problems, HasValues(request.CharacteristicRolls), "characteristicRolls takes no values; characteristics are rolled by the server.");
+        AddIf(problems, request.LuckRolls?.Any(roll => roll is not null) == true, "luckRolls takes no values; Luck is rolled by the server.");
+        AddIf(problems, HasEduValues(request.AgeEffects?.EduImprovementChecks), "ageEffects.eduImprovementChecks takes no values; EDU improvement checks are rolled by the server.");
+    }
+
     private static bool HasValues(Dictionary<string, int?>? values) => values?.Values.Any(value => value is not null) == true;
+
+    private static bool HasEduValues(EduImprovementCheckRequest[]? checks) =>
+        checks?.Any(check => check?.Check is not null || check?.Gain is not null) == true;
 
     private static bool HasQuickFireInputs(QuickFireRequest? quickFire) =>
         quickFire is not null && ((quickFire.Values?.Length ?? 0) > 0 || (quickFire.PersonalInterests?.Length ?? 0) > 0 || quickFire.ExtraSkill is not null);

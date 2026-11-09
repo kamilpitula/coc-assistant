@@ -2,14 +2,14 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
-import { emptyInputs, validInputs } from '@/campaign-play/test-support/characterSheetFixtures'
+import { emptyInputs, emptySheetView, sheetView, validInputs } from '@/campaign-play/test-support/characterSheetFixtures'
 
 import { IdentityStep } from './identity-step'
 
 /** specs/character-sheet/ux.md section 6.1; A11Y-3 and A11Y-10. */
 describe('IdentityStep', () => {
   it('asks for the identity fields and shows the Player name read-only', () => {
-    render(<IdentityStep inputs={validInputs} errors={{}} playerName="Ada Lovelace" onAction={vi.fn()} onBlur={vi.fn()} />)
+    render(<IdentityStep inputs={validInputs} errors={{}} playerName="Ada Lovelace" sheet={emptySheetView()} onAction={vi.fn()} onBlur={vi.fn()} />)
 
     expect(screen.getByLabelText('Investigator name')).toHaveValue('Harvey Walters')
     expect(screen.getByLabelText('Age')).toHaveAccessibleDescription(
@@ -24,7 +24,7 @@ describe('IdentityStep', () => {
 
   it('reports each change as an identity action', async () => {
     const onAction = vi.fn()
-    render(<IdentityStep inputs={emptyInputs} errors={{}} playerName="Ada Lovelace" onAction={onAction} onBlur={vi.fn()} />)
+    render(<IdentityStep inputs={emptyInputs} errors={{}} playerName="Ada Lovelace" sheet={emptySheetView()} onAction={onAction} onBlur={vi.fn()} />)
 
     await userEvent.type(screen.getByLabelText('Age'), '4')
 
@@ -37,11 +37,44 @@ describe('IdentityStep', () => {
         inputs={emptyInputs}
         errors={{ 'identity.name': "Enter your Investigator's name." }}
         playerName="Ada Lovelace"
+        sheet={emptySheetView()}
         onAction={vi.fn()}
         onBlur={vi.fn()}
       />,
     )
 
     expect(screen.getByLabelText('Investigator name')).toHaveAccessibleDescription("Enter your Investigator's name.")
+  })
+
+  it('UX-38: tells the locked age range and what fixed it', () => {
+    const both = sheetView({ locks: { creationMethod: false, ageBracket: true, edu: false } })
+    const { rerender } = render(
+      <IdentityStep inputs={validInputs} errors={{}} playerName="Ada Lovelace" sheet={both} onAction={vi.fn()} onBlur={vi.fn()} />,
+    )
+
+    expect(screen.getByLabelText('Age')).toHaveAccessibleDescription(
+      'Your age must stay between 20 and 39 because you rolled Luck and EDU checks.',
+    )
+
+    const luckOnly = sheetView({
+      locks: { creationMethod: false, ageBracket: true, edu: false },
+      ageEffects: { bracket: sheetView().ageEffects.bracket, deductions: {}, eduImprovementChecks: [] },
+      rollRecords: [
+        { purpose: 'Luck', dice: '3D6', faces: [3, 3, 5], result: 11, source: 'Server', rolledByDisplayName: 'Ada Lovelace', rolledAt: '2026-11-08T14:30:00+00:00' },
+      ],
+    })
+    rerender(
+      <IdentityStep inputs={validInputs} errors={{}} playerName="Ada Lovelace" sheet={luckOnly} onAction={vi.fn()} onBlur={vi.fn()} />,
+    )
+    expect(screen.getByLabelText('Age')).toHaveAccessibleDescription(
+      'Your age must stay between 20 and 39 because you rolled Luck.',
+    )
+
+    rerender(
+      <IdentityStep inputs={validInputs} errors={{}} playerName="Ada Lovelace" sheet={emptySheetView()} onAction={vi.fn()} onBlur={vi.fn()} />,
+    )
+    expect(screen.getByLabelText('Age')).toHaveAccessibleDescription(
+      "Age affects your characteristics. You'll see how in a later step.",
+    )
   })
 })

@@ -105,9 +105,7 @@ export interface CharacterSheetInputs {
   characteristics: CharacteristicInputs
   ageEffects: {
     deductions: CharacteristicInputs
-    eduImprovementChecks: EduImprovementCheckInputs[]
   }
-  luckRolls: (number | null)[]
   occupation: OccupationInputs | null
   skills: SkillAllocationInputs[]
   quickFire: QuickFireInputs
@@ -237,7 +235,7 @@ export interface CharacterSheetView {
   derived: DerivedValues
   rollRecords: RollRecord[]
   /** Which creation inputs the Roll Records already on the sheet lock. */
-  locks: { creationMethod: boolean }
+  locks: { creationMethod: boolean; ageBracket: boolean; edu: boolean }
 }
 
 /** A Standard rolling formula: (raw dice total + bonus) x multiplier (docs/game-rules section 2.1). */

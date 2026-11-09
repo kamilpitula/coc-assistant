@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { antiquarianInputs, rules, sheetView, skill, validInputs } from '@/campaign-play/test-support/characterSheetFixtures'
+import { antiquarianInputs, bracket25, rules, sheetView, skill, validInputs } from '@/campaign-play/test-support/characterSheetFixtures'
 import type { AgeBracket, CharacterSheetInputs, CharacterSheetView } from '@/campaign-play/types/CharacterSheet'
 
 import {
@@ -8,8 +8,10 @@ import {
   clearsSkillInputs,
   eduBeforeEachCheck,
   hasCharacteristicInputs,
+  hasUsableEdu,
   inputsForSave,
   inputsFromSheet,
+  savedRollsFromSheet,
 } from './characterSheetForm'
 
 const characteristic = (assigned: number | null) => ({ assigned, value: assigned, hard: null, extreme: null })
@@ -118,26 +120,33 @@ describe('characterSheetForm', () => {
     expect(inputs.identity).toEqual(view.identity)
     expect(inputs.creationMethod).toBe('PointBuy')
     expect(inputs.characteristics).toMatchObject({ STR: 60, EDU: null })
-    expect(inputs.ageEffects).toEqual({ deductions: { STR: 3 }, eduImprovementChecks: [{ check: 70, gain: 5 }] })
-    expect(inputs.luckRolls).toEqual([11])
+    expect(inputs.ageEffects).toEqual({ deductions: { STR: 3 } })
+    expect(inputs).not.toHaveProperty('luckRolls')
+  })
+
+  it('builds the saved rolls the validator reads from the sheet, with the locked bracket while the age lock applies', () => {
+    const unlocked = savedRollsFromSheet(sheetView())
+
+    expect(unlocked.characteristicRolls).toEqual({})
+    expect(unlocked.luckRolls).toEqual([11])
+    expect(unlocked.eduImprovementChecks).toEqual([{ check: 30, gain: null, eduBefore: 50, eduAfter: 50 }])
+    expect(unlocked.lockedAgeBracket).toBeNull()
+
+    const locked = savedRollsFromSheet(sheetView({ locks: { creationMethod: false, ageBracket: true, edu: false } }))
+
+    expect(locked.lockedAgeBracket).toEqual(bracket25)
   })
 
   it('applies each kind of change', () => {
     let inputs = inputsFromSheet(view)
     inputs = characterSheetFormReducer(inputs, { type: 'identity', field: 'name', value: 'Ada' })
     inputs = characterSheetFormReducer(inputs, { type: 'characteristic', code: 'EDU', value: 50 })
-    inputs = characterSheetFormReducer(inputs, { type: 'luckRoll', index: 1, value: 13 })
     inputs = characterSheetFormReducer(inputs, { type: 'deduction', code: 'DEX', value: 2 })
-    inputs = characterSheetFormReducer(inputs, { type: 'eduCheck', index: 1, part: 'check', value: 20 })
 
     expect(inputs.identity.name).toBe('Ada')
     expect(inputs.characteristics.EDU).toBe(50)
-    expect(inputs.luckRolls).toEqual([11, 13])
     expect(inputs.ageEffects.deductions).toEqual({ STR: 3, DEX: 2 })
-    expect(inputs.ageEffects.eduImprovementChecks).toEqual([
-      { check: 70, gain: 5 },
-      { check: 20, gain: null },
-    ])
+    expect(inputs).not.toHaveProperty('luckRolls')
   })
 
   it('starts a Standard rolling sheet from its saved assigned values, not from raw rolls', () => {
@@ -245,26 +254,12 @@ describe('characterSheetForm', () => {
       quickFire: { values: [{ ...skill('Law'), value: 70 }], personalInterests: [] },
     }
 
-    const saved = inputsForSave(mixed, 'occupation', null, rules)
+    const saved = inputsForSave(mixed, 'occupation', null)
 
     expect(saved.characteristics).toEqual({})
     expect(saved).not.toHaveProperty('characteristicRolls')
     expect(saved.quickFire).toEqual({ values: [], personalInterests: [], extraSkill: null })
     expect(saved.skills).toEqual(validInputs.skills)
-  })
-
-  it('section 2.1: works out the EDU checks against the rolled EDU under Standard rolling', () => {
-    const inputs: CharacterSheetInputs = {
-      ...validInputs,
-      creationMethod: 'StandardRolling',
-      characteristics: { EDU: 50 },
-      ageEffects: { deductions: {}, eduImprovementChecks: [{ check: 60, gain: 5 }, { check: 10, gain: 3 }] },
-    }
-
-    expect(inputsForSave(inputs, 'age', bracket45, rules).ageEffects.eduImprovementChecks).toEqual([
-      { check: 60, gain: 5 },
-      { check: 10, gain: null },
-    ])
   })
 
   it('replaces everything with a reset', () => {
@@ -276,25 +271,20 @@ describe('characterSheetForm', () => {
   it('section 3.2: works out the EDU each check is rolled against, after earlier gains, capped at the EDU maximum', () => {
     expect(
       eduBeforeEachCheck(50, [
-        { check: 70, gain: 5 },
-        { check: 53, gain: null },
-        { check: 56, gain: 2 },
+        { check: 70, gain: 5, eduBefore: 50, eduAfter: 55 },
+        { check: 53, gain: null, eduBefore: 55, eduAfter: 55 },
+        { check: 56, gain: 2, eduBefore: 55, eduAfter: 57 },
       ]),
     ).toEqual([50, 55, 55])
-    expect(eduBeforeEachCheck(95, [{ check: 100, gain: 10 }, { check: 10, gain: null }], 99)).toEqual([95, 99])
-    expect(eduBeforeEachCheck(null, [{ check: 70, gain: 5 }])).toEqual([null])
+    expect(eduBeforeEachCheck(95, [{ check: 100, gain: 10, eduBefore: 95, eduAfter: 99 }, { check: 10, gain: null, eduBefore: 99, eduAfter: 99 }], 99)).toEqual([95, 99])
+    expect(eduBeforeEachCheck(null, [{ check: 70, gain: 5, eduBefore: null, eduAfter: null }])).toEqual([null])
   })
 
-  it('keeps every input when saving from a step that does not own the age effects or Luck rows', () => {
-    const inputs: CharacterSheetInputs = { ...inputsFromSheet({ ...view, creationMethod: 'PointBuy' }), luckRolls: [11, 13] }
+  it('keeps every input when saving from a step that does not own the age effects', () => {
+    const inputs: CharacterSheetInputs = { ...inputsFromSheet({ ...view, creationMethod: 'PointBuy' }) }
 
-    expect(inputsForSave(inputs, 'identity', bracket45, rules)).toEqual(inputs)
-  })
-
-  it('drops the Luck row the Characteristics step does not show when saving from it', () => {
-    const inputs: CharacterSheetInputs = { ...inputsFromSheet(view), luckRolls: [11, 13] }
-
-    expect(inputsForSave(inputs, 'characteristics', bracket45, rules).luckRolls).toEqual([11])
+    expect(inputsForSave(inputs, 'identity', bracket45)).toEqual(inputs)
+    expect(inputsForSave(inputs, 'characteristics', bracket45)).toEqual(inputs)
   })
 
   it('drops the age inputs the Age effects step does not show when saving from it', () => {
@@ -304,20 +294,28 @@ describe('characterSheetForm', () => {
       characteristics: { ...base.characteristics, EDU: 50 },
       ageEffects: {
         deductions: { STR: 3, SIZ: 2 },
-        eduImprovementChecks: [
-          { check: 30, gain: 4 },
-          { check: 70, gain: 5 },
-          { check: 10, gain: null },
-        ],
       },
     }
 
-    expect(inputsForSave(inputs, 'age', bracket45, rules).ageEffects).toEqual({
+    expect(inputsForSave(inputs, 'age', bracket45).ageEffects).toEqual({
       deductions: { STR: 3 },
-      eduImprovementChecks: [
-        { check: 30, gain: null },
-        { check: 70, gain: 5 },
-      ],
     })
+  })
+
+  it('D3: accepts only an EDU the Creation Method can produce as usable for an EDU check', () => {
+    const pointBuy = { ...validInputs, creationMethod: 'PointBuy' as const, characteristics: { EDU: 50 } }
+    expect(hasUsableEdu(pointBuy, {}, rules)).toBe(true)
+    expect(hasUsableEdu({ ...pointBuy, characteristics: { EDU: 95 } }, {}, rules)).toBe(false)
+
+    const quickFire = { ...validInputs, creationMethod: 'QuickFire' as const, characteristics: { EDU: 80 } }
+    expect(hasUsableEdu(quickFire, {}, rules)).toBe(true)
+    expect(hasUsableEdu({ ...quickFire, characteristics: { EDU: 55 } }, {}, rules)).toBe(false)
+
+    const rolling = { ...validInputs, creationMethod: 'StandardRolling' as const, characteristics: { EDU: 20 } }
+    expect(hasUsableEdu(rolling, { EDU: 4 }, rules)).toBe(true)
+    expect(hasUsableEdu(rolling, {}, rules)).toBe(false)
+    expect(hasUsableEdu(rolling, { EDU: 99 }, rules)).toBe(false)
+
+    expect(hasUsableEdu({ ...validInputs, creationMethod: null }, {}, rules)).toBe(false)
   })
 })

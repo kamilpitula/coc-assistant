@@ -24,7 +24,8 @@ const meta = {
     allowedMethods: ['PointBuy'],
     sheet: sheetView(),
     status: 'Draft',
-    roll: { status: { state: 'idle' }, onRoll: () => {}, onRetry: () => {} },
+    roll: { status: { state: 'idle', group: null }, onRoll: () => {}, onRetry: () => {} },
+    luckRoll: { status: { state: 'idle', group: null }, onRoll: () => {}, onRetry: () => {} },
     onAction: () => {},
     onBlur: () => {},
   },
@@ -38,7 +39,19 @@ export const Empty: Story = { args: { inputs: emptyInputs, bracket: bracket25 } 
 export const Complete: Story = { args: { inputs: validInputs, bracket: bracket25 } }
 
 export const YoungInvestigatorRollsLuckTwice: Story = {
-  args: { inputs: { ...validInputs, luckRolls: [11, 13] }, bracket: bracket17 },
+  args: { inputs: validInputs, bracket: bracket17, sheet: sheetView({ luckRolls: [11, 13] }) },
+}
+
+export const LuckToRoll: Story = {
+  args: { inputs: validInputs, bracket: bracket25, sheet: sheetView({ luckRolls: [] }) },
+}
+
+export const PointBuyEduLocked: Story = {
+  args: {
+    inputs: validInputs,
+    bracket: bracket25,
+    sheet: sheetView({ locks: { creationMethod: false, ageBracket: false, edu: true } }),
+  },
 }
 
 export const ChoosingAMethod: Story = {
@@ -94,8 +107,8 @@ export const StandardRollingRolled: Story = {
     inputs: { ...emptyInputs, creationMethod: 'StandardRolling', characteristics: { ...validInputs.characteristics } },
     bracket: bracket25,
     allowedMethods: ['StandardRolling'],
-    sheet: sheetView({ creationMethod: 'StandardRolling', characteristicRolls: {}, locks: { creationMethod: true } }),
-    roll: { status: { state: 'rolled' }, onRoll: () => {}, onRetry: () => {} },
+    sheet: sheetView({ creationMethod: 'StandardRolling', characteristicRolls: {}, locks: { creationMethod: true, ageBracket: false, edu: false } }),
+    roll: { status: { state: 'rolled', group: 'characteristics' }, onRoll: () => {}, onRetry: () => {} },
   },
 }
 

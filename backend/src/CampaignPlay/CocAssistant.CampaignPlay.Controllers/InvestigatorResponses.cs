@@ -160,7 +160,7 @@ public record RollRecordResponse(
     DateTimeOffset? RolledAt);
 
 /// <summary>Which creation inputs the Roll Records already on the sheet lock (more groups follow in later PBIs).</summary>
-public record CharacterSheetLocksResponse(bool CreationMethod);
+public record CharacterSheetLocksResponse(bool CreationMethod, bool AgeBracket, bool Edu);
 
 /// <summary>Rule parameters the frontend needs, so it never hard-codes a rule value.</summary>
 public record RulesResponse(

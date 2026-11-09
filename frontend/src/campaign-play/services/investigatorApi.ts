@@ -193,7 +193,7 @@ const characterSheetViewSchema = z.object({
       rolledAt: z.string().nullable(),
     }),
   ),
-  locks: z.object({ creationMethod: z.boolean() }),
+  locks: z.object({ creationMethod: z.boolean(), ageBracket: z.boolean(), edu: z.boolean() }),
 })
 
 const rulesSchema = z.object({
@@ -334,6 +334,24 @@ export async function rollMyCharacteristics(accessToken: string, campaignId: str
     method: 'POST',
   })
   ensureOk(response, 'roll your characteristics')
+  return myCharacterSheetSchema.parse(await response.json())
+}
+
+/** POST .../investigators/mine/character-sheet/rolls/luck: rolls what is still missing; 409 when refused. */
+export async function rollMyLuck(accessToken: string, campaignId: string): Promise<MyCharacterSheet> {
+  const response = await send(accessToken, `${investigatorsUrl(campaignId)}/mine/character-sheet/rolls/luck`, {
+    method: 'POST',
+  })
+  ensureOk(response, 'roll your Luck')
+  return myCharacterSheetSchema.parse(await response.json())
+}
+
+/** POST .../investigators/mine/character-sheet/rolls/edu-improvement-checks: rolls the next check; 409 when refused. */
+export async function rollMyEduImprovementCheck(accessToken: string, campaignId: string): Promise<MyCharacterSheet> {
+  const response = await send(accessToken, `${investigatorsUrl(campaignId)}/mine/character-sheet/rolls/edu-improvement-checks`, {
+    method: 'POST',
+  })
+  ensureOk(response, 'roll your EDU check')
   return myCharacterSheetSchema.parse(await response.json())
 }
 

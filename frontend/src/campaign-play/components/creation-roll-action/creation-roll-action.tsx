@@ -50,6 +50,7 @@ export function CreationRollAction({ id, describedBy, label, body, pending, onRo
         type="button"
         disabled={pending}
         aria-describedby={describedBy}
+        data-wizard-action
         onClick={() => setOpen(true)}
       >
         {label}

@@ -47,15 +47,18 @@ public sealed class CampaignPlayScenario : IDisposable
     public PlayerInvestigatorService PlayerService(
         CampaignPlayDbContext context,
         IInvestigatorRepository? investigators = null,
-        IDiceRoller? roller = null) =>
-        new(
+        IDiceRoller? roller = null)
+    {
+        var ruleSets = new CreationRuleSets(RuleData, [EmbeddedResourceEraRuleData.For1920s()]);
+        return new(
             Fixture.CreateRepository(context),
             investigators ?? Fixture.CreateInvestigatorRepository(context),
             new InMemoryAccountDisplayNames(),
-            new CharacterSheetEvaluator(new CreationRuleSets(RuleData, [EmbeddedResourceEraRuleData.For1920s()])),
-            new PlayerEnteredRollSource(),
+            new CharacterSheetEvaluator(ruleSets),
+            ruleSets,
             roller ?? new ScriptedDiceRoller([]),
             TimeProvider);
+    }
 
     public KeeperInvestigatorService KeeperService(CampaignPlayDbContext context) =>
         new(
@@ -80,11 +83,22 @@ public sealed class CampaignPlayScenario : IDisposable
         return await PlayerService(context).ReplaceMyCharacterSheetAsync(campaignId, playerAccountId, inputs, CancellationToken.None);
     }
 
+    /// <summary>Rolls the Player's Luck and next EDU improvement check with scripted faces.</summary>
+    public async Task RollLuckAndEduAsync(Guid campaignId, Guid playerAccountId, IDiceRoller roller)
+    {
+        using var luckContext = Fixture.CreateContext();
+        await PlayerService(luckContext, roller: roller).RollMyLuckAsync(campaignId, playerAccountId, CancellationToken.None);
+        using var eduContext = Fixture.CreateContext();
+        await PlayerService(eduContext, roller: roller).RollMyEduImprovementCheckAsync(campaignId, playerAccountId, CancellationToken.None);
+    }
+
     /// <summary>Creates a Draft with a valid Point Buy sheet and submits it; returns the Investigator id.</summary>
     public async Task<Guid> CreateSubmittedAsync(Guid campaignId, Guid playerAccountId)
     {
         var investigatorId = await CreateDraftAsync(campaignId, playerAccountId);
         await SaveCharacterSheetAsync(campaignId, playerAccountId, new CharacterSheetBuilder().BuildInputs());
+        // A 25-year-old rolls one Luck (3D6) and one EDU check (D100); 30 is no improvement, so no gain is rolled.
+        await RollLuckAndEduAsync(campaignId, playerAccountId, new ScriptedDiceRoller([4, 5, 6, 30]));
         using var context = Fixture.CreateContext();
         await PlayerService(context).SubmitMineAsync(campaignId, playerAccountId, CancellationToken.None);
         return investigatorId;

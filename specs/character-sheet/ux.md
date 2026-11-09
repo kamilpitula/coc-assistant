@@ -185,14 +185,17 @@ Later inputs are kept. When the Player saves, any later step whose inputs became
   - **Creation method locked:** once any characteristic has a Roll Record:
     - the RadioGroup is replaced by the text "Creation method: Standard rolling" with the help text "Locked because your characteristics are rolled.";
     - in Draft only, the help text adds "To use another method, start over.".
+  - **Creation method locked by an EDU check** (Point buy and Quick fire; selected 2026-11-09, PBI-DICE-003, option A of two; the alternative kept the radios and refused a change inline): once any EDU improvement check has a Roll Record, the RadioGroup is replaced by the same text with the help text "Locked because you rolled an EDU check.", plus "To use another method, start over." in Draft only. A method switch would clear EDU, which the EDU lock forbids.
 - **Point buy**: eight number inputs and a budget counter (`point-budget-counter`) reading "Points used: 410 of 460". Server warnings for low INT or SIZ appear under the Worth checking Alert.
-  - **Luck (Point buy)**: below the eight inputs and the budget counter, outside the budget, an `h2` "Luck" with the help text "Luck isn't bought with points. Roll 3D6 at the table and enter the total." The dice expression in the help text comes from the rules data.
+  - **[DEPRECATED 2026-11-09]** ~~**Luck (Point buy)**: below the eight inputs and the budget counter, outside the budget, an `h2` "Luck" with the help text "Luck isn't bought with points. Roll 3D6 at the table and enter the total." The dice expression in the help text comes from the rules data.
   - One `dice-roll-input` row labelled "Luck, 3D6 total" with the range hint from the dice expression (for example "3 to 18") and the computed result as text ("= 55").
   - When the age is in the two-Luck-roll bracket, a second row "Luck, second roll" appears with the help text "Your age lets you roll Luck twice and keep the higher result." The kept value is shown as "Luck kept: 65". The second row is not rendered for other ages.
-  - Luck values are not counted in "Points used". Errors on the Luck rows appear in the step's error summary and inline, like any other field.
-- **Luck, rolled by the app** (every method; PBI-DICE-003): this replaces the typed Luck rows above once PBI-DICE-003 ships, and the typed rows remain until then.
+  - Luck values are not counted in "Points used". Errors on the Luck rows appear in the step's error summary and inline, like any other field.~~ Replaced by the following (PBI-DICE-003).
+- **Luck, rolled by the app** (every method; PBI-DICE-003): below the characteristics, an `h2` "Luck" (`tabIndex=-1`, the focus target after the roll) holds:
   - **The action:** "Roll Luck". Its dialog body reads: "The app rolls Luck ({luckDice}) once{, twice at your age, keeping the higher result}. You can't roll it again, and your age must then stay between {minimumAge} and {maximumAge}."
-  - **After rolling:** "Luck 55". In the two-roll bracket: "Luck rolls 45 and 55, kept 55".
+  - **After rolling:** "Luck 55". In the two-roll bracket: "Luck rolls 45 and 55, kept 55". The status region announces "Luck rolled.".
+  - **Typed-in Luck from before the dice system** (selected 2026-11-09, option A of two, following UX-33; the alternative showed no marker): "Luck 55 (entered by you)". In the two-roll bracket with only a typed first roll, the action reads "Roll your second Luck roll", and its dialog mentions only that roll.
+  - Error summary links for `luckRolls[0]` and `luckRolls[1]` focus the roll action, or the `h2` when there is no action. The inline error appears once, under the action.
   - **Without a valid saved age:** the action is not rendered. The text "Enter a valid age on the Identity step to roll Luck." appears instead.
   - Luck is still not counted in "Points used".
 - **Quick fire**: eight Selects. Each Select offers the pool values not yet assigned elsewhere, plus its own current value. A line "Values left to assign: 50, 60" shows what remains.
@@ -200,13 +203,15 @@ Later inputs are kept. When the Player saves, any later step whose inputs became
 ### 6.3 Age effects (`age`)
 - The intro line is built from the age bracket the server returns, for example "At age 45 you lose 5 points from STR, CON or DEX, and APP is reduced by 5." Every number and characteristic in it comes from rule data, not hard-coded text. Parts that don't apply to the bracket are left out (for example ages 20 to 39 read "At age 25 you make 1 EDU check.").
 - **Deduction split**: one number input per eligible characteristic, and a counter "Still to deduct: 3". The adjusted value is shown next to each input.
-- **EDU improvement checks**: one group per required check, headed "EDU check 1 of 2". The group has an input "D100 roll". If the roll is above the current EDU, a second input "1D10 gain" appears. Each group ends with a result line: "EDU 60 -> 67", or "No improvement".
-- **EDU improvement checks rolled by the app** (PBI-DICE-003; this replaces the typed inputs above once it ships):
-  - Each group "EDU check n of m" has the roll action "Roll EDU check n".
+- **[DEPRECATED 2026-11-09]** ~~**EDU improvement checks**: one group per required check, headed "EDU check 1 of 2". The group has an input "D100 roll". If the roll is above the current EDU, a second input "1D10 gain" appears. Each group ends with a result line: "EDU 60 -> 67", or "No improvement".~~ Replaced by the following (PBI-DICE-003).
+- **EDU improvement checks rolled by the app** (PBI-DICE-003):
+  - One group per required check, headed "EDU check n of m" (`tabIndex=-1`, the focus target after its roll). Each group has the roll action "Roll EDU check n" until it is rolled.
   - Only the next unrolled check has the action. Later groups read "Roll EDU check {n-1} first."
   - The dialog body reads: "The app rolls {eduImprovementCheckDice} against your EDU of {eduBefore}, and {eduImprovementGainDice} more if it improves. You can't roll it again. Afterwards your age must stay between {minimumAge} and {maximumAge}{ and your EDU can't change}." The EDU clause appears under Point buy and Quick fire only.
-  - The result line is unchanged.
-  - Without a valid age and EDU, the text "Enter a valid age and your EDU to roll EDU checks." appears instead.
+  - Each rolled group ends with a result line: "EDU 60 -> 67", or "No improvement". The status region announces "EDU check n rolled.".
+  - **Typed-in checks from before the dice system** (selected 2026-11-09, option A of two, following UX-33): "D100 30 (entered by you)", then the result line. A typed-in check that is missing its gain shows its `EduImprovementGainRequired` error and has no roll action.
+  - Without a valid age and a valid EDU (one the Creation Method can produce), the text "Enter a valid age and your EDU to roll EDU checks." appears instead.
+  - Error summary links for `ageEffects.eduImprovementChecks[n]` focus the next roll action, or the group heading when there is no action.
 - Fields hidden by these conditions are not rendered, rather than disabled.
 
 ### 6.4 Occupation (`occupation`)
@@ -308,13 +313,16 @@ The server rolls every creation dice result when the Player asks for it ([spec.m
   - the Alert "Your Investigator changed elsewhere, so we reloaded it." appears.
 - **The wizard never offers a control that breaks a lock:**
   - The Creation Method shows as text (section 6.2).
-  - **Age** (PBI-DICE-003): the field shows the hint "Your age must stay between {minimumAge} and {maximumAge} because you rolled {Luck / EDU checks}.", and the client validator reports an age outside the bracket on blur.
+  - **Age** (PBI-DICE-003): the field shows the hint "Your age must stay between {minimumAge} and {maximumAge} because you rolled {Luck / EDU checks / Luck and EDU checks}.", and the client validator reports an age outside the bracket on blur (`AgeOutOfRange` with the bracket's ages).
   - **EDU** (PBI-DICE-003): under Point buy the EDU input is disabled; under Quick fire the EDU Select is replaced by text. Both carry "Locked because you rolled an EDU check."
+  - **Creation method** under an EDU lock (PBI-DICE-003): shown as text (section 6.2).
+- **A step move refused by a creation lock (409)** behaves the same: the sheet reloads, the Player stays on the step, and the Alert appears where the section 5.1 save failure Alert appears.
+- **Group names in messages:** "Luck" and "EDU check"; for example "We couldn't roll your Luck. Try again." and "Your EDU check was already rolled.".
 
 **Error summary**
 - Links for `CharacteristicRollRequired` (field `characteristicRolls.{C}`) focus the roll action.
 - The inline error appears once, under the action.
-- The Luck and EDU links do the same in PBI-DICE-003.
+- The Luck and EDU links do the same (sections 6.2 and 6.3).
 
 **Re-roll grant (PBI-DICE-004)**
 - The Keeper comment Alert adds "Your Keeper lets you roll again: {groups}."
@@ -413,7 +421,7 @@ In PBI-CP-003:
 - **UX-17** A failed save keeps every input and offers "Try again".
 - **UX-18** Opening another Player's Investigator URL shows "We couldn't find that Investigator".
 - **UX-19** When the Campaign allows no creation method that is available yet, the Your Investigator card explains it, names the methods to ask the Keeper for, and offers no create action.
-- **UX-20** **[DEPRECATED 2026-11-08; superseded by UX-36 when PBI-DICE-003 ships, holds until then]** A Point buy Player enters Luck on the Characteristics step; Luck is not counted in "Points used", and a second Luck row appears only in the two-roll age bracket.
+- **UX-20** **[DEPRECATED 2026-11-08; superseded by UX-36 in PBI-DICE-003]** A Point buy Player enters Luck on the Characteristics step; Luck is not counted in "Points used", and a second Luck row appears only in the two-roll age bracket.
 - **UX-21** A non-member opening a Campaign URL sees "We couldn't find that Campaign" with a link back to Campaigns.
 - **UX-22** On Occupation skills, a row whose slot has no skill chosen is disabled and reads "Choose this skill above first"; rows keep the occupation's slot order after every save.
 - **UX-23** A Quick fire value Select offers "No value", which clears the row and returns its value to "Values left to assign".
@@ -429,9 +437,9 @@ In PBI-CP-003:
 - **UX-33** Characteristic values typed in before the dice system show as "(entered by you)", and the action rolls only the missing ones.
 - **UX-34** The Keeper's Dice results show Faces, Rolled by, and When. Typed-in rows read "Not recorded" and "(entered)".
 - **UX-35** A failed roll keeps the step and offers "Try again". One confirmation never sends two rolls.
-- **UX-36** (PBI-DICE-003) "Roll Luck" confirms with the age range that becomes fixed. In the two-roll bracket, both rolls and the kept value are shown. Luck is not counted in "Points used".
+- **UX-36** (PBI-DICE-003) "Roll Luck" confirms with the age range that becomes fixed. In the two-roll bracket, both rolls and the kept value are shown. Luck is not counted in "Points used". Typed-in Luck reads "(entered by you)".
 - **UX-37** (PBI-DICE-003) EDU checks are rolled in order and show "EDU a -> b" or "No improvement".
-- **UX-38** (PBI-DICE-003) After Luck or an EDU check is rolled, an age outside the bracket is refused and the bracket is shown. After an EDU check under Point buy or Quick fire, EDU is locked and the reason is shown.
+- **UX-38** (PBI-DICE-003) After Luck or an EDU check is rolled, an age outside the bracket is refused and the bracket is shown. After an EDU check under Point buy or Quick fire, EDU and the creation method are locked and the reason is shown.
 - **UX-39** (PBI-DICE-004) The Keeper can allow re-rolls per group when requesting changes. The Player then sees "Roll {group} again".
 - **UX-40** (PBI-DICE-004) The Keeper sees replaced results marked "(replaced)". The Player never sees them.
 
@@ -439,7 +447,7 @@ In PBI-CP-003:
 
 - **A11Y-1** Each wizard step and the review screen has a single `h1`, and focus moves to it after navigation (2.4.3).
 - **A11Y-2** The stepper is a labelled `nav` with an ordered list. The current step has `aria-current="step"`, and each step's status is available as text (1.3.1, 4.1.2).
-- **A11Y-3** Every input has a visible label. Dice inputs name the characteristic and dice, for example "STR, 3D6 total" (3.3.2).
+- **A11Y-3** Every input has a visible label (3.3.2). **[DEPRECATED 2026-11-09]** ~~Dice inputs name the characteristic and dice, for example "STR, 3D6 total".~~ The wizard has no dice inputs; roll actions follow A11Y-12.
 - **A11Y-4** Errors are identified in text, linked from the error summary, and attached to their field with `aria-describedby` and `aria-invalid` (3.3.1, 3.3.3).
 - **A11Y-5** Budget changes and save, submit, approve, and request-changes results are announced through a polite status region without moving focus, except for Approve, which focuses its message (4.1.3).
 - **A11Y-6** Status badges, budget overruns, and warnings never rely on colour alone (1.4.1). Text and icons meet 4.5:1 and 3:1 contrast (1.4.3, 1.4.11).

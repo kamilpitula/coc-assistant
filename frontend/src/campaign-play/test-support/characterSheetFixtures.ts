@@ -117,8 +117,7 @@ export const validInputs: CharacterSheetInputs = {
   identity: { name: 'Harvey Walters', age: 25, gender: null, residence: 'Boston', birthplace: null },
   creationMethod: 'PointBuy',
   characteristics: { ...pointBuy },
-  ageEffects: { deductions: {}, eduImprovementChecks: [{ check: 30, gain: null }] },
-  luckRolls: [11],
+  ageEffects: { deductions: {} },
   occupation: antiquarianInputs,
   skills: [
     { ...skill('Credit Rating'), occupationPoints: 30, personalInterestPoints: null },
@@ -136,8 +135,7 @@ export const emptyInputs: CharacterSheetInputs = {
   identity: { name: null, age: null, gender: null, residence: null, birthplace: null },
   creationMethod: 'PointBuy',
   characteristics: {},
-  ageEffects: { deductions: {}, eduImprovementChecks: [] },
-  luckRolls: [],
+  ageEffects: { deductions: {} },
   occupation: null,
   skills: [],
   quickFire: { values: [], personalInterests: [] },
@@ -308,7 +306,7 @@ export function sheetView(overrides: Partial<CharacterSheetView> = {}): Characte
         rolledAt: null,
       },
     ],
-    locks: { creationMethod: false },
+    locks: { creationMethod: false, ageBracket: false, edu: false },
     ...overrides,
   }
 }

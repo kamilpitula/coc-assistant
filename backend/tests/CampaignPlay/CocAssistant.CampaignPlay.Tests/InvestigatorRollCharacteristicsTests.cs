@@ -23,7 +23,7 @@ public class InvestigatorRollCharacteristicsTests
     public void Given_a_draft_with_nothing_rolled_When_rolling_characteristics_Then_all_eight_are_server_rolled()
     {
         var investigator = NewDraft();
-        investigator.ReplaceCharacterSheet(BlankStandardRollingSheet(), CreatedAt);
+        investigator.ReplaceCharacterSheet(BlankStandardRollingSheet(), TestRules.Creation.AgeRules, CreatedAt);
 
         var rolled = investigator.RollCharacteristics(new ScriptedDiceRoller(AllThrees), Roller, RolledAt);
 
@@ -37,7 +37,7 @@ public class InvestigatorRollCharacteristicsTests
     public void Given_changes_requested_When_rolling_characteristics_Then_it_succeeds()
     {
         var investigator = NewDraft();
-        investigator.ReplaceCharacterSheet(BlankStandardRollingSheet(), CreatedAt);
+        investigator.ReplaceCharacterSheet(BlankStandardRollingSheet(), TestRules.Creation.AgeRules, CreatedAt);
         investigator.Submit([], CreatedAt);
         investigator.RequestChanges("Roll them.", CreatedAt);
 
@@ -53,7 +53,7 @@ public class InvestigatorRollCharacteristicsTests
     public void Given_a_submitted_or_approved_investigator_When_rolling_characteristics_Then_it_fails_and_changes_nothing(InvestigatorStatus status)
     {
         var investigator = NewDraft();
-        investigator.ReplaceCharacterSheet(BlankStandardRollingSheet(), CreatedAt);
+        investigator.ReplaceCharacterSheet(BlankStandardRollingSheet(), TestRules.Creation.AgeRules, CreatedAt);
         investigator.Submit([], CreatedAt);
         if (status == InvestigatorStatus.Approved)
         {
@@ -72,7 +72,7 @@ public class InvestigatorRollCharacteristicsTests
     public void Given_a_point_buy_sheet_When_rolling_characteristics_Then_it_fails_and_changes_nothing()
     {
         var investigator = NewDraft();
-        investigator.ReplaceCharacterSheet(new CharacterSheetBuilder().Build(), CreatedAt);
+        investigator.ReplaceCharacterSheet(new CharacterSheetBuilder().Build(), TestRules.Creation.AgeRules, CreatedAt);
 
         var before = investigator.CharacterSheet;
         var rolled = investigator.RollCharacteristics(new ScriptedDiceRoller(AllThrees), Roller, RolledAt);
@@ -85,7 +85,7 @@ public class InvestigatorRollCharacteristicsTests
     public void Given_every_characteristic_already_rolled_When_rolling_characteristics_Then_it_fails_and_changes_nothing()
     {
         var investigator = NewDraft();
-        investigator.ReplaceCharacterSheet(BlankStandardRollingSheet(), CreatedAt);
+        investigator.ReplaceCharacterSheet(BlankStandardRollingSheet(), TestRules.Creation.AgeRules, CreatedAt);
         investigator.RollCharacteristics(new ScriptedDiceRoller(AllThrees), Roller, RolledAt);
 
         var before = investigator.CharacterSheet;

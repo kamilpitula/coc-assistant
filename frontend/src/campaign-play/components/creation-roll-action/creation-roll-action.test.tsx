@@ -25,6 +25,14 @@ describe('CreationRollAction', () => {
     expect(screen.getByRole('button', { name: 'Not yet' })).toBeInTheDocument()
   })
 
+  it('marks the trigger as a wizard action so blurring into it skips validation', () => {
+    render(<CreationRollAction {...props} pending={false} />)
+
+    // InvestigatorWizard skips its blur validation for wizard actions: showing or hiding errors would shift the layout
+    // under the pointer between mousedown and mouseup, so the trigger click would be lost and the dialog never opens.
+    expect(screen.getByRole('button', { name: 'Roll characteristics' })).toHaveAttribute('data-wizard-action')
+  })
+
   it('"Not yet" has initial focus, closes without rolling, and returns focus to the trigger', async () => {
     const onRoll = vi.fn()
     render(<CreationRollAction {...props} pending={false} onRoll={onRoll} />)

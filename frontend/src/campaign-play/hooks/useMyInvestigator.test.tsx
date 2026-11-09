@@ -7,13 +7,15 @@ import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import { InvestigatorConflictError } from '@/campaign-play/services/investigatorApi'
 import { EMPTY_BACKSTORY } from '@/campaign-play/state/characterSheetForm'
 
-import { useCreateInvestigator, useDeleteInvestigator, useRollCharacteristics, useSaveCharacterSheet } from './useMyInvestigator'
+import { useCreateInvestigator, useDeleteInvestigator, useRollCharacteristics, useRollEduImprovementCheck, useRollLuck, useSaveCharacterSheet } from './useMyInvestigator'
 
-const { mockCreate, mockSave, mockDelete, mockRoll } = vi.hoisted(() => ({
+const { mockCreate, mockSave, mockDelete, mockRollCharacteristics, mockRollLuck, mockRollEdu } = vi.hoisted(() => ({
   mockCreate: vi.fn(),
   mockSave: vi.fn(),
   mockDelete: vi.fn(),
-  mockRoll: vi.fn(),
+  mockRollCharacteristics: vi.fn(),
+  mockRollLuck: vi.fn(),
+  mockRollEdu: vi.fn(),
 }))
 
 vi.mock('@/shared/hooks/useAccessToken', () => ({ useAccessToken: () => async () => 'token' }))
@@ -23,7 +25,9 @@ vi.mock('@/campaign-play/services/investigatorApi', async (importOriginal) => ({
   createInvestigator: mockCreate,
   saveMyCharacterSheet: mockSave,
   deleteMyInvestigator: mockDelete,
-  rollMyCharacteristics: mockRoll,
+  rollMyCharacteristics: mockRollCharacteristics,
+  rollMyLuck: mockRollLuck,
+  rollMyEduImprovementCheck: mockRollEdu,
 }))
 
 function setup() {
@@ -60,11 +64,10 @@ describe('useMyInvestigator mutations', () => {
         identity: { name: 'Harvey', age: 25, gender: null, residence: null, birthplace: null },
         creationMethod: 'PointBuy',
         characteristics: {},
+        ageEffects: { deductions: {} },
         occupation: null,
         skills: [],
         quickFire: { values: [], personalInterests: [] },
-        ageEffects: { deductions: {}, eduImprovementChecks: [] },
-        luckRolls: [],
         backstory: EMPTY_BACKSTORY,
         keyConnection: null,
         weapons: [],
@@ -77,7 +80,7 @@ describe('useMyInvestigator mutations', () => {
 
   it('stores the recomputed Character Sheet after rolling the characteristics', async () => {
     const rolled = { investigatorId: 'i1', status: 'Draft' }
-    mockRoll.mockResolvedValue(rolled)
+    mockRollCharacteristics.mockResolvedValue(rolled)
     const { queryClient, wrapper } = setup()
     const { result } = renderHook(() => useRollCharacteristics('c1'), { wrapper })
 
@@ -85,7 +88,35 @@ describe('useMyInvestigator mutations', () => {
       await result.current.mutateAsync()
     })
 
-    expect(mockRoll).toHaveBeenCalledWith('token', 'c1')
+    expect(mockRollCharacteristics).toHaveBeenCalledWith('token', 'c1')
+    expect(queryClient.getQueryData(campaignQueryKeys.myCharacterSheet('c1'))).toEqual(rolled)
+  })
+
+  it('stores the recomputed Character Sheet after rolling Luck', async () => {
+    const rolled = { investigatorId: 'i1', status: 'Draft' }
+    mockRollLuck.mockResolvedValue(rolled)
+    const { queryClient, wrapper } = setup()
+    const { result } = renderHook(() => useRollLuck('c1'), { wrapper })
+
+    await act(async () => {
+      await result.current.mutateAsync()
+    })
+
+    expect(mockRollLuck).toHaveBeenCalledWith('token', 'c1')
+    expect(queryClient.getQueryData(campaignQueryKeys.myCharacterSheet('c1'))).toEqual(rolled)
+  })
+
+  it('stores the recomputed Character Sheet after rolling the EDU improvement check', async () => {
+    const rolled = { investigatorId: 'i1', status: 'Draft' }
+    mockRollEdu.mockResolvedValue(rolled)
+    const { queryClient, wrapper } = setup()
+    const { result } = renderHook(() => useRollEduImprovementCheck('c1'), { wrapper })
+
+    await act(async () => {
+      await result.current.mutateAsync()
+    })
+
+    expect(mockRollEdu).toHaveBeenCalledWith('token', 'c1')
     expect(queryClient.getQueryData(campaignQueryKeys.myCharacterSheet('c1'))).toEqual(rolled)
   })
 

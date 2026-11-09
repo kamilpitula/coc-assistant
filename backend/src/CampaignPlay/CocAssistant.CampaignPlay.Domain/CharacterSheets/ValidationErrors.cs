@@ -60,10 +60,10 @@ public static class ValidationErrors
             Text(value),
             ValidationSeverity.Warning);
 
-    public static ValidationError LuckRollRequired() => Error("LuckRollRequired", LuckRollField(0), "Enter your Luck roll.");
+    public static ValidationError LuckRollRequired() => Error("LuckRollRequired", LuckRollField(0), "Roll Luck.");
 
     public static ValidationError LuckSecondRollRequired() =>
-        Error("LuckSecondRollRequired", LuckRollField(1), "Enter your second Luck roll.");
+        Error("LuckSecondRollRequired", LuckRollField(1), "Roll your second Luck roll.");
 
     public static ValidationError LuckSecondRollNotAllowed() =>
         Error("LuckSecondRollNotAllowed", LuckRollField(1), "Only one Luck roll is used at this age.");
@@ -105,7 +105,7 @@ public static class ValidationErrors
         Error(
             "EduImprovementCheckRequired",
             EduCheckRollField(index),
-            $"Enter the {CreationDice.EduImprovementCheck} roll for EDU check {index + 1}.");
+            $"Roll EDU check {index + 1}.");
 
     public static ValidationError EduImprovementCheckNotRequired(int index) =>
         Error("EduImprovementCheckNotRequired", EduCheckField(index), $"EDU check {index + 1} isn't needed at this age.");
@@ -114,7 +114,7 @@ public static class ValidationErrors
         Error(
             "EduImprovementGainRequired",
             EduGainField(index),
-            $"Enter the {CreationDice.EduImprovementGain} gain for EDU check {index + 1}.");
+            $"EDU check {index + 1} is missing its {CreationDice.EduImprovementGain} gain. Ask your Keeper.");
 
     public static ValidationError EduImprovementGainNotAllowed(int index, int gain) =>
         Error(

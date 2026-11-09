@@ -45,8 +45,7 @@ function validCharacterSheet(name: string): unknown {
     identity: { name, age: 25, gender: null, residence: 'Boston', birthplace: null },
     creationMethod: 'PointBuy',
     characteristics: { STR: 60, CON: 60, DEX: 60, APP: 50, POW: 60, SIZ: 60, INT: 60, EDU: 50 },
-    ageEffects: { deductions: {}, eduImprovementChecks: [{ check: 30, gain: null }] },
-    luckRolls: [11],
+    ageEffects: { deductions: {} },
     occupation: {
       catalogId: 'antiquarian',
       formulaCharacteristics: [],
@@ -85,6 +84,9 @@ export async function createApprovedInvestigatorViaApi(
   await ok(created, 'create the Investigator', 201)
   const id = ((await created.json()) as { id: string }).id
   await ok(await request.put(`${investigators}/mine/character-sheet`, { headers: { Authorization: playerBearer }, data: validCharacterSheet(name) }), 'save the Character Sheet')
+  // Dice results are never accepted from the Player: Luck and the EDU check are rolled through their endpoints.
+  await ok(await request.post(`${investigators}/mine/character-sheet/rolls/luck`, { headers: { Authorization: playerBearer } }), 'roll Luck')
+  await ok(await request.post(`${investigators}/mine/character-sheet/rolls/edu-improvement-checks`, { headers: { Authorization: playerBearer } }), 'roll the EDU check')
   await ok(await request.post(`${investigators}/mine/submit`, { headers: { Authorization: playerBearer } }), 'submit the Investigator')
   await ok(await request.post(`${investigators}/${id}/approve`, { headers: { Authorization: keeperBearer } }), 'approve the Investigator')
   return id

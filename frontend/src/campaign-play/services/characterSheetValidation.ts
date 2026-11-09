@@ -5,33 +5,40 @@ import {
   type CharacterSheetRules,
   type CharacteristicCode,
   type CharacteristicInputs,
-  type EduImprovementCheckInputs,
+  type EduImprovementCheckView,
   type ValidationError,
 } from '@/campaign-play/types/CharacterSheet'
 import { occupationProblems, quickFireSkillProblems, skillAllocationProblems } from '@/campaign-play/services/skillValidation'
 import { validationError } from '@/campaign-play/services/validationErrorFactory'
 
+/** The saved sheet's stored rolls. The PUT carries no dice results, so the validator reads the saved records instead. */
+export interface SavedRolls {
+  characteristicRolls: CharacteristicInputs
+  luckRolls: (number | null)[]
+  eduImprovementChecks: EduImprovementCheckView[]
+  /** The locked bracket's bounds, while the age-bracket lock applies (D5); null otherwise. */
+  lockedAgeBracket: AgeBracket | null
+}
+
 /**
  * The frontend's instant-feedback validator. It mirrors the backend for the checks with scope "shared" in the
  * ValidationError catalog of specs/character-sheet/spec.md, using the same codes, fields, and messages; the server
  * stays authoritative and alone runs the "server" checks. Rule values come only from `rules` and `bracket`.
- * `storedCharacteristicRolls` are the saved sheet's typed rolls: under Standard rolling the PUT carries no dice
- * results, so the validator reads the stored records instead.
  * Parity: specs/character-sheet/validation-fixtures.json.
  */
 export function validateCharacterSheet(
   inputs: CharacterSheetInputs,
   rules: CharacterSheetRules,
   bracket: AgeBracket | null,
-  storedCharacteristicRolls: CharacteristicInputs,
+  saved: SavedRolls,
 ): ValidationError[] {
   return [
-    ...identityProblems(inputs, rules),
+    ...identityProblems(inputs, rules, saved.lockedAgeBracket),
     ...(inputs.creationMethod === null ? [error('CreationMethodRequired', 'creationMethod', 'Choose a creation method.')] : []),
-    ...characteristicProblems(inputs, rules, storedCharacteristicRolls),
-    ...luckProblems(inputs.luckRolls, rules, bracket),
+    ...characteristicProblems(inputs, rules, saved.characteristicRolls),
+    ...luckProblems(saved.luckRolls, rules, bracket),
     ...(bracket ? deductionProblems(inputs.ageEffects.deductions, bracket) : []),
-    ...(bracket ? eduImprovementProblems(inputs.ageEffects.eduImprovementChecks, rules, bracket) : []),
+    ...(bracket ? eduImprovementProblems(saved.eduImprovementChecks, rules, bracket) : []),
     ...occupationProblems(inputs, rules),
     ...(inputs.creationMethod === 'QuickFire' ? quickFireSkillProblems(inputs, rules) : skillAllocationProblems(inputs.skills, rules)),
     ...weaponProblems(inputs),
@@ -143,7 +150,7 @@ function presentEntries(values: CharacteristicInputs): [CharacteristicCode, numb
   })
 }
 
-function identityProblems(inputs: CharacterSheetInputs, rules: CharacterSheetRules): ValidationError[] {
+function identityProblems(inputs: CharacterSheetInputs, rules: CharacterSheetRules, lockedAgeBracket: AgeBracket | null): ValidationError[] {
   const { name, age } = inputs.identity
   const problems: ValidationError[] = []
   if (name === null || name.trim() === '') {
@@ -159,6 +166,20 @@ function identityProblems(inputs: CharacterSheetInputs, rules: CharacterSheetRul
         'identity.age',
         `Age must be between ${rules.minimumAge} and ${rules.maximumAge}.`,
         `${rules.minimumAge}-${rules.maximumAge}`,
+        String(age),
+      ),
+    )
+  } else if (
+    lockedAgeBracket !== null &&
+    (age < lockedAgeBracket.minimumAge || age > lockedAgeBracket.maximumAge)
+  ) {
+    // D5: while the age-bracket lock applies, the client narrows AgeOutOfRange to the locked bracket's bounds.
+    problems.push(
+      error(
+        'AgeOutOfRange',
+        'identity.age',
+        `Age must be between ${lockedAgeBracket.minimumAge} and ${lockedAgeBracket.maximumAge}.`,
+        `${lockedAgeBracket.minimumAge}-${lockedAgeBracket.maximumAge}`,
         String(age),
       ),
     )
@@ -234,13 +255,14 @@ function diceProblems(field: string, dice: DiceRange, result: number | null | un
   ]
 }
 
-// docs/game-rules section 5.5, with the number of rolls from the age bracket.
-function luckProblems(luckRolls: (number | null)[], rules: CharacterSheetRules, bracket: AgeBracket | null): ValidationError[] {
+// docs/game-rules section 5.5, with the number of rolls from the age bracket. The records stay on the saved sheet;
+// the PUT carries no dice results.
+function luckProblems(savedLuckRolls: (number | null)[], rules: CharacterSheetRules, bracket: AgeBracket | null): ValidationError[] {
   const dice = diceRange(rules.luckDice)
-  const first = luckRolls[0] ?? null
-  const second = luckRolls[1] ?? null
+  const first = savedLuckRolls[0] ?? null
+  const second = savedLuckRolls[1] ?? null
   const firstProblems =
-    first === null ? [error('LuckRollRequired', luckRollField(0), 'Enter your Luck roll.')] : diceProblems(luckRollField(0), dice, first)
+    first === null ? [error('LuckRollRequired', luckRollField(0), 'Roll Luck.')] : diceProblems(luckRollField(0), dice, first)
 
   return [...firstProblems, ...secondLuckRollProblems(second, dice, bracket)]
 }
@@ -252,7 +274,7 @@ function secondLuckRollProblems(second: number | null, dice: DiceRange, bracket:
 
   const rollsTwice = bracket.luckRolls >= 2
   if (rollsTwice && second === null) {
-    return [error('LuckSecondRollRequired', luckRollField(1), 'Enter your second Luck roll.')]
+    return [error('LuckSecondRollRequired', luckRollField(1), 'Roll your second Luck roll.')]
   }
 
   if (!rollsTwice && second !== null) {
@@ -290,9 +312,11 @@ function deductionProblems(deductions: CharacteristicInputs, bracket: AgeBracket
   return [...perCharacteristic, ...totalMismatch]
 }
 
-// docs/game-rules section 3.2: one D100 roll per required check, each gain a 1D10 result; extra checks are not needed.
+// docs/game-rules section 3.2: one D100 roll per required check; extra checks are not needed. The records stay on the
+// saved sheet; the PUT carries no dice results. A saved check missing its gain is a server-scope error, never a
+// client one.
 function eduImprovementProblems(
-  checks: EduImprovementCheckInputs[],
+  checks: EduImprovementCheckView[],
   rules: CharacterSheetRules,
   bracket: AgeBracket,
 ): ValidationError[] {
@@ -314,20 +338,17 @@ function eduImprovementProblems(
 
 function requiredCheckProblems(
   index: number,
-  check: EduImprovementCheckInputs | undefined,
+  check: EduImprovementCheckView | undefined,
   checkDice: DiceRange,
   gainDice: DiceRange,
 ): ValidationError[] {
   if (check?.check === null || check?.check === undefined) {
-    return [
-      error(
-        'EduImprovementCheckRequired',
-        `${eduCheckField(index)}.check`,
-        `Enter the ${checkDice.notation} roll for EDU check ${index + 1}.`,
-      ),
-    ]
+    return [error('EduImprovementCheckRequired', `${eduCheckField(index)}.check`, `Roll EDU check ${index + 1}.`)]
   }
 
-  const checkProblems = diceProblems(`${eduCheckField(index)}.check`, checkDice, check.check)
-  return checkProblems.length > 0 ? checkProblems : diceProblems(`${eduCheckField(index)}.gain`, gainDice, check.gain)
+  // A saved gain outside its dice is a legacy typed-in result; the server alone reports a missing gain.
+  return [
+    ...diceProblems(`${eduCheckField(index)}.check`, checkDice, check.check),
+    ...diceProblems(`${eduCheckField(index)}.gain`, gainDice, check.gain),
+  ]
 }

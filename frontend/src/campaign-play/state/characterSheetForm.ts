@@ -14,12 +14,13 @@ import {
   type CharacteristicInputs,
   type CustomOccupationInputs,
   type CustomWeaponInputs,
-  type EduImprovementCheckInputs,
+  type EduImprovementCheckView,
   type IdentityInputs,
   type QuickFireInputs,
   type SkillAllocationInputs,
   type SkillReference,
 } from '@/campaign-play/types/CharacterSheet'
+import { diceRange, type SavedRolls } from '@/campaign-play/services/characterSheetValidation'
 
 export type SkillPointsColumn = 'occupationPoints' | 'personalInterestPoints'
 
@@ -29,9 +30,7 @@ export type CharacterSheetFormAction =
   | { type: 'identity'; field: keyof IdentityInputs; value: string | number | null }
   | { type: 'creationMethod'; method: CreationMethod }
   | { type: 'characteristic'; code: CharacteristicCode; value: number | null }
-  | { type: 'luckRoll'; index: number; value: number | null }
   | { type: 'deduction'; code: CharacteristicCode; value: number | null }
-  | { type: 'eduCheck'; index: number; part: keyof EduImprovementCheckInputs; value: number | null }
   | { type: 'occupation'; catalogId: string | null; custom: CustomOccupationInputs | null }
   | { type: 'formulaCharacteristic'; index: number; value: string | null }
   | { type: 'skillChoice'; slot: number; picks: SkillReference[] }
@@ -79,9 +78,7 @@ export function inputsFromSheet(sheet: CharacterSheetView): CharacterSheetInputs
     ) as CharacteristicInputs,
     ageEffects: {
       deductions: { ...sheet.ageEffects.deductions },
-      eduImprovementChecks: sheet.ageEffects.eduImprovementChecks.map(({ check, gain }) => ({ check, gain })),
     },
-    luckRolls: [...sheet.luckRolls],
     occupation: sheet.occupation
       ? {
           catalogId: sheet.occupation.catalogId,
@@ -238,18 +235,11 @@ export function characterSheetFormReducer(inputs: CharacterSheetInputs, action: 
       return withCreationMethod(inputs, action.method)
     case 'characteristic':
       return { ...inputs, characteristics: { ...inputs.characteristics, [action.code]: action.value } }
-    case 'luckRoll':
-      return { ...inputs, luckRolls: setAt(inputs.luckRolls, action.index, action.value, null) }
-    case 'deduction':
+    case 'deduction': {
       return {
         ...inputs,
         ageEffects: { ...inputs.ageEffects, deductions: { ...inputs.ageEffects.deductions, [action.code]: action.value } },
       }
-    case 'eduCheck': {
-      const checks = inputs.ageEffects.eduImprovementChecks
-      const current = checks[action.index] ?? { check: null, gain: null }
-      const updated = setAt(checks, action.index, { ...current, [action.part]: action.value }, { check: null, gain: null })
-      return { ...inputs, ageEffects: { ...inputs.ageEffects, eduImprovementChecks: updated } }
     }
     default:
       return occupationReducer(inputs, action)
@@ -257,22 +247,52 @@ export function characterSheetFormReducer(inputs: CharacterSheetInputs, action: 
 }
 
 /**
- * The value a characteristic starts from before age effects: the saved assigned value, which the server computed from
- * the Player's entry or the server's roll (docs/game-rules section 2.1). The wizard uses it for display only; the
- * server computes the real values.
+ * True when the assigned EDU is one the Creation Method can produce, the prerequisite for rolling an EDU check
+ * (design D3; the server refuses anything else with 409). Point buy reads the assigned value; Quick fire reads it
+ * from the pool; Standard rolling reads the stored roll record, since its assigned values are server-rolled.
  */
-export function assignedValue(inputs: CharacterSheetInputs, code: CharacteristicCode): number | null {
-  return inputs.characteristics[code] ?? null
+export function hasUsableEdu(
+  inputs: CharacterSheetInputs,
+  characteristicRolls: CharacteristicInputs,
+  rules: CharacterSheetRules,
+): boolean {
+  switch (inputs.creationMethod) {
+    case 'PointBuy':
+      return pointBuyEduUsable(inputs.characteristics.EDU ?? null, rules)
+    case 'QuickFire':
+      return quickFireEduUsable(inputs.characteristics.EDU ?? null, rules)
+    case 'StandardRolling':
+      return standardRollingEduUsable(characteristicRolls.EDU ?? null, rules.standardRolling.EDU.dice)
+    default:
+      return false
+  }
+}
+
+function pointBuyEduUsable(assigned: number | null, rules: CharacterSheetRules): boolean {
+  return assigned !== null && assigned >= rules.pointBuyMinimum && assigned <= rules.pointBuyMaximum
+}
+
+function quickFireEduUsable(assigned: number | null, rules: CharacterSheetRules): boolean {
+  return assigned !== null && rules.quickFireCharacteristicValues.includes(assigned)
+}
+
+function standardRollingEduUsable(roll: number | null, dice: string): boolean {
+  if (roll === null) {
+    return false
+  }
+
+  const { minimum, maximum } = diceRange(dice)
+  return roll >= minimum && roll <= maximum
 }
 
 /**
  * The EDU each improvement check is rolled against: the assigned EDU plus the gains of earlier checks whose roll was
  * above EDU, never past `eduMaximum` (docs/game-rules coc7_character_creation_and_development_rules.md section 3.2).
- * The wizard uses it only to decide whether the "1D10 gain" input appears; the server computes the real values.
+ * The dialog of the next roll action shows its "{eduBefore}"; the server computes the real values.
  */
 export function eduBeforeEachCheck(
   assignedEducation: number | null,
-  checks: EduImprovementCheckInputs[],
+  checks: EduImprovementCheckView[],
   eduMaximum = Number.POSITIVE_INFINITY,
 ): (number | null)[] {
   let education = assignedEducation
@@ -299,45 +319,39 @@ function methodInputsOnly(inputs: CharacterSheetInputs): CharacterSheetInputs {
 }
 
 /**
- * The inputs to save from a step. A step saves exactly what it shows, so values for rows it no longer renders (for
- * example a second Luck roll after the age changed) are dropped when the Player saves that step. Inputs of another
- * Creation Method are never saved.
+ * The inputs to save from a step. A step saves exactly what it shows for the deductions, so values for rows it no
+ * longer renders (for example a deduction from characteristics the new bracket no longer names) are dropped when the
+ * Player saves that step. Inputs of another Creation Method are never saved. Dice results are never saved: the server
+ * owns every Roll Record.
  */
 export function inputsForSave(
   inputs: CharacterSheetInputs,
   step: WizardStep,
   bracket: AgeBracket | null,
-  rules: CharacterSheetRules,
 ): CharacterSheetInputs {
   const methodInputs = methodInputsOnly(inputs)
-  if (step === 'characteristics') {
-    const luckRows = bracket?.luckRolls ?? 1
-    return { ...methodInputs, luckRolls: methodInputs.luckRolls.slice(0, luckRows) }
-  }
-
   if (step === 'age' && bracket) {
-    // The shown age inputs are worked out before the Standard rolling values are stripped, so the EDU checks are
-    // rolled against the saved assigned EDU.
-    return { ...methodInputs, ageEffects: shownAgeInputs(inputs, bracket, rules) }
+    return { ...methodInputs, ageEffects: { deductions: shownDeductions(inputs, bracket) } }
   }
 
   return methodInputs
 }
 
-function shownAgeInputs(inputs: CharacterSheetInputs, bracket: AgeBracket, rules: CharacterSheetRules): CharacterSheetInputs['ageEffects'] {
-  const deductions = Object.fromEntries(
+function shownDeductions(inputs: CharacterSheetInputs, bracket: AgeBracket): CharacteristicInputs {
+  return Object.fromEntries(
     bracket.physicalDeductionCharacteristics.flatMap((code) => {
       const value = inputs.ageEffects.deductions[code]
       return value === undefined ? [] : [[code, value]]
     }),
   )
-  const checks = inputs.ageEffects.eduImprovementChecks.slice(0, bracket.eduImprovementChecks)
-  const before = eduBeforeEachCheck(assignedValue(inputs, 'EDU'), checks, rules.eduMaximum)
-  const shownChecks = checks.map((check, index) => {
-    const educationBefore = before[index]
-    const gainShown = check.check !== null && educationBefore !== null && check.check > educationBefore
-    return gainShown ? check : { ...check, gain: null }
-  })
+}
 
-  return { deductions, eduImprovementChecks: shownChecks }
+/** The saved rolls the validator reads instead of typed dice results, built from the Character Sheet view. */
+export function savedRollsFromSheet(sheet: CharacterSheetView): SavedRolls {
+  return {
+    characteristicRolls: sheet.characteristicRolls,
+    luckRolls: sheet.luckRolls,
+    eduImprovementChecks: sheet.ageEffects.eduImprovementChecks,
+    lockedAgeBracket: sheet.locks.ageBracket ? sheet.ageEffects.bracket : null,
+  }
 }

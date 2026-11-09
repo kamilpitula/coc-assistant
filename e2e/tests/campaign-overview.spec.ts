@@ -10,6 +10,7 @@ import {
   pressWizardAction,
   chooseAntiquarianViaUi,
   pickAntiquarianSkillsViaUi,
+  rollEduCheckViaUi,
   saveDraftUpToAgeEffectsViaUi,
   spendAntiquarianPointsViaUi,
   submitValidInvestigatorViaUi,
@@ -230,7 +231,7 @@ test.describe('Campaign overview and navigation', () => {
       await test.step('the Player continues and submits the Investigator', async () => {
         await attentionList(player.page).getByRole('link', { name: 'Continue' }).click()
         await expect(player.page.getByRole('heading', { level: 1, name: 'Age effects' })).toBeVisible()
-        await player.page.getByRole('group', { name: 'EDU check 1 of 1' }).getByLabel('D100 roll').fill('30')
+        await rollEduCheckViaUi(player.page, 1)
         await pressWizardAction(player.page, 'Save and continue')
         await chooseAntiquarianViaUi(player.page)
         await pickAntiquarianSkillsViaUi(player.page)

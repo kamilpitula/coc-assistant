@@ -10,7 +10,7 @@ public class PlayerInvestigatorService
     private readonly IInvestigatorRepository _investigators;
     private readonly IAccountDisplayNames _displayNames;
     private readonly CharacterSheetEvaluator _evaluator;
-    private readonly IRollSource _rollSource;
+    private readonly CreationRuleSets _ruleSets;
     private readonly IDiceRoller _diceRoller;
     private readonly TimeProvider _timeProvider;
 
@@ -19,7 +19,7 @@ public class PlayerInvestigatorService
         IInvestigatorRepository investigators,
         IAccountDisplayNames displayNames,
         CharacterSheetEvaluator evaluator,
-        IRollSource rollSource,
+        CreationRuleSets ruleSets,
         IDiceRoller diceRoller,
         TimeProvider timeProvider)
     {
@@ -27,7 +27,7 @@ public class PlayerInvestigatorService
         _investigators = investigators;
         _displayNames = displayNames;
         _evaluator = evaluator;
-        _rollSource = rollSource;
+        _ruleSets = ruleSets;
         _diceRoller = diceRoller;
         _timeProvider = timeProvider;
     }
@@ -94,7 +94,7 @@ public class PlayerInvestigatorService
         }
 
         var (investigator, campaign) = mine.Value;
-        if (!investigator.ReplaceCharacterSheet(inputs.ToCharacterSheet(_rollSource), _timeProvider.GetUtcNow()))
+        if (!investigator.ReplaceCharacterSheet(inputs.ToCharacterSheet(), _ruleSets.For(campaign.Era).AgeRules, _timeProvider.GetUtcNow()))
         {
             return new CharacterSheetResult(InvestigatorCommandOutcome.StatusConflict);
         }
@@ -105,9 +105,42 @@ public class PlayerInvestigatorService
             : new CharacterSheetResult(saved.Outcome);
     }
 
-    public async Task<CharacterSheetResult> RollMyCharacteristicsAsync(
+    public Task<CharacterSheetResult> RollMyCharacteristicsAsync(
         Guid campaignId,
         Guid playerAccountId,
+        CancellationToken cancellationToken) =>
+        RollAsync(
+            campaignId,
+            playerAccountId,
+            (investigator, _) => investigator.RollCharacteristics(_diceRoller, playerAccountId, _timeProvider.GetUtcNow()),
+            cancellationToken);
+
+    /// <summary>Rolls the Player's Luck and second Luck roll and returns the sheet.</summary>
+    public Task<CharacterSheetResult> RollMyLuckAsync(
+        Guid campaignId,
+        Guid playerAccountId,
+        CancellationToken cancellationToken) =>
+        RollAsync(
+            campaignId,
+            playerAccountId,
+            (investigator, ageRules) => investigator.RollLuck(ageRules, _diceRoller, playerAccountId, _timeProvider.GetUtcNow()),
+            cancellationToken);
+
+    /// <summary>Rolls the Player's next EDU improvement check and its gain and returns the sheet.</summary>
+    public Task<CharacterSheetResult> RollMyEduImprovementCheckAsync(
+        Guid campaignId,
+        Guid playerAccountId,
+        CancellationToken cancellationToken) =>
+        RollAsync(
+            campaignId,
+            playerAccountId,
+            (investigator, ageRules) => investigator.RollEduImprovementCheck(ageRules, _diceRoller, playerAccountId, _timeProvider.GetUtcNow()),
+            cancellationToken);
+
+    private async Task<CharacterSheetResult> RollAsync(
+        Guid campaignId,
+        Guid playerAccountId,
+        Func<Investigator, AgeRules, bool> roll,
         CancellationToken cancellationToken)
     {
         var mine = await FindMineAsync(campaignId, playerAccountId, cancellationToken);
@@ -117,7 +150,7 @@ public class PlayerInvestigatorService
         }
 
         var (investigator, campaign) = mine.Value;
-        if (!investigator.RollCharacteristics(_diceRoller, playerAccountId, _timeProvider.GetUtcNow()))
+        if (!roll(investigator, _ruleSets.For(campaign.Era).AgeRules))
         {
             return new CharacterSheetResult(InvestigatorCommandOutcome.StatusConflict);
         }

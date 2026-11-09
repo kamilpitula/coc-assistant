@@ -1,7 +1,7 @@
 namespace CocAssistant.CampaignPlay.Tests;
 
 /// <summary>
-/// Player-entered dice results become Roll Records (docs/game-rules/project_ruleset.md section 4.3;
+/// Legacy Player-entered dice results stay stored as Roll Records (docs/game-rules/project_ruleset.md section 4.3;
 /// specs/character-sheet/spec.md, Roll Records).
 /// </summary>
 public class RollRecordTests
@@ -20,42 +20,26 @@ public class RollRecordTests
     }
 
     [Fact]
-    public void Given_a_player_entered_result_When_recording_it_Then_the_roll_record_keeps_the_raw_result_and_its_source()
+    public void Given_a_builder_with_luck_and_edu_results_When_building_the_sheet_Then_each_result_is_a_stored_roll_record_with_its_purpose()
     {
-        var record = new PlayerEnteredRollSource().Record(RollPurposes.Luck, CreationDice.Luck, 11);
-
-        Assert.Equal(new RollRecord("Luck", "3D6", 11, RollSource.PlayerEntered), record);
-    }
-
-    [Fact]
-    public void Given_no_player_entered_result_When_recording_it_Then_there_is_no_roll_record()
-    {
-        Assert.Null(new PlayerEnteredRollSource().Record(RollPurposes.Luck, CreationDice.Luck, null));
-    }
-
-    [Fact]
-    public void Given_player_inputs_with_dice_results_When_building_the_character_sheet_Then_each_result_is_a_roll_record_with_its_purpose()
-    {
-        var inputs = new CharacterSheetInputs(
-            InvestigatorIdentity.Empty,
-            CreationMethod.PointBuy,
-            CharacteristicValues.Empty,
-            CharacteristicValues.Empty.With(Characteristic.Strength, 3),
-            [new EduImprovementCheckInput(70, 4), new EduImprovementCheckInput(null, null), new EduImprovementCheckInput(20, null)],
-            [11, 13]);
-
-        var sheet = inputs.ToCharacterSheet(new PlayerEnteredRollSource());
+        var sheet = new CharacterSheetBuilder()
+            .WithLuckRolls(11, 13)
+            .WithEduImprovementChecks(
+                new EduImprovementCheckInput(70, 4),
+                new EduImprovementCheckInput(null, null),
+                new EduImprovementCheckInput(20, null))
+            .Build();
 
         Assert.Equal(
             [
-                new RollRecord("Luck", "3D6", 11, RollSource.PlayerEntered),
-                new RollRecord("Luck:SecondRoll", "3D6", 13, RollSource.PlayerEntered),
-                new RollRecord("EduImprovement[1].Check", "D100", 70, RollSource.PlayerEntered),
-                new RollRecord("EduImprovement[1].Gain", "1D10", 4, RollSource.PlayerEntered),
-                new RollRecord("EduImprovement[3].Check", "D100", 20, RollSource.PlayerEntered),
+                RollRecord.PlayerEntered("Luck", "3D6", 11),
+                RollRecord.PlayerEntered("Luck:SecondRoll", "3D6", 13),
+                RollRecord.PlayerEntered("EduImprovement[1].Check", "D100", 70),
+                RollRecord.PlayerEntered("EduImprovement[1].Gain", "1D10", 4),
+                RollRecord.PlayerEntered("EduImprovement[3].Check", "D100", 20),
             ],
             sheet.RollRecords);
-        Assert.Equal(3, sheet.AgeDeductions[Characteristic.Strength]);
+        Assert.Equal(50, sheet.AssignedCharacteristics[Characteristic.Education]);
     }
 
     [Fact]
@@ -80,15 +64,13 @@ public class RollRecordTests
     [Fact]
     public void Given_a_character_sheet_with_roll_records_When_reading_its_dice_inputs_Then_they_come_back_in_order_with_gaps()
     {
-        var inputs = new CharacterSheetInputs(
-            InvestigatorIdentity.Empty,
-            CreationMethod.PointBuy,
-            CharacteristicValues.Empty,
-            CharacteristicValues.Empty,
-            [new EduImprovementCheckInput(70, 4), new EduImprovementCheckInput(null, null), new EduImprovementCheckInput(20, null)],
-            [11]);
-
-        var sheet = inputs.ToCharacterSheet(new PlayerEnteredRollSource());
+        var sheet = new CharacterSheetBuilder()
+            .WithLuckRolls(11)
+            .WithEduImprovementChecks(
+                new EduImprovementCheckInput(70, 4),
+                new EduImprovementCheckInput(null, null),
+                new EduImprovementCheckInput(20, null))
+            .Build();
 
         Assert.Equal([11], sheet.LuckRolls);
         Assert.Equal(

@@ -106,17 +106,19 @@ public class PlayerInvestigatorServiceTests : IDisposable
     {
         var campaignId = await CampaignWithPlayerAsync();
         await _scenario.CreateDraftAsync(campaignId, Player);
-        var inputs = new CharacterSheetBuilder().WithLuckRolls().BuildInputs();
+        var inputs = new CharacterSheetBuilder().BuildInputs();
 
         var result = await _scenario.SaveCharacterSheetAsync(campaignId, Player, inputs);
 
         Assert.Equal(InvestigatorCommandOutcome.Succeeded, result.Outcome);
         var view = result.View!;
         Assert.Equal("Ada Lovelace", view.PlayerName);
-        Assert.Equal("LuckRollRequired", Assert.Single(view.ValidationErrors).Code);
+        Assert.Equal(
+            ["EduImprovementCheckRequired", "LuckRollRequired"],
+            view.ValidationErrors.Select(error => error.Code).OrderBy(code => code));
         Assert.Equal(60, view.Computation.FinalCharacteristics[Characteristic.Strength]);
         var reread = await AsPlayerAsync(service => service.GetMyCharacterSheetAsync(campaignId, Player, CancellationToken.None));
-        Assert.Equal(inputs.ToCharacterSheet(new PlayerEnteredRollSource()), reread!.Investigator.CharacterSheet);
+        Assert.Equal(inputs.ToCharacterSheet(), reread!.Investigator.CharacterSheet);
     }
 
     // Scenario: Player submits a valid Character Sheet
@@ -126,6 +128,7 @@ public class PlayerInvestigatorServiceTests : IDisposable
         var campaignId = await CampaignWithPlayerAsync();
         await _scenario.CreateDraftAsync(campaignId, Player);
         await _scenario.SaveCharacterSheetAsync(campaignId, Player, new CharacterSheetBuilder().BuildInputs());
+        await _scenario.RollLuckAndEduAsync(campaignId, Player, new ScriptedDiceRoller([4, 5, 6, 30]));
 
         var submitted = await AsPlayerAsync(service => service.SubmitMineAsync(campaignId, Player, CancellationToken.None));
         var edit = await _scenario.SaveCharacterSheetAsync(campaignId, Player, new CharacterSheetBuilder().WithName("Changed").BuildInputs());
@@ -155,6 +158,7 @@ public class PlayerInvestigatorServiceTests : IDisposable
         var campaignId = await CampaignWithPlayerAsync();
         await _scenario.CreateDraftAsync(campaignId, Player);
         await _scenario.SaveCharacterSheetAsync(campaignId, Player, new CharacterSheetBuilder().BuildInputs());
+        await _scenario.RollLuckAndEduAsync(campaignId, Player, new ScriptedDiceRoller([4, 5, 6, 30]));
         await _scenario.ChangeAllowedCreationMethodsAsync(campaignId, AllowedCreationMethods.Create([CreationMethod.QuickFire]));
 
         var result = await AsPlayerAsync(service => service.SubmitMineAsync(campaignId, Player, CancellationToken.None));

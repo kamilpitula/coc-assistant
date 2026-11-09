@@ -13,6 +13,8 @@ import {
   pickAntiquarianSkillsViaUi,
   pressWizardAction,
   rollCharacteristicsViaUi,
+  rollEduCheckViaUi,
+  rollLuckViaUi,
   saveDraftUpToAgeEffectsViaUi,
   spendAntiquarianPointsViaUi,
   VALID_POINT_BUY,
@@ -27,10 +29,10 @@ import { attentionList, memberRow, ownRow } from '../fixtures/overview'
  * are rolled by the server", "Characteristics are rolled only once", "Rolled characteristics lock the Creation Method",
  * "Changing characteristics keeps later allocations", "Changing the Creation Method clears characteristics after
  * confirmation", and "Unspent personal interest points only warn"; and to specs/character-sheet/ux.md sections 3 to 7
- * (UX-3, UX-4, UX-5, UX-7, UX-8, UX-10, UX-11, UX-12, UX-13, UX-14, UX-15, UX-20, UX-22, UX-23, UX-24, UX-25, UX-26,
- * UX-27, UX-28, UX-29, UX-30, UX-31, UX-32, UX-34, UX-35; UX-33 has no API to create its legacy state and is covered by
- * storage and integration tests), with the Campaign page as the overview of specs/campaign-overview/ux.md (CO-UX-4,
- * CO-UX-6, CO-UX-9).
+ * (UX-3, UX-4, UX-5, UX-7, UX-8, UX-10, UX-11, UX-12, UX-13, UX-14, UX-15, UX-22, UX-23, UX-24, UX-25, UX-26,
+ * UX-27, UX-28, UX-29, UX-30, UX-31, UX-32, UX-34, UX-35, UX-36, UX-37, UX-38; UX-33 has no API to create its legacy
+ * state and is covered by storage and integration tests), with the Campaign page as the overview of
+ * specs/campaign-overview/ux.md (CO-UX-4, CO-UX-6, CO-UX-9).
  */
 test.describe('Investigator lifecycle', () => {
   test('A Player creates, saves, resumes, and submits an Investigator; the Keeper requests changes, then approves it', async ({
@@ -92,11 +94,11 @@ test.describe('Investigator lifecycle', () => {
         await expect(playerPage.getByLabel('STR', { exact: true })).toHaveValue('60')
       })
 
-      await test.step('UX-20: the Player buys characteristics and rolls Luck outside the points', async () => {
+      await test.step('UX-36: the Player buys characteristics and the app rolls Luck outside the points', async () => {
         await fillPointBuy(playerPage, VALID_POINT_BUY)
         await expect(playerPage.getByText('Points used: 460 of 460')).toBeVisible()
-        await playerPage.getByLabel('Luck, 3D6 total').fill('11')
-        await expect(playerPage.getByText('= 55')).toBeVisible()
+        await rollLuckViaUi(playerPage)
+        await expect(playerPage.getByText(/^Luck \d+$/)).toBeVisible()
         await expect(playerPage.getByText('Points used: 460 of 460')).toBeVisible()
         await pressWizardAction(playerPage, 'Save and continue')
       })
@@ -109,8 +111,8 @@ test.describe('Investigator lifecycle', () => {
         await playerPage.getByLabel('Deduct from STR').fill('3')
         await playerPage.getByLabel('Deduct from DEX').fill('2')
         await expect(playerPage.getByText('Still to deduct: 0')).toBeVisible()
-        await playerPage.getByRole('group', { name: 'EDU check 1 of 2' }).getByLabel('D100 roll').fill('30')
-        await playerPage.getByRole('group', { name: 'EDU check 2 of 2' }).getByLabel('D100 roll').fill('20')
+        await rollEduCheckViaUi(playerPage, 1)
+        await rollEduCheckViaUi(playerPage, 2)
         await pressWizardAction(playerPage, 'Save and continue')
       })
 
@@ -120,20 +122,20 @@ test.describe('Investigator lifecycle', () => {
         await spendAntiquarianPointsViaUi(playerPage)
       })
 
-      await test.step('UX-7: lowering EDU keeps the allocations and marks Occupation skills as needing attention', async () => {
+      await test.step('UX-7: lowering INT keeps the allocations and marks Personal interests as needing attention', async () => {
         await playerPage.getByRole('link', { name: /^Characteristics ?, completed$/ }).click()
-        await playerPage.getByLabel('EDU', { exact: true }).fill('40')
-        await playerPage.getByLabel('APP', { exact: true }).fill('60')
+        await playerPage.getByLabel('INT', { exact: true }).fill('40')
+        await playerPage.getByLabel('APP', { exact: true }).fill('70')
         await pressWizardAction(playerPage, 'Save and continue')
         await expect(playerPage.getByRole('status').filter({ hasText: 'Some later steps need attention.' })).toBeVisible()
-        await playerPage.getByRole('link', { name: /^Occupation skills ?, needs attention$/ }).click()
-        await expect(playerPage.getByText("You've spent 200 occupation points. You have 160.")).toBeVisible()
-        await expect(playerPage.getByLabel('Library Use, occupation points')).toHaveValue('50')
+        await playerPage.getByRole('link', { name: /^Personal interests ?, needs attention$/ }).click()
+        await expect(playerPage.getByText('40 over budget')).toBeVisible()
+        await expect(playerPage.getByLabel('Drive Auto, personal interest points')).toHaveValue('60')
       })
 
-      await test.step('the Player restores EDU and APP and returns to the summary', async () => {
+      await test.step('the Player restores INT and APP and returns to the summary', async () => {
         await playerPage.getByRole('link', { name: /^Characteristics ?, completed$/ }).click()
-        await playerPage.getByLabel('EDU', { exact: true }).fill('50')
+        await playerPage.getByLabel('INT', { exact: true }).fill('60')
         await playerPage.getByLabel('APP', { exact: true }).fill('50')
         await pressWizardAction(playerPage, 'Save and continue')
         await playerPage.getByRole('link', { name: /^Sheet and submit ?, completed$/ }).click()
@@ -167,11 +169,11 @@ test.describe('Investigator lifecycle', () => {
         await expect(page.getByText(`Player: ${player.account.name}`)).toBeVisible()
       })
 
-      await test.step("the Keeper sees the Player-entered Luck with no recorded faces", async () => {
+      await test.step("the Keeper sees the server-rolled Luck with its faces", async () => {
         await page.getByRole('button', { name: 'Dice results' }).click()
         await expect(
           page.getByRole('row', {
-            name: new RegExp(`^Luck 3D6 Not recorded 11 ${player.account.name} \\(entered\\) Not recorded$`),
+            name: new RegExp(`^Luck 3D6 [\\d, ]+ \\d+ Server, for ${player.account.name} .+$`),
           }),
         ).toBeVisible()
       })
@@ -232,7 +234,7 @@ test.describe('Investigator lifecycle', () => {
     try {
       await test.step('the Player creates a 25-year-old Antiquarian and spends every point', async () => {
         await saveDraftUpToAgeEffectsViaUi(playerPage, campaignId, 'Ida Marsh')
-        await playerPage.getByRole('group', { name: 'EDU check 1 of 1' }).getByLabel('D100 roll').fill('30')
+        await rollEduCheckViaUi(playerPage, 1)
         await pressWizardAction(playerPage, 'Save and continue')
         await chooseAntiquarianViaUi(playerPage)
         await pickAntiquarianSkillsViaUi(playerPage)
@@ -299,7 +301,7 @@ test.describe('Investigator lifecycle', () => {
         await page.getByRole('button', { name: 'Dice results' }).click()
         await expect(
           page.getByRole('row', {
-            name: new RegExp(`^Luck 3D6 Not recorded 11 ${player.account.name} \\(entered\\) Not recorded$`),
+            name: new RegExp(`^Luck 3D6 [\\d, ]+ \\d+ Server, for ${player.account.name} .+$`),
           }),
         ).toBeVisible()
       })
@@ -381,12 +383,10 @@ test.describe('Investigator lifecycle', () => {
         await expect(playerPage.getByText('Creation method: Standard rolling')).toBeVisible()
       })
 
-      await test.step('the Player enters Luck, makes the EDU check, then picks the Antiquarian and spends the minimum', async () => {
-        await playerPage.getByLabel('Luck, 3D6 total').fill('11')
+      await test.step('the Player rolls Luck, makes the EDU check, then picks the Antiquarian and spends the minimum', async () => {
+        await rollLuckViaUi(playerPage)
         await pressWizardAction(playerPage, 'Save and continue')
-        const eduText = rolledValues.find((text) => text.startsWith('EDU ')) ?? 'EDU 10'
-        const edu = parseInt(eduText.split(' ')[1], 10)
-        await playerPage.getByRole('group', { name: 'EDU check 1 of 1' }).getByLabel('D100 roll').fill(String(edu - 5))
+        await rollEduCheckViaUi(playerPage, 1)
         await pressWizardAction(playerPage, 'Save and continue')
         await chooseAntiquarianViaUi(playerPage)
         await pickAntiquarianSkillsViaUi(playerPage)
@@ -402,7 +402,7 @@ test.describe('Investigator lifecycle', () => {
         await expect(ownRow(playerPage)).toContainText('Submitted - waiting for your Keeper')
       })
 
-      await test.step("the Keeper sees the server's eight characteristic rolls and the Player-entered Luck", async () => {
+      await test.step("the Keeper sees the server's eight characteristic rolls and the server-rolled Luck", async () => {
         await page.goto(`/campaigns/${campaignId}`)
         await attentionList(page).getByRole('link', { name: 'Review Mae Doyle' }).click()
         await page.getByRole('button', { name: 'Dice results' }).click()
@@ -415,7 +415,7 @@ test.describe('Investigator lifecycle', () => {
         }
         await expect(
           page.getByRole('row', {
-            name: new RegExp(`^Luck 3D6 Not recorded 11 ${player.account.name} \\(entered\\) Not recorded$`),
+            name: new RegExp(`^Luck 3D6 [\\d, ]+ \\d+ Server, for ${player.account.name} .+$`),
           }),
         ).toBeVisible()
       })
@@ -504,9 +504,9 @@ test.describe('Investigator lifecycle', () => {
           await chooseOption(playerPage, code, value)
         }
         await expect(playerPage.getByText('Every value is assigned.')).toBeVisible()
-        await playerPage.getByLabel('Luck, 3D6 total').fill('11')
+        await rollLuckViaUi(playerPage)
         await pressWizardAction(playerPage, 'Save and continue')
-        await playerPage.getByRole('group', { name: 'EDU check 1 of 1' }).getByLabel('D100 roll').fill('30')
+        await rollEduCheckViaUi(playerPage, 1)
         await pressWizardAction(playerPage, 'Save and continue')
       })
 
@@ -601,6 +601,412 @@ test.describe('Investigator lifecycle', () => {
         await expect(playerPage.getByRole('row', { name: /^Listen/ })).toContainText('40')
         await playerPage.getByRole('button', { name: 'Submit to Keeper' }).click()
         await expect(ownRow(playerPage)).toContainText('Submitted - waiting for your Keeper')
+      })
+    } finally {
+      await player.context.close()
+    }
+  })
+
+  test('UX-37: an EDU check and its gain are rolled in the same action', async ({ page, browser }) => {
+    test.slow()
+
+    const keeper = newAccount('Keeper')
+    await signIn(page, keeper)
+    const campaignId = await createCampaignViaUi(page, `EDU gain ${keeper.oid.slice(0, 6)}`)
+    const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, campaignId))
+    const playerPage = player.page
+    // Point Buy with EDU at the minimum: the check likely improves EDU, and the invariants below hold either way.
+    const minimumEdu: Record<string, string> = {
+      STR: '65',
+      CON: '65',
+      DEX: '65',
+      APP: '65',
+      POW: '65',
+      SIZ: '60',
+      INT: '60',
+      EDU: '15',
+    }
+    let improved: RegExpExecArray | null = null
+
+    try {
+      await test.step('the Player buys characteristics with EDU at the minimum and rolls Luck', async () => {
+        await playerPage.goto(`/campaigns/${campaignId}`)
+        await attentionList(playerPage).getByRole('button', { name: 'Create Investigator' }).click()
+        await playerPage.getByLabel('Investigator name').fill('Edu Gain')
+        await playerPage.getByLabel('Age').fill('25')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await chooseCreationMethod(playerPage, 'Point buy')
+        await fillPointBuy(playerPage, minimumEdu)
+        await rollLuckViaUi(playerPage)
+        await pressWizardAction(playerPage, 'Save and continue')
+      })
+
+      await test.step('UX-37: the rolled check reads "EDU a -> b" or "No improvement"', async () => {
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Age effects' })).toBeVisible()
+        await rollEduCheckViaUi(playerPage, 1)
+        const groupText = ((await playerPage.getByRole('group', { name: 'EDU check 1 of 1' }).textContent()) ?? '').replace(
+          /\s+/g,
+          ' ',
+        )
+        improved = /EDU (\d+) -> (\d+)/.exec(groupText)
+        if (improved === null) {
+          await expect(playerPage.getByText('No improvement')).toBeVisible()
+        } else {
+          expect(parseInt(improved[1], 10)).toBe(15)
+        }
+      })
+
+      await test.step('the Player spends the occupation budget the improved EDU allows', async () => {
+        const eduAfter = improved === null ? 15 : parseInt(improved[2], 10)
+        const budget = eduAfter * 4
+        await pressWizardAction(playerPage, 'Save and continue')
+        await chooseAntiquarianViaUi(playerPage)
+        await pickAntiquarianSkillsViaUi(playerPage)
+        let remaining = budget
+        for (const [skill, planned] of [
+          ['Credit Rating', 30],
+          ['Library Use', 50],
+          ['Appraise', 50],
+          ['History', 50],
+          ['Spot Hidden', 20],
+        ] as Array<[string, number]>) {
+          const points = Math.min(planned, remaining)
+          if (points > 0) {
+            await playerPage.getByLabel(`${skill}, occupation points`).fill(String(points))
+            remaining -= points
+          }
+        }
+        await expect(playerPage.getByText(`Occupation points left: 0 of ${budget}`)).toBeVisible()
+        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Personal interests' })).toBeVisible()
+        await playerPage.getByLabel('Drive Auto, personal interest points').fill('60')
+        await playerPage.getByLabel('Listen, personal interest points').fill('60')
+        await expect(playerPage.getByText('Personal interest points left: 0 of 120')).toBeVisible()
+        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Sheet and submit' })).toBeVisible()
+      })
+
+      await test.step("the Keeper sees the check, and the gain exactly when the step showed an improvement", async () => {
+        await playerPage.getByRole('button', { name: 'Submit to Keeper' }).click()
+        await expect(ownRow(playerPage)).toContainText('Submitted - waiting for your Keeper')
+        await page.goto(`/campaigns/${campaignId}`)
+        await attentionList(page).getByRole('link', { name: 'Review Edu Gain' }).click()
+        await page.getByRole('button', { name: 'Dice results' }).click()
+
+        const checkRow = page.getByRole('row', {
+          name: new RegExp(`^EDU check 1 D100 [\\d, ]+ \\d+ Server, for ${player.account.name} .+$`),
+        })
+        await expect(checkRow).toBeVisible()
+        const [, , checkFacesText, checkResultText] = await checkRow.getByRole('cell').allTextContents()
+        const checkFaces = checkFacesText.split(',').map((face) => parseInt(face.trim(), 10))
+        const checkResult = parseInt(checkResultText, 10)
+        console.log(`EDU check 1 faces: ${checkFacesText} (result ${checkResultText})`)
+        expect(checkFaces).toHaveLength(1)
+        expect(checkResult).toBe(checkFaces[0])
+
+        const gainRow = page.getByRole('row', {
+          name: new RegExp(`^EDU check 1 gain 1D10 [\\d, ]+ \\d+ Server, for ${player.account.name} .+$`),
+        })
+        if (improved === null) {
+          await expect(gainRow).toHaveCount(0)
+        } else {
+          const eduBefore = parseInt(improved[1], 10)
+          const eduAfter = parseInt(improved[2], 10)
+          expect(checkResult).toBeGreaterThan(eduBefore)
+          await expect(gainRow).toBeVisible()
+          const [, , gainFacesText, gainResultText] = await gainRow.getByRole('cell').allTextContents()
+          const gain = parseInt(gainResultText, 10)
+          console.log(`EDU check 1 gain faces: ${gainFacesText} (result ${gainResultText})`)
+          expect(gain).toBeGreaterThanOrEqual(1)
+          expect(gain).toBeLessThanOrEqual(10)
+          expect(eduAfter).toBe(Math.min(99, eduBefore + gain))
+        }
+
+        await expect(
+          page.getByRole('row', {
+            name: new RegExp(`^Luck 3D6 [\\d, ]+ \\d+ Server, for ${player.account.name} .+$`),
+          }),
+        ).toBeVisible()
+      })
+    } finally {
+      await player.context.close()
+    }
+  })
+
+  test('UX-38: a rolled EDU check locks the age bracket and EDU', async ({ page, browser }) => {
+    test.slow()
+
+    const keeper = newAccount('Keeper')
+    await signIn(page, keeper)
+    const campaignId = await createCampaignViaUi(page, `EDU locks ${keeper.oid.slice(0, 6)}`)
+    const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, campaignId))
+    const playerPage = player.page
+    const bearer = await openAndCaptureBearer(playerPage, `/campaigns/${campaignId}`)
+    const characteristics = Object.fromEntries(Object.entries(VALID_POINT_BUY).map(([code, value]) => [code, parseInt(value, 10)]))
+
+    try {
+      await test.step('the Player buys characteristics and rolls the EDU check', async () => {
+        await attentionList(playerPage).getByRole('button', { name: 'Create Investigator' }).click()
+        await playerPage.getByLabel('Investigator name').fill('Edu Locks')
+        await playerPage.getByLabel('Age').fill('25')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await chooseCreationMethod(playerPage, 'Point buy')
+        await fillPointBuy(playerPage, VALID_POINT_BUY)
+        await rollLuckViaUi(playerPage)
+        await pressWizardAction(playerPage, 'Save and continue')
+        await rollEduCheckViaUi(playerPage, 1)
+        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Occupation' })).toBeVisible()
+      })
+
+      await test.step('UX-38: EDU and the Creation Method are locked with their reasons, and the age hint shows', async () => {
+        await playerPage.getByRole('link', { name: /^Characteristics ?, completed$/ }).click()
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Characteristics' })).toBeVisible()
+        await expect(playerPage.getByLabel('EDU', { exact: true })).toBeDisabled()
+        await expect(playerPage.getByText('Locked because you rolled an EDU check.', { exact: true })).toBeVisible()
+        await expect(playerPage.getByText('Creation method: Point buy')).toBeVisible()
+        await pressWizardAction(playerPage, 'Back')
+        await expect(playerPage.getByText('Your age must stay between 20 and 39 because you rolled Luck and EDU checks.')).toBeVisible()
+      })
+
+      await test.step('UX-38: a PUT into another bracket and a PUT changing EDU are refused with 409', async () => {
+        const refusedBracket = await playerPage.request.put(characterSheetUrl(campaignId), {
+          headers: { Authorization: bearer },
+          data: {
+            identity: { name: 'Edu Locks', age: 45 },
+            creationMethod: 'PointBuy',
+            characteristics,
+            ageEffects: { deductions: {}, eduImprovementChecks: [] },
+          },
+        })
+        expect(refusedBracket.status()).toBe(409)
+        const refusedEdu = await playerPage.request.put(characterSheetUrl(campaignId), {
+          headers: { Authorization: bearer },
+          data: {
+            identity: { name: 'Edu Locks', age: 25 },
+            creationMethod: 'PointBuy',
+            characteristics: { ...characteristics, EDU: 60, APP: 40 },
+            ageEffects: { deductions: {}, eduImprovementChecks: [] },
+          },
+        })
+        expect(refusedEdu.status()).toBe(409)
+      })
+
+      await test.step('a reload shows nothing changed', async () => {
+        await playerPage.reload()
+        await expect(playerPage.getByLabel('Age')).toHaveValue('25')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByLabel('EDU', { exact: true })).toHaveValue('50')
+      })
+    } finally {
+      await player.context.close()
+    }
+  })
+
+  test('UX-36 and UX-38: a rolled Luck locks the age bracket', async ({ page, browser }) => {
+    test.slow()
+
+    const keeper = newAccount('Keeper')
+    await signIn(page, keeper)
+    const campaignId = await createCampaignViaUi(page, `Luck locks ${keeper.oid.slice(0, 6)}`)
+    const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, campaignId))
+    const playerPage = player.page
+    const bearer = await openAndCaptureBearer(playerPage, `/campaigns/${campaignId}`)
+    const characteristics = Object.fromEntries(Object.entries(VALID_POINT_BUY).map(([code, value]) => [code, parseInt(value, 10)]))
+
+    try {
+      await test.step('UX-36: the Luck dialog names the age range that becomes fixed', async () => {
+        await attentionList(playerPage).getByRole('button', { name: 'Create Investigator' }).click()
+        await playerPage.getByLabel('Investigator name').fill('Luck Locks')
+        await playerPage.getByLabel('Age').fill('25')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await chooseCreationMethod(playerPage, 'Point buy')
+        await fillPointBuy(playerPage, VALID_POINT_BUY)
+        await playerPage.getByRole('button', { name: 'Roll Luck' }).click()
+        const dialog = playerPage.getByRole('alertdialog', { name: 'Roll Luck?' })
+        await expect(dialog).toContainText('between 20 and 39')
+        await dialog.getByRole('button', { name: 'Roll now' }).click()
+        await expect(playerPage.getByRole('status').filter({ hasText: 'Luck rolled.' })).toBeVisible()
+        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Age effects' })).toBeVisible()
+        await pressWizardAction(playerPage, 'Back')
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Characteristics' })).toBeVisible()
+        await pressWizardAction(playerPage, 'Back')
+        await expect(playerPage.getByText('Your age must stay between 20 and 39 because you rolled Luck.')).toBeVisible()
+      })
+
+      await test.step('UX-38: a PUT into another bracket is refused, and one within the bracket is accepted', async () => {
+        const refused = await playerPage.request.put(characterSheetUrl(campaignId), {
+          headers: { Authorization: bearer },
+          data: {
+            identity: { name: 'Luck Locks', age: 45 },
+            creationMethod: 'PointBuy',
+            characteristics,
+            ageEffects: { deductions: {}, eduImprovementChecks: [] },
+          },
+        })
+        expect(refused.status()).toBe(409)
+        const accepted = await playerPage.request.put(characterSheetUrl(campaignId), {
+          headers: { Authorization: bearer },
+          data: {
+            identity: { name: 'Luck Locks', age: 30 },
+            creationMethod: 'PointBuy',
+            characteristics,
+            ageEffects: { deductions: {}, eduImprovementChecks: [] },
+          },
+        })
+        expect(accepted.status()).toBe(200)
+      })
+
+      await test.step('a reload shows the accepted age with the rolled Luck still in place', async () => {
+        await playerPage.reload()
+        await expect(playerPage.getByLabel('Age')).toHaveValue('30')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByText(/^Luck \d+$/)).toBeVisible()
+        await expect(playerPage.getByLabel('EDU', { exact: true })).toBeEnabled()
+      })
+    } finally {
+      await player.context.close()
+    }
+  })
+
+  test('UX-36: a Young Investigator keeps the higher of two Luck rolls', async ({ page, browser }) => {
+    test.slow()
+
+    const keeper = newAccount('Keeper')
+    await signIn(page, keeper)
+    const campaignId = await createCampaignViaUi(page, `Young Luck ${keeper.oid.slice(0, 6)}`)
+    const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, campaignId))
+    const playerPage = player.page
+    let kept = 0
+    let first = 0
+    let second = 0
+
+    try {
+      await test.step('UX-36: the dialog rolls twice at 17 and the step keeps the higher roll', async () => {
+        await playerPage.goto(`/campaigns/${campaignId}`)
+        await attentionList(playerPage).getByRole('button', { name: 'Create Investigator' }).click()
+        await playerPage.getByLabel('Investigator name').fill('Young Luck')
+        await playerPage.getByLabel('Age').fill('17')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await chooseCreationMethod(playerPage, 'Point buy')
+        await fillPointBuy(playerPage, VALID_POINT_BUY)
+        await playerPage.getByRole('button', { name: 'Roll Luck' }).click()
+        const dialog = playerPage.getByRole('alertdialog', { name: 'Roll Luck?' })
+        await expect(dialog).toContainText('twice at your age')
+        await dialog.getByRole('button', { name: 'Roll now' }).click()
+        await expect(playerPage.getByRole('status').filter({ hasText: 'Luck rolled.' })).toBeVisible()
+        const stepText = ((await playerPage.getByText(/^Luck rolls \d+ and \d+, kept \d+$/).textContent()) ?? '').replace(
+          /\s+/g,
+          ' ',
+        )
+        const rolls = /Luck rolls (\d+) and (\d+), kept (\d+)/.exec(stepText)
+        expect(rolls).not.toBeNull()
+        first = parseInt(rolls![1], 10)
+        second = parseInt(rolls![2], 10)
+        kept = parseInt(rolls![3], 10)
+        console.log(`Young Luck rolls: ${first} and ${second}, kept ${kept}`)
+        expect(kept).toBe(Math.max(first, second))
+        await pressWizardAction(playerPage, 'Save and continue')
+      })
+
+      await test.step('the Player applies the deductions for 17 and submits', async () => {
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Age effects' })).toBeVisible()
+        await playerPage.getByLabel('Deduct from STR').fill('3')
+        await playerPage.getByLabel('Deduct from SIZ').fill('2')
+        await expect(playerPage.getByText('Still to deduct: 0')).toBeVisible()
+        await pressWizardAction(playerPage, 'Save and continue')
+        await chooseAntiquarianViaUi(playerPage)
+        await pickAntiquarianSkillsViaUi(playerPage)
+        await spendAntiquarianPointsViaUi(playerPage)
+        await playerPage.getByRole('button', { name: 'Submit to Keeper' }).click()
+        await expect(ownRow(playerPage)).toContainText('Submitted - waiting for your Keeper')
+      })
+
+      await test.step("the Keeper sees both server-rolled Luck rows with the higher kept", async () => {
+        await page.goto(`/campaigns/${campaignId}`)
+        await attentionList(page).getByRole('link', { name: 'Review Young Luck' }).click()
+        await page.getByRole('button', { name: 'Dice results' }).click()
+        const shown = [first, second].map((total) => total / 5)
+        for (const [label, total] of [
+          ['Luck', shown[0]],
+          ['Luck, second roll', shown[1]],
+        ] as const) {
+          const row = page.getByRole('row', {
+            name: new RegExp(`^${label} 3D6 [\\d, ]+ \\d+ Server, for ${player.account.name} .+$`),
+          })
+          await expect(row).toBeVisible()
+          const [, , facesText, resultText] = await row.getByRole('cell').allTextContents()
+          const faces = facesText.split(',').map((face) => parseInt(face.trim(), 10))
+          const result = parseInt(resultText, 10)
+          console.log(`${label} faces: ${facesText} (result ${resultText})`)
+          expect(faces).toHaveLength(3)
+          for (const face of faces) {
+            expect(face).toBeGreaterThanOrEqual(1)
+            expect(face).toBeLessThanOrEqual(6)
+          }
+          expect(result).toBe(faces[0] + faces[1] + faces[2])
+          expect(result).toBe(total)
+        }
+        expect(kept).toBe(5 * Math.max(shown[0], shown[1]))
+      })
+    } finally {
+      await player.context.close()
+    }
+  })
+
+  test('Dice results are never accepted from the Player', async ({ page, browser }) => {
+    test.slow()
+
+    const keeper = newAccount('Keeper')
+    await signIn(page, keeper)
+    const campaignId = await createCampaignViaUi(page, `No typed dice ${keeper.oid.slice(0, 6)}`)
+    const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, campaignId))
+    const playerPage = player.page
+    const bearer = await openAndCaptureBearer(playerPage, `/campaigns/${campaignId}`)
+    const characteristics = Object.fromEntries(Object.entries(VALID_POINT_BUY).map(([code, value]) => [code, parseInt(value, 10)]))
+    const baseSheet = {
+      identity: { name: 'Typed Dice', age: 25 },
+      creationMethod: 'PointBuy',
+      characteristics,
+      ageEffects: { deductions: {}, eduImprovementChecks: [] },
+    }
+
+    try {
+      await test.step('the Player reaches Age effects with an app-rolled Luck', async () => {
+        await attentionList(playerPage).getByRole('button', { name: 'Create Investigator' }).click()
+        await playerPage.getByLabel('Investigator name').fill('Typed Dice')
+        await playerPage.getByLabel('Age').fill('25')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await chooseCreationMethod(playerPage, 'Point buy')
+        await fillPointBuy(playerPage, VALID_POINT_BUY)
+        await rollLuckViaUi(playerPage)
+        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Age effects' })).toBeVisible()
+      })
+
+      await test.step('PUTs carrying dice results are refused with 400 and change nothing', async () => {
+        const accepted = await playerPage.request.put(characterSheetUrl(campaignId), {
+          headers: { Authorization: bearer },
+          data: baseSheet,
+        })
+        expect(accepted.status()).toBe(200)
+        const before = await (await playerPage.request.get(characterSheetUrl(campaignId), { headers: { Authorization: bearer } })).text()
+
+        for (const dice of [
+          { luckRolls: [11] },
+          { characteristicRolls: { STR: 60 } },
+          { ageEffects: { deductions: {}, eduImprovementChecks: [{ check: 30, gain: null }] } },
+        ]) {
+          const refused = await playerPage.request.put(characterSheetUrl(campaignId), {
+            headers: { Authorization: bearer },
+            data: { ...baseSheet, ...dice },
+          })
+          expect(refused.status()).toBe(400)
+        }
+
+        const after = await (await playerPage.request.get(characterSheetUrl(campaignId), { headers: { Authorization: bearer } })).text()
+        expect(after).toBe(before)
       })
     } finally {
       await player.context.close()
