@@ -22,7 +22,6 @@ public static class CrossOriginRegistration
 
         return origins
             .Select(origin => origin.Trim())
-            .Where(origin => origin.Length > 0)
             .Select(origin => origin.EndsWith('/') ? origin[..^1] : origin)
             .Where(origin => origin.Length > 0)
             .ToList();

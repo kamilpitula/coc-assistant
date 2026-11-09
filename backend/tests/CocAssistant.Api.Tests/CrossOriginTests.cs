@@ -122,6 +122,20 @@ public class CrossOriginTests
     }
 
     [Fact]
+    public void Given_a_lone_slash_origin_When_reading_Then_it_is_dropped()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Cors:AllowedOrigins:0"] = "/",
+                ["Cors:AllowedOrigins:1"] = "https://spa.example",
+            })
+            .Build();
+
+        Assert.Equal(["https://spa.example"], CrossOriginRegistration.ReadAllowedOrigins(configuration));
+    }
+
+    [Fact]
     public void Given_no_origins_configured_When_reading_Then_the_list_is_empty()
     {
         var configuration = new ConfigurationBuilder().Build();
