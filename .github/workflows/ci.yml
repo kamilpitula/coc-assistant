@@ -335,6 +335,15 @@ jobs:
         run: terraform init -backend=false -input=false
       - name: Validate
         run: terraform validate
+      - name: Initialize bootstrap without backend
+        working-directory: infrastructure/terraform/bootstrap
+        run: terraform init -backend=false -input=false
+      - name: Validate bootstrap
+        working-directory: infrastructure/terraform/bootstrap
+        run: terraform validate
+      - name: Test bootstrap
+        working-directory: infrastructure/terraform/bootstrap
+        run: terraform test
 
   # Always runs: PBI files change in docs-only pull requests (docs/backlog.md).
   backlog:
