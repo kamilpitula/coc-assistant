@@ -19,17 +19,20 @@ public sealed record CreationLocks(bool CreationMethod, bool AgeBracket, bool Ed
     /// <summary>Whether replacing the stored sheet with the next one would break a lock.</summary>
     public static bool Refuses(CharacterSheet stored, CharacterSheet next, AgeRules ageRules)
     {
-        if (next.CreationMethod != stored.CreationMethod && Of(stored, BracketOf(stored, ageRules)).CreationMethod)
+        var storedBracket = BracketOf(stored, ageRules);
+        var storedLocks = Of(stored, storedBracket);
+
+        if (next.CreationMethod != stored.CreationMethod && storedLocks.CreationMethod)
         {
             return true;
         }
 
-        if (Of(stored, BracketOf(stored, ageRules)).AgeBracket && BracketOf(next, ageRules) != BracketOf(stored, ageRules))
+        if (storedLocks.AgeBracket && BracketOf(next, ageRules) != storedBracket)
         {
             return true;
         }
 
-        return Of(stored, BracketOf(stored, ageRules)).Edu
+        return storedLocks.Edu
             && CharacterSheetCalculator.AssignedValuesOf(next)[Characteristic.Education]
                 != CharacterSheetCalculator.AssignedValuesOf(stored)[Characteristic.Education];
     }

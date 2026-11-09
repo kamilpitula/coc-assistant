@@ -20,7 +20,7 @@ import {
   type SkillAllocationInputs,
   type SkillReference,
 } from '@/campaign-play/types/CharacterSheet'
-import type { SavedRolls } from '@/campaign-play/services/characterSheetValidation'
+import { diceRange, type SavedRolls } from '@/campaign-play/services/characterSheetValidation'
 
 export type SkillPointsColumn = 'occupationPoints' | 'personalInterestPoints'
 
@@ -281,9 +281,8 @@ function standardRollingEduUsable(roll: number | null, dice: string): boolean {
     return false
   }
 
-  const [countText, sidesText] = dice.split('D')
-  const count = countText === '' ? 1 : Number(countText)
-  return roll >= count && roll <= count * Number(sidesText)
+  const { minimum, maximum } = diceRange(dice)
+  return roll >= minimum && roll <= maximum
 }
 
 /**
