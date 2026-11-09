@@ -9,5 +9,6 @@ global using CocAssistant.ScenePlay.Infrastructure;
 global using Microsoft.Identity.Web;
 global using CocAssistant.Api;
 global using Microsoft.AspNetCore.Authentication.JwtBearer;
+global using Microsoft.AspNetCore.HttpOverrides;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.EntityFrameworkCore.Infrastructure;
