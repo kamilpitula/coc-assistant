@@ -154,6 +154,7 @@ jobs:
           dotnet ef migrations bundle --project backend/src/CampaignPlay/CocAssistant.CampaignPlay.Infrastructure/CocAssistant.CampaignPlay.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context CampaignPlayDbContext --configuration Release --force --output "$RUNNER_TEMP/bundles/campaignplay-bundle"
           dotnet ef migrations bundle --project backend/src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Infrastructure/CocAssistant.ScenarioPreparation.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context ScenarioPreparationDbContext --configuration Release --force --output "$RUNNER_TEMP/bundles/scenarioprep-bundle"
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        id: azure-login
         with:
           client-id: ${{ vars.AZURE_DEPLOY_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
@@ -220,7 +221,9 @@ jobs:
         run: >-
           "$RUNNER_TEMP/bundles/scenarioprep-bundle" --connection "Server=tcp:$SQL_SERVER_FQDN,1433;Database=$SQL_DATABASE_NAME;Authentication=Active Directory Default;Encrypt=True;Connect Timeout=60;"
       - name: Remove runner firewall rule
-        if: always()
+        # Runs only after a successful Azure login: no firewall rule can exist
+        # before login, and without login every az call in this step fails.
+        if: always() && steps.azure-login.outcome == 'success'
         run: |
           RULE_NAME="${{ steps.firewall-rule.outputs.rule-name }}"
           if [ -n "$RULE_NAME" ]; then
