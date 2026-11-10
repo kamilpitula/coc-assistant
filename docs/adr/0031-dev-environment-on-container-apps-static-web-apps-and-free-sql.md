@@ -19,7 +19,7 @@ The application needs a hosted `dev` environment ([specs/deployment/spec.md](../
 - App Service Free F1. Rejected: 5 concurrent WebSockets, 60 CPU minutes per day.
 - Serving the SPA from the API container. Rejected by the repository owner in favour of Static Web Apps Free.
 - In-process SignalR in the Container App. Rejected: the repository owner chose to keep ADR 0009's Azure SignalR Service; its scaling interplay is handled by the cooldown.
-- Min replicas 1 (about $5.6/month in West Europe). Rejected for now; it is the fallback if the cooldown does not keep idle sessions connected.
+- Min replicas 1 (about $5.8/month idle in Sweden Central, re-checked 2026-11-10 for PBI-DEP-007; was about $5.6/month in West Europe). Rejected for now; it is the fallback if the cooldown does not keep idle sessions connected.
 - Migrating at startup in every environment. Rejected by the repository owner in favour of pipeline migrations.
 - A Container Apps Job for migrations. Rejected: a second image and job for a one-minute firewall opening.
 - SQL logins with passwords; Key Vault; HCP Terraform state. Rejected: secrets to manage, or a non-Azure dependency, with no gain at this size.
@@ -34,6 +34,13 @@ How the decision is built ([design record](../deployment/issues/03-provision-the
 - **SignalR Free in Default mode (D7):** confirmed from the official quickstart ([costs.md](../infrastructure/costs.md)), as ADR 0009 names.
 - **Deploy identity as SQL Entra admin (D8):** Azure SQL allows one Entra admin and the owner cannot create security groups (403), so `azuread_administrator` on the server names the deploy identity directly (`sql_entra_admin_object_id` input, never derived from the caller). Only the deploy workflow administers the database; the owner has no standing access. Break-glass is a temporary self-admin change through ARM, reset by the next apply. The migrate job creates the API identity's database user without Graph.
 - **No group, no `azuread` (D9):** bootstrap drops `azuread_group.sql_admins` and the `azuread` provider; the owner removes the data source from local state and re-applies (the only change is the owner state role). Nothing was ever created, so nothing is orphaned.
+
+## Amendment (2026-11-10, PBI-DEP-007)
+Why the decision moved ([design record](../deployment/issues/07-move-the-dev-stack-to-a-region-with-sql.md)): the first real apply failed with SQL `ProvisioningDisabled` in `westeurope` for this subscription, and a second targeted attempt confirmed every environment resource follows the resource group into `westeurope` whatever `location` says. Only a create proves a region works for this subscription.
+- **Region from `var.location`, resource group stays (D10):** every environment resource except the Static Web App takes `var.location` (no default, so no stack silently falls back); the Static Web App takes a validated `static_web_app_location`. Bootstrap and both resource groups stay in `westeurope`; role assignments are untouched. Given up: one region for everything (the resource group region is metadata only).
+- **Sweden Central primary, Germany West Central fallback (D11):** chosen for SQL availability, giving up a few milliseconds of latency. Static Web Apps accept only a few regions, so the Static Web App stays in `westeurope`.
+- **Probe before moving (D12):** apply only `azurerm_mssql_server.dev` with the new `location` to prove the region; on `ProvisioningDisabled` switch to the fallback. The full plan then replaces the already-created regional resources (identity, Log Analytics, storage, SignalR, Container Apps environment), creates the SQL resources and the Container App, and leaves the Static Web App and the resource group unchanged (D13).
+- **Log Analytics is permanently deleted on destroy:** a deleted workspace name stays reserved for 14 days, which would block recreating it in the new region, so the provider now sets `permanently_delete_on_destroy`.
 
 ## Consequences
 - The first request after an idle period waits for a cold start and, after 15 idle minutes, for the database to resume. The DbContexts retry on transient failures for at least 60 seconds, and `/health` does not touch the database so probes do not keep it awake.

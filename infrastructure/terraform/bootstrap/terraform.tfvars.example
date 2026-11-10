@@ -1,4 +1,5 @@
 # Local-only values for the bootstrap stack. This file is gitignored; never commit it.
 subscription_id       = "00000000-0000-0000-0000-000000000000"
 budget_alert_emails   = ["owner@example.com"]
-# location defaults to "westeurope".
+# location defaults to "westeurope". It sets only the bootstrap resources and
+# rg-cocassistant-dev, not the environment stack's region.

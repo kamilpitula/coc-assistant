@@ -1,6 +1,8 @@
 # Environment values for the dev stack. Ids and names only: never commit
 # secrets here. Another environment is a new pair of files.
 environment               = "dev"
+location                  = "swedencentral"
+static_web_app_location   = "westeurope"
 sql_entra_admin_login     = "id-cocassistant-github-deploy"
 sql_entra_admin_object_id = "759da402-f5ba-4fc0-a727-5260f838e49f"
 entra_instance            = "https://cocassistant.ciamlogin.com/"

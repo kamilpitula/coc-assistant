@@ -1,7 +1,7 @@
 ---
 id: PBI-DEP-005
 status: todo
-blocked_by: [PBI-DEP-002, PBI-DEP-003]
+blocked_by: [PBI-DEP-002, PBI-DEP-003, PBI-DEP-007]
 ---
 
 # PBI-DEP-005: Deploy Every Green Master Build to Dev
@@ -15,7 +15,7 @@ Deploy each `master` commit that passes CI to the `dev` environment with no manu
 - **Out of scope:** the manual one-time steps and soak checks (PBI-DEP-006).
 
 ## Dependencies
-- Blocked by: PBI-DEP-002 (image and SPA build), PBI-DEP-003 (resources and outputs)
+- Blocked by: PBI-DEP-002 (image and SPA build), PBI-DEP-003 (resources and outputs), PBI-DEP-007 (an apply that completes in a region with SQL)
 - Must merge before: PBI-DEP-006
 
 ## Context

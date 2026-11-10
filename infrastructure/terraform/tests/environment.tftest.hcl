@@ -4,6 +4,8 @@ mock_provider "azapi" {}
 
 variables {
   environment               = "dev"
+  location                  = "swedencentral"
+  static_web_app_location   = "westeurope"
   sql_entra_admin_login     = "id-cocassistant-github-deploy"
   sql_entra_admin_object_id = "759da402-f5ba-4fc0-a727-5260f838e49f"
   entra_instance            = "https://cocassistant.ciamlogin.com/"
@@ -73,8 +75,32 @@ override_resource {
   values = {
     id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cocassistant-dev/providers/Microsoft.App/containerApps/ca-cocassistant-api-dev"
     ingress = {
-      fqdn = "ca-cocassistant-api-dev.westeurope.azurecontainerapps.io"
+      fqdn = "ca-cocassistant-api-dev.swedencentral.azurecontainerapps.io"
     }
+  }
+}
+
+# Locations
+
+run "resource_locations_follow_variables" {
+  command = apply
+
+  assert {
+    condition = alltrue([
+      azurerm_log_analytics_workspace.dev.location == var.location,
+      azurerm_container_app_environment.dev.location == var.location,
+      azurerm_user_assigned_identity.api.location == var.location,
+      azurerm_mssql_server.dev.location == var.location,
+      azapi_resource.database.location == var.location,
+      azurerm_storage_account.handout.location == var.location,
+      azurerm_signalr_service.dev.location == var.location,
+    ])
+    error_message = "Every environment resource except the Static Web App must use var.location."
+  }
+
+  assert {
+    condition     = azurerm_static_web_app.dev.location == var.static_web_app_location
+    error_message = "The Static Web App must use var.static_web_app_location."
   }
 }
 
@@ -452,7 +478,7 @@ run "outputs" {
   }
 
   assert {
-    condition     = output.location == "westeurope"
+    condition     = output.location == var.location
     error_message = "The location output must match the variable."
   }
 }
@@ -492,5 +518,17 @@ run "sql_admin_rejects_zero_uuid" {
 
   expect_failures = [
     var.sql_entra_admin_object_id,
+  ]
+}
+
+run "static_web_app_location_rejects_unknown_region" {
+  command = plan
+
+  variables {
+    static_web_app_location = "swedencentral"
+  }
+
+  expect_failures = [
+    var.static_web_app_location,
   ]
 }

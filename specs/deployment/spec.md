@@ -8,10 +8,10 @@ The application has no hosted environment: `infrastructure/terraform/main.tf` de
 The environment is built for near-zero cost. It runs in a Visual Studio subscription with a monthly EUR 40 credit and the default spending limit, and uses always-free tiers wherever they exist. Every resource that costs money, or could, is listed with its official price source in `docs/infrastructure/costs.md`, and a new cost-bearing resource is introduced only after the repository owner approves it there. The Terraform is structured for more environments, but only `dev` is built.
 
 ### Architecture
-- **Topology** (one resource group `rg-cocassistant-dev`, region `westeurope`):
+- **Topology** (one resource group `rg-cocassistant-dev` in `westeurope`; every other resource in `swedencentral` from `var.location`, except the Static Web App, which stays in `westeurope`):
   | Resource | Name | SKU / setting |
   |---|---|---|
-  | Static Web App (SPA) | `stapp-cocassistant-dev` | Free; default `*.azurestaticapps.net` hostname |
+  | Static Web App (SPA) | `stapp-cocassistant-dev` | Free; stays in `westeurope` (the service accepts only a few regions); default `*.azurestaticapps.net` hostname |
   | Container Apps environment | `cae-cocassistant-dev` | Consumption; logs to `log-cocassistant-dev` |
   | Container App (API) | `ca-cocassistant-api-dev` | 0.25 vCPU / 0.5 GiB; min replicas 0, max replicas 1 (ADR 0010); scale-down cooldown 3600 s; external HTTPS ingress on the default `*.azurecontainerapps.io` hostname, target port 8080 |
   | User-assigned identity (API) | `id-cocassistant-api-dev` | Used by the API to sign in to Azure SQL |
