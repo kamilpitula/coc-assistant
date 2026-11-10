@@ -27,7 +27,7 @@ Read: `docs/deployment/issues/07-move-the-dev-stack-to-a-region-with-sql.design.
 ## Verification
 - [x] `terraform fmt -check -recursive`, `terraform validate`, and `terraform test` pass for both stacks.
 - [x] Tests show every environment resource except the Static Web App in `var.location`, the Static Web App in `static_web_app_location`, and validation rejecting a missing `location` and a Static Web App region outside the allowed list.
-- [ ] Owner: the targeted probe `terraform apply -var-file=environments/dev.tfvars -target=azurerm_mssql_server.dev` creates the SQL server in the chosen region (fallback region if it is refused). Deferred: see Follow-ups.
+- [ ] Owner: the targeted probe `terraform apply -var-file=environments/dev.tfvars -target=azurerm_mssql_server.dev` creates the SQL server `sql-cocassistant-dev-swedencentral` in the chosen region (fallback region if it is refused). Deferred: see Follow-ups.
 - [ ] Owner: the full `dev` plan replaces only the API identity, Log Analytics workspace, storage account and container, SignalR, and Container Apps environment (where they exist), creates the SQL server, firewall rule, database, and Container App, and leaves the Static Web App and resource group unchanged; the apply completes. Deferred: see Follow-ups.
 - [x] `costs.md` lists prices for the new region with the date checked, and the expected total stays under $0.10 per month.
 
@@ -35,6 +35,6 @@ Read: `docs/deployment/issues/07-move-the-dev-stack-to-a-region-with-sql.design.
 Change `specs/deployment/spec.md`, ADR 0031, `docs/infrastructure/costs.md`, and `docs/infrastructure/dev-environment-setup.md` together with the stack.
 
 ## Follow-ups
-- Owner D12 probe: run `terraform apply -var-file=environments/dev.tfvars -target=azurerm_mssql_server.dev`; on `ProvisioningDisabled` set `location = "germanywestcentral"` in `dev.tfvars` and repeat.
+- Owner D12 probe: run `terraform plan -var-file=environments/dev.tfvars -target=azurerm_mssql_server.dev` (expect exactly one addition, `azurerm_mssql_server.dev` named `sql-cocassistant-dev-swedencentral` in `swedencentral`), then `terraform apply` with the same `-target`; on `ProvisioningDisabled` set `location = "germanywestcentral"` in `dev.tfvars` and repeat (the name becomes `sql-cocassistant-dev-germanywestcentral` automatically).
 - Owner D13 apply: run the full `dev` plan and apply, checking the plan matches the expected replace/create/no-change sets in the design record; the apply completes.
-- Note: the owner's local `master` checkout carries an uncommitted `location = "swedencentral"` line in `environments/dev.tfvars`; drop that local edit before merging this branch to avoid a conflict.
+- Stale record: the failed `westeurope` create left a stale record reserving `sql-cocassistant-dev` in `rg-cocassistant-dev` (invisible to `az sql server show` and `az resource list`); nothing references it. It may surface if the resource group is ever deleted; a support request to clear it is optional and the owner's call.
