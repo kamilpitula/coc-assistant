@@ -268,3 +268,67 @@ Single sane option.
   - Q13: D16 option B (the body matches Microsoft's free-offer example; the 15-minute pause stays platform-fixed and cited) and D17 (a third branch on PBI-DEP-007, `feature/dep-007-free-offer-database-body`).
   - Q14: no leftover database in Azure or Terraform state; re-apply normally.
 - Pending: the Log Analytics 409 (`log-cocassistant-dev` reserved in westeurope) is designed in a separate revision.
+
+### 2026-11-10: region in the Log Analytics and Container Apps environment names (changed decision, approved)
+
+**Escalation.** The same full apply failed on Log Analytics: "InvalidResourceLocation: The resource 'log-cocassistant-dev' already exists in location 'westeurope' in resource group 'rg-cocassistant-dev'. A resource with the same name cannot be created in location 'swedencentral'."
+
+**Facts (owner's real output).**
+- Before this apply, `az resource list -g rg-cocassistant-dev` showed `log-cocassistant-dev`, `cae-cocassistant-dev`, `stcocassistantdev`, `sigr-cocassistant-dev`, `id-cocassistant-api-dev`, and `stapp-cocassistant-dev`, all in westeurope.
+- After it: `az monitor log-analytics workspace list -g rg-cocassistant-dev` and `list-deleted-workspaces -g rg-cocassistant-dev` are both empty, and `terraform state list` has no Log Analytics entry. So the workspace is gone and not soft-deleted, yet the name is still blocked. The soft-delete explanation is ruled out; the likely cause is that Terraform deleted the old workspace and Azure Resource Manager still holds a record that it was in westeurope (as with the SQL server, D14), or a timing lag.
+- Q17, `az resource list -g rg-cocassistant-dev`: `stapp-cocassistant-dev` (westeurope); `stcocassistantdev`, `sigr-cocassistant-dev`, `id-cocassistant-api-dev`, `sql-cocassistant-dev-swedencentral` and its `master` database (all swedencentral). No Log Analytics workspace, no Container Apps environment, no Container App, no application database.
+- Q17, `terraform state list`: `data.azurerm_resource_group.dev`, `azurerm_mssql_firewall_rule.azure_services`, `azurerm_mssql_server.dev`, `azurerm_signalr_service.dev`, `azurerm_static_web_app.dev`, `azurerm_storage_account.handout`, `azurerm_storage_container.handout_files`, `azurerm_user_assigned_identity.api`.
+- So the identity, storage account and container, and SignalR were recreated in swedencentral under their old names. The Container Apps environment existed in westeurope, was deleted, and has not been created again (it waits on Log Analytics), so it is the most likely next 409.
+- Name limits:
+  - Log Analytics workspaces: 4-63 characters, alphanumerics and hyphens, start and end alphanumeric. Source: https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules (`ms.date` 2026-08-05, fetched 2026-11-10), Microsoft.OperationalInsights `workspaces`. `log-cocassistant-dev-swedencentral` is 34 characters, `log-cocassistant-dev-germanywestcentral` 39: both fit.
+  - Container Apps environments: that page lists only `Microsoft.App/containerApps` (2-32) and has no row for `managedEnvironments`. The REST spec (https://github.com/Azure/azure-rest-api-specs, `specification/app/resource-manager/Microsoft.App/ContainerApps/ManagedEnvironment.tsp` on `main`, fetched 2026-11-10) gives only the pattern `^[-\w\._\(\)]+$`, with no length. The azurerm 4.81.0 provider (checked with `terraform validate` against the repo's locked plugin) accepts 2-60 characters: "The length must at least 2 and not be more than 60 characters". `cae-cocassistant-dev-swedencentral` (34) and `cae-cocassistant-dev-germanywestcentral` (39) both pass. Microsoft documents no environment length limit, so the provider's 60 is the best available rule. If Azure still rejects the name for length at apply, escalate; the alternative then is a short region code for this one resource, which needs a new decision.
+- Where the names are hard-coded (master 41fd3de): `infrastructure/terraform/main.tf:10` and `:17`; `tests/environment.tftest.hcl:21` and `:28` (mock ids), `:136-137` and `:141-142` (name assertions); `specs/deployment/spec.md:15` and `:22`; `docs/infrastructure/costs.md:15` and `:22`.
+
+#### D18: Get past the blocked names
+| Metric | A: wait and retry | B: region in the name, on demand | C: region in every moved name up front |
+| --- | --- | --- | --- |
+| Consistency | + no new naming | + same scheme as the SQL server (D14) | - storage needs short codes (24-character limit), so two schemes |
+| Modifiability | - the next move hits the same wall | + any later move gets fresh names | + |
+| Testability | - only checkable by a real retry | + exact name assertions | + |
+| Simplicity | + no code | + one local per affected resource | - five renames, a lookup table, more doc edits |
+| Reversibility | + | + one line each | 0 |
+| Security and correctness | - no time limit; the SQL server's block never cleared | + no block can affect a new name; limits checked per resource | 0 replaces resources already healthy in swedencentral |
+
+- **Chosen:** B, because of reliability and the D14 precedent - giving up the plain names for these two resources.
+  - `log_analytics = "log-cocassistant-${var.environment}-${var.location}"` (`log-cocassistant-dev-swedencentral`).
+  - `container_apps_environment = "cae-cocassistant-${var.environment}-${var.location}"` (`cae-cocassistant-dev-swedencentral`): it existed in westeurope and has not been recreated, so it is renamed in the same change.
+  - Unchanged: `stcocassistantdev`, `sigr-cocassistant-dev`, `id-cocassistant-api-dev` (already recreated in swedencentral), `stapp-cocassistant-dev` (stays in westeurope), `ca-cocassistant-api-dev` (never existed in westeurope), `sqldb-cocassistant-dev`.
+- **Rejected:** A (no time limit; the SQL server's block never cleared); C (a second naming scheme and needless replacements). Short region codes stay rejected unless a new decision needs them. The Developer must not reintroduce these.
+- **Escalation rule (approved in advance):** any other moved resource that returns 409 InvalidResourceLocation gets the same region token without another design round, as long as its name rules allow the length. The storage account is excepted (24-character limit): escalate.
+- **Tracking:** the same branch as D16 (`feature/dep-007-free-offer-database-body`), so one re-apply tests both fixes.
+
+#### Expected plan and apply (owner)
+- Create exactly four resources: `azurerm_log_analytics_workspace.dev` (`log-cocassistant-dev-swedencentral`), `azurerm_container_app_environment.dev` (`cae-cocassistant-dev-swedencentral`), `azapi_resource.database` (D16 body), and `azurerm_container_app.api`. Nothing else changes; anything else in the plan means stop.
+- Then run the D16 post-apply `az sql db show` check, and confirm the Container App's min 0, max 1, cooldown 3600 (DEP-007 line 31; PBI-DEP-003 Verification).
+
+#### Invariants (added)
+- A name carries the region only when Azure blocked the old name, or, for the environment, when it was about to be blocked. Every other name keeps `<type>-cocassistant-<env>`.
+- Names are only built in the `main.tf` locals.
+
+#### Files the Developer touches (this revision)
+- `infrastructure/terraform/main.tf:10` and `:17`: the two names.
+- `infrastructure/terraform/tests/environment.tftest.hcl`: `:21` and `:28` mock ids; `:136-137` and `:141-142` name assertions; a new run where `location = "germanywestcentral"` gives `log-cocassistant-dev-germanywestcentral` and `cae-cocassistant-dev-germanywestcentral`.
+- `specs/deployment/spec.md:15` and `:22`.
+- `docs/infrastructure/costs.md:15` and `:22`.
+- ADR 0031: a dated amendment line (blocked names and the D18 rule).
+- `docs/infrastructure/dev-environment-setup.md`: what InvalidResourceLocation means, the D18 rule, and the four-create plan.
+- `docs/deployment/issues/07-move-the-dev-stack-to-a-region-with-sql.md`: a Follow-up recording the failure and fix.
+
+#### TDD units (this revision)
+- With `location = "swedencentral"`, Log Analytics is `log-cocassistant-dev-swedencentral` and the environment `cae-cocassistant-dev-swedencentral`; with `germanywestcentral`, the matching names.
+- The environment's `log_analytics_workspace_id` is the renamed workspace's id.
+- Storage, SignalR, identity, Static Web App, Container App, SQL server, and database names are unchanged.
+
+#### E2E coverage
+- Exception, unchanged: infrastructure only.
+
+#### Human decisions
+- 2026-11-10, owner: "Q16 yes, Q18 yes, here is Q17 output".
+  - Q16: D18 option B, including renaming without another design round any moved resource that hits the same 409 (storage excepted, which escalates).
+  - Q18: the same branch as the database fix, `feature/dep-007-free-offer-database-body`.
+  - Q17: the outputs recorded under Facts; the environment is renamed in this change.
