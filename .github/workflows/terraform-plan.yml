@@ -1,0 +1,71 @@
+# Spec: specs/deployment/spec.md
+name: Terraform plan
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'infrastructure/**'
+
+permissions:
+  contents: read
+
+# One run per pull request; a new push cancels the previous plan.
+concurrency:
+  group: terraform-plan-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    name: Terraform plan (dev)
+    # Secrets and variables are unavailable on fork pull requests, and the plan
+    # identity trusts this repository only, so fork runs are skipped up front.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: infrastructure/terraform
+    env:
+      # OIDC for both the azurerm backend and the azurerm provider. GitHub
+      # supplies the token itself (id-token: write); no client secret is stored.
+      ARM_USE_OIDC: 'true'
+      ARM_CLIENT_ID: ${{ vars.AZURE_PLAN_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.3
+      - name: Initialize
+        run: terraform init -input=false -backend-config=environments/dev.backend.hcl
+      - name: Plan
+        id: plan
+        run: terraform plan -input=false -var-file=environments/dev.tfvars -no-color -out=tfplan
+        continue-on-error: true
+      - name: Write plan to job summary
+        if: always() && (steps.plan.outcome == 'success' || steps.plan.outcome == 'failure')
+        run: |
+          terraform show -no-color tfplan > "$RUNNER_TEMP/plan.txt" || true
+          {
+            echo "### Terraform plan for dev"
+            echo ""
+            echo "<details><summary>Show plan</summary>"
+            echo ""
+            echo '```hcl'
+            if [ "$(wc -c < "$RUNNER_TEMP/plan.txt")" -gt 800000 ]; then
+              head -c 800000 "$RUNNER_TEMP/plan.txt"
+              echo ""
+              echo "... (truncated: the full plan exceeds the job summary limit)"
+            else
+              cat "$RUNNER_TEMP/plan.txt"
+            fi
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Fail when plan failed
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
