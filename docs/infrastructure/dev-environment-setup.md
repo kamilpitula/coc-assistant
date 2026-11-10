@@ -90,6 +90,10 @@ The plan workflow uses no environment. Variable values are ids, not secrets.
 - Placeholder for the remaining one-time steps from
   `specs/deployment/spec.md`: the Static Web App redirect URI, the database
   firewall rule for local plans, and the first GHCR image push.
+- After the first deploy run stops at the anonymous-pull preflight in the
+  rollout job, make the GHCR package `coc-assistant-api` public (package
+  settings; `GITHUB_TOKEN` cannot do this), then Re-run failed jobs from the
+  failed run.
 
 ## 10. Run a local plan for the dev stack
 

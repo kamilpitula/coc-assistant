@@ -1,0 +1,329 @@
+# Spec: specs/deployment/spec.md
+name: Deploy to dev
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      simulate_migration_failure:
+        description: 'Fail the migrate job after opening the firewall rule (verifies the cleanup)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+# Serializes deploys: cancel-in-progress is false because cancelling a run
+# mid-apply or mid-migrate is unsafe. GitHub keeps one pending run and the
+# newest wins.
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+env:
+  # On workflow_run, github.sha is the latest default-branch commit, not the
+  # commit CI tested, so the tested head_sha is used instead.
+  DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  terraform-apply:
+    name: Terraform apply (dev)
+    # Nothing runs unless a master push passed CI, or the owner dispatched on
+    # master. The event == 'push' check stops a fork PR whose branch is named
+    # master. Later jobs are gated through needs.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'master' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: infrastructure/terraform
+    env:
+      # OIDC for both the azurerm backend and the azurerm provider. GitHub
+      # supplies the token itself (id-token: write); no client secret is stored.
+      ARM_USE_OIDC: 'true'
+      ARM_CLIENT_ID: ${{ vars.AZURE_DEPLOY_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+    outputs:
+      api_url: ${{ steps.tf-outputs.outputs.api_url }}
+      static_web_app_url: ${{ steps.tf-outputs.outputs.static_web_app_url }}
+      static_web_app_name: ${{ steps.tf-outputs.outputs.static_web_app_name }}
+      container_app_name: ${{ steps.tf-outputs.outputs.container_app_name }}
+      sql_server_name: ${{ steps.tf-outputs.outputs.sql_server_name }}
+      sql_server_fqdn: ${{ steps.tf-outputs.outputs.sql_server_fqdn }}
+      sql_database_name: ${{ steps.tf-outputs.outputs.sql_database_name }}
+      api_identity_name: ${{ steps.tf-outputs.outputs.api_identity_name }}
+      api_identity_client_id: ${{ steps.tf-outputs.outputs.api_identity_client_id }}
+      resource_group_name: ${{ steps.tf-outputs.outputs.resource_group_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.3
+          terraform_wrapper: false
+      - name: Initialize
+        run: terraform init -input=false -backend-config=environments/dev.backend.hcl
+      - name: Apply
+        run: terraform apply -input=false -auto-approve -lock-timeout=5m -var-file=environments/dev.tfvars
+      - name: Expose outputs to later jobs
+        id: tf-outputs
+        run: |
+          {
+            echo "api_url=$(terraform output -raw api_url)"
+            echo "static_web_app_url=$(terraform output -raw static_web_app_url)"
+            echo "static_web_app_name=$(terraform output -raw static_web_app_name)"
+            echo "container_app_name=$(terraform output -raw container_app_name)"
+            echo "sql_server_name=$(terraform output -raw sql_server_name)"
+            echo "sql_server_fqdn=$(terraform output -raw sql_server_fqdn)"
+            echo "sql_database_name=$(terraform output -raw sql_database_name)"
+            echo "api_identity_name=$(terraform output -raw api_identity_name)"
+            echo "api_identity_client_id=$(terraform output -raw api_identity_client_id)"
+            echo "resource_group_name=$(terraform output -raw resource_group_name)"
+          } >> "$GITHUB_OUTPUT"
+
+  image:
+    name: Build and push API image
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'master' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Build and push
+        run: |
+          IMAGE="ghcr.io/kamilpitula/coc-assistant-api:${{ env.DEPLOY_SHA }}"
+          docker build -f backend/Dockerfile -t "$IMAGE" --label "org.opencontainers.image.source=https://github.com/${{ github.repository }}" .
+          docker push "$IMAGE"
+
+  migrate:
+    name: Migrate database
+    needs: terraform-apply
+    runs-on: ubuntu-latest
+    environment: dev
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      SQL_SERVER_NAME: ${{ needs.terraform-apply.outputs.sql_server_name }}
+      SQL_SERVER_FQDN: ${{ needs.terraform-apply.outputs.sql_server_fqdn }}
+      SQL_DATABASE_NAME: ${{ needs.terraform-apply.outputs.sql_database_name }}
+      API_IDENTITY_NAME: ${{ needs.terraform-apply.outputs.api_identity_name }}
+      API_IDENTITY_CLIENT_ID: ${{ needs.terraform-apply.outputs.api_identity_client_id }}
+      RESOURCE_GROUP_NAME: ${{ needs.terraform-apply.outputs.resource_group_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+      - uses: ./.github/actions/setup-dotnet
+      - name: Restore dotnet-ef
+        run: dotnet tool restore
+      # Bundles are built before the firewall rule is opened, which keeps the
+      # open window short.
+      - name: Build migration bundles
+        run: |
+          mkdir -p "$RUNNER_TEMP/bundles"
+          dotnet ef migrations bundle --project backend/src/Identity/CocAssistant.Identity.Infrastructure/CocAssistant.Identity.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context IdentityDbContext --configuration Release --force --output "$RUNNER_TEMP/bundles/identity-bundle"
+          dotnet ef migrations bundle --project backend/src/CampaignPlay/CocAssistant.CampaignPlay.Infrastructure/CocAssistant.CampaignPlay.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context CampaignPlayDbContext --configuration Release --force --output "$RUNNER_TEMP/bundles/campaignplay-bundle"
+          dotnet ef migrations bundle --project backend/src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Infrastructure/CocAssistant.ScenarioPreparation.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context ScenarioPreparationDbContext --configuration Release --force --output "$RUNNER_TEMP/bundles/scenarioprep-bundle"
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_DEPLOY_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Install go-sqlcmd
+        run: |
+          # go-sqlcmd v1.10.0 linux-amd64 tarball (D3); checksum pinned.
+          SQLCMD_SHA256="92516d98c63d99b0994de5b61350c91f6915f9b76f139a59039fbcb225c2e987"
+          curl -fsSL -o "$RUNNER_TEMP/sqlcmd.tar.bz2" "https://github.com/microsoft/go-sqlcmd/releases/download/v1.10.0/sqlcmd-linux-amd64.tar.bz2"
+          echo "$SQLCMD_SHA256  $RUNNER_TEMP/sqlcmd.tar.bz2" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/sqlcmd"
+          tar -xjf "$RUNNER_TEMP/sqlcmd.tar.bz2" -C "$RUNNER_TEMP/sqlcmd"
+          echo "$RUNNER_TEMP/sqlcmd" >> "$GITHUB_PATH"
+      # The sweep removes rules left by a lost runner (where the always()
+      # remove below never ran). The concurrency group serializes runs, so the
+      # sweep can never delete a live run's rule.
+      - name: Sweep stale runner firewall rules
+        run: |
+          for stale in $(az sql server firewall-rule list -g "$RESOURCE_GROUP_NAME" -s "$SQL_SERVER_NAME" --query "[?starts_with(name, 'gh-deploy-')].name" -o tsv); do
+            az sql server firewall-rule delete -g "$RESOURCE_GROUP_NAME" -s "$SQL_SERVER_NAME" -n "$stale" </dev/null
+          done
+      - name: Add runner firewall rule
+        id: firewall-rule
+        run: |
+          RULE_NAME="gh-deploy-${{ github.run_id }}-${{ github.run_attempt }}"
+          echo "rule-name=$RULE_NAME" >> "$GITHUB_OUTPUT"
+          RUNNER_IP="$(curl -fsS https://api.ipify.org)"
+          if ! printf '%s' "$RUNNER_IP" | grep -Eq '^[0-9]{1,3}(\.[0-9]{1,3}){3}$'; then
+            echo "::error::Runner IP is not dotted IPv4: $RUNNER_IP"
+            exit 1
+          fi
+          az sql server firewall-rule create -g "$RESOURCE_GROUP_NAME" -s "$SQL_SERVER_NAME" -n "$RULE_NAME" --start-ip-address "$RUNNER_IP" --end-ip-address "$RUNNER_IP"
+      - name: Simulate migration failure
+        if: inputs.simulate_migration_failure
+        run: |
+          echo "::error::Simulated migration failure: the firewall rule must now be removed and the rollout skipped."
+          exit 1
+      - name: Ensure API database user
+        timeout-minutes: 8
+        run: |
+          # Covers a free-offer database resume (about a minute) and
+          # firewall-rule propagation, and wakes the database before the
+          # bundles, which also retry.
+          for attempt in $(seq 1 10); do
+            if sqlcmd -S "tcp:$SQL_SERVER_FQDN,1433" -d "$SQL_DATABASE_NAME" --authentication-method ActiveDirectoryDefault -l 30 -b -v "ApiIdentityName=$API_IDENTITY_NAME" -v "ApiIdentityClientId=$API_IDENTITY_CLIENT_ID" -i infrastructure/database/ensure-api-database-user.sql; then
+              break
+            fi
+            if [ "$attempt" = 10 ]; then
+              echo "::error::The API database user could not be ensured after 10 attempts."
+              exit 1
+            fi
+            sleep 15
+          done
+      - name: Run Identity bundle
+        timeout-minutes: 5
+        run: >-
+          "$RUNNER_TEMP/bundles/identity-bundle" --connection "Server=tcp:$SQL_SERVER_FQDN,1433;Database=$SQL_DATABASE_NAME;Authentication=Active Directory Default;Encrypt=True;Connect Timeout=60;"
+      - name: Run CampaignPlay bundle
+        timeout-minutes: 5
+        run: >-
+          "$RUNNER_TEMP/bundles/campaignplay-bundle" --connection "Server=tcp:$SQL_SERVER_FQDN,1433;Database=$SQL_DATABASE_NAME;Authentication=Active Directory Default;Encrypt=True;Connect Timeout=60;"
+      - name: Run ScenarioPreparation bundle
+        timeout-minutes: 5
+        run: >-
+          "$RUNNER_TEMP/bundles/scenarioprep-bundle" --connection "Server=tcp:$SQL_SERVER_FQDN,1433;Database=$SQL_DATABASE_NAME;Authentication=Active Directory Default;Encrypt=True;Connect Timeout=60;"
+      - name: Remove runner firewall rule
+        if: always()
+        run: |
+          RULE_NAME="${{ steps.firewall-rule.outputs.rule-name }}"
+          if [ -n "$RULE_NAME" ]; then
+            az sql server firewall-rule delete -g "$RESOURCE_GROUP_NAME" -s "$SQL_SERVER_NAME" -n "$RULE_NAME" </dev/null || true
+          fi
+          REMAINING="$(az sql server firewall-rule list -g "$RESOURCE_GROUP_NAME" -s "$SQL_SERVER_NAME" --query "[?starts_with(name, 'gh-deploy-')].name" -o tsv)"
+          if [ -n "$REMAINING" ]; then
+            echo "::error::Runner firewall rules remain on the SQL server: $REMAINING"
+            exit 1
+          fi
+
+  rollout:
+    name: Roll out API image
+    needs: [image, migrate]
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      id-token: write
+    env:
+      CONTAINER_APP_NAME: ${{ needs.terraform-apply.outputs.container_app_name }}
+      RESOURCE_GROUP_NAME: ${{ needs.terraform-apply.outputs.resource_group_name }}
+      EXPECTED_IMAGE: ghcr.io/kamilpitula/coc-assistant-api:${{ env.DEPLOY_SHA }}
+    steps:
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_DEPLOY_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      # The package starts private: the app has no registry credentials and can
+      # pull only a public image, so point at it only when it is pullable.
+      - name: Preflight anonymous GHCR pull
+        run: |
+          TOKEN="$(curl -fsS 'https://ghcr.io/token?scope=repository:kamilpitula/coc-assistant-api:pull' | jq -r .token)"
+          if ! curl -fsS -H "Authorization: Bearer $TOKEN" -H 'Accept: application/vnd.oci.image.index.v1+json' -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' "https://ghcr.io/v2/kamilpitula/coc-assistant-api/manifests/${{ env.DEPLOY_SHA }}" -o /dev/null; then
+            echo "::error::The image is not anonymously pullable. Make the GHCR package coc-assistant-api public (docs/infrastructure/dev-environment-setup.md section 9), then Re-run failed jobs."
+            exit 1
+          fi
+      - name: Roll out the image
+        run: |
+          az extension add --name containerapp --upgrade --yes
+          az containerapp update -n "$CONTAINER_APP_NAME" -g "$RESOURCE_GROUP_NAME" --image "$EXPECTED_IMAGE"
+      - name: Verify the active revision
+        run: |
+          ACTUAL="$(az containerapp show -n "$CONTAINER_APP_NAME" -g "$RESOURCE_GROUP_NAME" --query "properties.template.containers[0].image" -o tsv)"
+          if [ "$ACTUAL" != "$EXPECTED_IMAGE" ]; then
+            echo "::error::The template image is $ACTUAL, expected $EXPECTED_IMAGE."
+            exit 1
+          fi
+          LATEST="$(az containerapp show -n "$CONTAINER_APP_NAME" -g "$RESOURCE_GROUP_NAME" --query latestRevisionName -o tsv)"
+          STATE="$(az containerapp revision show -n "$CONTAINER_APP_NAME" -g "$RESOURCE_GROUP_NAME" --revision "$LATEST" --query properties.provisioningState -o tsv)"
+          if [ "$STATE" != "Succeeded" ]; then
+            echo "::error::The latest revision $LATEST reports provisioningState $STATE."
+            exit 1
+          fi
+
+  spa:
+    name: Build and deploy SPA
+    needs: [rollout, terraform-apply]
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      STATIC_WEB_APP_NAME: ${{ needs.terraform-apply.outputs.static_web_app_name }}
+      RESOURCE_GROUP_NAME: ${{ needs.terraform-apply.outputs.resource_group_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      # routeTree.gen.ts is gitignored; the build needs it before Vite would generate it.
+      - name: Generate route tree
+        working-directory: frontend
+        run: npm run generate-routes
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+        env:
+          VITE_ENTRA_CLIENT_ID: ${{ vars.VITE_ENTRA_CLIENT_ID }}
+          VITE_ENTRA_AUTHORITY: ${{ vars.VITE_ENTRA_AUTHORITY }}
+          VITE_API_SCOPE: ${{ vars.VITE_API_SCOPE }}
+          VITE_ENTRA_REDIRECT_URI: ${{ needs.terraform-apply.outputs.static_web_app_url }}
+          VITE_API_BASE_URL: ${{ needs.terraform-apply.outputs.api_url }}
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_DEPLOY_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Read the deployment token
+        id: swa-token
+        run: |
+          SWA_TOKEN="$(az staticwebapp secrets list -n "$STATIC_WEB_APP_NAME" -g "$RESOURCE_GROUP_NAME" --query properties.apiKey -o tsv)"
+          echo "::add-mask::$SWA_TOKEN"
+          echo "swa-token=$SWA_TOKEN" >> "$GITHUB_OUTPUT"
+      - name: Deploy to Static Web Apps
+        uses: Azure/static-web-apps-deploy@1a947af9992250f3bc2e68ad0754c0b0c11566c9 # v1
+        with:
+          action: upload
+          app_location: frontend/dist
+          api_location: ''
+          output_location: ''
+          skip_app_build: true
+          azure_static_web_apps_api_token: ${{ steps.swa-token.outputs.swa-token }}
