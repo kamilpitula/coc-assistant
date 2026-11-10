@@ -140,6 +140,11 @@ jobs:
       - uses: ./.github/actions/setup-dotnet
       - name: Restore dotnet-ef
         run: dotnet tool restore
+      # The SDK does not restore on build, and the bundle command does not
+      # restore either, so restore the API closure (which pulls in the three
+      # Infrastructure projects through project references) first.
+      - name: Restore API projects
+        run: dotnet restore backend/src/CocAssistant.Api/CocAssistant.Api.csproj
       # Bundles are built before the firewall rule is opened, which keeps the
       # open window short.
       - name: Build migration bundles
