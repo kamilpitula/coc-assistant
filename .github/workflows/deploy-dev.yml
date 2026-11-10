@@ -237,7 +237,9 @@ jobs:
     env:
       CONTAINER_APP_NAME: ${{ needs.terraform-apply.outputs.container_app_name }}
       RESOURCE_GROUP_NAME: ${{ needs.terraform-apply.outputs.resource_group_name }}
-      EXPECTED_IMAGE: ghcr.io/kamilpitula/coc-assistant-api:${{ env.DEPLOY_SHA }}
+      # The env context is not available in job-level env, so the tested-commit
+      # expression from env.DEPLOY_SHA above is repeated here; keep them in sync.
+      EXPECTED_IMAGE: ghcr.io/kamilpitula/coc-assistant-api:${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
