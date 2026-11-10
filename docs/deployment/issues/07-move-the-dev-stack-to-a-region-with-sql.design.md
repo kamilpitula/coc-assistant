@@ -203,3 +203,132 @@ Single sane option.
   - Q11: D14 option A, `sql-cocassistant-${var.environment}-${var.location}` (`sql-cocassistant-dev-swedencentral`), with `var.location` validated `^[a-z0-9]{1,30}$`.
   - Q12: D15 option A, a second branch on PBI-DEP-007, `feature/dep-007-rename-the-sql-server`; no new PBI.
 - 2026-11-10, record: PR #57 (`feature/dep-007-move-the-dev-stack-to-a-region-with-sql`, c1bc138) turned out to be already merged (master 43b3027), so this fix goes on the second branch rather than PR #57. The D13 claim "nothing exists" is corrected above.
+
+### 2026-11-10: the free-offer database body (changed decision, approved; fixes PBI-DEP-003 D1)
+
+**Escalation.** The owner's full apply in `swedencentral` failed on `azapi_resource.database` (sql.tf:30, `Microsoft.Sql/servers/databases@2023-08-01`): async operation status Failed, code `ProvisioningDisabled`, message "Only default value for auto pause delay is allowed for Free Limit database with auto pause exhaustion behavior". The code says `ProvisioningDisabled`, but the message is the real cause. The SQL server `sql-cocassistant-dev-swedencentral` was created, so the region and the rename (D14) worked.
+
+**Facts (observed).**
+- https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer?view=azuresql (`ms.date` 2026-10-30, "Last updated on 2026-11-06", fetched 2026-11-10):
+  - "The free tier databases automatically pause after 15 minutes of inactivity. The auto-pause delay is fixed and can't be changed, regardless of the selected behavior when the monthly free limit is reached."
+  - "You can apply the free tier only to a new database. You can't restore or convert an existing database to the free tier."
+  - "If you use Advanced configuration, the region selected for the first free tier database applies to all free tier databases in that subscription and can't be changed."
+  - Its Terraform azapi example body: `sku = { name = "GP_S_Gen5" tier = "GeneralPurpose" family = "Gen5" capacity = 2 } properties = { createMode = "Default" maxSizeBytes = 34359738368 requestedBackupStorageRedundancy = "Local" useFreeLimit = true freeLimitExhaustionBehavior = "AutoPause" }` - no `autoPauseDelay`, no `minCapacity`.
+- https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer-faq?view=azuresql (`ms.date` 2026-10-30, fetched 2026-11-10): "With Auto-pause the database until next month, the database is limited to 4 vCores and 32 GB. Long-term backup retention isn't available, point-in-time restore retention is limited to seven days, and backup storage is locally redundant." Geo-redundant backup is only possible with "Continue using for additional charges".
+- The pages give no numeric API default for `autoPauseDelay`; the only documented value is the fixed 15 minutes, and sending 15 was refused. So no value is set.
+- The current body (sql.tf:40-54): `sku` and `maxSizeBytes` match the example; `autoPauseDelay = 15` was refused; `minCapacity = 0.5` is not in the example; `requestedBackupStorageRedundancy` is missing, and Azure's default is geo-redundant, the most likely next rejection.
+- References on master 41fd3de: `autoPauseDelay` and `minCapacity` only at sql.tf:50-51 and tests/environment.tftest.hcl:360-361. The 15-minute claim only at ADR 0031:49 (earlier records cite it as :28). ADR 0031:29, spec.md:19 and :83, and costs.md:17 describe only the free limit and AutoPause.
+- Owner check (Q14): `az sql db show -g rg-cocassistant-dev -s sql-cocassistant-dev-swedencentral -n sqldb-cocassistant-dev` returns ResourceNotFound, and `terraform state list` has no `azapi_resource.database`. The failed create left nothing behind.
+
+#### D16: The database body
+| Metric | A: drop autoPauseDelay only | B: match the official example |
+| --- | --- | --- |
+| Consistency | 0 still sends one undocumented field and leaves backup redundancy to Azure's default | + exactly the body Microsoft publishes for azapi |
+| Modifiability | 0 | + future docs updates map one-to-one |
+| Testability | + assertable | + assertable, plus the absence of the removed fields |
+| Simplicity | + one line | + four small edits, no new code |
+| Reversibility | + | + |
+| Security and correctness | - the next apply may fail on `minCapacity` or geo-redundant backups, each try a failed create | + every field documented; local backups are what the free tier requires |
+
+- **Chosen:** B - remove `autoPauseDelay` and `minCapacity`; add `requestedBackupStorageRedundancy = "Local"` and `createMode = "Default"` - because of correctness and consistency. Giving up nothing real: the serverless minimum for 2 vCores is already 0.5 (general serverless behavior, not stated on the free-tier pages), and local backups are what the free tier uses anyway.
+- **Rejected:** A (risks another failed real apply); C, setting a "documented default" explicitly (the only documented value, 15, was refused; any other number is a guess). The Developer must not add `autoPauseDelay` or `minCapacity` back.
+- Unchanged consequences: the 15-minute statement at ADR 0031:49 stays true, now because the platform fixes it - cite the free-offer page ("fixed by the free tier; not configurable"). Cost: no meter; with AutoPause the database "is inaccessible until the allowance resets at the start of the next calendar month" instead of billing. Cold start: still a pause after 15 idle minutes; the retry policy (8 retries, 15 s maximum delay, about 71 s; ADR 0031 amendment) still covers a resume, and `/health` still never touches the database.
+- Region note: under the "Advanced configuration" rule, the first free-tier database's region may lock later free-tier databases in this subscription to `swedencentral`. Only a future second environment is affected; record it in costs.md.
+
+#### D17: Where to track it
+- Single sane option: a third branch on PBI-DEP-007, `feature/dep-007-free-offer-database-body`. DEP-007 is still `todo`, its Directive is "so `terraform apply` completes", and its deferred owner check at line 31 is what fails. The defect started in PBI-DEP-003 D1, which is `done`; DEP-003 gets no new branch. Rejected: a new PBI (backwards dependency order, as in D15).
+
+#### Re-running apply (owner)
+1. Q14 showed no leftover database in Azure or state: re-apply normally. If the create ever reports the name taken with nothing visible (a stale record, as with the SQL server), stop and escalate; do not rename on the spot.
+2. Expected plan: create `azapi_resource.database` and the Container App (which depends on the database name through the connection strings), plus whatever the Log Analytics failure still needs.
+3. After apply: `az sql db show -g rg-cocassistant-dev -s sql-cocassistant-dev-swedencentral -n sqldb-cocassistant-dev --query "{free:useFreeLimit, exhaustion:freeLimitExhaustionBehavior, pause:autoPauseDelay, backup:requestedBackupStorageRedundancy}"`. Expect `true`, `AutoPause`, the platform's value (record what is shown), and `Local`. This is the evidence for spec.md:83 and DEP-007 line 31.
+
+#### Invariants (changed or added)
+- The database body sends exactly the fields in Microsoft's free-offer azapi example; never `autoPauseDelay` or `minCapacity`.
+- Backup storage redundancy is `Local`.
+- The 15-minute idle pause is the platform's fixed behavior, cited, not configured.
+
+#### Files the Developer touches
+- `infrastructure/terraform/sql.tf:40-54`: the body per D16 B, with a comment citing the free-offer page.
+- `infrastructure/terraform/tests/environment.tftest.hcl:335-366`: replace the `autoPauseDelay == 15` assertion with checks that `autoPauseDelay` and `minCapacity` are absent; add `requestedBackupStorageRedundancy == "Local"` and `createMode == "Default"`; keep the type, free-limit, AutoPause, SKU, and max-size assertions.
+- `docs/adr/0031-dev-environment-on-container-apps-static-web-apps-and-free-sql.md`: a dated amendment line (body matches the official example; the 15-minute pause is platform-fixed) and the citation at :49.
+- `docs/infrastructure/costs.md:17`: locally redundant backups and the possible free-tier region lock, with both URLs and the date checked.
+- `docs/infrastructure/dev-environment-setup.md` (DEP-007 steps): the post-apply `az sql db show` check.
+- `docs/deployment/issues/07-move-the-dev-stack-to-a-region-with-sql.md`: a Follow-up recording the failure and fix; line 31 stays deferred until the owner's apply succeeds.
+
+#### TDD units
+- The database body has `useFreeLimit == true`, `freeLimitExhaustionBehavior == "AutoPause"`, `requestedBackupStorageRedundancy == "Local"`, `createMode == "Default"`, SKU `GP_S_Gen5`/`GeneralPurpose`/`Gen5`/2, and `maxSizeBytes == 34359738368`.
+- The body has no `autoPauseDelay` and no `minCapacity` key (`!contains(keys(...properties), ...)`).
+
+#### E2E coverage
+- Exception, unchanged: infrastructure only. The owner's apply and the `az sql db show` check are the verification.
+
+#### Human decisions
+- 2026-11-10, owner: "approve D16 B and D17".
+  - Q13: D16 option B (the body matches Microsoft's free-offer example; the 15-minute pause stays platform-fixed and cited) and D17 (a third branch on PBI-DEP-007, `feature/dep-007-free-offer-database-body`).
+  - Q14: no leftover database in Azure or Terraform state; re-apply normally.
+- Pending: the Log Analytics 409 (`log-cocassistant-dev` reserved in westeurope) is designed in a separate revision.
+
+### 2026-11-10: region in the Log Analytics and Container Apps environment names (changed decision, approved)
+
+**Escalation.** The same full apply failed on Log Analytics: "InvalidResourceLocation: The resource 'log-cocassistant-dev' already exists in location 'westeurope' in resource group 'rg-cocassistant-dev'. A resource with the same name cannot be created in location 'swedencentral'."
+
+**Facts (owner's real output).**
+- Before this apply, `az resource list -g rg-cocassistant-dev` showed `log-cocassistant-dev`, `cae-cocassistant-dev`, `stcocassistantdev`, `sigr-cocassistant-dev`, `id-cocassistant-api-dev`, and `stapp-cocassistant-dev`, all in westeurope.
+- After it: `az monitor log-analytics workspace list -g rg-cocassistant-dev` and `list-deleted-workspaces -g rg-cocassistant-dev` are both empty, and `terraform state list` has no Log Analytics entry. So the workspace is gone and not soft-deleted, yet the name is still blocked. The soft-delete explanation is ruled out; the likely cause is that Terraform deleted the old workspace and Azure Resource Manager still holds a record that it was in westeurope (as with the SQL server, D14), or a timing lag.
+- Q17, `az resource list -g rg-cocassistant-dev`: `stapp-cocassistant-dev` (westeurope); `stcocassistantdev`, `sigr-cocassistant-dev`, `id-cocassistant-api-dev`, `sql-cocassistant-dev-swedencentral` and its `master` database (all swedencentral). No Log Analytics workspace, no Container Apps environment, no Container App, no application database.
+- Q17, `terraform state list`: `data.azurerm_resource_group.dev`, `azurerm_mssql_firewall_rule.azure_services`, `azurerm_mssql_server.dev`, `azurerm_signalr_service.dev`, `azurerm_static_web_app.dev`, `azurerm_storage_account.handout`, `azurerm_storage_container.handout_files`, `azurerm_user_assigned_identity.api`.
+- So the identity, storage account and container, and SignalR were recreated in swedencentral under their old names. The Container Apps environment existed in westeurope, was deleted, and has not been created again (it waits on Log Analytics), so it is the most likely next 409.
+- Name limits:
+  - Log Analytics workspaces: 4-63 characters, alphanumerics and hyphens, start and end alphanumeric. Source: https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules (`ms.date` 2026-08-05, fetched 2026-11-10), Microsoft.OperationalInsights `workspaces`. `log-cocassistant-dev-swedencentral` is 34 characters, `log-cocassistant-dev-germanywestcentral` 39: both fit.
+  - Container Apps environments: that page lists only `Microsoft.App/containerApps` (2-32) and has no row for `managedEnvironments`. The REST spec (https://github.com/Azure/azure-rest-api-specs, `specification/app/resource-manager/Microsoft.App/ContainerApps/ManagedEnvironment.tsp` on `main`, fetched 2026-11-10) gives only the pattern `^[-\w\._\(\)]+$`, with no length. The azurerm 4.81.0 provider (checked with `terraform validate` against the repo's locked plugin) accepts 2-60 characters: "The length must at least 2 and not be more than 60 characters". `cae-cocassistant-dev-swedencentral` (34) and `cae-cocassistant-dev-germanywestcentral` (39) both pass. Microsoft documents no environment length limit, so the provider's 60 is the best available rule. If Azure still rejects the name for length at apply, escalate; the alternative then is a short region code for this one resource, which needs a new decision.
+- Where the names are hard-coded (master 41fd3de): `infrastructure/terraform/main.tf:10` and `:17`; `tests/environment.tftest.hcl:21` and `:28` (mock ids), `:136-137` and `:141-142` (name assertions); `specs/deployment/spec.md:15` and `:22`; `docs/infrastructure/costs.md:15` and `:22`.
+
+#### D18: Get past the blocked names
+| Metric | A: wait and retry | B: region in the name, on demand | C: region in every moved name up front |
+| --- | --- | --- | --- |
+| Consistency | + no new naming | + same scheme as the SQL server (D14) | - storage needs short codes (24-character limit), so two schemes |
+| Modifiability | - the next move hits the same wall | + any later move gets fresh names | + |
+| Testability | - only checkable by a real retry | + exact name assertions | + |
+| Simplicity | + no code | + one local per affected resource | - five renames, a lookup table, more doc edits |
+| Reversibility | + | + one line each | 0 |
+| Security and correctness | - no time limit; the SQL server's block never cleared | + no block can affect a new name; limits checked per resource | 0 replaces resources already healthy in swedencentral |
+
+- **Chosen:** B, because of reliability and the D14 precedent - giving up the plain names for these two resources.
+  - `log_analytics = "log-cocassistant-${var.environment}-${var.location}"` (`log-cocassistant-dev-swedencentral`).
+  - `container_apps_environment = "cae-cocassistant-${var.environment}-${var.location}"` (`cae-cocassistant-dev-swedencentral`): it existed in westeurope and has not been recreated, so it is renamed in the same change.
+  - Unchanged: `stcocassistantdev`, `sigr-cocassistant-dev`, `id-cocassistant-api-dev` (already recreated in swedencentral), `stapp-cocassistant-dev` (stays in westeurope), `ca-cocassistant-api-dev` (never existed in westeurope), `sqldb-cocassistant-dev`.
+- **Rejected:** A (no time limit; the SQL server's block never cleared); C (a second naming scheme and needless replacements). Short region codes stay rejected unless a new decision needs them. The Developer must not reintroduce these.
+- **Escalation rule (approved in advance):** any other moved resource that returns 409 InvalidResourceLocation gets the same region token without another design round, as long as its name rules allow the length. The storage account is excepted (24-character limit): escalate.
+- **Tracking:** the same branch as D16 (`feature/dep-007-free-offer-database-body`), so one re-apply tests both fixes.
+
+#### Expected plan and apply (owner)
+- Create exactly four resources: `azurerm_log_analytics_workspace.dev` (`log-cocassistant-dev-swedencentral`), `azurerm_container_app_environment.dev` (`cae-cocassistant-dev-swedencentral`), `azapi_resource.database` (D16 body), and `azurerm_container_app.api`. Nothing else changes; anything else in the plan means stop.
+- Then run the D16 post-apply `az sql db show` check, and confirm the Container App's min 0, max 1, cooldown 3600 (DEP-007 line 31; PBI-DEP-003 Verification).
+
+#### Invariants (added)
+- A name carries the region only when Azure blocked the old name, or, for the environment, when it was about to be blocked. Every other name keeps `<type>-cocassistant-<env>`.
+- Names are only built in the `main.tf` locals.
+
+#### Files the Developer touches (this revision)
+- `infrastructure/terraform/main.tf:10` and `:17`: the two names.
+- `infrastructure/terraform/tests/environment.tftest.hcl`: `:21` and `:28` mock ids; `:136-137` and `:141-142` name assertions; a new run where `location = "germanywestcentral"` gives `log-cocassistant-dev-germanywestcentral` and `cae-cocassistant-dev-germanywestcentral`.
+- `specs/deployment/spec.md:15` and `:22`.
+- `docs/infrastructure/costs.md:15` and `:22`.
+- ADR 0031: a dated amendment line (blocked names and the D18 rule).
+- `docs/infrastructure/dev-environment-setup.md`: what InvalidResourceLocation means, the D18 rule, and the four-create plan.
+- `docs/deployment/issues/07-move-the-dev-stack-to-a-region-with-sql.md`: a Follow-up recording the failure and fix.
+
+#### TDD units (this revision)
+- With `location = "swedencentral"`, Log Analytics is `log-cocassistant-dev-swedencentral` and the environment `cae-cocassistant-dev-swedencentral`; with `germanywestcentral`, the matching names.
+- The environment's `log_analytics_workspace_id` is the renamed workspace's id.
+- Storage, SignalR, identity, Static Web App, Container App, SQL server, and database names are unchanged.
+
+#### E2E coverage
+- Exception, unchanged: infrastructure only.
+
+#### Human decisions
+- 2026-11-10, owner: "Q16 yes, Q18 yes, here is Q17 output".
+  - Q16: D18 option B, including renaming without another design round any moved resource that hits the same 409 (storage excepted, which escalates).
+  - Q18: the same branch as the database fix, `feature/dep-007-free-offer-database-body`.
+  - Q17: the outputs recorded under Facts; the environment is renamed in this change.

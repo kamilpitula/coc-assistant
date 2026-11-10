@@ -113,27 +113,27 @@ stack before the deploy workflow applies it.
    becomes `sql-cocassistant-dev-germanywestcentral` automatically, so a stale
    Sweden Central record cannot block it. Nothing else has moved yet.
 5. `terraform plan -var-file=environments/dev.tfvars` and review it. The
-   expected plan replaces only the API identity, the Log Analytics workspace,
-   the storage account with its `handout-files` container, SignalR, and the
-   Container Apps environment (where they were created); creates the SQL
-   server under its region-specific name (unless the probe created it), the firewall rule, the free-offer
-   database, and the Container App; and leaves the Static Web App and the
-   resource group unchanged. Anything else in the plan, or the Static Web App
-   being replaced, means stop. Handling:
-   - The SQL server carries the region in its name (PBI-DEP-007, D14): the
-     failed `westeurope` create left a stale record reserving
-     `sql-cocassistant-dev` in the resource group, so the earlier "nothing
-     exists" claim was wrong. The stale record stays and is referenced by
-     nothing.
-   - Log Analytics is permanently deleted on destroy (provider setting), so
-     the same name can be recreated in the new region at once.
-   - The storage account name is global: deletion frees it, sometimes only
-     after a few minutes. On `StorageAccountAlreadyTaken`, wait and re-run
-     apply. Nothing is lost.
-   - SignalR frees its global name on delete; the Free tier allows one Free
-     unit per subscription and region, and the old-region one is deleted
-     first.
+   expected plan creates exactly four resources: the Log Analytics workspace
+   (`log-cocassistant-dev-swedencentral`), the Container Apps environment
+   (`cae-cocassistant-dev-swedencentral`), the free-offer database, and the
+   Container App. Nothing else changes; anything else in the plan means stop.
+   Handling:
+   - `InvalidResourceLocation` ("a resource with the same name cannot be
+     created in <new region>") means Azure still holds a record of the
+     old-region resource with that name in this resource group, even when
+     `az resource list` no longer shows it (as with the SQL server, D14, and
+     Log Analytics, D18). The D18 rule: any other moved resource that returns
+     409 gets the same region token without another design round, as long as
+     its name rules allow the length. The storage account is excepted
+     (24-character limit): escalate instead.
+   - The SQL server and the Log Analytics workspace carry the region in their
+     names for this reason (PBI-DEP-007, D14 and D18): the failed `westeurope`
+     creates left stale records reserving the plain names in the resource
+     group. The stale records stay and are referenced by nothing.
    - The Container Apps environment deletion can take about 10 minutes;
      apply waits.
 6. `terraform apply -var-file=environments/dev.tfvars` and confirm it
-   completes.
+   completes. Then check the database the apply created:
+   `az sql db show -g rg-cocassistant-dev -s sql-cocassistant-dev-swedencentral -n sqldb-cocassistant-dev --query "{free:useFreeLimit, exhaustion:freeLimitExhaustionBehavior, pause:autoPauseDelay, backup:requestedBackupStorageRedundancy}"`.
+   Expect `true`, `AutoPause`, the platform's pause value, and `Local`. This
+   is the evidence for `spec.md:83` and the PBI-DEP-007 owner check.
