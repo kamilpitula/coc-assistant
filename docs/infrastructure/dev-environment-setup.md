@@ -9,8 +9,6 @@ locally by the repository owner; its state stays local and is not committed.
 - Terraform `>= 1.9.0` (the CI `terraform` job uses 1.16.3).
 - Azure CLI, signed in to the subscription tenant (see step 2).
 - The Owner role on the subscription.
-- The right to create security groups: Global Administrator, Groups
-  Administrator, or the "users can create security groups" tenant setting.
 - The repository must use the default OIDC subject template. Check it before
   creating the identities:
   `gh api repos/kamilpitula/coc-assistant/actions/oidc/customization/sub`
@@ -33,10 +31,20 @@ locally by the repository owner; its state stays local and is not committed.
 From `infrastructure/terraform/bootstrap/`:
 
 1. `terraform init -backend=false -input=false`
-2. `terraform plan -out bootstrap.plan` and review it. Whoever runs `apply`
-   becomes the owner member of `sg-cocassistant-dev-sql-admins`; the outputs
-   print that object id for review.
+2. `terraform plan -out bootstrap.plan` and review it.
 3. `terraform apply bootstrap.plan`
+4. Delete the saved plan file (`bootstrap.plan`): saved plans are gitignored
+   and must never be committed.
+
+Migrating from the pre-DEP-003 stack (which still references the removed
+Entra group and `azuread` provider):
+
+1. `terraform state rm 'data.azuread_client_config.current'` so the state no
+   longer needs the removed provider.
+2. `terraform init`, then `terraform plan` and review it. The expected plan
+   is exactly one addition: `azurerm_role_assignment.owner_state_container`.
+   Any other change means stop.
+3. `terraform apply`.
 
 ## 5. Back up the local state outside the repository
 
@@ -52,8 +60,8 @@ keys, and it is gitignored so a fresh clone cannot recover it.
 - `az role assignment list --assignee <deploy client id> --all`: only
   Contributor on `rg-cocassistant-dev` and Storage Blob Data Contributor on
   the `tfstate` container.
-- `az ad group member list --group sg-cocassistant-dev-sql-admins --query
-  "[].displayName"`: the deploy identity and the repository owner, nothing else.
+- `az role assignment list --assignee <owner object id> --all`: Storage Blob
+  Data Contributor on the `tfstate` container, for local plans.
 - `az consumption budget list --subscription <subscription id>`: the EUR 5
   monthly budget with the 20% actual, 80% forecast, and 100% forecast alerts.
 
@@ -80,3 +88,16 @@ The plan workflow uses no environment. Variable values are ids, not secrets.
 - Placeholder for the remaining one-time steps from
   `specs/deployment/spec.md`: the Static Web App redirect URI, the database
   firewall rule for local plans, and the first GHCR image push.
+
+## 10. Run a local plan for the dev stack
+
+The owner runs this after the bootstrap apply, to review the environment
+stack before the deploy workflow applies it.
+
+1. `az login --tenant <subscription tenant id>`
+2. Set `ARM_SUBSCRIPTION_ID` to the subscription id.
+3. From `infrastructure/terraform/`:
+   `terraform init -backend-config=environments/dev.backend.hcl -input=false`
+4. `terraform plan -var-file=environments/dev.tfvars` and review it. It
+   creates exactly the resources in the spec topology table, each with the
+   three tags.

@@ -40,3 +40,4 @@ Change `specs/deployment/spec.md`, ADR 0031, `docs/infrastructure/costs.md`, and
 - DEP-003 must take the SQL admin group object id as input, because the deploy identity has no Graph permission to look it up.
 - `.gitignore`:25 conflicts with spec.md:26 (`dev.tfvars`) (DEP-003).
 - The owner has no data role on the state, which a local plan needs (DEP-003).
+- SQL admin group not creatable (403 Authorization_RequestDenied; the owner cannot get Groups or Global Administrator): replaced by the deploy identity as SQL Entra admin -> PBI-DEP-003. Supersedes the group-object-id Follow-up above.

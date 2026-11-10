@@ -234,3 +234,10 @@
 - 2026-11-10, Q6 and approval: "approve, id: 759da402-f5ba-4fc0-a727-5260f838e49f" - the record is approved as written (D1-D9 and invariants unchanged); the deploy identity's principal id `759da402-f5ba-4fc0-a727-5260f838e49f` goes into `dev.tfvars` as `sql_entra_admin_object_id`.
 
 ## Revisions
+
+- 2026-11-10 (Developer, PBI-DEP-003): checked the D6 placeholder image
+  `mcr.microsoft.com/dotnet/samples:aspnetapp` locally with `docker run`:
+  port 8080 serves `/` with 200 and `/health` with 404. The first revision
+  is therefore created (provisioning does not depend on probe success) but
+  stays unhealthy until DEP-005 rolls out the real image, which is the Q3
+  accepted risk. No fallback probe change was needed.
