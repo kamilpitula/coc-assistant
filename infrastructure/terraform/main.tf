@@ -9,7 +9,7 @@ locals {
     container_app              = "ca-cocassistant-api-${var.environment}"
     container_apps_environment = "cae-cocassistant-${var.environment}"
     api_identity               = "id-cocassistant-api-${var.environment}"
-    sql_server                 = "sql-cocassistant-${var.environment}"
+    sql_server                 = "sql-cocassistant-${var.environment}-${var.location}"
     sql_database               = "sqldb-cocassistant-${var.environment}"
     storage_account            = "stcocassistant${var.environment}"
     signalr                    = "sigr-cocassistant-${var.environment}"
