@@ -32,8 +32,8 @@ override_resource {
 override_resource {
   target = azurerm_mssql_server.dev
   values = {
-    id                          = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cocassistant-dev/providers/Microsoft.Sql/servers/sql-cocassistant-dev"
-    fully_qualified_domain_name = "sql-cocassistant-dev.database.windows.net"
+    id                          = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cocassistant-dev/providers/Microsoft.Sql/servers/sql-cocassistant-dev-swedencentral"
+    fully_qualified_domain_name = "sql-cocassistant-dev-swedencentral.database.windows.net"
   }
 }
 
@@ -153,8 +153,8 @@ run "resource_names_match_spec_topology" {
   }
 
   assert {
-    condition     = azurerm_mssql_server.dev.name == "sql-cocassistant-dev"
-    error_message = "The SQL server must be named sql-cocassistant-dev."
+    condition     = azurerm_mssql_server.dev.name == "sql-cocassistant-dev-swedencentral"
+    error_message = "The SQL server must be named sql-cocassistant-dev-swedencentral."
   }
 
   assert {
@@ -175,6 +175,24 @@ run "resource_names_match_spec_topology" {
   assert {
     condition     = azurerm_static_web_app.dev.name == "stapp-cocassistant-dev"
     error_message = "The Static Web App must be named stapp-cocassistant-dev."
+  }
+}
+
+run "sql_server_name_follows_fallback_region" {
+  command = apply
+
+  variables {
+    location = "germanywestcentral"
+  }
+
+  assert {
+    condition     = azurerm_mssql_server.dev.name == "sql-cocassistant-dev-germanywestcentral"
+    error_message = "The SQL server must be named sql-cocassistant-dev-germanywestcentral in the fallback region."
+  }
+
+  assert {
+    condition     = azapi_resource.database.name == "sqldb-cocassistant-dev"
+    error_message = "The SQL database must stay named sqldb-cocassistant-dev in the fallback region."
   }
 }
 
@@ -448,7 +466,7 @@ run "outputs" {
   }
 
   assert {
-    condition     = output.sql_server_fqdn == "sql-cocassistant-dev.database.windows.net"
+    condition     = output.sql_server_fqdn == "sql-cocassistant-dev-swedencentral.database.windows.net"
     error_message = "The SQL server FQDN output must match the mock."
   }
 
@@ -530,5 +548,17 @@ run "static_web_app_location_rejects_unknown_region" {
 
   expect_failures = [
     var.static_web_app_location,
+  ]
+}
+
+run "location_rejects_uppercase_and_spaces" {
+  command = plan
+
+  variables {
+    location = "Sweden Central"
+  }
+
+  expect_failures = [
+    var.location,
   ]
 }

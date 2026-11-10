@@ -128,3 +128,78 @@ Single sane option.
   - D10-D13 approved as written. Q10 (the env-stack `terraform state list`) was not answered; the plan shows the replaced resources.
 
 ## Revisions
+
+### 2026-11-10: rename the SQL server around a stale westeurope record (changed decision, approved)
+
+**Escalation.** The owner's D12 probe in `swedencentral` failed with 409: "InvalidResourceLocation: The resource 'sql-cocassistant-dev' already exists in location 'westeurope' in resource group 'rg-cocassistant-dev'. A resource with the same name cannot be created in location 'swedencentral'. Please select a new resource name." `az sql server show -g rg-cocassistant-dev -n sql-cocassistant-dev` returns ResourceNotFound, and `az resource list -g rg-cocassistant-dev` lists only the Static Web App, storage account, SignalR, API identity, Log Analytics workspace, and Container Apps environment. The failed first create (`ProvisioningDisabled`) left a stale record that still reserves the name in this resource group, invisible to the normal APIs. A different region does not help: the conflict is the name in this resource group.
+
+**D13 correction.** The D13 line "SQL server: the westeurope create failed, so nothing exists and the global name is free" is wrong. The failed create left a stale record that blocks the name in `rg-cocassistant-dev`, so the server is renamed (D14). The same correction goes into `docs/infrastructure/dev-environment-setup.md` (steps 4-5) and the ADR 0031 D12/D13 amendment line (:42).
+
+**Where the old name is hard-coded** (`git grep` on master 43b3027): `infrastructure/terraform/main.tf:12` (`local.names.sql_server`); `tests/environment.tftest.hcl:35-36` (mock id and FQDN), `:156-157` (name assertion), `:451` (FQDN output assertion); `specs/deployment/spec.md:18` and `:34`; `docs/infrastructure/costs.md:18`. Already derived, no change: the three connection strings (main.tf:20, from `fully_qualified_domain_name`), the `sql_server_fqdn` output (outputs.tf:33), the database `parent_id` (sql.tf:33), and the firewall rule `server_id` (sql.tf:23). Unaffected: the database name `sqldb-cocassistant-dev` (scoped to its server) and `azuread_administrator`.
+
+#### D14: The SQL server's name
+| Metric | A: region in the name | B: fixed `-01` suffix | C: random suffix |
+| --- | --- | --- | --- |
+| Consistency | 0 keeps `<type>-cocassistant-<env>` and adds a region token on one resource, a common Azure naming pattern | + closest to the current names | - unreadable; breaks `infrastructure/CLAUDE.md` "explicit and reviewable" |
+| Modifiability | + any later region change, including the fallback to `germanywestcentral`, gets a fresh name automatically | - a failed create in a new region can leave another stale record; the next move needs another manual bump | + always fresh |
+| Testability | + asserted exactly in tests | + | 0 needs an override in mocks |
+| Simplicity | + one interpolation, no lookup table | + | - a new provider and resource |
+| Reversibility | + a one-line local | + | - |
+| Security and correctness | + valid while `location` is lowercase letters and digits; validation added | + | + |
+
+- **Chosen:** A, `sql_server = "sql-cocassistant-${var.environment}-${var.location}"` (`sql-cocassistant-dev-swedencentral`, 34 characters), because of modifiability: a stale record only comes from a failed create, which is exactly what can happen when the D12 probe falls back to another region, and a region-specific name cannot collide with it. Giving up uniformity (only the SQL server carries a region token) and a shorter FQDN.
+- **Rejected:** B (the next region move can collide again, which is the failure that just happened); C (a new dependency and an unreadable name); D, a region token in every resource name (only the SQL server has a stale record; renaming everything replaces six resources and changes every documented name for no benefit); short region codes such as `sdc` (a hand-kept lookup table for no gain). The Developer must not reintroduce them.
+- `var.location` gets validation `^[a-z0-9]{1,30}$`, keeping the server name lowercase, within 63 characters, and free of characters SQL server names do not allow.
+- The westeurope stale record stays. Nothing references it. A DEP-007 Follow-up records that it may surface if the resource group is ever deleted; a support request is optional and the owner's call.
+
+#### D15: Where to track it
+| Metric | A: new branch on DEP-007 | B: new PBI-DEP-008 |
+| --- | --- | --- |
+| Consistency | + DEP-007 is still `todo`, its Directive ("so `terraform apply` completes") is not met, and its deferred lines 30-31 are what this fixes | 0 standard for new scope, but this is not new scope |
+| Modifiability | + one PBI owns the move to completion | - DEP-007 cannot pass its owner checks before DEP-008, so the dependency order is backwards |
+| Testability | + the same Verification lines apply | 0 duplicates them |
+| Simplicity | + no new file | - a PBI file, blocker edits, DEP-005 re-pointed |
+| Reversibility | + | + |
+| Security and correctness | N/A | N/A |
+
+- **Chosen:** A, branch `feature/dep-007-rename-the-sql-server`, because the work is inside DEP-007's Directive - giving up a separate item for the stale-record incident (the Follow-up covers it).
+- Backlog effect: the unmerged branch marks DEP-007 in progress; the report's warning that a merged branch's PBI is not `done` is informational and clears when the owner's checks pass and DEP-007 is set to `done`; `--check` keeps passing because the unticked lines carry `Deferred:`; DEP-005 stays blocked by DEP-007 with no edit.
+- **Rejected:** B.
+
+#### D12 probe after the rename (owner)
+1. `terraform plan -var-file=environments/dev.tfvars -target=azurerm_mssql_server.dev`: expect exactly one addition, `azurerm_mssql_server.dev` named `sql-cocassistant-dev-swedencentral` in `swedencentral`. Anything else means stop.
+2. `terraform apply` with the same `-target`.
+3. On `ProvisioningDisabled`, set `location = "germanywestcentral"`; the name becomes `sql-cocassistant-dev-germanywestcentral` automatically, so a stale Sweden Central record cannot block it. Repeat.
+4. The full plan is unchanged from D13; the SQL server is created under the new name unless the probe created it.
+- The fallback region stays Germany West Central; D14 removes the main risk of using it.
+
+#### Invariants (added)
+- Only the SQL server's name carries the region token; every other name keeps `<type>-cocassistant-<env>`.
+- Nothing hard-codes the SQL server name or FQDN; everything derives from the resource.
+- `var.location` is lowercase letters and digits.
+
+#### Files the Developer touches
+- `infrastructure/terraform/main.tf:12`: the D14 name.
+- `infrastructure/terraform/variables.tf:1-4`: `location` validation.
+- `infrastructure/terraform/tests/environment.tftest.hcl`: `:35-36` mock id and FQDN with the new name; `:156-157` name assertion; `:451` FQDN output; a new run where `location = "germanywestcentral"` gives `sql-cocassistant-dev-germanywestcentral`; an `expect_failures` run for an invalid `location` such as `"Sweden Central"`.
+- `specs/deployment/spec.md:18` and `:34`: the new name and why the region is in it.
+- `docs/infrastructure/costs.md:18`: the name.
+- ADR 0031: a dated amendment line for the stale record and D14; correct `:42`.
+- `docs/infrastructure/dev-environment-setup.md` steps 4-5: the one-addition probe plan, the automatic fallback name, and the D13 correction.
+- `docs/deployment/issues/07-move-the-dev-stack-to-a-region-with-sql.md`: line 30 names the new server; Follow-ups gain the stale-record note; remove the obsolete Follow-up about the local `dev.tfvars` edit (master's working tree is clean).
+
+#### TDD units
+- With `environment = "dev"` and `location = "swedencentral"`, the SQL server is `sql-cocassistant-dev-swedencentral`; with `location = "germanywestcentral"`, it is `sql-cocassistant-dev-germanywestcentral`.
+- The database stays `sqldb-cocassistant-dev`; every other resource name is unchanged.
+- `output.sql_server_fqdn` and all three connection strings use the server's FQDN, with no literal name.
+- `location` validation rejects uppercase letters and spaces.
+
+#### E2E coverage
+- Exception, unchanged: infrastructure only.
+
+#### Human decisions
+- 2026-11-10, owner: "lets change the resource name" - rename instead of waiting for the stale record to clear or opening a support request.
+- 2026-11-10, owner: "Q11 A Q12 second brannch".
+  - Q11: D14 option A, `sql-cocassistant-${var.environment}-${var.location}` (`sql-cocassistant-dev-swedencentral`), with `var.location` validated `^[a-z0-9]{1,30}$`.
+  - Q12: D15 option A, a second branch on PBI-DEP-007, `feature/dep-007-rename-the-sql-server`; no new PBI.
+- 2026-11-10, record: PR #57 (`feature/dep-007-move-the-dev-stack-to-a-region-with-sql`, c1bc138) turned out to be already merged (master 43b3027), so this fix goes on the second branch rather than PR #57. The D13 claim "nothing exists" is corrected above.

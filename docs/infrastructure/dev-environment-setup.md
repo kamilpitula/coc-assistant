@@ -101,21 +101,30 @@ stack before the deploy workflow applies it.
 3. From `infrastructure/terraform/`:
    `terraform init -backend-config=environments/dev.backend.hcl -input=false`
 4. Prove the region first (PBI-DEP-007): only a create proves SQL can be
-   provisioned in a region for this subscription.
+   provisioned in a region for this subscription. Plan first:
+   `terraform plan -var-file=environments/dev.tfvars -target=azurerm_mssql_server.dev`
+   must show exactly one addition, `azurerm_mssql_server.dev` named
+   `sql-cocassistant-dev-swedencentral` in `swedencentral`. Anything else
+   means stop. Then
    `terraform apply -var-file=environments/dev.tfvars -target=azurerm_mssql_server.dev`
-   creates only the free SQL server (no meter) in the `location` set in
-   `dev.tfvars` (`swedencentral`). `-target` is for this probe only and must
+   creates only the free SQL server (no meter). `-target` is for this probe only and must
    not appear in workflows. On `ProvisioningDisabled`, set `location` to the
-   fallback `germanywestcentral` in `dev.tfvars` and repeat; nothing else has
-   moved yet.
+   fallback `germanywestcentral` in `dev.tfvars` and repeat: the server name
+   becomes `sql-cocassistant-dev-germanywestcentral` automatically, so a stale
+   Sweden Central record cannot block it. Nothing else has moved yet.
 5. `terraform plan -var-file=environments/dev.tfvars` and review it. The
    expected plan replaces only the API identity, the Log Analytics workspace,
    the storage account with its `handout-files` container, SignalR, and the
    Container Apps environment (where they were created); creates the SQL
-   server (unless the probe created it), the firewall rule, the free-offer
+   server under its region-specific name (unless the probe created it), the firewall rule, the free-offer
    database, and the Container App; and leaves the Static Web App and the
    resource group unchanged. Anything else in the plan, or the Static Web App
    being replaced, means stop. Handling:
+   - The SQL server carries the region in its name (PBI-DEP-007, D14): the
+     failed `westeurope` create left a stale record reserving
+     `sql-cocassistant-dev` in the resource group, so the earlier "nothing
+     exists" claim was wrong. The stale record stays and is referenced by
+     nothing.
    - Log Analytics is permanently deleted on destroy (provider setting), so
      the same name can be recreated in the new region at once.
    - The storage account name is global: deletion frees it, sometimes only

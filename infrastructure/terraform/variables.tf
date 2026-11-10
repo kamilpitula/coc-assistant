@@ -1,6 +1,11 @@
 variable "location" {
   description = "Azure region for the environment resources. No default: every environment sets it explicitly, so no stack silently falls back to another region."
   type        = string
+
+  validation {
+    condition     = can(regex("^[a-z0-9]{1,30}$", var.location))
+    error_message = "location must be 1 to 30 lowercase letters or digits, so the SQL server name stays valid."
+  }
 }
 
 variable "static_web_app_location" {
