@@ -32,6 +32,7 @@ Read: `specs/deployment/spec.md` (Workflows, API configuration in `dev`, Fronten
 Change `specs/deployment/spec.md` and ADR 0031 together with the workflow.
 
 ## Follow-ups
+- Immutable OIDC subjects (2026-11-10): the owner must re-apply the bootstrap locally (see `docs/infrastructure/dev-environment-setup.md` section 4) and confirm the `Terraform plan (dev)` check goes green on a PR.
 - Owner live runs (PBI stays open until these are evidenced): a green push runs to completion with the active revision on the SHA image; a failed CI run leaves every job skipped; a `simulate_migration_failure` dispatch leaves no `gh-deploy-*` rule and skips rollout and spa; the API reads data after deploy (proves the user and SID mapping); a re-run is idempotent. The last Verification item (no stored secret) is evidenced by this diff itself.
 - Out-of-order CI finishes are not handled: when runs finish out of order, the newest run wins with no SHA comparison. Single-owner repo with additive migrations so far; revisit when this causes a real problem.
 - First run stops at the GHCR preflight: the owner makes the `coc-assistant-api` package public, then Re-run failed jobs (docs/infrastructure/dev-environment-setup.md section 9).

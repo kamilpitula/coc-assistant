@@ -41,3 +41,4 @@ Change `specs/deployment/spec.md`, ADR 0031, `docs/infrastructure/costs.md`, and
 - `.gitignore`:25 conflicts with spec.md:26 (`dev.tfvars`) (DEP-003).
 - The owner has no data role on the state, which a local plan needs (DEP-003).
 - SQL admin group not creatable (403 Authorization_RequestDenied; the owner cannot get Groups or Global Administrator): replaced by the deploy identity as SQL Entra admin -> PBI-DEP-003. Supersedes the group-object-id Follow-up above.
+- Immutable OIDC subjects (2026-11-10): the owner must re-apply the bootstrap locally (see `docs/infrastructure/dev-environment-setup.md` section 4) and confirm the `Terraform plan (dev)` check goes green on a PR.

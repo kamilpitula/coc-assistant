@@ -9,9 +9,11 @@ locally by the repository owner; its state stays local and is not committed.
 - Terraform `>= 1.9.0` (the CI `terraform` job uses 1.16.3).
 - Azure CLI, signed in to the subscription tenant (see step 2).
 - The Owner role on the subscription.
-- The repository must use the default OIDC subject template. Check it before
-  creating the identities:
+- The repository uses the immutable OIDC subject template
+  (`use_immutable_subject: true`). Check it before creating the identities:
   `gh api repos/kamilpitula/coc-assistant/actions/oidc/customization/sub`
+  must show the prefix `repo:kamilpitula@9087774/coc-assistant@1380052287`,
+  which the bootstrap subjects are built from.
 
 ## 2. Sign in and select the subscription
 
@@ -47,6 +49,31 @@ Entra group and `azuread` provider):
    is exactly one addition: `azurerm_role_assignment.owner_state_container`.
    Any other change means stop.
 3. `terraform apply`.
+
+### Re-applying after the immutable-subject change (2026-11-10)
+
+The bootstrap subjects changed from the classic form
+(`repo:kamilpitula/coc-assistant:...`) to the immutable form
+(`repo:kamilpitula@9087774/coc-assistant@1380052287:...`). The owner must
+re-apply the bootstrap locally so both federated credentials are updated:
+
+From `infrastructure/terraform/bootstrap/`:
+
+1. `terraform init -input=false`
+2. `terraform plan` and review it. The expected plan updates only the two
+   federated credentials
+   (`azurerm_federated_identity_credential.plan_pull_request` and
+   `azurerm_federated_identity_credential.deploy_environment_dev`).
+   Any other change means stop.
+3. `terraform apply`.
+
+Then verify both identities show the immutable subjects:
+
+- `az identity federated-credential list -g rg-cocassistant-tfstate --identity-name id-cocassistant-github-plan`
+- `az identity federated-credential list -g rg-cocassistant-tfstate --identity-name id-cocassistant-github-deploy`
+
+Finally confirm the `Terraform plan (dev)` check goes green on a pull
+request that touches `infrastructure/**`.
 
 ## 5. Back up the local state outside the repository
 

@@ -76,7 +76,7 @@ run "plan_credential_uses_pull_request_subject" {
   command = apply
 
   assert {
-    condition     = azurerm_federated_identity_credential.plan_pull_request.subject == "repo:kamilpitula/coc-assistant:pull_request"
+    condition     = azurerm_federated_identity_credential.plan_pull_request.subject == "repo:kamilpitula@9087774/coc-assistant@1380052287:pull_request"
     error_message = "The plan credential must use the pull_request subject."
   }
 
@@ -95,7 +95,7 @@ run "deploy_credential_uses_environment_subject" {
   command = apply
 
   assert {
-    condition     = azurerm_federated_identity_credential.deploy_environment_dev.subject == "repo:kamilpitula/coc-assistant:environment:dev"
+    condition     = azurerm_federated_identity_credential.deploy_environment_dev.subject == "repo:kamilpitula@9087774/coc-assistant@1380052287:environment:dev"
     error_message = "The deploy credential must use the environment:dev subject."
   }
 

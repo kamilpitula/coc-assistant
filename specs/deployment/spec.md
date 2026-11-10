@@ -30,8 +30,8 @@ The environment is built for near-zero cost. It runs in a Visual Studio subscrip
 - **GitHub to Azure authentication:** OpenID Connect federated credentials, no client secrets.
   | Identity | Federated subject | Azure roles |
   |---|---|---|
-  | `id-cocassistant-github-plan` | `repo:kamilpitula/coc-assistant:pull_request` | Reader on `rg-cocassistant-dev`; Storage Blob Data Contributor on the state container |
-  | `id-cocassistant-github-deploy` | `repo:kamilpitula/coc-assistant:environment:dev` | Contributor on `rg-cocassistant-dev`; Storage Blob Data Contributor on the state container; Entra admin of `sql-cocassistant-dev-swedencentral` |
+  | `id-cocassistant-github-plan` | `repo:kamilpitula@9087774/coc-assistant@1380052287:pull_request` | Reader on `rg-cocassistant-dev`; Storage Blob Data Contributor on the state container |
+  | `id-cocassistant-github-deploy` | `repo:kamilpitula@9087774/coc-assistant@1380052287:environment:dev` | Contributor on `rg-cocassistant-dev`; Storage Blob Data Contributor on the state container; Entra admin of `sql-cocassistant-dev-swedencentral` |
 - **Workflows** (separate from `.github/workflows/ci.yml`):
   - `.github/workflows/terraform-plan.yml`: on `pull_request` to `master` touching `infrastructure/**`, from branches of this repository only. Runs `terraform plan` for `dev` as the plan identity and writes the plan to the job summary.
   - `.github/workflows/deploy-dev.yml`: on `workflow_run` of `CI` completing successfully on `master`, plus `workflow_dispatch`. Uses the GitHub Environment `dev` and the deploy identity. Jobs run in dependency order:
