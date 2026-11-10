@@ -30,7 +30,7 @@ The environment is built for near-zero cost. It runs in a Visual Studio subscrip
 - **GitHub to Azure authentication:** OpenID Connect federated credentials, no client secrets.
   | Identity | Federated subject | Azure roles |
   |---|---|---|
-  | `id-cocassistant-github-plan` | `repo:kamilpitula@9087774/coc-assistant@1380052287:pull_request` | Reader on `rg-cocassistant-dev`; Storage Blob Data Contributor on the state container |
+  | `id-cocassistant-github-plan` | `repo:kamilpitula@9087774/coc-assistant@1380052287:pull_request` | Reader and the custom role `CoC Assistant dev plan secret reader` (list-keys and list-secrets actions only, no write) on `rg-cocassistant-dev`; Storage Blob Data Contributor on the state container |
   | `id-cocassistant-github-deploy` | `repo:kamilpitula@9087774/coc-assistant@1380052287:environment:dev` | Contributor on `rg-cocassistant-dev`; Storage Blob Data Contributor on the state container; Entra admin of `sql-cocassistant-dev-swedencentral` |
 - **Workflows** (separate from `.github/workflows/ci.yml`):
   - `.github/workflows/terraform-plan.yml`: on `pull_request` to `master` touching `infrastructure/**`, from branches of this repository only. Runs `terraform plan` for `dev` as the plan identity and writes the plan to the job summary.
@@ -63,7 +63,7 @@ The environment is built for near-zero cost. It runs in a Visual Studio subscrip
 
 ### Constraints
 - The API runs at most one replica, as ADR 0010 requires.
-- Only the deploy identity, through the GitHub Environment `dev`, can change Azure resources from GitHub Actions. Pull request workflows can only read.
+- Only the deploy identity, through the GitHub Environment `dev`, can change Azure resources from GitHub Actions. Pull request workflows can only read. Pull request workflows may read resource keys and secrets through list actions, values the state already holds, but cannot change any resource.
 - The API signs in to Azure SQL with its managed identity, and its database user has only `db_datareader` and `db_datawriter`. Schema changes run only from the deploy workflow.
 - The SQL server accepts connections from Azure services and, only while a migrate job runs, from that job's runner IP.
 - The free-offer database pauses when its monthly allowance is spent instead of billing.

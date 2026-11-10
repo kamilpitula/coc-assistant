@@ -70,6 +70,14 @@ override_resource {
   }
 }
 
+# The role definition mock must produce a well-formed role definition id.
+override_resource {
+  target = azurerm_role_definition.plan_secret_reader_dev
+  values = {
+    role_definition_resource_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cocassistant-dev/providers/Microsoft.Authorization/roleDefinitions/eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
+  }
+}
+
 # Federated credentials
 
 run "plan_credential_uses_pull_request_subject" {
@@ -133,6 +141,88 @@ run "plan_identity_roles" {
   assert {
     condition     = azurerm_role_assignment.plan_state_container.scope == azurerm_storage_container.tfstate.id
     error_message = "The plan storage assignment must be scoped to the state container, not the account."
+  }
+}
+
+run "plan_identity_secret_reader_role" {
+  command = apply
+
+  assert {
+    condition     = length(azurerm_role_definition.plan_secret_reader_dev.permissions[0].actions) == 5
+    error_message = "The plan secret-reader role must hold exactly five list actions."
+  }
+
+  assert {
+    condition = alltrue([
+      contains(azurerm_role_definition.plan_secret_reader_dev.permissions[0].actions, "Microsoft.SignalRService/signalR/listKeys/action"),
+      contains(azurerm_role_definition.plan_secret_reader_dev.permissions[0].actions, "Microsoft.Web/staticSites/listSecrets/action"),
+      contains(azurerm_role_definition.plan_secret_reader_dev.permissions[0].actions, "Microsoft.Web/staticSites/listAppSettings/action"),
+      contains(azurerm_role_definition.plan_secret_reader_dev.permissions[0].actions, "Microsoft.App/containerApps/listSecrets/action"),
+      contains(azurerm_role_definition.plan_secret_reader_dev.permissions[0].actions, "Microsoft.Storage/storageAccounts/listKeys/action"),
+    ])
+    error_message = "The plan secret-reader role must hold exactly the five approved list actions."
+  }
+
+  assert {
+    condition = (
+      azurerm_role_definition.plan_secret_reader_dev.permissions[0].not_actions == null
+      || length(azurerm_role_definition.plan_secret_reader_dev.permissions[0].not_actions) == 0
+    )
+    error_message = "The plan secret-reader role must grant no not_actions."
+  }
+
+  assert {
+    condition = (
+      azurerm_role_definition.plan_secret_reader_dev.permissions[0].data_actions == null
+      || length(azurerm_role_definition.plan_secret_reader_dev.permissions[0].data_actions) == 0
+    )
+    error_message = "The plan secret-reader role must grant no data_actions."
+  }
+
+  assert {
+    condition = (
+      azurerm_role_definition.plan_secret_reader_dev.permissions[0].not_data_actions == null
+      || length(azurerm_role_definition.plan_secret_reader_dev.permissions[0].not_data_actions) == 0
+    )
+    error_message = "The plan secret-reader role must grant no not_data_actions."
+  }
+
+  assert {
+    condition = alltrue([
+      for a in azurerm_role_definition.plan_secret_reader_dev.permissions[0].actions :
+      !strcontains(a, "*") && !strcontains(a, "/write") && !strcontains(a, "/delete") && !strcontains(lower(a), "regenerate")
+    ])
+    error_message = "The plan secret-reader role must hold no wildcard, write, delete, or regenerate action."
+  }
+
+  assert {
+    condition     = azurerm_role_definition.plan_secret_reader_dev.scope == azurerm_resource_group.dev.id
+    error_message = "The plan secret-reader role definition must be scoped to the dev resource group."
+  }
+
+  assert {
+    condition     = length(azurerm_role_definition.plan_secret_reader_dev.assignable_scopes) == 1 && contains(azurerm_role_definition.plan_secret_reader_dev.assignable_scopes, azurerm_resource_group.dev.id)
+    error_message = "The plan secret-reader role must be assignable only at the dev resource group."
+  }
+
+  assert {
+    condition     = azurerm_role_assignment.plan_secret_reader_dev.scope == azurerm_resource_group.dev.id
+    error_message = "The plan secret-reader assignment must be scoped to the dev resource group."
+  }
+
+  assert {
+    condition     = azurerm_role_assignment.plan_secret_reader_dev.principal_id == azurerm_user_assigned_identity.plan.principal_id
+    error_message = "The plan secret-reader assignment must target the plan identity."
+  }
+
+  assert {
+    condition     = azurerm_role_assignment.plan_secret_reader_dev.principal_type == "ServicePrincipal"
+    error_message = "The plan secret-reader assignment must use the ServicePrincipal type."
+  }
+
+  assert {
+    condition     = azurerm_role_assignment.plan_secret_reader_dev.role_definition_id == azurerm_role_definition.plan_secret_reader_dev.role_definition_resource_id
+    error_message = "The plan secret-reader assignment must reference the custom role definition."
   }
 }
 

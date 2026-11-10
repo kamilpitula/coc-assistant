@@ -36,7 +36,7 @@ Change `specs/deployment/spec.md`, ADR 0031, `docs/infrastructure/costs.md`, and
 
 ## Follow-ups
 - Owner verifies Verification items 2-4 after the first local apply (`az role assignment list`, `az ad group member list`, `az consumption budget list` in `docs/infrastructure/dev-environment-setup.md` step 6); no Azure credentials were available in this environment, so no apply was run.
-- Reader may not be enough for the plan's refresh of resources whose attributes need list-keys or list-secrets actions (DEP-004).
+- Reader may not be enough for the plan's refresh of resources whose attributes need list-keys or list-secrets actions (DEP-004). Answered (2026-11-10): the Architect's record `04-plan-infrastructure-changes-on-pull-requests.refinement-plan-reader-secrets.design.md` adds the custom role `CoC Assistant dev plan secret reader` beside Reader.
 - DEP-003 must take the SQL admin group object id as input, because the deploy identity has no Graph permission to look it up.
 - `.gitignore`:25 conflicts with spec.md:26 (`dev.tfvars`) (DEP-003).
 - The owner has no data role on the state, which a local plan needs (DEP-003).

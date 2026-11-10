@@ -75,6 +75,26 @@ Then verify both identities show the immutable subjects:
 Finally confirm the `Terraform plan (dev)` check goes green on a pull
 request that touches `infrastructure/**`.
 
+### Re-applying after the plan secret-reader role (2026-11-10)
+
+The plan identity gained a custom role, `CoC Assistant dev plan secret
+reader`, so the PR plan can refresh resources whose reads need list-keys or
+list-secrets actions. The owner must re-apply the bootstrap locally:
+
+From `infrastructure/terraform/bootstrap/`:
+
+1. `terraform init -input=false`
+2. `terraform plan` and review it. The expected plan is exactly 2 to add
+   (the role definition `azurerm_role_definition.plan_secret_reader_dev`
+   and the assignment `azurerm_role_assignment.plan_secret_reader_dev`),
+   0 to change, 0 to destroy. Anything else means stop.
+3. `terraform apply`. If the assignment fails with
+   RoleDefinitionDoesNotExist, the definition has not propagated yet:
+   re-run `terraform apply`.
+
+Then re-run the `Terraform plan (dev)` check on PR #63 and confirm it is
+green.
+
 ## 5. Back up the local state outside the repository
 
 Copy `terraform.tfstate` and `terraform.tfstate.backup` to a private location
@@ -84,8 +104,16 @@ keys, and it is gitignored so a fresh clone cannot recover it.
 ## 6. Verify the apply
 
 - `az role assignment list --assignee <plan client id> --all`: only Reader on
-  `rg-cocassistant-dev` and Storage Blob Data Contributor on the `tfstate`
-  container.
+  `rg-cocassistant-dev`, the custom role `CoC Assistant dev plan secret
+  reader` on `rg-cocassistant-dev`, and Storage Blob Data Contributor on the
+  `tfstate` container. Check the custom role holds exactly the five list
+  actions:
+  `az role definition list --custom-role-only true --name "CoC Assistant dev plan secret reader"`
+  (`Microsoft.SignalRService/signalR/listKeys/action`,
+  `Microsoft.Web/staticSites/listSecrets/action`,
+  `Microsoft.Web/staticSites/listAppSettings/action`,
+  `Microsoft.App/containerApps/listSecrets/action`, and
+  `Microsoft.Storage/storageAccounts/listKeys/action`).
 - `az role assignment list --assignee <deploy client id> --all`: only
   Contributor on `rg-cocassistant-dev` and Storage Blob Data Contributor on
   the `tfstate` container.
