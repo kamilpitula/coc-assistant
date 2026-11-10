@@ -14,7 +14,7 @@ variable "budget_alert_emails" {
 }
 
 variable "location" {
-  description = "Azure region for the bootstrap resources. Duplicated from the environment stack on purpose: the two are separate root modules."
+  description = "Azure region for the bootstrap resources. Only the resource group and the Static Web App stay in this region: the other environment stack resources take their own region from its location variable."
   type        = string
   default     = "westeurope"
 }

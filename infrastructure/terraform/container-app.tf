@@ -1,7 +1,7 @@
 resource "azurerm_container_app_environment" "dev" {
   name                       = local.names.container_apps_environment
   resource_group_name        = data.azurerm_resource_group.dev.name
-  location                   = data.azurerm_resource_group.dev.location
+  location                   = var.location
   log_analytics_workspace_id = azurerm_log_analytics_workspace.dev.id
 
   tags = local.tags

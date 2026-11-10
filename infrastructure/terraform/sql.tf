@@ -1,7 +1,7 @@
 resource "azurerm_mssql_server" "dev" {
   name                          = local.names.sql_server
   resource_group_name           = data.azurerm_resource_group.dev.name
-  location                      = data.azurerm_resource_group.dev.location
+  location                      = var.location
   version                       = "12.0"
   minimum_tls_version           = "1.2"
   public_network_access_enabled = true
@@ -31,7 +31,7 @@ resource "azapi_resource" "database" {
   type      = "Microsoft.Sql/servers/databases@2023-08-01"
   name      = local.names.sql_database
   parent_id = azurerm_mssql_server.dev.id
-  location  = data.azurerm_resource_group.dev.location
+  location  = var.location
 
   tags = local.tags
 

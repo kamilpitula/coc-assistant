@@ -1,7 +1,16 @@
 variable "location" {
-  description = "Azure region for project resources."
+  description = "Azure region for the environment resources. No default: every environment sets it explicitly, so no stack silently falls back to another region."
   type        = string
-  default     = "westeurope"
+}
+
+variable "static_web_app_location" {
+  description = "Azure region for the Static Web App metadata. Static Web Apps accept only a few regions; the resource group and the other resources may live in another region."
+  type        = string
+
+  validation {
+    condition     = contains(["centralus", "eastus2", "westeurope", "westus2", "eastasia"], lower(var.static_web_app_location))
+    error_message = "static_web_app_location must be one of the regions Static Web Apps accepts: centralus, eastus2, westeurope, westus2, eastasia."
+  }
 }
 
 variable "environment" {
