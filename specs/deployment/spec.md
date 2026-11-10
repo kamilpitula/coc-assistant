@@ -15,7 +15,7 @@ The environment is built for near-zero cost. It runs in a Visual Studio subscrip
   | Container Apps environment | `cae-cocassistant-dev` | Consumption; logs to `log-cocassistant-dev` |
   | Container App (API) | `ca-cocassistant-api-dev` | 0.25 vCPU / 0.5 GiB; min replicas 0, max replicas 1 (ADR 0010); scale-down cooldown 3600 s; external HTTPS ingress on the default `*.azurecontainerapps.io` hostname, target port 8080 |
   | User-assigned identity (API) | `id-cocassistant-api-dev` | Used by the API to sign in to Azure SQL |
-  | Azure SQL logical server | `sql-cocassistant-dev` | Entra-only authentication; Entra admin is the deploy identity `id-cocassistant-github-deploy`; firewall allows Azure services |
+  | Azure SQL logical server | `sql-cocassistant-dev-swedencentral` | Entra-only authentication; Entra admin is the deploy identity `id-cocassistant-github-deploy`; firewall allows Azure services. The region is part of the name (PBI-DEP-007): a failed `westeurope` create left a stale record reserving `sql-cocassistant-dev` in this resource group, so the name follows `var.location` and a region move gets a fresh name automatically |
   | Azure SQL database | `sqldb-cocassistant-dev` | Free offer: serverless General Purpose, `useFreeLimit = true`, `freeLimitExhaustionBehavior = AutoPause`; one database shared by the Identity, CampaignPlay, and ScenarioPreparation contexts |
   | Storage account (Handout files) | `stcocassistantdev` | StorageV2, Standard LRS, Hot; one private container `handout-files`; no public blob access |
   | Azure SignalR Service | `sigr-cocassistant-dev` | Free, Default service mode (ADR 0009) |
@@ -31,7 +31,7 @@ The environment is built for near-zero cost. It runs in a Visual Studio subscrip
   | Identity | Federated subject | Azure roles |
   |---|---|---|
   | `id-cocassistant-github-plan` | `repo:kamilpitula/coc-assistant:pull_request` | Reader on `rg-cocassistant-dev`; Storage Blob Data Contributor on the state container |
-  | `id-cocassistant-github-deploy` | `repo:kamilpitula/coc-assistant:environment:dev` | Contributor on `rg-cocassistant-dev`; Storage Blob Data Contributor on the state container; Entra admin of `sql-cocassistant-dev` |
+  | `id-cocassistant-github-deploy` | `repo:kamilpitula/coc-assistant:environment:dev` | Contributor on `rg-cocassistant-dev`; Storage Blob Data Contributor on the state container; Entra admin of `sql-cocassistant-dev-swedencentral` |
 - **Workflows** (separate from `.github/workflows/ci.yml`):
   - `.github/workflows/terraform-plan.yml`: on `pull_request` to `master` touching `infrastructure/**`, from branches of this repository only. Runs `terraform plan` for `dev` as the plan identity and writes the plan to the job summary.
   - `.github/workflows/deploy-dev.yml`: on `workflow_run` of `CI` completing successfully on `master`, plus `workflow_dispatch`. Uses the GitHub Environment `dev` and the deploy identity. Jobs in order:
