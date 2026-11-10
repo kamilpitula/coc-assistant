@@ -116,7 +116,7 @@
 - **Rejected:** B and C. The Developer must not reintroduce them.
 
 ### D8: How the forced migration failure is verified
-| Metric | A: `workflow_dispatch` boolean input `simulate_migration_failure` (default false); the migrate job fails after the rule is added and the database user is ensured, before the first bundle | B: the owner pushes a broken migration to master |
+| Metric | A: `workflow_dispatch` boolean input `simulate_migration_failure` (default false); the migrate job fails after the rule is added, before the database user is ensured and before the first bundle | B: the owner pushes a broken migration to master |
 | --- | --- | --- |
 | Testability | + repeatable proof of the guardrail "always removes its firewall rule" | 0 one-off |
 | Security and correctness | + reachable only by manual dispatch on master | - a broken migration on master |

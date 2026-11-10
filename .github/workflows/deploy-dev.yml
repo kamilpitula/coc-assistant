@@ -229,7 +229,7 @@ jobs:
 
   rollout:
     name: Roll out API image
-    needs: [image, migrate]
+    needs: [image, migrate, terraform-apply]
     runs-on: ubuntu-latest
     environment: dev
     permissions:
