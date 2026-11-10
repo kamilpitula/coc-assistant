@@ -9,9 +9,11 @@ locally by the repository owner; its state stays local and is not committed.
 - Terraform `>= 1.9.0` (the CI `terraform` job uses 1.16.3).
 - Azure CLI, signed in to the subscription tenant (see step 2).
 - The Owner role on the subscription.
-- The repository must use the default OIDC subject template. Check it before
-  creating the identities:
+- The repository uses the immutable OIDC subject template
+  (`use_immutable_subject: true`). Check it before creating the identities:
   `gh api repos/kamilpitula/coc-assistant/actions/oidc/customization/sub`
+  must show the prefix `repo:kamilpitula@9087774/coc-assistant@1380052287`,
+  which the bootstrap subjects are built from.
 
 ## 2. Sign in and select the subscription
 
@@ -48,6 +50,51 @@ Entra group and `azuread` provider):
    Any other change means stop.
 3. `terraform apply`.
 
+### Re-applying after the immutable-subject change (2026-11-10)
+
+The bootstrap subjects changed from the classic form
+(`repo:kamilpitula/coc-assistant:...`) to the immutable form
+(`repo:kamilpitula@9087774/coc-assistant@1380052287:...`). The owner must
+re-apply the bootstrap locally so both federated credentials are updated:
+
+From `infrastructure/terraform/bootstrap/`:
+
+1. `terraform init -input=false`
+2. `terraform plan` and review it. The expected plan updates only the two
+   federated credentials
+   (`azurerm_federated_identity_credential.plan_pull_request` and
+   `azurerm_federated_identity_credential.deploy_environment_dev`).
+   Any other change means stop.
+3. `terraform apply`.
+
+Then verify both identities show the immutable subjects:
+
+- `az identity federated-credential list -g rg-cocassistant-tfstate --identity-name id-cocassistant-github-plan`
+- `az identity federated-credential list -g rg-cocassistant-tfstate --identity-name id-cocassistant-github-deploy`
+
+Finally confirm the `Terraform plan (dev)` check goes green on a pull
+request that touches `infrastructure/**`.
+
+### Re-applying after the plan secret-reader role (2026-11-10)
+
+The plan identity gained a custom role, `CoC Assistant dev plan secret
+reader`, so the PR plan can refresh resources whose reads need list-keys or
+list-secrets actions. The owner must re-apply the bootstrap locally:
+
+From `infrastructure/terraform/bootstrap/`:
+
+1. `terraform init -input=false`
+2. `terraform plan` and review it. The expected plan is exactly 2 to add
+   (the role definition `azurerm_role_definition.plan_secret_reader_dev`
+   and the assignment `azurerm_role_assignment.plan_secret_reader_dev`),
+   0 to change, 0 to destroy. Anything else means stop.
+3. `terraform apply`. If the assignment fails with
+   RoleDefinitionDoesNotExist, the definition has not propagated yet:
+   re-run `terraform apply`.
+
+Then re-run the `Terraform plan (dev)` check on PR #63 and confirm it is
+green.
+
 ## 5. Back up the local state outside the repository
 
 Copy `terraform.tfstate` and `terraform.tfstate.backup` to a private location
@@ -57,8 +104,16 @@ keys, and it is gitignored so a fresh clone cannot recover it.
 ## 6. Verify the apply
 
 - `az role assignment list --assignee <plan client id> --all`: only Reader on
-  `rg-cocassistant-dev` and Storage Blob Data Contributor on the `tfstate`
-  container.
+  `rg-cocassistant-dev`, the custom role `CoC Assistant dev plan secret
+  reader` on `rg-cocassistant-dev`, and Storage Blob Data Contributor on the
+  `tfstate` container. Check the custom role holds exactly the five list
+  actions:
+  `az role definition list --custom-role-only true --name "CoC Assistant dev plan secret reader"`
+  (`Microsoft.SignalRService/signalR/listKeys/action`,
+  `Microsoft.Web/staticSites/listSecrets/action`,
+  `Microsoft.Web/staticSites/listAppSettings/action`,
+  `Microsoft.App/containerApps/listSecrets/action`, and
+  `Microsoft.Storage/storageAccounts/listKeys/action`).
 - `az role assignment list --assignee <deploy client id> --all`: only
   Contributor on `rg-cocassistant-dev` and Storage Blob Data Contributor on
   the `tfstate` container.
@@ -90,6 +145,10 @@ The plan workflow uses no environment. Variable values are ids, not secrets.
 - Placeholder for the remaining one-time steps from
   `specs/deployment/spec.md`: the Static Web App redirect URI, the database
   firewall rule for local plans, and the first GHCR image push.
+- After the first deploy run stops at the anonymous-pull preflight in the
+  rollout job, make the GHCR package `coc-assistant-api` public (package
+  settings; `GITHUB_TOKEN` cannot do this), then Re-run failed jobs from the
+  failed run.
 
 ## 10. Run a local plan for the dev stack
 

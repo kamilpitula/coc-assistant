@@ -28,6 +28,11 @@ output "container_app_name" {
   value       = azurerm_container_app.api.name
 }
 
+output "sql_server_name" {
+  description = "Name of the SQL server, for the deploy workflow firewall commands."
+  value       = azurerm_mssql_server.dev.name
+}
+
 output "sql_server_fqdn" {
   description = "Fully qualified domain name of the SQL server."
   value       = azurerm_mssql_server.dev.fully_qualified_domain_name
@@ -49,6 +54,6 @@ output "api_identity_client_id" {
 }
 
 output "api_identity_principal_id" {
-  description = "Principal id of the API identity, for the DEP-005 database user creation."
+  description = "Principal id of the API identity, for reference only: the DEP-005 database user maps the client id, not the principal id."
   value       = azurerm_user_assigned_identity.api.principal_id
 }

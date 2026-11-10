@@ -517,6 +517,11 @@ run "outputs" {
   }
 
   assert {
+    condition     = output.sql_server_name == "sql-cocassistant-dev-swedencentral"
+    error_message = "The SQL server name output must match the resource."
+  }
+
+  assert {
     condition     = output.sql_database_name == "sqldb-cocassistant-dev"
     error_message = "The SQL database name output must match the resource."
   }

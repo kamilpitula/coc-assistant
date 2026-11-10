@@ -39,6 +39,37 @@ resource "azurerm_role_assignment" "plan_reader_dev" {
   principal_type       = "ServicePrincipal"
 }
 
+# The provider reads keys and secrets on every refresh of the SignalR service,
+# the Static Web App, and the Container App; the same values are already in the
+# state this identity reads through its container role.
+resource "azurerm_role_definition" "plan_secret_reader_dev" {
+  name        = "CoC Assistant dev plan secret reader"
+  scope       = azurerm_resource_group.dev.id
+  description = "Lets the plan identity refresh list-keys and list-secrets reads. List actions only, no write."
+
+  permissions {
+    actions = [
+      "Microsoft.SignalRService/signalR/listKeys/action",
+      "Microsoft.Web/staticSites/listSecrets/action",
+      "Microsoft.Web/staticSites/listAppSettings/action",
+      "Microsoft.App/containerApps/listSecrets/action",
+      "Microsoft.Storage/storageAccounts/listKeys/action",
+    ]
+    not_actions = []
+  }
+
+  assignable_scopes = [
+    azurerm_resource_group.dev.id,
+  ]
+}
+
+resource "azurerm_role_assignment" "plan_secret_reader_dev" {
+  scope              = azurerm_resource_group.dev.id
+  role_definition_id = azurerm_role_definition.plan_secret_reader_dev.role_definition_resource_id
+  principal_id       = azurerm_user_assigned_identity.plan.principal_id
+  principal_type     = "ServicePrincipal"
+}
+
 resource "azurerm_role_assignment" "plan_state_container" {
   scope                = azurerm_storage_container.tfstate.id
   role_definition_name = "Storage Blob Data Contributor"
