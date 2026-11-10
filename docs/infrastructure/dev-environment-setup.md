@@ -24,7 +24,9 @@ locally by the repository owner; its state stays local and is not committed.
    `infrastructure/terraform/bootstrap/terraform.tfvars` (gitignored, never
    committed).
 2. Set `subscription_id` and `budget_alert_emails`. `location` defaults to
-   `westeurope`.
+   `westeurope` and sets only the bootstrap resources and
+   `rg-cocassistant-dev`; the environment stack's own region comes from
+   `infrastructure/terraform/environments/dev.tfvars`.
 
 ## 4. Run the bootstrap stack
 
@@ -98,6 +100,31 @@ stack before the deploy workflow applies it.
 2. Set `ARM_SUBSCRIPTION_ID` to the subscription id.
 3. From `infrastructure/terraform/`:
    `terraform init -backend-config=environments/dev.backend.hcl -input=false`
-4. `terraform plan -var-file=environments/dev.tfvars` and review it. It
-   creates exactly the resources in the spec topology table, each with the
-   three tags.
+4. Prove the region first (PBI-DEP-007): only a create proves SQL can be
+   provisioned in a region for this subscription.
+   `terraform apply -var-file=environments/dev.tfvars -target=azurerm_mssql_server.dev`
+   creates only the free SQL server (no meter) in the `location` set in
+   `dev.tfvars` (`swedencentral`). `-target` is for this probe only and must
+   not appear in workflows. On `ProvisioningDisabled`, set `location` to the
+   fallback `germanywestcentral` in `dev.tfvars` and repeat; nothing else has
+   moved yet.
+5. `terraform plan -var-file=environments/dev.tfvars` and review it. The
+   expected plan replaces only the API identity, the Log Analytics workspace,
+   the storage account with its `handout-files` container, SignalR, and the
+   Container Apps environment (where they were created); creates the SQL
+   server (unless the probe created it), the firewall rule, the free-offer
+   database, and the Container App; and leaves the Static Web App and the
+   resource group unchanged. Anything else in the plan, or the Static Web App
+   being replaced, means stop. Handling:
+   - Log Analytics is permanently deleted on destroy (provider setting), so
+     the same name can be recreated in the new region at once.
+   - The storage account name is global: deletion frees it, sometimes only
+     after a few minutes. On `StorageAccountAlreadyTaken`, wait and re-run
+     apply. Nothing is lost.
+   - SignalR frees its global name on delete; the Free tier allows one Free
+     unit per subscription and region, and the old-region one is deleted
+     first.
+   - The Container Apps environment deletion can take about 10 minutes;
+     apply waits.
+6. `terraform apply -var-file=environments/dev.tfvars` and confirm it
+   completes.
