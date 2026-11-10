@@ -203,3 +203,68 @@ Single sane option.
   - Q11: D14 option A, `sql-cocassistant-${var.environment}-${var.location}` (`sql-cocassistant-dev-swedencentral`), with `var.location` validated `^[a-z0-9]{1,30}$`.
   - Q12: D15 option A, a second branch on PBI-DEP-007, `feature/dep-007-rename-the-sql-server`; no new PBI.
 - 2026-11-10, record: PR #57 (`feature/dep-007-move-the-dev-stack-to-a-region-with-sql`, c1bc138) turned out to be already merged (master 43b3027), so this fix goes on the second branch rather than PR #57. The D13 claim "nothing exists" is corrected above.
+
+### 2026-11-10: the free-offer database body (changed decision, approved; fixes PBI-DEP-003 D1)
+
+**Escalation.** The owner's full apply in `swedencentral` failed on `azapi_resource.database` (sql.tf:30, `Microsoft.Sql/servers/databases@2023-08-01`): async operation status Failed, code `ProvisioningDisabled`, message "Only default value for auto pause delay is allowed for Free Limit database with auto pause exhaustion behavior". The code says `ProvisioningDisabled`, but the message is the real cause. The SQL server `sql-cocassistant-dev-swedencentral` was created, so the region and the rename (D14) worked.
+
+**Facts (observed).**
+- https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer?view=azuresql (`ms.date` 2026-10-30, "Last updated on 2026-11-06", fetched 2026-11-10):
+  - "The free tier databases automatically pause after 15 minutes of inactivity. The auto-pause delay is fixed and can't be changed, regardless of the selected behavior when the monthly free limit is reached."
+  - "You can apply the free tier only to a new database. You can't restore or convert an existing database to the free tier."
+  - "If you use Advanced configuration, the region selected for the first free tier database applies to all free tier databases in that subscription and can't be changed."
+  - Its Terraform azapi example body: `sku = { name = "GP_S_Gen5" tier = "GeneralPurpose" family = "Gen5" capacity = 2 } properties = { createMode = "Default" maxSizeBytes = 34359738368 requestedBackupStorageRedundancy = "Local" useFreeLimit = true freeLimitExhaustionBehavior = "AutoPause" }` - no `autoPauseDelay`, no `minCapacity`.
+- https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer-faq?view=azuresql (`ms.date` 2026-10-30, fetched 2026-11-10): "With Auto-pause the database until next month, the database is limited to 4 vCores and 32 GB. Long-term backup retention isn't available, point-in-time restore retention is limited to seven days, and backup storage is locally redundant." Geo-redundant backup is only possible with "Continue using for additional charges".
+- The pages give no numeric API default for `autoPauseDelay`; the only documented value is the fixed 15 minutes, and sending 15 was refused. So no value is set.
+- The current body (sql.tf:40-54): `sku` and `maxSizeBytes` match the example; `autoPauseDelay = 15` was refused; `minCapacity = 0.5` is not in the example; `requestedBackupStorageRedundancy` is missing, and Azure's default is geo-redundant, the most likely next rejection.
+- References on master 41fd3de: `autoPauseDelay` and `minCapacity` only at sql.tf:50-51 and tests/environment.tftest.hcl:360-361. The 15-minute claim only at ADR 0031:49 (earlier records cite it as :28). ADR 0031:29, spec.md:19 and :83, and costs.md:17 describe only the free limit and AutoPause.
+- Owner check (Q14): `az sql db show -g rg-cocassistant-dev -s sql-cocassistant-dev-swedencentral -n sqldb-cocassistant-dev` returns ResourceNotFound, and `terraform state list` has no `azapi_resource.database`. The failed create left nothing behind.
+
+#### D16: The database body
+| Metric | A: drop autoPauseDelay only | B: match the official example |
+| --- | --- | --- |
+| Consistency | 0 still sends one undocumented field and leaves backup redundancy to Azure's default | + exactly the body Microsoft publishes for azapi |
+| Modifiability | 0 | + future docs updates map one-to-one |
+| Testability | + assertable | + assertable, plus the absence of the removed fields |
+| Simplicity | + one line | + four small edits, no new code |
+| Reversibility | + | + |
+| Security and correctness | - the next apply may fail on `minCapacity` or geo-redundant backups, each try a failed create | + every field documented; local backups are what the free tier requires |
+
+- **Chosen:** B - remove `autoPauseDelay` and `minCapacity`; add `requestedBackupStorageRedundancy = "Local"` and `createMode = "Default"` - because of correctness and consistency. Giving up nothing real: the serverless minimum for 2 vCores is already 0.5 (general serverless behavior, not stated on the free-tier pages), and local backups are what the free tier uses anyway.
+- **Rejected:** A (risks another failed real apply); C, setting a "documented default" explicitly (the only documented value, 15, was refused; any other number is a guess). The Developer must not add `autoPauseDelay` or `minCapacity` back.
+- Unchanged consequences: the 15-minute statement at ADR 0031:49 stays true, now because the platform fixes it - cite the free-offer page ("fixed by the free tier; not configurable"). Cost: no meter; with AutoPause the database "is inaccessible until the allowance resets at the start of the next calendar month" instead of billing. Cold start: still a pause after 15 idle minutes; the retry policy (8 retries, 15 s maximum delay, about 71 s; ADR 0031 amendment) still covers a resume, and `/health` still never touches the database.
+- Region note: under the "Advanced configuration" rule, the first free-tier database's region may lock later free-tier databases in this subscription to `swedencentral`. Only a future second environment is affected; record it in costs.md.
+
+#### D17: Where to track it
+- Single sane option: a third branch on PBI-DEP-007, `feature/dep-007-free-offer-database-body`. DEP-007 is still `todo`, its Directive is "so `terraform apply` completes", and its deferred owner check at line 31 is what fails. The defect started in PBI-DEP-003 D1, which is `done`; DEP-003 gets no new branch. Rejected: a new PBI (backwards dependency order, as in D15).
+
+#### Re-running apply (owner)
+1. Q14 showed no leftover database in Azure or state: re-apply normally. If the create ever reports the name taken with nothing visible (a stale record, as with the SQL server), stop and escalate; do not rename on the spot.
+2. Expected plan: create `azapi_resource.database` and the Container App (which depends on the database name through the connection strings), plus whatever the Log Analytics failure still needs.
+3. After apply: `az sql db show -g rg-cocassistant-dev -s sql-cocassistant-dev-swedencentral -n sqldb-cocassistant-dev --query "{free:useFreeLimit, exhaustion:freeLimitExhaustionBehavior, pause:autoPauseDelay, backup:requestedBackupStorageRedundancy}"`. Expect `true`, `AutoPause`, the platform's value (record what is shown), and `Local`. This is the evidence for spec.md:83 and DEP-007 line 31.
+
+#### Invariants (changed or added)
+- The database body sends exactly the fields in Microsoft's free-offer azapi example; never `autoPauseDelay` or `minCapacity`.
+- Backup storage redundancy is `Local`.
+- The 15-minute idle pause is the platform's fixed behavior, cited, not configured.
+
+#### Files the Developer touches
+- `infrastructure/terraform/sql.tf:40-54`: the body per D16 B, with a comment citing the free-offer page.
+- `infrastructure/terraform/tests/environment.tftest.hcl:335-366`: replace the `autoPauseDelay == 15` assertion with checks that `autoPauseDelay` and `minCapacity` are absent; add `requestedBackupStorageRedundancy == "Local"` and `createMode == "Default"`; keep the type, free-limit, AutoPause, SKU, and max-size assertions.
+- `docs/adr/0031-dev-environment-on-container-apps-static-web-apps-and-free-sql.md`: a dated amendment line (body matches the official example; the 15-minute pause is platform-fixed) and the citation at :49.
+- `docs/infrastructure/costs.md:17`: locally redundant backups and the possible free-tier region lock, with both URLs and the date checked.
+- `docs/infrastructure/dev-environment-setup.md` (DEP-007 steps): the post-apply `az sql db show` check.
+- `docs/deployment/issues/07-move-the-dev-stack-to-a-region-with-sql.md`: a Follow-up recording the failure and fix; line 31 stays deferred until the owner's apply succeeds.
+
+#### TDD units
+- The database body has `useFreeLimit == true`, `freeLimitExhaustionBehavior == "AutoPause"`, `requestedBackupStorageRedundancy == "Local"`, `createMode == "Default"`, SKU `GP_S_Gen5`/`GeneralPurpose`/`Gen5`/2, and `maxSizeBytes == 34359738368`.
+- The body has no `autoPauseDelay` and no `minCapacity` key (`!contains(keys(...properties), ...)`).
+
+#### E2E coverage
+- Exception, unchanged: infrastructure only. The owner's apply and the `az sql db show` check are the verification.
+
+#### Human decisions
+- 2026-11-10, owner: "approve D16 B and D17".
+  - Q13: D16 option B (the body matches Microsoft's free-offer example; the 15-minute pause stays platform-fixed and cited) and D17 (a third branch on PBI-DEP-007, `feature/dep-007-free-offer-database-body`).
+  - Q14: no leftover database in Azure or Terraform state; re-apply normally.
+- Pending: the Log Analytics 409 (`log-cocassistant-dev` reserved in westeurope) is designed in a separate revision.
