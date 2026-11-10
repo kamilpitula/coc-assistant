@@ -25,8 +25,11 @@ resource "azurerm_mssql_firewall_rule" "azure_services" {
   end_ip_address   = "0.0.0.0"
 }
 
-# Free-offer database: azurerm has no free-limit attribute, so the whole
-# resource is azapi (D1). Free from creation, AutoPause on exhaustion.
+# Free-offer database: azapi (D1). Free from creation, AutoPause on exhaustion.
+# The body matches Microsoft's free-offer azapi example: the free tier fixes
+# the 15-minute pause and rejects any autoPauseDelay value, so neither it nor
+# minCapacity is sent.
+# https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer?view=azuresql
 resource "azapi_resource" "database" {
   type      = "Microsoft.Sql/servers/databases@2023-08-01"
   name      = local.names.sql_database
@@ -45,11 +48,11 @@ resource "azapi_resource" "database" {
       capacity = 2
     }
     properties = {
-      useFreeLimit                = true
-      freeLimitExhaustionBehavior = "AutoPause"
-      autoPauseDelay              = 15
-      minCapacity                 = 0.5
-      maxSizeBytes                = 34359738368
+      createMode                       = "Default"
+      useFreeLimit                     = true
+      freeLimitExhaustionBehavior      = "AutoPause"
+      maxSizeBytes                     = 34359738368
+      requestedBackupStorageRedundancy = "Local"
     }
   }
 }

@@ -18,14 +18,14 @@ variables {
 override_resource {
   target = azurerm_log_analytics_workspace.dev
   values = {
-    id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cocassistant-dev/providers/Microsoft.OperationalInsights/workspaces/log-cocassistant-dev"
+    id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cocassistant-dev/providers/Microsoft.OperationalInsights/workspaces/log-cocassistant-dev-swedencentral"
   }
 }
 
 override_resource {
   target = azurerm_container_app_environment.dev
   values = {
-    id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cocassistant-dev/providers/Microsoft.App/managedEnvironments/cae-cocassistant-dev"
+    id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-cocassistant-dev/providers/Microsoft.App/managedEnvironments/cae-cocassistant-dev-swedencentral"
   }
 }
 
@@ -133,13 +133,13 @@ run "resource_names_match_spec_topology" {
   command = apply
 
   assert {
-    condition     = azurerm_log_analytics_workspace.dev.name == "log-cocassistant-dev"
-    error_message = "The Log Analytics workspace must be named log-cocassistant-dev."
+    condition     = azurerm_log_analytics_workspace.dev.name == "log-cocassistant-dev-swedencentral"
+    error_message = "The Log Analytics workspace must be named log-cocassistant-dev-swedencentral."
   }
 
   assert {
-    condition     = azurerm_container_app_environment.dev.name == "cae-cocassistant-dev"
-    error_message = "The Container Apps environment must be named cae-cocassistant-dev."
+    condition     = azurerm_container_app_environment.dev.name == "cae-cocassistant-dev-swedencentral"
+    error_message = "The Container Apps environment must be named cae-cocassistant-dev-swedencentral."
   }
 
   assert {
@@ -176,6 +176,11 @@ run "resource_names_match_spec_topology" {
     condition     = azurerm_static_web_app.dev.name == "stapp-cocassistant-dev"
     error_message = "The Static Web App must be named stapp-cocassistant-dev."
   }
+
+  assert {
+    condition     = azurerm_container_app_environment.dev.log_analytics_workspace_id == azurerm_log_analytics_workspace.dev.id
+    error_message = "The Container Apps environment must log to the renamed workspace."
+  }
 }
 
 run "sql_server_name_follows_fallback_region" {
@@ -193,6 +198,16 @@ run "sql_server_name_follows_fallback_region" {
   assert {
     condition     = azapi_resource.database.name == "sqldb-cocassistant-dev"
     error_message = "The SQL database must stay named sqldb-cocassistant-dev in the fallback region."
+  }
+
+  assert {
+    condition     = azurerm_log_analytics_workspace.dev.name == "log-cocassistant-dev-germanywestcentral"
+    error_message = "The Log Analytics workspace must be named log-cocassistant-dev-germanywestcentral in the fallback region."
+  }
+
+  assert {
+    condition     = azurerm_container_app_environment.dev.name == "cae-cocassistant-dev-germanywestcentral"
+    error_message = "The Container Apps environment must be named cae-cocassistant-dev-germanywestcentral in the fallback region."
   }
 }
 
@@ -357,13 +372,28 @@ run "sql_database_free_offer" {
   }
 
   assert {
-    condition     = azapi_resource.database.body.properties.autoPauseDelay == 15
-    error_message = "The database auto-pause delay must be 15 minutes."
+    condition     = azapi_resource.database.body.properties.maxSizeBytes == 34359738368
+    error_message = "The database maximum size must be 32 GB."
   }
 
   assert {
-    condition     = azapi_resource.database.body.properties.maxSizeBytes == 34359738368
-    error_message = "The database maximum size must be 32 GB."
+    condition     = azapi_resource.database.body.properties.requestedBackupStorageRedundancy == "Local"
+    error_message = "The database backup storage redundancy must be Local."
+  }
+
+  assert {
+    condition     = azapi_resource.database.body.properties.createMode == "Default"
+    error_message = "The database create mode must be Default."
+  }
+
+  assert {
+    condition     = !contains(keys(azapi_resource.database.body.properties), "autoPauseDelay")
+    error_message = "The database body must not set autoPauseDelay: the free tier fixes the 15-minute pause and rejects any value."
+  }
+
+  assert {
+    condition     = !contains(keys(azapi_resource.database.body.properties), "minCapacity")
+    error_message = "The database body must not set minCapacity: it is not in the free-offer example."
   }
 }
 
