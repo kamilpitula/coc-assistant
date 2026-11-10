@@ -12,14 +12,14 @@ The environment is built for near-zero cost. It runs in a Visual Studio subscrip
   | Resource | Name | SKU / setting |
   |---|---|---|
   | Static Web App (SPA) | `stapp-cocassistant-dev` | Free; stays in `westeurope` (the service accepts only a few regions); default `*.azurestaticapps.net` hostname |
-  | Container Apps environment | `cae-cocassistant-dev` | Consumption; logs to `log-cocassistant-dev` |
+  | Container Apps environment | `cae-cocassistant-dev-swedencentral` | Consumption; logs to `log-cocassistant-dev-swedencentral`. The region is part of the name (PBI-DEP-007): the `westeurope` workspace and environment were deleted by the move, but Azure still blocks the plain names in this resource group, so both names follow `var.location` like the SQL server |
   | Container App (API) | `ca-cocassistant-api-dev` | 0.25 vCPU / 0.5 GiB; min replicas 0, max replicas 1 (ADR 0010); scale-down cooldown 3600 s; external HTTPS ingress on the default `*.azurecontainerapps.io` hostname, target port 8080 |
   | User-assigned identity (API) | `id-cocassistant-api-dev` | Used by the API to sign in to Azure SQL |
   | Azure SQL logical server | `sql-cocassistant-dev-swedencentral` | Entra-only authentication; Entra admin is the deploy identity `id-cocassistant-github-deploy`; firewall allows Azure services. The region is part of the name (PBI-DEP-007): a failed `westeurope` create left a stale record reserving `sql-cocassistant-dev` in this resource group, so the name follows `var.location` and a region move gets a fresh name automatically |
   | Azure SQL database | `sqldb-cocassistant-dev` | Free offer: serverless General Purpose, `useFreeLimit = true`, `freeLimitExhaustionBehavior = AutoPause`; one database shared by the Identity, CampaignPlay, and ScenarioPreparation contexts |
   | Storage account (Handout files) | `stcocassistantdev` | StorageV2, Standard LRS, Hot; one private container `handout-files`; no public blob access |
   | Azure SignalR Service | `sigr-cocassistant-dev` | Free, Default service mode (ADR 0009) |
-  | Log Analytics workspace | `log-cocassistant-dev` | Pay-as-you-go, daily cap 0.15 GB, retention 30 days |
+  | Log Analytics workspace | `log-cocassistant-dev-swedencentral` | Pay-as-you-go, daily cap 0.15 GB, retention 30 days |
   - Every resource carries the tags `project=coc-assistant`, `environment=dev`, `managed-by=terraform`.
 - **Terraform layout:**
   - `infrastructure/terraform/bootstrap/`: run once, locally, by the repository owner. Creates `rg-cocassistant-tfstate` with the state storage account `stcocassistanttfstate` (versioning and soft delete on, shared-key access off so access is Entra-only) and container `tfstate`, `rg-cocassistant-dev`, the plan and deploy identities (in `rg-cocassistant-tfstate`) with their federated credentials and role assignments, the owner's Storage Blob Data Contributor role on the `tfstate` container for local plans, and a subscription budget of EUR 5 per month with email alerts at 20% actual, 80% forecast, and 100% forecast. Its own state stays local and is not committed.
