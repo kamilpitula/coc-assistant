@@ -24,9 +24,21 @@ The application needs a hosted `dev` environment ([specs/deployment/spec.md](../
 - A Container Apps Job for migrations. Rejected: a second image and job for a one-minute firewall opening.
 - SQL logins with passwords; Key Vault; HCP Terraform state. Rejected: secrets to manage, or a non-Azure dependency, with no gain at this size.
 
+## Amendment (2026-11-10, PBI-DEP-003)
+How the decision is built ([design record](../deployment/issues/03-provision-the-dev-environment-stack.design.md)):
+- **Free-offer database through `azapi` (D1):** the whole `sqldb-cocassistant-dev` resource is one `azapi_resource` on the stable API version `2023-08-01` (`useFreeLimit = true`, `freeLimitExhaustionBehavior = AutoPause`), because `azurerm` exposes no free-limit property. Free from creation, so there is no billed window.
+- **Committed `dev.tfvars` (D2):** environment values live in the committed `infrastructure/terraform/environments/dev.tfvars` (ids and names only, never secrets); the subscription id stays out of the repo and comes from `ARM_SUBSCRIPTION_ID` (D3).
+- **Derived names (D4):** every resource name derives from `var.environment`; tags are `project = "coc-assistant"`, `environment = var.environment`, `managed-by = "terraform"`.
+- **Owner state role (D5):** bootstrap grants the owner Storage Blob Data Contributor on the `tfstate` container, so a local `dev` plan can read the backend state.
+- **Placeholder image (D6):** the Container App is created with `mcr.microsoft.com/dotnet/samples:aspnetapp` (listens on 8080); the image stays in `ignore_changes` and the deploy workflow rolls out the real image.
+- **SignalR Free in Default mode (D7):** confirmed from the official quickstart ([costs.md](../infrastructure/costs.md)), as ADR 0009 names.
+- **Deploy identity as SQL Entra admin (D8):** Azure SQL allows one Entra admin and the owner cannot create security groups (403), so `azuread_administrator` on the server names the deploy identity directly (`sql_entra_admin_object_id` input, never derived from the caller). Only the deploy workflow administers the database; the owner has no standing access. Break-glass is a temporary self-admin change through ARM, reset by the next apply. The migrate job creates the API identity's database user without Graph.
+- **No group, no `azuread` (D9):** bootstrap drops `azuread_group.sql_admins` and the `azuread` provider; the owner removes the data source from local state and re-applies (the only change is the owner state role). Nothing was ever created, so nothing is orphaned.
+
 ## Consequences
 - The first request after an idle period waits for a cold start and, after 15 idle minutes, for the database to resume. The DbContexts retry on transient failures for at least 60 seconds, and `/health` does not touch the database so probes do not keep it awake.
 - If the free database allowance runs out, the database is offline until the next calendar month. This cannot be switched to billing and back.
+- The owner has no standing database access; database work goes through the deploy workflow, with ARM break-glass resetting on the next apply.
 - **Revisit when** idle sessions lose live updates despite the cooldown (move to min replicas 1), when more than 20 concurrent connections are needed (SignalR Standard, about $49/month), or when a production environment is planned.
 
 ## Amendment (2026-11-09, PBI-DEP-002)

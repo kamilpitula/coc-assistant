@@ -59,3 +59,12 @@ resource "azurerm_role_assignment" "deploy_state_container" {
   principal_id         = azurerm_user_assigned_identity.deploy.principal_id
   principal_type       = "ServicePrincipal"
 }
+
+# Lets the owner run a local plan for the environment stack, which reads
+# its backend state through this container. Same container scope as the
+# GitHub identities, granted by the bootstrap re-apply.
+resource "azurerm_role_assignment" "owner_state_container" {
+  scope                = azurerm_storage_container.tfstate.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = data.azurerm_client_config.current.object_id
+}

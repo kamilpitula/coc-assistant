@@ -24,6 +24,11 @@ e2e/.certs/
 *.tfstate.*
 *.tfvars
 *.tfvars.json
+# The environment stacks keep their non-secret values in committed tfvars;
+# never commit secrets in any tfvars file.
+!infrastructure/terraform/environments/*.tfvars
+# Never commit saved plans (for example bootstrap/bootstrap.plan).
+infrastructure/terraform/**/*.plan
 
 # Local configuration
 .env

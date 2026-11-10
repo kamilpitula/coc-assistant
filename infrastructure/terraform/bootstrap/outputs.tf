@@ -38,17 +38,12 @@ output "deploy_client_id" {
   value       = azurerm_user_assigned_identity.deploy.client_id
 }
 
-output "sql_admin_group_object_id" {
-  description = "Object id of the SQL admin group, for the environment stack to reference."
-  value       = azuread_group.sql_admins.object_id
-}
-
-output "sql_admin_group_display_name" {
-  description = "Display name of the SQL admin group."
-  value       = azuread_group.sql_admins.display_name
+output "deploy_principal_id" {
+  description = "Principal id of the GitHub deploy identity, for the environment stack's SQL Entra admin input."
+  value       = azurerm_user_assigned_identity.deploy.principal_id
 }
 
 output "owner_object_id" {
-  description = "Object id of the signed-in user that ran apply (the repository owner)."
-  value       = data.azuread_client_config.current.object_id
+  description = "Object id of the signed-in user that ran apply (the repository owner), from the azurerm provider."
+  value       = data.azurerm_client_config.current.object_id
 }

@@ -1,25 +1,14 @@
 mock_provider "azurerm" {}
 
-mock_provider "azuread" {}
-
 variables {
   subscription_id     = "00000000-0000-0000-0000-000000000000"
   budget_alert_emails = ["owner@example.com"]
 }
 
-# Mock providers generate unrelated tenant ids per data source, so pin both to
-# the same tenant. The mismatch run below overrides these with differing ids.
-override_data {
-  target = data.azuread_client_config.current
-  values = {
-    object_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-    tenant_id = "00000000-0000-0000-0000-000000000000"
-  }
-}
-
 override_data {
   target = data.azurerm_client_config.current
   values = {
+    object_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
     tenant_id = "00000000-0000-0000-0000-000000000000"
   }
 }
@@ -231,38 +220,43 @@ run "state_storage_settings" {
   }
 }
 
-# SQL admin group
+# Owner state access and deploy principal output
 
-run "sql_admin_group_members" {
+run "owner_state_container_role" {
   command = apply
 
   assert {
-    condition     = azuread_group.sql_admins.members == toset([azurerm_user_assigned_identity.deploy.principal_id, data.azuread_client_config.current.object_id])
-    error_message = "The SQL admin group must contain exactly the deploy identity and the owner."
+    condition     = azurerm_role_assignment.owner_state_container.role_definition_name == "Storage Blob Data Contributor"
+    error_message = "The owner must have Storage Blob Data Contributor on the state container for a local plan."
+  }
+
+  assert {
+    condition     = azurerm_role_assignment.owner_state_container.scope == azurerm_storage_container.tfstate.id
+    error_message = "The owner storage assignment must be scoped to the state container, not the account."
+  }
+
+  assert {
+    condition     = azurerm_role_assignment.owner_state_container.principal_id == data.azurerm_client_config.current.object_id
+    error_message = "The owner storage assignment must target whoever runs the apply, without a second provider."
   }
 }
 
-run "sql_admin_group_rejects_tenant_mismatch" {
-  command = plan
+run "deploy_principal_id_output" {
+  command = apply
 
-  override_data {
-    target = data.azuread_client_config.current
-    values = {
-      object_id = "11111111-1111-1111-1111-111111111111"
-      tenant_id = "11111111-1111-1111-1111-111111111111"
-    }
+  assert {
+    condition     = output.deploy_principal_id == azurerm_user_assigned_identity.deploy.principal_id
+    error_message = "deploy_principal_id must equal the deploy identity principal id, for the SQL Entra admin input."
   }
+}
 
-  override_data {
-    target = data.azurerm_client_config.current
-    values = {
-      tenant_id = "22222222-2222-2222-2222-222222222222"
-    }
+run "owner_object_id_from_azurerm" {
+  command = apply
+
+  assert {
+    condition     = output.owner_object_id == data.azurerm_client_config.current.object_id
+    error_message = "owner_object_id must come from the azurerm provider."
   }
-
-  expect_failures = [
-    azuread_group.sql_admins,
-  ]
 }
 
 # Budget
