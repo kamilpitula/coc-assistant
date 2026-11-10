@@ -4,6 +4,15 @@ resource "azurerm_container_app_environment" "dev" {
   location                   = var.location
   log_analytics_workspace_id = azurerm_log_analytics_workspace.dev.id
 
+  # Azure automatically adds this Consumption profile to every environment and
+  # reports it back, so declaring it keeps the plan clean. No counts: they stay
+  # at the platform default and a Consumption profile runs on serverless
+  # infrastructure with no dedicated cost.
+  workload_profile {
+    name                  = "Consumption"
+    workload_profile_type = "Consumption"
+  }
+
   tags = local.tags
 }
 
@@ -12,6 +21,10 @@ resource "azurerm_container_app" "api" {
   container_app_environment_id = azurerm_container_app_environment.dev.id
   resource_group_name          = data.azurerm_resource_group.dev.name
   revision_mode                = "Single"
+
+  # The default Consumption profile Azure places every app on. Declared so the
+  # plan stays clean instead of showing the platform value as a removal.
+  workload_profile_name = "Consumption"
 
   identity {
     type         = "UserAssigned"

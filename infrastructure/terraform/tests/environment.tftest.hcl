@@ -272,6 +272,22 @@ run "container_app_scale_and_probes" {
   }
 }
 
+# Container App workload profile
+
+run "container_app_workload_profile_matches_azure_default" {
+  command = apply
+
+  assert {
+    condition     = length(azurerm_container_app_environment.dev.workload_profile) == 1 && [for p in azurerm_container_app_environment.dev.workload_profile : p.name if p.workload_profile_type == "Consumption"][0] == "Consumption"
+    error_message = "The Container Apps environment must declare exactly the default Consumption workload profile."
+  }
+
+  assert {
+    condition     = azurerm_container_app.api.workload_profile_name == "Consumption"
+    error_message = "The Container App must run on the default Consumption workload profile."
+  }
+}
+
 # Container App configuration
 
 run "container_app_configuration" {
