@@ -69,21 +69,27 @@ UNION ALL SELECT 'WallEntries', COUNT(*) FROM WallEntries WHERE AuthorAccountId 
 -- Repeat with '<OidAccountId>': every count must be 0, or stop and investigate.
 ```
 
-3. Merge one confirmed pair (idempotent: the `WHERE` guards make a re-run a no-op). The `UPDATE`
-   derives the DisplayName/Email snapshot from whichever row has the later `LastSignedInAt` (ties favor
-   the `oid` row), so there is nothing to pick by hand.
+3. Merge one confirmed pair. The unique index on `Accounts.EntraObjectId` is enforced per statement,
+   so the `oid` row's values are staged into variables first, then the `oid` row is deleted, then the
+   survivor is updated to the staged value. The `UPDATE` derives the DisplayName/Email snapshot from
+   whichever row has the later `LastSignedInAt` (ties favor the `oid` row), so there is nothing to pick
+   by hand. `SET XACT_ABORT ON` makes a mid-script error roll everything back; the `WHERE` guards plus
+   the `@OidValue IS NOT NULL` check make a re-run a no-op (including a re-run after the `oid` row is
+   already gone, which leaves the kept row untouched instead of blanking it).
 
 ```sql
+SET XACT_ABORT ON;
 BEGIN TRANSACTION;
-UPDATE sub
-   SET EntraObjectId = oid.EntraObjectId,
-       DisplayName = CASE WHEN oid.LastSignedInAt >= sub.LastSignedInAt THEN oid.DisplayName ELSE sub.DisplayName END,
-       Email = CASE WHEN oid.LastSignedInAt >= sub.LastSignedInAt THEN oid.Email ELSE sub.Email END,
-       LastSignedInAt = CASE WHEN oid.LastSignedInAt >= sub.LastSignedInAt THEN oid.LastSignedInAt ELSE sub.LastSignedInAt END
-  FROM Accounts sub
-  JOIN Accounts oid ON oid.Id = '<OidAccountId>' AND oid.EntraObjectId = '<OidValue>'
- WHERE sub.Id = '<SubAccountId>' AND sub.EntraObjectId = '<SubValue>';
+DECLARE @OidValue nvarchar(255), @OidName nvarchar(256), @OidEmail nvarchar(320), @OidSeen datetimeoffset;
+SELECT @OidValue = EntraObjectId, @OidName = DisplayName, @OidEmail = Email, @OidSeen = LastSignedInAt
+  FROM Accounts WHERE Id = '<OidAccountId>' AND EntraObjectId = '<OidValue>';
 DELETE FROM Accounts WHERE Id = '<OidAccountId>' AND EntraObjectId = '<OidValue>';
+UPDATE Accounts
+   SET EntraObjectId = @OidValue,
+       DisplayName = CASE WHEN @OidSeen >= LastSignedInAt THEN @OidName ELSE DisplayName END,
+       Email = CASE WHEN @OidSeen >= LastSignedInAt THEN @OidEmail ELSE Email END,
+       LastSignedInAt = CASE WHEN @OidSeen >= LastSignedInAt THEN @OidSeen ELSE LastSignedInAt END
+ WHERE Id = '<SubAccountId>' AND EntraObjectId = '<SubValue>' AND @OidValue IS NOT NULL;
 COMMIT;
 ```
 
