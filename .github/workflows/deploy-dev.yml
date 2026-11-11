@@ -140,19 +140,22 @@ jobs:
       - uses: ./.github/actions/setup-dotnet
       - name: Restore dotnet-ef
         run: dotnet tool restore
-      # The SDK does not restore on build, and the bundle command does not
-      # restore either, so restore the API closure (which pulls in the three
-      # Infrastructure projects through project references) first.
-      - name: Restore API projects
-        run: dotnet restore backend/src/CocAssistant.Api/CocAssistant.Api.csproj
+      # Restore and build exactly like CI (the Backend job in ci.yml): the
+      # bundle command hides its own build errors and its build fails
+      # intermittently on Linux, so build here with visible errors and let
+      # the bundles reuse that build through --no-build.
+      - name: Restore backend
+        run: dotnet restore backend/CocAssistant.slnx
+      - name: Build backend
+        run: dotnet build backend/CocAssistant.slnx --no-restore --configuration Release
       # Bundles are built before the firewall rule is opened, which keeps the
       # open window short.
       - name: Build migration bundles
         run: |
           mkdir -p "$RUNNER_TEMP/bundles"
-          dotnet ef migrations bundle --project backend/src/Identity/CocAssistant.Identity.Infrastructure/CocAssistant.Identity.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context IdentityDbContext --configuration Release --force --output "$RUNNER_TEMP/bundles/identity-bundle"
-          dotnet ef migrations bundle --project backend/src/CampaignPlay/CocAssistant.CampaignPlay.Infrastructure/CocAssistant.CampaignPlay.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context CampaignPlayDbContext --configuration Release --force --output "$RUNNER_TEMP/bundles/campaignplay-bundle"
-          dotnet ef migrations bundle --project backend/src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Infrastructure/CocAssistant.ScenarioPreparation.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context ScenarioPreparationDbContext --configuration Release --force --output "$RUNNER_TEMP/bundles/scenarioprep-bundle"
+          dotnet ef migrations bundle --project backend/src/Identity/CocAssistant.Identity.Infrastructure/CocAssistant.Identity.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context IdentityDbContext --configuration Release --no-build --force --output "$RUNNER_TEMP/bundles/identity-bundle"
+          dotnet ef migrations bundle --project backend/src/CampaignPlay/CocAssistant.CampaignPlay.Infrastructure/CocAssistant.CampaignPlay.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context CampaignPlayDbContext --configuration Release --no-build --force --output "$RUNNER_TEMP/bundles/campaignplay-bundle"
+          dotnet ef migrations bundle --project backend/src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Infrastructure/CocAssistant.ScenarioPreparation.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context ScenarioPreparationDbContext --configuration Release --no-build --force --output "$RUNNER_TEMP/bundles/scenarioprep-bundle"
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         id: azure-login
         with:
