@@ -277,9 +277,22 @@ jobs:
             echo "::error::The template image is $ACTUAL, expected $EXPECTED_IMAGE."
             exit 1
           fi
-          LATEST="$(az containerapp show -n "$CONTAINER_APP_NAME" -g "$RESOURCE_GROUP_NAME" --query latestRevisionName -o tsv)"
-          STATE="$(az containerapp revision show -n "$CONTAINER_APP_NAME" -g "$RESOURCE_GROUP_NAME" --revision "$LATEST" --query properties.provisioningState -o tsv)"
-          if [ "$STATE" != "Succeeded" ]; then
+          LATEST="$(az containerapp show -n "$CONTAINER_APP_NAME" -g "$RESOURCE_GROUP_NAME" --query "properties.latestRevisionName" -o tsv)"
+          if [ -z "$LATEST" ]; then
+            echo "::error::Could not read properties.latestRevisionName for $CONTAINER_APP_NAME."
+            exit 1
+          fi
+          # A fresh revision can still be Provisioning at scale 0, so poll
+          # until it reaches a terminal revision provisioning state.
+          STATE=""
+          for ATTEMPT in $(seq 1 20); do
+            STATE="$(az containerapp revision show -n "$CONTAINER_APP_NAME" -g "$RESOURCE_GROUP_NAME" --revision "$LATEST" --query "properties.provisioningState" -o tsv)"
+            if [ "$STATE" = "Provisioned" ] || [ "$STATE" = "Failed" ]; then
+              break
+            fi
+            sleep 15
+          done
+          if [ "$STATE" != "Provisioned" ]; then
             echo "::error::The latest revision $LATEST reports provisioningState $STATE."
             exit 1
           fi
@@ -329,6 +342,10 @@ jobs:
         id: swa-token
         run: |
           SWA_TOKEN="$(az staticwebapp secrets list -n "$STATIC_WEB_APP_NAME" -g "$RESOURCE_GROUP_NAME" --query properties.apiKey -o tsv)"
+          if [ -z "$SWA_TOKEN" ]; then
+            echo "::error::Could not read properties.apiKey for $STATIC_WEB_APP_NAME."
+            exit 1
+          fi
           echo "::add-mask::$SWA_TOKEN"
           echo "swa-token=$SWA_TOKEN" >> "$GITHUB_OUTPUT"
       - name: Deploy to Static Web Apps
