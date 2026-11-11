@@ -29,7 +29,12 @@ public sealed class CampaignHubTestClient : IAsyncDisposable
     public Task<Exception?> Closed => _closed.Task;
 
     /// <summary>Builds a connection authenticated as the Account with the given oid; optionally its token expires at a time.</summary>
-    public static CampaignHubTestClient Create(IdentityApiFactory factory, string oid, DateTimeOffset? expiresAt = null)
+    public static CampaignHubTestClient Create(
+        IdentityApiFactory factory,
+        string oid,
+        DateTimeOffset? expiresAt = null,
+        string oidClaimType = "oid",
+        string? sub = null)
     {
         var server = factory.Server;
         var connection = new HubConnectionBuilder()
@@ -38,6 +43,8 @@ public sealed class CampaignHubTestClient : IAsyncDisposable
                 options.Transports = HttpTransportType.LongPolling;
                 options.HttpMessageHandlerFactory = _ => server.CreateHandler();
                 options.Headers["X-Test-Oid"] = oid;
+                options.Headers["X-Test-Oid-Claim-Type"] = oidClaimType;
+                options.Headers["X-Test-Sub"] = sub ?? $"{oid}-sub";
                 options.Headers["X-Test-Name"] = DisplayNameFor(oid);
                 options.Headers["X-Test-Email"] = $"{oid}@example.com";
                 if (expiresAt is not null)
@@ -68,9 +75,11 @@ public sealed class CampaignHubTestClient : IAsyncDisposable
     public static async Task<(CampaignHubTestClient Client, PresenceSnapshotMessage Snapshot)> SubscribeAsync(
         IdentityApiFactory factory,
         string oid,
-        Guid campaignId)
+        Guid campaignId,
+        string oidClaimType = "oid",
+        string? sub = null)
     {
-        var client = Create(factory, oid);
+        var client = Create(factory, oid, null, oidClaimType, sub);
         await client.Connection.StartAsync();
         var snapshot = await client.SubscribeToCampaignAsync(campaignId);
         return (client, snapshot);

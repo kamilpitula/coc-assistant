@@ -6,10 +6,14 @@ public sealed record EntraIdentity(string EntraObjectId, string DisplayName, str
     // Entra External ID assigns this displayName when the sign-up user flow does not collect one.
     private const string EntraDefaultDisplayName = "unknown";
 
-    /// <summary>The caller's identity; null when the token carries no object id.</summary>
+    /// <summary>
+    /// The caller's identity; null when the token carries no object id. The object id is the only accepted
+    /// identity: JwtBearer maps the "oid" JWT claim to "http://schemas.microsoft.com/identity/claims/objectidentifier",
+    /// so both forms are read, while "sub" (ClaimTypes.NameIdentifier) is never identity on its own.
+    /// </summary>
     public static EntraIdentity? FromClaims(ClaimsPrincipal user)
     {
-        var entraObjectId = FirstNonEmpty(user, "oid", ClaimTypes.NameIdentifier);
+        var entraObjectId = FirstNonEmpty(user, "oid", "http://schemas.microsoft.com/identity/claims/objectidentifier");
         if (entraObjectId.Length == 0)
         {
             return null;

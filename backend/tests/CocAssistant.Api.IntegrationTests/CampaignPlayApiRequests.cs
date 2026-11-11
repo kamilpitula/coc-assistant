@@ -4,12 +4,20 @@ namespace CocAssistant.Api.IntegrationTests;
 public static class CampaignPlayApiRequests
 {
     /// <summary>Builds a request authenticated as the Account with the given oid; its display name is "Account {oid}".</summary>
-    public static HttpRequestMessage BuildRequest(HttpMethod method, string uri, string oid, object? body = null) =>
+    public static HttpRequestMessage BuildRequest(
+        HttpMethod method,
+        string uri,
+        string oid,
+        object? body = null,
+        string oidClaimType = "oid",
+        string? sub = null) =>
         new(method, uri)
         {
             Headers =
             {
                 { "X-Test-Oid", oid },
+                { "X-Test-Oid-Claim-Type", oidClaimType },
+                { "X-Test-Sub", sub ?? $"{oid}-sub" },
                 { "X-Test-Name", DisplayNameFor(oid) },
                 { "X-Test-Email", $"{oid}@example.com" },
             },

@@ -21,11 +21,42 @@ public class EntraIdentityTests
     }
 
     [Fact]
-    public void Given_a_token_with_only_a_name_identifier_When_reading_the_identity_Then_it_is_the_object_id()
+    public void Given_a_token_with_only_a_name_identifier_When_reading_the_identity_Then_there_is_none()
     {
-        var identity = EntraIdentity.FromClaims(TokenWith((ClaimTypes.NameIdentifier, "oid-2")));
+        Assert.Null(EntraIdentity.FromClaims(TokenWith((ClaimTypes.NameIdentifier, "sub-value"))));
+    }
 
-        Assert.Equal("oid-2", identity!.EntraObjectId);
+    [Fact]
+    public void Given_a_rest_token_with_a_mapped_oid_and_a_sub_When_reading_the_identity_Then_the_oid_is_used()
+    {
+        var identity = EntraIdentity.FromClaims(TokenWith(
+            ("http://schemas.microsoft.com/identity/claims/objectidentifier", "oid-guid"),
+            (ClaimTypes.NameIdentifier, "sub-value"),
+            ("name", "Keeper One")));
+
+        Assert.Equal("oid-guid", identity!.EntraObjectId);
+    }
+
+    [Fact]
+    public void Given_a_blank_short_oid_with_a_valid_mapped_oid_When_reading_the_identity_Then_the_mapped_oid_is_used()
+    {
+        var identity = EntraIdentity.FromClaims(TokenWith(
+            ("oid", " "),
+            ("http://schemas.microsoft.com/identity/claims/objectidentifier", "oid-guid"),
+            (ClaimTypes.NameIdentifier, "sub-value")));
+
+        Assert.Equal("oid-guid", identity!.EntraObjectId);
+    }
+
+    [Fact]
+    public void Given_both_oid_forms_When_reading_the_identity_Then_the_short_oid_is_used()
+    {
+        var identity = EntraIdentity.FromClaims(TokenWith(
+            ("oid", "oid-short"),
+            ("http://schemas.microsoft.com/identity/claims/objectidentifier", "oid-long"),
+            (ClaimTypes.NameIdentifier, "sub-value")));
+
+        Assert.Equal("oid-short", identity!.EntraObjectId);
     }
 
     [Theory]
