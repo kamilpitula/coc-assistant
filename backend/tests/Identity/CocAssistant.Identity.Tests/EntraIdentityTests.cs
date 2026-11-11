@@ -3,6 +3,9 @@ namespace CocAssistant.Identity.Tests;
 /// <summary>How a caller's token claims become the Entra identity used to provision an Account.</summary>
 public class EntraIdentityTests
 {
+    // Independent copy of the wire value (not the production constant), so a production typo still fails these tests.
+    private const string MappedOidClaimType = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+
     private static ClaimsPrincipal TokenWith(params (string Type, string Value)[] claims) =>
         new(new ClaimsIdentity(claims.Select(claim => new Claim(claim.Type, claim.Value)), "Bearer"));
 
@@ -21,11 +24,42 @@ public class EntraIdentityTests
     }
 
     [Fact]
-    public void Given_a_token_with_only_a_name_identifier_When_reading_the_identity_Then_it_is_the_object_id()
+    public void Given_a_token_with_only_a_name_identifier_When_reading_the_identity_Then_there_is_none()
     {
-        var identity = EntraIdentity.FromClaims(TokenWith((ClaimTypes.NameIdentifier, "oid-2")));
+        Assert.Null(EntraIdentity.FromClaims(TokenWith((ClaimTypes.NameIdentifier, "sub-value"))));
+    }
 
-        Assert.Equal("oid-2", identity!.EntraObjectId);
+    [Fact]
+    public void Given_a_rest_token_with_a_mapped_oid_and_a_sub_When_reading_the_identity_Then_the_oid_is_used()
+    {
+        var identity = EntraIdentity.FromClaims(TokenWith(
+            (MappedOidClaimType, "oid-guid"),
+            (ClaimTypes.NameIdentifier, "sub-value"),
+            ("name", "Keeper One")));
+
+        Assert.Equal("oid-guid", identity!.EntraObjectId);
+    }
+
+    [Fact]
+    public void Given_a_blank_short_oid_with_a_valid_mapped_oid_When_reading_the_identity_Then_the_mapped_oid_is_used()
+    {
+        var identity = EntraIdentity.FromClaims(TokenWith(
+            ("oid", " "),
+            (MappedOidClaimType, "oid-guid"),
+            (ClaimTypes.NameIdentifier, "sub-value")));
+
+        Assert.Equal("oid-guid", identity!.EntraObjectId);
+    }
+
+    [Fact]
+    public void Given_both_oid_forms_When_reading_the_identity_Then_the_short_oid_is_used()
+    {
+        var identity = EntraIdentity.FromClaims(TokenWith(
+            ("oid", "oid-short"),
+            (MappedOidClaimType, "oid-long"),
+            (ClaimTypes.NameIdentifier, "sub-value")));
+
+        Assert.Equal("oid-short", identity!.EntraObjectId);
     }
 
     [Theory]

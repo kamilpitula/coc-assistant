@@ -87,6 +87,33 @@ public class CampaignHubTests : IClassFixture<IdentityApiFactory>, IAsyncLifetim
     }
 
     [Fact]
+    public async Task Given_rest_saw_the_mapped_oid_form_When_the_same_person_subscribes_over_the_hub_with_the_short_oid_Then_one_account_resolves_and_subscribe_succeeds()
+    {
+        const string oid = "split-identity-oid-1";
+        var client = _factory.CreateClient();
+        var campaignId = (await CreateCampaignAsync(client, "split-keeper-1")).Id;
+        await JoinAsPlayerAsync(client, campaignId, "split-keeper-1", oid);
+
+        var restRequest = BuildRequest(
+            HttpMethod.Get, "/api/account/me", new TestIdentity(oid, TestIdentity.MappedOidClaimType, "rest-sub-value"));
+        (await client.SendAsync(restRequest)).EnsureSuccessStatusCode();
+
+        var (hubClient, snapshot) = await CampaignHubTestClient.SubscribeAsync(
+            _factory, new TestIdentity(oid, "oid", "hub-sub-value"), campaignId);
+        _clients.Add(hubClient);
+
+        Assert.Equal(campaignId, snapshot.CampaignId);
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var matching = await dbContext.Accounts
+            .Where(a => a.EntraObjectId == oid || a.EntraObjectId == "rest-sub-value" || a.EntraObjectId == "hub-sub-value")
+            .ToListAsync();
+
+        Assert.Single(matching);
+        Assert.Equal(oid, matching[0].EntraObjectId);
+    }
+
+    [Fact]
     public async Task Given_a_non_member_When_subscribing_Then_it_is_refused_and_no_member_sees_them()
     {
         var client = _factory.CreateClient();

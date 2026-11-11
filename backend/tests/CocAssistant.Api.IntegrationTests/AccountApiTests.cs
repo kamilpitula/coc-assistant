@@ -98,6 +98,26 @@ public class AccountApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
     }
 
     [Fact]
+    public async Task Given_a_rest_token_with_a_mapped_oid_and_a_different_sub_When_calling_account_me_Then_one_oid_account_is_provisioned()
+    {
+        var client = _factory.CreateClient();
+        var request = BuildRequest(
+            HttpMethod.Get,
+            "/api/account/me",
+            new TestIdentity("mapped-oid-1", TestIdentity.MappedOidClaimType, "opaque-sub-1"));
+
+        var response = await client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var matching = await dbContext.Accounts.Where(a => a.EntraObjectId == "mapped-oid-1" || a.EntraObjectId == "opaque-sub-1").ToListAsync();
+
+        Assert.Single(matching);
+        Assert.Equal("mapped-oid-1", matching[0].EntraObjectId);
+    }
+
+    [Fact]
     public async Task Given_an_existing_account_When_calling_a_campaign_play_endpoint_Then_the_account_snapshot_is_not_refreshed()
     {
         var client = _factory.CreateClient();

@@ -3,7 +3,10 @@ namespace CocAssistant.Api.IntegrationTests;
 /// <summary>
 /// Replaces real Entra JWT validation in tests: authenticates every request unless the
 /// "X-Test-Unauthenticated" header is present, using claims supplied via "X-Test-Oid"/"X-Test-Name"/"X-Test-Email"
-/// and an optional token expiry via "X-Test-Expires-At".
+/// and an optional token expiry via "X-Test-Expires-At". The oid claim type defaults to "oid" but can be set to the
+/// mapped "http://schemas.microsoft.com/identity/claims/objectidentifier" via "X-Test-Oid-Claim-Type", mirroring
+/// the JwtBearer inbound mapping production REST applies; a distinct "sub" (NameIdentifier) is always emitted via
+/// "X-Test-Sub" (default "{oid}-sub"), mirroring a real Entra token where oid and sub differ.
 /// </summary>
 public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
@@ -25,12 +28,15 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
         }
 
         var oid = Request.Headers["X-Test-Oid"].FirstOrDefault() ?? "test-oid";
+        var oidClaimType = Request.Headers["X-Test-Oid-Claim-Type"].FirstOrDefault() ?? "oid";
+        var sub = Request.Headers["X-Test-Sub"].FirstOrDefault() ?? $"{oid}-sub";
         var name = Request.Headers["X-Test-Name"].FirstOrDefault() ?? "Test Account";
         var email = Request.Headers["X-Test-Email"].FirstOrDefault() ?? "test@example.com";
 
         var claims = new[]
         {
-            new Claim("oid", oid),
+            new Claim(oidClaimType, oid),
+            new Claim(ClaimTypes.NameIdentifier, sub),
             new Claim("name", name),
             new Claim("emails", email),
         };
