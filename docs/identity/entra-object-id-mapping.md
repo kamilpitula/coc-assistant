@@ -64,22 +64,26 @@ WHERE TRY_CONVERT(uniqueidentifier, oid.EntraObjectId) IS NOT NULL
 ```sql
 SELECT 'Campaigns' AS TableName, COUNT(*) AS Refs FROM Campaigns WHERE KeeperAccountId = '<SubAccountId>'
 UNION ALL SELECT 'CampaignPlayer', COUNT(*) FROM CampaignPlayer WHERE AccountId = '<SubAccountId>'
-UNION ALL SELECT 'Investigator', COUNT(*) FROM Investigator WHERE PlayerAccountId = '<SubAccountId>'
-UNION ALL SELECT 'WallEntry', COUNT(*) FROM WallEntry WHERE AuthorAccountId = '<SubAccountId>';
+UNION ALL SELECT 'Investigators', COUNT(*) FROM Investigators WHERE PlayerAccountId = '<SubAccountId>'
+UNION ALL SELECT 'WallEntries', COUNT(*) FROM WallEntries WHERE AuthorAccountId = '<SubAccountId>';
 -- Repeat with '<OidAccountId>': every count must be 0, or stop and investigate.
 ```
 
-3. Merge one confirmed pair (idempotent: the `WHERE` guards make a re-run a no-op). Take the
-   DisplayName/Email snapshot from whichever row has the later `LastSignedInAt`.
+3. Merge one confirmed pair (idempotent: the `WHERE` guards make a re-run a no-op). The `UPDATE`
+   derives the DisplayName/Email snapshot from whichever row has the later `LastSignedInAt` (ties favor
+   the `oid` row), so there is nothing to pick by hand.
 
 ```sql
 BEGIN TRANSACTION;
+UPDATE sub
+   SET EntraObjectId = oid.EntraObjectId,
+       DisplayName = CASE WHEN oid.LastSignedInAt >= sub.LastSignedInAt THEN oid.DisplayName ELSE sub.DisplayName END,
+       Email = CASE WHEN oid.LastSignedInAt >= sub.LastSignedInAt THEN oid.Email ELSE sub.Email END,
+       LastSignedInAt = CASE WHEN oid.LastSignedInAt >= sub.LastSignedInAt THEN oid.LastSignedInAt ELSE sub.LastSignedInAt END
+  FROM Accounts sub
+  JOIN Accounts oid ON oid.Id = '<OidAccountId>' AND oid.EntraObjectId = '<OidValue>'
+ WHERE sub.Id = '<SubAccountId>' AND sub.EntraObjectId = '<SubValue>';
 DELETE FROM Accounts WHERE Id = '<OidAccountId>' AND EntraObjectId = '<OidValue>';
-UPDATE Accounts
-   SET EntraObjectId = '<OidValue>',
-       DisplayName = '<FresherDisplayName>',
-       Email = '<FresherEmail>'
- WHERE Id = '<SubAccountId>' AND EntraObjectId = '<SubValue>';
 COMMIT;
 ```
 

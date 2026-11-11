@@ -3,6 +3,9 @@ namespace CocAssistant.Identity.Tests;
 /// <summary>How a caller's token claims become the Entra identity used to provision an Account.</summary>
 public class EntraIdentityTests
 {
+    // Independent copy of the wire value (not the production constant), so a production typo still fails these tests.
+    private const string MappedOidClaimType = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+
     private static ClaimsPrincipal TokenWith(params (string Type, string Value)[] claims) =>
         new(new ClaimsIdentity(claims.Select(claim => new Claim(claim.Type, claim.Value)), "Bearer"));
 
@@ -30,7 +33,7 @@ public class EntraIdentityTests
     public void Given_a_rest_token_with_a_mapped_oid_and_a_sub_When_reading_the_identity_Then_the_oid_is_used()
     {
         var identity = EntraIdentity.FromClaims(TokenWith(
-            ("http://schemas.microsoft.com/identity/claims/objectidentifier", "oid-guid"),
+            (MappedOidClaimType, "oid-guid"),
             (ClaimTypes.NameIdentifier, "sub-value"),
             ("name", "Keeper One")));
 
@@ -42,7 +45,7 @@ public class EntraIdentityTests
     {
         var identity = EntraIdentity.FromClaims(TokenWith(
             ("oid", " "),
-            ("http://schemas.microsoft.com/identity/claims/objectidentifier", "oid-guid"),
+            (MappedOidClaimType, "oid-guid"),
             (ClaimTypes.NameIdentifier, "sub-value")));
 
         Assert.Equal("oid-guid", identity!.EntraObjectId);
@@ -53,7 +56,7 @@ public class EntraIdentityTests
     {
         var identity = EntraIdentity.FromClaims(TokenWith(
             ("oid", "oid-short"),
-            ("http://schemas.microsoft.com/identity/claims/objectidentifier", "oid-long"),
+            (MappedOidClaimType, "oid-long"),
             (ClaimTypes.NameIdentifier, "sub-value")));
 
         Assert.Equal("oid-short", identity!.EntraObjectId);

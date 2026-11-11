@@ -28,13 +28,11 @@ public sealed class CampaignHubTestClient : IAsyncDisposable
     /// <summary>Completes when the server closes the connection.</summary>
     public Task<Exception?> Closed => _closed.Task;
 
-    /// <summary>Builds a connection authenticated as the Account with the given oid; optionally its token expires at a time.</summary>
+    /// <summary>Builds a connection authenticated as the Account with the given identity; optionally its token expires at a time.</summary>
     public static CampaignHubTestClient Create(
         IdentityApiFactory factory,
-        string oid,
-        DateTimeOffset? expiresAt = null,
-        string oidClaimType = "oid",
-        string? sub = null)
+        TestIdentity identity,
+        DateTimeOffset? expiresAt = null)
     {
         var server = factory.Server;
         var connection = new HubConnectionBuilder()
@@ -42,11 +40,11 @@ public sealed class CampaignHubTestClient : IAsyncDisposable
             {
                 options.Transports = HttpTransportType.LongPolling;
                 options.HttpMessageHandlerFactory = _ => server.CreateHandler();
-                options.Headers["X-Test-Oid"] = oid;
-                options.Headers["X-Test-Oid-Claim-Type"] = oidClaimType;
-                options.Headers["X-Test-Sub"] = sub ?? $"{oid}-sub";
-                options.Headers["X-Test-Name"] = DisplayNameFor(oid);
-                options.Headers["X-Test-Email"] = $"{oid}@example.com";
+                options.Headers["X-Test-Oid"] = identity.Oid;
+                options.Headers["X-Test-Oid-Claim-Type"] = identity.OidClaimType;
+                options.Headers["X-Test-Sub"] = identity.SubValue;
+                options.Headers["X-Test-Name"] = DisplayNameFor(identity.Oid);
+                options.Headers["X-Test-Email"] = $"{identity.Oid}@example.com";
                 if (expiresAt is not null)
                 {
                     options.Headers["X-Test-Expires-At"] = expiresAt.Value.ToString("O");
@@ -74,12 +72,10 @@ public sealed class CampaignHubTestClient : IAsyncDisposable
     /// <summary>Connects and subscribes to the Campaign, returning its Presence snapshot.</summary>
     public static async Task<(CampaignHubTestClient Client, PresenceSnapshotMessage Snapshot)> SubscribeAsync(
         IdentityApiFactory factory,
-        string oid,
-        Guid campaignId,
-        string oidClaimType = "oid",
-        string? sub = null)
+        TestIdentity identity,
+        Guid campaignId)
     {
-        var client = Create(factory, oid, null, oidClaimType, sub);
+        var client = Create(factory, identity);
         await client.Connection.StartAsync();
         var snapshot = await client.SubscribeToCampaignAsync(campaignId);
         return (client, snapshot);

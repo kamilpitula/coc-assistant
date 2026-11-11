@@ -90,15 +90,16 @@ public class CampaignHubTests : IClassFixture<IdentityApiFactory>, IAsyncLifetim
     public async Task Given_rest_saw_the_mapped_oid_form_When_the_same_person_subscribes_over_the_hub_with_the_short_oid_Then_one_account_resolves_and_subscribe_succeeds()
     {
         const string oid = "split-identity-oid-1";
-        const string mappedOidClaimType = "http://schemas.microsoft.com/identity/claims/objectidentifier";
         var client = _factory.CreateClient();
         var campaignId = (await CreateCampaignAsync(client, "split-keeper-1")).Id;
         await JoinAsPlayerAsync(client, campaignId, "split-keeper-1", oid);
 
-        var restRequest = BuildRequest(HttpMethod.Get, "/api/account/me", oid, null, mappedOidClaimType, "rest-sub-value");
+        var restRequest = BuildRequest(
+            HttpMethod.Get, "/api/account/me", new TestIdentity(oid, TestIdentity.MappedOidClaimType, "rest-sub-value"));
         (await client.SendAsync(restRequest)).EnsureSuccessStatusCode();
 
-        var (hubClient, snapshot) = await CampaignHubTestClient.SubscribeAsync(_factory, oid, campaignId, "oid", "hub-sub-value");
+        var (hubClient, snapshot) = await CampaignHubTestClient.SubscribeAsync(
+            _factory, new TestIdentity(oid, "oid", "hub-sub-value"), campaignId);
         _clients.Add(hubClient);
 
         Assert.Equal(campaignId, snapshot.CampaignId);

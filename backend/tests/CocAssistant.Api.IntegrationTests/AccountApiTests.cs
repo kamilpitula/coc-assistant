@@ -101,17 +101,10 @@ public class AccountApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
     public async Task Given_a_rest_token_with_a_mapped_oid_and_a_different_sub_When_calling_account_me_Then_one_oid_account_is_provisioned()
     {
         var client = _factory.CreateClient();
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/account/me")
-        {
-            Headers =
-            {
-                { "X-Test-Oid", "mapped-oid-1" },
-                { "X-Test-Oid-Claim-Type", "http://schemas.microsoft.com/identity/claims/objectidentifier" },
-                { "X-Test-Sub", "opaque-sub-1" },
-                { "X-Test-Name", "Mapped Keeper" },
-                { "X-Test-Email", "mapped.keeper@example.com" },
-            },
-        };
+        var request = BuildRequest(
+            HttpMethod.Get,
+            "/api/account/me",
+            new TestIdentity("mapped-oid-1", TestIdentity.MappedOidClaimType, "opaque-sub-1"));
 
         var response = await client.SendAsync(request);
 

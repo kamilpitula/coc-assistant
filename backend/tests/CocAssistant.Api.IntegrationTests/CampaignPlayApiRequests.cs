@@ -3,23 +3,21 @@ namespace CocAssistant.Api.IntegrationTests;
 /// <summary>Shared request builders and use-case helpers for the CampaignPlay integration tests.</summary>
 public static class CampaignPlayApiRequests
 {
-    /// <summary>Builds a request authenticated as the Account with the given oid; its display name is "Account {oid}".</summary>
+    /// <summary>Builds a request authenticated as the Account with the given identity; its display name is "Account {oid}".</summary>
     public static HttpRequestMessage BuildRequest(
         HttpMethod method,
         string uri,
-        string oid,
-        object? body = null,
-        string oidClaimType = "oid",
-        string? sub = null) =>
+        TestIdentity identity,
+        object? body = null) =>
         new(method, uri)
         {
             Headers =
             {
-                { "X-Test-Oid", oid },
-                { "X-Test-Oid-Claim-Type", oidClaimType },
-                { "X-Test-Sub", sub ?? $"{oid}-sub" },
-                { "X-Test-Name", DisplayNameFor(oid) },
-                { "X-Test-Email", $"{oid}@example.com" },
+                { "X-Test-Oid", identity.Oid },
+                { "X-Test-Oid-Claim-Type", identity.OidClaimType },
+                { "X-Test-Sub", identity.SubValue },
+                { "X-Test-Name", DisplayNameFor(identity.Oid) },
+                { "X-Test-Email", $"{identity.Oid}@example.com" },
             },
             Content = body is null ? null : JsonContent.Create(body),
         };
