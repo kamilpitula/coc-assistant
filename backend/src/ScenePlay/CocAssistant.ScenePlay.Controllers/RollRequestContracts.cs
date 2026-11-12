@@ -65,11 +65,12 @@ public record RollRequestResponse(
     DateTimeOffset CreatedAt,
     IReadOnlyList<RequestedRollResponse> RequestedRolls);
 
-/// <summary>One Waiting Requested Roll with the Roll Request's target and message.</summary>
+/// <summary>One Waiting Requested Roll with the Roll Request's target, message, and creation time.</summary>
 public record WaitingRequestedRollResponse(
     Guid RollRequestId,
     RollRequestTargetResponse Target,
     string? Message,
+    DateTimeOffset CreatedAt,
     RequestedRollResponse Roll);
 
 /// <summary>The caller's Waiting Requested Rolls in the Active Scene, oldest first.</summary>

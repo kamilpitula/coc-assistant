@@ -90,8 +90,8 @@ public class SceneRollRequestService
     }
 
     /// <summary>
-    /// The Investigator's Waiting Requested Rolls in the Active Scene, oldest first, each with its Roll Request's target
-    /// and message; an empty list when no Scene is Active.
+    /// The Investigator's Waiting Requested Rolls in the Active Scene, oldest first, each with its Roll Request's target,
+    /// message, and creation time; an empty list when no Scene is Active.
     /// </summary>
     public async Task<IReadOnlyList<WaitingRequestedRollView>> ListWaitingForInvestigatorAsync(
         Guid campaignId, Guid investigatorId, CancellationToken cancellationToken)
@@ -106,7 +106,7 @@ public class SceneRollRequestService
         return requests
             .SelectMany(request => request.RequestedRolls
                 .Where(roll => roll.InvestigatorId == investigatorId && roll.Status == RequestedRollStatus.Waiting)
-                .Select(roll => new WaitingRequestedRollView(request.Id, request.Target, request.Message, ToView(roll))))
+                .Select(roll => new WaitingRequestedRollView(request.Id, request.Target, request.Message, request.CreatedAt, ToView(roll))))
             .ToList();
     }
 

@@ -32,7 +32,7 @@ internal static class RollRequestMapping
         new(result.InvestigatorName, result.Rolls.Select(ToResponse).ToList());
 
     private static WaitingRequestedRollResponse ToResponse(WaitingRequestedRollView view) =>
-        new(view.RollRequestId, ToResponse(view.Target), view.Message, ToResponse(view.Roll));
+        new(view.RollRequestId, ToResponse(view.Target), view.Message, view.CreatedAt, ToResponse(view.Roll));
 
     private static RollRequestTargetResponse ToResponse(RollRequestTargetView view) =>
         new(view.Kind.ToString(), view.Skill, view.Specialization, view.Characteristic);

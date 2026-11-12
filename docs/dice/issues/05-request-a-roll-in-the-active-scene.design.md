@@ -432,3 +432,5 @@ The Keeper creates a Public Roll Request for Investigators present in the Active
   - `specs/campaign-play/spec.md:49`: "`rollRequest`" becomes "`rollRequestId`" (D2).
 
 ## Revisions
+
+- 2026-11-12, clarification (Developer escalation): the mine read was missing the field ux.md section 6 and RR-A11Y-3 need for "Roll {target}, requested {time}". Each mine item now carries its Roll Request's createdAt through the provider record, view, contract, and frontend schema, and the spec's mine line names it. The Keeper list already carries CreatedAt in RollRequestView. No chosen or rejected option, invariant, or UX copy changed.

@@ -27,9 +27,10 @@ public sealed record RequestedRollView(
     RequestedRollStatus Status,
     IReadOnlyList<RollRecord> RollRecords);
 
-/// <summary>One Investigator's Waiting Requested Roll with the Roll Request's target and message (specs/roll-requests/spec.md).</summary>
+/// <summary>One Investigator's Waiting Requested Roll with the Roll Request's target, message, and creation time (specs/roll-requests/spec.md).</summary>
 public sealed record WaitingRequestedRollView(
     Guid RollRequestId,
     RollTarget Target,
     string? Message,
+    DateTimeOffset CreatedAt,
     RequestedRollView Roll);

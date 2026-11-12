@@ -51,11 +51,12 @@ public sealed record RollRequestView(
     DateTimeOffset CreatedAt,
     IReadOnlyList<RequestedRollView> RequestedRolls);
 
-/// <summary>One Investigator's Waiting Requested Roll with the Roll Request's target and message.</summary>
+/// <summary>One Investigator's Waiting Requested Roll with the Roll Request's target, message, and creation time.</summary>
 public sealed record WaitingRequestedRollView(
     Guid RollRequestId,
     RollRequestTargetView Target,
     string? Message,
+    DateTimeOffset CreatedAt,
     RequestedRollView Roll);
 
 /// <summary>The caller's Waiting Requested Rolls in the Active Scene, oldest first, with their Investigator's name.</summary>

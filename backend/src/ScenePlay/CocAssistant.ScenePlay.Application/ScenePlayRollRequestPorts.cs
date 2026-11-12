@@ -141,11 +141,12 @@ public sealed record RollRequestRecord(
     DateTimeOffset CreatedAt,
     IReadOnlyList<RequestedRollRecord> RequestedRolls);
 
-/// <summary>One Investigator's Waiting Requested Roll with the Roll Request's target and message.</summary>
+/// <summary>One Investigator's Waiting Requested Roll with the Roll Request's target, message, and creation time.</summary>
 public sealed record WaitingRequestedRollRecord(
     Guid RollRequestId,
     RollRequestTargetInput Target,
     string? Message,
+    DateTimeOffset CreatedAt,
     RequestedRollRecord Roll);
 
 /// <summary>How creating a Roll Request through the provider ended. The domain refusals keep their names.</summary>

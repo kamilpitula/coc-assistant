@@ -29,6 +29,7 @@ internal static class RollRequestProjection
             waiting.RollRequestId,
             ForTarget(waiting.Target),
             waiting.Message,
+            waiting.CreatedAt,
             ForRoll(waiting.Roll, InvestigatorName(approved, waiting.Roll.InvestigatorId), rollerNames));
 
     public static RequestedRollView ForRoll(

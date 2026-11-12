@@ -25,7 +25,7 @@ public sealed class ScenarioPreparationRollRequests : IRollRequests
 
     public async Task<IReadOnlyList<WaitingRequestedRollRecord>> ListWaitingForInvestigatorAsync(Guid campaignId, Guid investigatorId, CancellationToken cancellationToken) =>
         (await _requests.ListWaitingForInvestigatorAsync(campaignId, investigatorId, cancellationToken))
-            .Select(waiting => new WaitingRequestedRollRecord(waiting.RollRequestId, ToInput(waiting.Target), waiting.Message, ToRecord(waiting.Roll)))
+            .Select(waiting => new WaitingRequestedRollRecord(waiting.RollRequestId, ToInput(waiting.Target), waiting.Message, waiting.CreatedAt, ToRecord(waiting.Roll)))
             .ToList();
 
     public async Task<RollRequestWriteResult> CreateAsync(

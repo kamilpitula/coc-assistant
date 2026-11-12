@@ -230,6 +230,7 @@ public class SceneRollRequestServiceTests : IDisposable
 
         var waiting = Assert.Single(harvey);
         Assert.Equal((third.Request!.Id, SpotHidden.Skill, "Something moves upstairs.", 45), (waiting.RollRequestId, waiting.Target.Skill, waiting.Message, waiting.Roll.TargetValue));
+        Assert.Equal(third.Request.CreatedAt, waiting.CreatedAt);
         Assert.Equal([first.Request.Id, second.Request!.Id], lucy.Select(roll => roll.RollRequestId));
     }
 

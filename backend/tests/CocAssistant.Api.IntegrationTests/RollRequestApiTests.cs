@@ -128,6 +128,7 @@ public class RollRequestApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
         Assert.Equal(
             (request.GetProperty("id").GetGuid(), "Something moves upstairs.", harveyRoll.GetProperty("targetValue").GetInt32()),
             (waiting.GetProperty("rollRequestId").GetGuid(), waiting.GetProperty("message").GetString(), waiting.GetProperty("roll").GetProperty("targetValue").GetInt32()));
+        Assert.Equal(request.GetProperty("createdAt").GetString(), waiting.GetProperty("createdAt").GetString());
         var lucyMine = await JsonAsync(await MineAsync(table, table.LucyOid));
         Assert.Equal(1, lucyMine.GetProperty("rolls").GetArrayLength());
     }
