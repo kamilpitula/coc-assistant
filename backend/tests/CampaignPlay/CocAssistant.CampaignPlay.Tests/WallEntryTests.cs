@@ -181,4 +181,47 @@ public class WallEntryTests
 
         Assert.Empty(entry.DomainEvents);
     }
+
+    [Theory]
+    [InlineData(WallEntryVisibility.Public)]
+    [InlineData(WallEntryVisibility.KeeperOnly)]
+    public void Given_the_keeper_When_recording_a_roll_request_Then_the_entry_has_the_roll_request_kind_id_and_empty_text(WallEntryVisibility visibility)
+    {
+        var campaign = CampaignWithPlayer();
+        var rollRequestId = Guid.NewGuid();
+
+        var recording = WallEntry.RecordRollRequest(campaign, KeeperAccountId, rollRequestId, visibility, Now);
+
+        Assert.Equal(WallEntryAuthoringOutcome.Created, recording.Outcome);
+        Assert.Equal(WallEntryKind.RollRequest, recording.Entry!.Kind);
+        Assert.Equal(rollRequestId, recording.Entry.RollRequestId);
+        Assert.Equal(string.Empty, recording.Entry.Text);
+        Assert.Equal(visibility, recording.Entry.Visibility);
+        Assert.Equal(KeeperAccountId, recording.Entry.AuthorAccountId);
+        var raised = Assert.Single(recording.Entry.DomainEvents);
+        Assert.Equal(new WallEntryAdded(campaign.Id, recording.Entry.Id, visibility), raised);
+    }
+
+    [Fact]
+    public void Given_a_text_entry_When_reading_its_kind_Then_it_is_text_with_no_roll_request_id()
+    {
+        var entry = WallEntry.Author(CampaignWithPlayer(), KeeperAccountId, "Known.", WallEntryVisibility.Public, Now).Entry!;
+
+        Assert.Equal(WallEntryKind.Text, entry.Kind);
+        Assert.Null(entry.RollRequestId);
+    }
+
+    [Fact]
+    public void Given_a_non_keeper_When_recording_a_roll_request_Then_it_is_refused_and_nothing_is_created()
+    {
+        var campaign = CampaignWithPlayer();
+
+        var byPlayer = WallEntry.RecordRollRequest(campaign, PlayerAccountId, Guid.NewGuid(), WallEntryVisibility.Public, Now);
+        var byStranger = WallEntry.RecordRollRequest(campaign, StrangerAccountId, Guid.NewGuid(), WallEntryVisibility.Public, Now);
+
+        Assert.Equal(WallEntryAuthoringOutcome.NotAKeeper, byPlayer.Outcome);
+        Assert.Null(byPlayer.Entry);
+        Assert.Equal(WallEntryAuthoringOutcome.NotAMember, byStranger.Outcome);
+        Assert.Null(byStranger.Entry);
+    }
 }

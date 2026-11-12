@@ -72,8 +72,38 @@ public class WallEntryService
     }
 
     /// <summary>
+    /// Records a Roll Request on the Wall as the Keeper; only the Keeper may record one (specs/roll-requests/spec.md).
+    /// A missing Campaign counts as the caller not being a member.
+    /// </summary>
+    public async Task<AddWallEntryResult> AddRollRequestAsync(
+        Guid campaignId,
+        Guid keeperAccountId,
+        Guid rollRequestId,
+        WallEntryVisibility visibility,
+        CancellationToken cancellationToken)
+    {
+        var campaign = await _campaigns.FindByIdAsync(campaignId, cancellationToken);
+        if (campaign is null)
+        {
+            return new AddWallEntryResult(WallEntryAuthoringOutcome.NotAMember, null);
+        }
+
+        var recording = WallEntry.RecordRollRequest(campaign, keeperAccountId, rollRequestId, visibility, _timeProvider.GetUtcNow());
+        if (recording.Entry is null)
+        {
+            return new AddWallEntryResult(recording.Outcome, null);
+        }
+
+        _wallEntries.Add(recording.Entry);
+        await _wallEntries.SaveChangesAsync(cancellationToken);
+        var view = (await ProjectAsync([recording.Entry], cancellationToken))[0];
+        return new AddWallEntryResult(WallEntryAuthoringOutcome.Created, view);
+    }
+
+    /// <summary>
     /// Removes an entry as the Keeper. A Player, a non-member, or a missing or foreign entry all get the same
     /// <see cref="RemoveWallEntryOutcome.NotFound"/>, decided before any entry is looked up for non-Keepers.
+    /// A <see cref="WallEntryKind.RollRequest"/> entry is never removed.
     /// </summary>
     public async Task<RemoveWallEntryOutcome> RemoveAsync(
         Guid campaignId,
@@ -88,7 +118,17 @@ public class WallEntryService
         }
 
         var entry = await _wallEntries.FindByIdAsync(campaignId, entryId, cancellationToken);
-        if (entry is null || !entry.Remove(campaign, callerAccountId))
+        if (entry is null)
+        {
+            return RemoveWallEntryOutcome.NotFound;
+        }
+
+        if (entry.Kind == WallEntryKind.RollRequest)
+        {
+            return RemoveWallEntryOutcome.NotRemovable;
+        }
+
+        if (!entry.Remove(campaign, callerAccountId))
         {
             return RemoveWallEntryOutcome.NotFound;
         }
@@ -110,7 +150,9 @@ public class WallEntryService
                 entry.Text,
                 entry.Visibility,
                 entry.CreatedAt,
-                names.GetValueOrDefault(entry.AuthorAccountId) ?? string.Empty))
+                names.GetValueOrDefault(entry.AuthorAccountId) ?? string.Empty,
+                entry.Kind,
+                entry.RollRequestId))
             .ToList();
     }
 }

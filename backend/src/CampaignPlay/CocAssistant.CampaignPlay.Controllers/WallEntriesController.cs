@@ -71,7 +71,10 @@ public class WallEntriesController : CampaignPlayControllerBase
         };
     }
 
-    /// <summary>Removes an entry; only the Keeper may, so everyone else gets the same 404 as for a missing entry.</summary>
+    /// <summary>
+    /// Removes an entry; only the Keeper may, so everyone else gets the same 404 as for a missing entry.
+    /// A Roll Request entry is never removed: the Keeper gets 409.
+    /// </summary>
     [HttpDelete("{entryId:guid}")]
     public async Task<IActionResult> Remove(Guid campaignId, Guid entryId, CancellationToken cancellationToken)
     {
@@ -82,7 +85,12 @@ public class WallEntriesController : CampaignPlayControllerBase
         }
 
         var outcome = await _wallEntryService.RemoveAsync(campaignId, accountId.Value, entryId, cancellationToken);
-        return outcome == RemoveWallEntryOutcome.Removed ? NoContent() : NotFound();
+        return outcome switch
+        {
+            RemoveWallEntryOutcome.Removed => NoContent(),
+            RemoveWallEntryOutcome.NotRemovable => Conflict(),
+            _ => NotFound(),
+        };
     }
 
     private ActionResult Invalid(string field, string message)

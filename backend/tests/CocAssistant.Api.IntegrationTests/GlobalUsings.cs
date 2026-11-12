@@ -40,6 +40,7 @@ global using Microsoft.AspNetCore.Mvc.Controllers;
 global using Microsoft.AspNetCore.Routing;
 global using Microsoft.AspNetCore.Http;
 global using CocAssistant.CampaignPlay.Domain.RuleData;
+global using CocAssistant.CampaignPlay.Domain.Wall;
 global using CocAssistant.CampaignPlay.Infrastructure.RuleData;
 global using CocAssistant.GameRules.Domain;
 global using CocAssistant.GameRules.Domain.Dice;

@@ -13,6 +13,8 @@ public class WallEntry : AggregateRoot
     public Guid CampaignId { get; private set; }
     public Guid AuthorAccountId { get; private set; }
     public WallEntryVisibility Visibility { get; private set; }
+    public WallEntryKind Kind { get; private set; }
+    public Guid? RollRequestId { get; private set; }
     public string Text { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
@@ -21,12 +23,21 @@ public class WallEntry : AggregateRoot
         Text = string.Empty;
     }
 
-    private WallEntry(Guid campaignId, Guid authorAccountId, WallEntryVisibility visibility, string text, DateTimeOffset createdAt)
+    private WallEntry(
+        Guid campaignId,
+        Guid authorAccountId,
+        WallEntryVisibility visibility,
+        WallEntryKind kind,
+        Guid? rollRequestId,
+        string text,
+        DateTimeOffset createdAt)
     {
         Id = Guid.NewGuid();
         CampaignId = campaignId;
         AuthorAccountId = authorAccountId;
         Visibility = visibility;
+        Kind = kind;
+        RollRequestId = rollRequestId;
         Text = text;
         CreatedAt = createdAt;
     }
@@ -55,7 +66,34 @@ public class WallEntry : AggregateRoot
             return Refused(WallEntryAuthoringOutcome.InvalidText);
         }
 
-        var entry = new WallEntry(campaign.Id, authorAccountId, visibility, trimmed, now);
+        var entry = new WallEntry(campaign.Id, authorAccountId, visibility, WallEntryKind.Text, null, trimmed, now);
+        entry.Raise(new WallEntryAdded(entry.CampaignId, entry.Id, entry.Visibility));
+        return new WallEntryAuthoring(WallEntryAuthoringOutcome.Created, entry);
+    }
+
+    /// <summary>
+    /// Records a Public or Keeper-only Roll Request on the Wall, authored by the Keeper (specs/roll-requests/spec.md).
+    /// A Player gets <see cref="WallEntryAuthoringOutcome.NotAKeeper"/>, a stranger <see
+    /// cref="WallEntryAuthoringOutcome.NotAMember"/>. The entry has no text; the card reads the Roll Request by id (ADR 0033).
+    /// </summary>
+    public static WallEntryAuthoring RecordRollRequest(
+        Campaign campaign,
+        Guid keeperAccountId,
+        Guid rollRequestId,
+        WallEntryVisibility visibility,
+        DateTimeOffset now)
+    {
+        if (!campaign.IsMember(keeperAccountId))
+        {
+            return Refused(WallEntryAuthoringOutcome.NotAMember);
+        }
+
+        if (!campaign.IsKeeper(keeperAccountId))
+        {
+            return Refused(WallEntryAuthoringOutcome.NotAKeeper);
+        }
+
+        var entry = new WallEntry(campaign.Id, keeperAccountId, visibility, WallEntryKind.RollRequest, rollRequestId, string.Empty, now);
         entry.Raise(new WallEntryAdded(entry.CampaignId, entry.Id, entry.Visibility));
         return new WallEntryAuthoring(WallEntryAuthoringOutcome.Created, entry);
     }

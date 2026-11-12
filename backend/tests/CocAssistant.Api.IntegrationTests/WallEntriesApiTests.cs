@@ -66,10 +66,12 @@ public class WallEntriesApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
         Assert.All(
             document.RootElement.GetProperty("entries").EnumerateArray(),
             entry => Assert.Equal(
-                ["authorDisplayName", "createdAt", "id", "text", "visibility"],
+                ["authorDisplayName", "createdAt", "id", "kind", "rollRequestId", "text", "visibility"],
                 entry.EnumerateObject().Select(property => property.Name).Order()));
         Assert.Equal([SecretText, "First."], page.Entries.Select(entry => entry.Text));
         Assert.Equal(["KeeperOnly", "Public"], page.Entries.Select(entry => entry.Visibility));
+        Assert.Equal(["Text", "Text"], page.Entries.Select(entry => entry.Kind));
+        Assert.All(page.Entries, entry => Assert.Null(entry.RollRequestId));
         Assert.Equal(DisplayNameFor("wall-keeper-1"), page.Entries[0].AuthorDisplayName);
     }
 
@@ -246,5 +248,51 @@ public class WallEntriesApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
         Assert.Equal(HttpStatusCode.NotFound, crossRemove.StatusCode);
         Assert.Equal(["Here."], (await ListAsync(client, campaignId, "wall-keeper-12")).Entries.Select(item => item.Text));
         Assert.Equal(["There."], (await ListAsync(client, otherCampaignId, "wall-keeper-12b")).Entries.Select(item => item.Text));
+    }
+
+    /// <summary>Records a Public Roll Request card directly, as the Roll Request creation use case will (PBI-DICE-005).</summary>
+    private async Task<(Guid EntryId, Guid RollRequestId)> SeedRollRequestEntryAsync(Guid campaignId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<CampaignPlayDbContext>();
+        var campaign = await dbContext.Campaigns.SingleAsync(candidate => candidate.Id == campaignId);
+        var rollRequestId = Guid.NewGuid();
+        var recording = WallEntry.RecordRollRequest(
+            campaign, campaign.KeeperAccountId, rollRequestId, WallEntryVisibility.Public, DateTimeOffset.UtcNow);
+        Assert.Equal(WallEntryAuthoringOutcome.Created, recording.Outcome);
+        dbContext.WallEntries.Add(recording.Entry!);
+        await dbContext.SaveChangesAsync();
+        return (recording.Entry!.Id, rollRequestId);
+    }
+
+    [Fact]
+    public async Task Given_a_roll_request_entry_When_members_list_Then_the_card_carries_the_kind_and_the_request_id_with_no_text()
+    {
+        var (client, campaignId) = await CampaignWithPlayerAsync("wall-keeper-13", "wall-player-13");
+        var (entryId, rollRequestId) = await SeedRollRequestEntryAsync(campaignId);
+
+        var keeperPage = await ListAsync(client, campaignId, "wall-keeper-13");
+        var playerPage = await ListAsync(client, campaignId, "wall-player-13");
+
+        Assert.Equal((entryId, "RollRequest", rollRequestId, string.Empty), (
+            keeperPage.Entries.Single().Id,
+            keeperPage.Entries.Single().Kind,
+            keeperPage.Entries.Single().RollRequestId,
+            keeperPage.Entries.Single().Text));
+        Assert.Equal(rollRequestId, playerPage.Entries.Single().RollRequestId);
+    }
+
+    [Fact]
+    public async Task Given_a_roll_request_entry_When_removing_Then_the_keeper_gets_conflict_the_player_gets_not_found_and_it_stays()
+    {
+        var (client, campaignId) = await CampaignWithPlayerAsync("wall-keeper-14", "wall-player-14");
+        var (entryId, _) = await SeedRollRequestEntryAsync(campaignId);
+
+        var keeperRemove = await client.SendAsync(BuildRequest(HttpMethod.Delete, $"{WallUri(campaignId)}/{entryId}", "wall-keeper-14"));
+        var playerRemove = await client.SendAsync(BuildRequest(HttpMethod.Delete, $"{WallUri(campaignId)}/{entryId}", "wall-player-14"));
+
+        Assert.Equal(HttpStatusCode.Conflict, keeperRemove.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, playerRemove.StatusCode);
+        Assert.Single((await ListAsync(client, campaignId, "wall-keeper-14")).Entries);
     }
 }

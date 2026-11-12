@@ -39,6 +39,8 @@ public static class CampaignPlayInfrastructureServiceCollectionExtensions
         services.AddScoped<WallEntryService>();
         services.AddScoped<ApprovedInvestigatorQuery>();
         services.AddScoped<PublishActiveSceneChanged>();
+        services.AddScoped<PublishRollRequestChanged>();
+        services.AddScoped<InvestigatorTargetValueQuery>();
         services.AddScoped<PublishRevealMade>();
         services.AddScoped<PublishItemHolderChanged>();
         services.AddScoped<PlayerInvestigatorService>();

@@ -15,4 +15,6 @@ public enum CampaignDataTopic
     MyClues,
     MyItems,
     SceneReveals,
+    RollRequests,
+    MyRequestedRolls,
 }

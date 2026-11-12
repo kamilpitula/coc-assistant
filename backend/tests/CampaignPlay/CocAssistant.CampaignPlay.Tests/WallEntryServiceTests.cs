@@ -326,4 +326,66 @@ public class WallEntryServiceTests : IDisposable
             new WallEntryAdded(campaignId, result.Entry!.Id, WallEntryVisibility.Public),
             Assert.Single(dispatcher.Dispatched));
     }
+
+    private async Task<AddWallEntryResult> AddRollRequestAsync(Guid campaignId, Guid caller, Guid rollRequestId)
+    {
+        _scenario.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        using var context = _scenario.Fixture.CreateContext();
+        return await CreateService(context).AddRollRequestAsync(campaignId, caller, rollRequestId, WallEntryVisibility.Public, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Given_the_keeper_When_recording_a_roll_request_Then_the_entry_has_the_kind_id_and_empty_text_and_lists_for_every_member()
+    {
+        var campaignId = await CampaignWithPlayersAsync();
+        var rollRequestId = Guid.NewGuid();
+
+        var result = await AddRollRequestAsync(campaignId, Keeper, rollRequestId);
+
+        Assert.Equal(WallEntryAuthoringOutcome.Created, result.Outcome);
+        Assert.Equal(WallEntryKind.RollRequest, result.Entry!.Kind);
+        Assert.Equal(rollRequestId, result.Entry.RollRequestId);
+        Assert.Equal(string.Empty, result.Entry.Text);
+        var keeperPage = await ListAsync(campaignId, Keeper);
+        var playerPage = await ListAsync(campaignId, Player);
+        Assert.Equal(rollRequestId, Assert.Single(keeperPage!.Entries).RollRequestId);
+        Assert.Equal(rollRequestId, Assert.Single(playerPage!.Entries).RollRequestId);
+    }
+
+    [Fact]
+    public async Task Given_a_non_keeper_When_recording_a_roll_request_Then_it_is_refused_and_nothing_is_stored()
+    {
+        var campaignId = await CampaignWithPlayersAsync();
+
+        var byPlayer = await AddRollRequestAsync(campaignId, Player, Guid.NewGuid());
+        var byStranger = await AddRollRequestAsync(campaignId, Stranger, Guid.NewGuid());
+
+        Assert.Equal(WallEntryAuthoringOutcome.NotAKeeper, byPlayer.Outcome);
+        Assert.Null(byPlayer.Entry);
+        Assert.Equal(WallEntryAuthoringOutcome.NotAMember, byStranger.Outcome);
+        Assert.Empty((await ListAsync(campaignId, Keeper))!.Entries);
+    }
+
+    [Fact]
+    public async Task Given_a_roll_request_entry_When_the_keeper_removes_it_Then_it_is_not_removable_and_stays()
+    {
+        var campaignId = await CampaignWithPlayersAsync();
+        var entry = (await AddRollRequestAsync(campaignId, Keeper, Guid.NewGuid())).Entry!;
+
+        var outcome = await RemoveAsync(campaignId, Keeper, entry.Id);
+
+        Assert.Equal(RemoveWallEntryOutcome.NotRemovable, outcome);
+        Assert.Single((await ListAsync(campaignId, Keeper))!.Entries);
+    }
+
+    [Fact]
+    public async Task Given_a_roll_request_entry_When_a_player_removes_it_Then_it_is_not_found_like_any_other_entry()
+    {
+        var campaignId = await CampaignWithPlayersAsync();
+        var entry = (await AddRollRequestAsync(campaignId, Keeper, Guid.NewGuid())).Entry!;
+
+        Assert.Equal(RemoveWallEntryOutcome.NotFound, await RemoveAsync(campaignId, Player, entry.Id));
+        Assert.Equal(RemoveWallEntryOutcome.NotFound, await RemoveAsync(campaignId, Player, Guid.NewGuid()));
+        Assert.Single((await ListAsync(campaignId, Keeper))!.Entries);
+    }
 }

@@ -6,7 +6,9 @@ public sealed record WallEntryView(
     string Text,
     WallEntryVisibility Visibility,
     DateTimeOffset CreatedAt,
-    string AuthorDisplayName);
+    string AuthorDisplayName,
+    WallEntryKind Kind = WallEntryKind.Text,
+    Guid? RollRequestId = null);
 
 /// <summary>One page of the Wall; the cursor is set only when more entries visible to the viewer exist.</summary>
 public sealed record WallEntryPage(IReadOnlyList<WallEntryView> Entries, string? NextCursor);
@@ -14,9 +16,13 @@ public sealed record WallEntryPage(IReadOnlyList<WallEntryView> Entries, string?
 /// <summary>The result of adding an entry; the entry is set only when it was created.</summary>
 public sealed record AddWallEntryResult(WallEntryAuthoringOutcome Outcome, WallEntryView? Entry);
 
-/// <summary>The result of removing an entry; a non-Keeper always gets <see cref="NotFound"/>, whatever the entry.</summary>
+/// <summary>
+/// The result of removing an entry; a non-Keeper always gets <see cref="NotFound"/>, whatever the entry, and a
+/// <see cref="WallEntryKind.RollRequest"/> entry is never removed.
+/// </summary>
 public enum RemoveWallEntryOutcome
 {
     Removed,
     NotFound,
+    NotRemovable,
 }

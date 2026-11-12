@@ -118,6 +118,8 @@ public class CampaignPlayDbContext : DbContext
             builder.Property(entry => entry.Id).ValueGeneratedNever();
             builder.Property(entry => entry.AuthorAccountId).IsRequired();
             builder.Property(entry => entry.Visibility).IsRequired().HasConversion<string>().HasMaxLength(20);
+            builder.Property(entry => entry.Kind).IsRequired().HasConversion<string>().HasMaxLength(20);
+            builder.Property(entry => entry.RollRequestId);
             builder.Property(entry => entry.Text).IsRequired().HasMaxLength(WallEntry.TextMaxLength);
 
             // Stored as a UTC datetime2 so every provider can order and compare it (the Wall pages by CreatedAt).
@@ -134,6 +136,11 @@ public class CampaignPlayDbContext : DbContext
 
             // Serves the newest-first Wall query for a Campaign (specs/campaign-play/spec.md, Wall Entry API).
             builder.HasIndex(entry => new { entry.CampaignId, entry.CreatedAt, entry.Id });
+
+            // One card per Roll Request (ADR 0033): the filtered index stays unique while Text entries keep a null id.
+            builder.HasIndex(entry => entry.RollRequestId)
+                .IsUnique()
+                .HasFilter("[RollRequestId] IS NOT NULL");
         });
     }
 }

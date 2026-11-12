@@ -181,6 +181,14 @@ namespace CocAssistant.CampaignPlay.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid?>("RollRequestId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Text")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -192,6 +200,10 @@ namespace CocAssistant.CampaignPlay.Infrastructure.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RollRequestId")
+                        .IsUnique()
+                        .HasFilter("[RollRequestId] IS NOT NULL");
 
                     b.HasIndex("CampaignId", "CreatedAt", "Id");
 
