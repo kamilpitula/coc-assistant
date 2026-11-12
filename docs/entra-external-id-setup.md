@@ -17,6 +17,11 @@ Create an app registration (e.g. `CocAssistant.Web`): platform = Single-page app
 redirect URIs = `http://localhost:5173` (Vite dev default) plus the production URL once known.
 Grant it API permission for the API app's `access_as_user` scope.
 
+Once the dev Static Web App exists, add its URL as another SPA redirect URI on the same
+registration: App registrations > `CocAssistant.Web` > Authentication > Add URI, using the
+`static_web_app_url` value from the deploy workflow run (default `*.azurestaticapps.net`
+hostname). The deployed SPA signs in through this URI; localhost alone is not enough.
+
 ## 4. Add Google as an identity provider
 Create a Google Cloud OAuth 2.0 Client ID (Google Cloud Console > APIs & Services >
 Credentials) for a Web application. The authorized redirect URI must be copied exactly from
