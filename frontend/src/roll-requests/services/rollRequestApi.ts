@@ -100,6 +100,14 @@ export class AlreadyRolledError extends Error {
   }
 }
 
+/** The roll's Roll Request is gone or no longer visible (404): the row leaves the panel without a message. */
+export class RequestedRollGoneError extends Error {
+  constructor() {
+    super('The roll is gone or no longer visible')
+    this.name = 'RequestedRollGoneError'
+  }
+}
+
 const NO_ACTIVE_SCENE_TITLE = 'No Scene is Active.'
 
 async function problemTitle(response: Response): Promise<string | null> {
@@ -204,6 +212,9 @@ export async function rollRequestedRoll(
     headers: authHeaders(accessToken),
   })
 
+  if (response.status === 404) {
+    throw new RequestedRollGoneError()
+  }
   if (response.status === 409) {
     throw ((await problemTitle(response)) === NO_ACTIVE_SCENE_TITLE ? new NoActiveSceneError() : new AlreadyRolledError())
   }

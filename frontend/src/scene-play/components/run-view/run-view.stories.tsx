@@ -2,7 +2,9 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import { keeperCampaign, keeperRosterAllApproved, STORY_CAMPAIGN_ID } from '@/campaign-play/test-support/rosterFixtures'
+import type { SkillCatalog } from '@/campaign-play/types/RuleData'
 import type { WallEntryPage } from '@/campaign-play/types/WallEntry'
+import { rollRequestQueryKeys } from '@/roll-requests/services/rollRequestApi'
 import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
 import { paragraph } from '@/scene-play/test-support/revealFixtures'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
@@ -38,6 +40,18 @@ const wall: WallEntryPage = {
   ],
 }
 
+const catalog: SkillCatalog = {
+  era: '1920s',
+  skills: [
+    { skill: 'Fighting', specialization: null, base: { kind: 'fixed', value: 25 } },
+    { skill: 'Listen', specialization: null, base: { kind: 'fixed', value: 20 } },
+    { skill: 'Spot Hidden', specialization: null, base: { kind: 'fixed', value: 25 } },
+  ],
+  closedFamilies: [],
+  openFamilies: [],
+  specializationSuggestions: {},
+}
+
 function ViewStory() {
   return (
     <StoryMsal tokens="pending">
@@ -49,9 +63,11 @@ function ViewStory() {
           client.setQueryData(sceneQueryKeys.detail(STORY_CAMPAIGN_ID, scene.scenarioId, scene.sceneId), {
             keeperNotes: paragraph('Walter is in the cellar. He attacks if the door is forced.'),
           })
+          client.setQueryData(campaignQueryKeys.skills(STORY_CAMPAIGN_ID), catalog)
+          client.setQueryData(rollRequestQueryKeys.activeScene(STORY_CAMPAIGN_ID), [])
         }}
       >
-        <RunView campaignId={STORY_CAMPAIGN_ID} scene={scene} onPresentSaved={() => undefined} onWallEntryAdded={() => undefined} onFinishedMeanwhile={() => undefined} />
+        <RunView campaignId={STORY_CAMPAIGN_ID} scene={scene} onPresentSaved={() => undefined} onWallEntryAdded={() => undefined} onFinishedMeanwhile={() => undefined} onRollRequested={() => undefined} />
       </StoryProviders>
     </StoryMsal>
   )

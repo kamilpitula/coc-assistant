@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react'
 import type { CampaignRole, CampaignView } from '@/campaign-play/types/Campaign'
 import type { CampaignSection } from '@/campaign-play/services/campaignSection'
 import { LiveBadge } from '@/shared/components/live-badge/live-badge'
+import { Badge } from '@/shared/components/ui/badge'
 import { cn } from '@/shared/components/utils'
 
 interface CampaignHeaderProps {
@@ -14,15 +15,17 @@ interface CampaignHeaderProps {
   isOverview: boolean
   /** Whether a Scene is Active; the Active Scene tab shows the Live badge exactly then. */
   hasActiveScene: boolean
+  /** Waiting rolls on the Active Scene tab; the badge shows only with an Active Scene and a count above 0. */
+  waitingRollCount?: number
 }
 
 /** The header on every Campaign page: back link, name, Era, and Campaign navigation (specs/campaign-overview/ux.md section 2). */
-export function CampaignHeader({ campaign, section, isOverview, hasActiveScene }: CampaignHeaderProps) {
+export function CampaignHeader({ campaign, section, isOverview, hasActiveScene, waitingRollCount }: CampaignHeaderProps) {
   const NameElement = isOverview ? 'h1' : 'p'
   const navRef = useRef<HTMLElement>(null)
 
   // The tab row scrolls inside itself on narrow screens; keep the current tab visible without moving focus.
-  // Re-runs when Live appears or disappears because the badge shifts the tabs.
+  // Re-runs when Live or the count appears because the badges shift the tabs.
   useEffect(() => {
     const nav = navRef.current
     const current = nav?.querySelector('[aria-current="page"]')
@@ -36,7 +39,7 @@ export function CampaignHeader({ campaign, section, isOverview, hasActiveScene }
     } else if (linkBox.left < navBox.left) {
       nav.scrollLeft -= navBox.left - linkBox.left
     }
-  }, [section, hasActiveScene])
+  }, [section, hasActiveScene, waitingRollCount])
 
   return (
     <header className="flex flex-col gap-1 border-b">
@@ -58,6 +61,7 @@ export function CampaignHeader({ campaign, section, isOverview, hasActiveScene }
           campaignId={campaign.id}
           current={section === 'active-scene'}
           live={hasActiveScene}
+          count={hasActiveScene && (waitingRollCount ?? 0) > 0 ? waitingRollCount : undefined}
         >
           Active Scene
         </CampaignNavLink>
@@ -83,20 +87,22 @@ interface CampaignNavLinkProps {
   current: boolean
   /** Exact router-active matching. The Overview path prefixes every Campaign page, so without it the router adds its own aria-current here alongside the section-driven one. */
   exact?: boolean
-  /** Shows the Live badge and names the link "<label>, live". */
+  /** Shows the Live badge and names the link "<label>, live", with the waiting count when given. */
   live?: boolean
+  /** Waiting rolls on this tab; the badge shows only above 0, named "<label>, live, {n} rolls waiting". */
+  count?: number
   children: string
 }
 
 /** A navigation link at least 44px high; the current one has a border and weight, not only a colour (CO-A11Y-2). */
-function CampaignNavLink({ to, campaignId, current, exact, live, children }: CampaignNavLinkProps) {
+function CampaignNavLink({ to, campaignId, current, exact, live, count, children }: CampaignNavLinkProps) {
   return (
     <Link
       to={to}
       params={{ campaignId }}
       activeOptions={exact ? { exact: true } : undefined}
       aria-current={current ? 'page' : undefined}
-      aria-label={live ? `${children}, live` : undefined}
+      aria-label={navLinkLabel(children, live, count)}
       className={cn(
         'inline-flex min-h-11 items-center gap-1 whitespace-nowrap border-b-2 px-1 sm:-mb-px',
         current ? 'border-foreground font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -104,6 +110,27 @@ function CampaignNavLink({ to, campaignId, current, exact, live, children }: Cam
     >
       {children}
       {live ? <LiveBadge /> : undefined}
+      {count === undefined ? null : (
+        <Badge variant="secondary" aria-hidden="true" className="px-1.5 tabular-nums">
+          {count}
+        </Badge>
+      )}
     </Link>
   )
+}
+
+/** The accessible name: the label, then live, then the waiting count (specs/roll-requests/ux.md section 7). */
+function navLinkLabel(children: string, live: boolean | undefined, count: number | undefined): string | undefined {
+  if (!live && count === undefined) {
+    return undefined
+  }
+
+  const parts = [children]
+  if (live) {
+    parts.push('live')
+  }
+  if (count !== undefined) {
+    parts.push(count === 1 ? '1 roll waiting' : `${count} rolls waiting`)
+  }
+  return parts.join(', ')
 }

@@ -6,6 +6,7 @@ import type { RollRequestTarget } from '@/roll-requests/types/RollRequest'
 
 import {
   AlreadyRolledError,
+  RequestedRollGoneError,
   RollRequestRefusedError,
   getActiveSceneRollRequests,
   getMyRequestedRolls,
@@ -214,5 +215,11 @@ describe('rollRequestedRoll', () => {
     stubFetch(() => jsonResponse(409, { title: 'No Scene is Active.' }))
 
     await expect(rollRequestedRoll('token', 'c1', 'r1', 'i1')).rejects.toBeInstanceOf(NoActiveSceneError)
+  })
+
+  it('throws RequestedRollGoneError when the roll is gone or not visible (404)', async () => {
+    stubFetch(() => jsonResponse(404, {}))
+
+    await expect(rollRequestedRoll('token', 'c1', 'r1', 'i1')).rejects.toBeInstanceOf(RequestedRollGoneError)
   })
 })

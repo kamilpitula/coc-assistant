@@ -92,6 +92,36 @@ describe('CampaignHeader', () => {
     expect(screen.queryByText('Live')).not.toBeInTheDocument()
   })
 
+  // specs/roll-requests/ux.md section 7; RR-UX-12.
+  it('names the Active Scene link with the waiting count while rolls are waiting (RR-UX-12)', () => {
+    render(<CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="wall" isOverview={false} hasActiveScene waitingRollCount={2} />)
+
+    const link = screen.getByRole('link', { name: 'Active Scene, live, 2 rolls waiting' })
+    expect(link).toHaveAttribute('href', '/campaigns/c1/active-scene')
+    expect(link).toHaveTextContent('2')
+  })
+
+  it('uses the singular "1 roll waiting" for one waiting roll (RR-UX-12)', () => {
+    render(<CampaignHeader campaign={{ ...campaign, role: 'Player' }} section="overview" isOverview hasActiveScene waitingRollCount={1} />)
+
+    expect(screen.getByRole('link', { name: 'Active Scene, live, 1 roll waiting' })).toBeInTheDocument()
+  })
+
+  it.each([
+    ['a count of 0', true, 0, 'Active Scene, live'],
+    ['no count', true, undefined, 'Active Scene, live'],
+    ['a count but no Active Scene', false, 2, 'Active Scene'],
+  ])('shows no count badge with %s (RR-UX-12)', (_case, hasActiveScene, waitingRollCount, name) => {
+    render(
+      <CampaignHeader campaign={{ ...campaign, role: 'Player' }} section="overview" isOverview hasActiveScene={hasActiveScene} waitingRollCount={waitingRollCount} />,
+    )
+
+    const link = screen.getByRole('link', { name })
+    expect(link).toHaveTextContent('Active Scene')
+    expect(link).not.toHaveTextContent('2')
+    expect(link).not.toHaveTextContent('0')
+  })
+
   it('never announces the badge and never moves focus (NAV-A11Y-5)', () => {
     render(<CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="overview" isOverview hasActiveScene />)
 
@@ -125,10 +155,15 @@ describe('CampaignHeader', () => {
     rerender(<CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="wall" isOverview={false} hasActiveScene />)
     expect(nav.scrollLeft).toBe(104)
 
+    // The count badge shifts the tabs too, so the row re-scrolls when the count arrives.
+    vi.spyOn(wall, 'getBoundingClientRect').mockReturnValue({ left: 363, right: 423 } as unknown as DOMRect)
+    rerender(<CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="wall" isOverview={false} hasActiveScene waitingRollCount={2} />)
+    expect(nav.scrollLeft).toBe(231)
+
     // A current tab out of view to the left scrolls back the other way.
     const overview = screen.getByRole('link', { name: 'Overview' })
     vi.spyOn(overview, 'getBoundingClientRect').mockReturnValue({ left: 0, right: 60 } as unknown as DOMRect)
     rerender(<CampaignHeader campaign={{ ...campaign, role: 'Keeper' }} section="overview" isOverview hasActiveScene />)
-    expect(nav.scrollLeft).toBe(80)
+    expect(nav.scrollLeft).toBe(207)
   })
 })

@@ -21,6 +21,8 @@ export interface ActiveSceneTabContextValue {
   onWallEntryAdded: () => void
   /** A present change found the Scene finished, so the page refetches. */
   onFinishedMeanwhile: () => void
+  /** A roll was requested, so the page says "{target} roll requested from {names}.". */
+  onRollRequested: (message: string) => void
 }
 
 export const ActiveSceneTabContext = createContext<ActiveSceneTabContextValue | null>(null)

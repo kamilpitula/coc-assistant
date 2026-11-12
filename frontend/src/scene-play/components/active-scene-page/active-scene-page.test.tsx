@@ -506,6 +506,14 @@ describe('ActiveScenePage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Investigators present saved.')
   })
 
+  it('says "{target} roll requested from {names}." after a request from Run (RR-UX-6)', () => {
+    render(<ActiveScenePage campaignId="c1" />)
+
+    act(() => tabValue?.onRollRequested('Spot Hidden roll requested from Harvey Walters.'))
+
+    expect(screen.getByRole('status')).toHaveTextContent('Spot Hidden roll requested from Harvey Walters.')
+  })
+
   it('says "Wall Entry added." after a Wall post from Run (SPL-UX-49)', () => {
     render(<ActiveScenePage campaignId="c1" />)
 

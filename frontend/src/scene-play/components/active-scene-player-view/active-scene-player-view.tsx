@@ -1,5 +1,6 @@
 import type { Ref } from 'react'
 
+import { WaitingRollsPanel } from '@/roll-requests/components/waiting-rolls-panel/waiting-rolls-panel'
 import { RevealedToSection } from '@/scene-play/components/revealed-to-section/revealed-to-section'
 import { HeldItemsSection } from '@/scene-play/components/held-items-section/held-items-section'
 import { ActiveSceneWall } from '@/scene-play/components/active-scene-wall/active-scene-wall'
@@ -15,20 +16,24 @@ interface ActiveScenePlayerViewProps {
 }
 
 /**
- * The Active Scene for a Player (specs/scene-play/ux.md sections 4 and 21.8): a Player whose Investigator is present sees the title,
- * location, who is present, and what was revealed to their Investigator; any other Player sees only that the Scene is in progress.
+ * The Active Scene for a Player (specs/scene-play/ux.md sections 4 and 21.8, specs/roll-requests/ux.md section 6): a Player
+ * whose Investigator is present sees the title, location, their waiting rolls, who is present, and what was revealed to
+ * their Investigator; any other Player sees only that the Scene is in progress, with their waiting rolls after it.
  * Both see the Campaign Wall last, on the right from 1024px.
  */
 export function ActiveScenePlayerView({ campaignId, scene, headingRef, onWallEntryAdded }: ActiveScenePlayerViewProps) {
   if (scene.kind === 'absent-player') {
     return (
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <section className="flex min-w-0 max-w-2xl flex-col gap-3">
-          <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold break-words">
-            {scene.title}
-          </h1>
-          <p className="text-sm">This Scene is in progress. You aren&apos;t taking part in it.</p>
-        </section>
+        <div className="flex min-w-0 flex-col gap-6">
+          <section className="flex min-w-0 max-w-2xl flex-col gap-3">
+            <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold break-words">
+              {scene.title}
+            </h1>
+            <p className="text-sm">This Scene is in progress. You aren&apos;t taking part in it.</p>
+          </section>
+          <WaitingRollsPanel campaignId={campaignId} />
+        </div>
         <ActiveSceneWall campaignId={campaignId} viewerRole="Player" onWallEntryAdded={onWallEntryAdded} />
       </div>
     )
@@ -48,6 +53,7 @@ export function ActiveScenePlayerView({ campaignId, scene, headingRef, onWallEnt
             <dd className="break-words">{scene.location}</dd>
           </dl>
         )}
+        <WaitingRollsPanel campaignId={campaignId} />
         <section aria-labelledby="present-heading" className="flex max-w-2xl flex-col gap-2">
           <h2 id="present-heading" className="text-lg font-semibold">
             Investigators present
