@@ -21,11 +21,14 @@ The existing integration tests and E2E harness were written local-first against 
     | `e2e` | `backend/**`, `frontend/**`, or `e2e/**` changed | 4-shard Playwright chromium matrix (`E2E (shard N/4)`, `fail-fast: false`), each shard with its own SQL Server service container, 2 workers, blob report plus server logs uploaded per shard |
     | `merge-reports` | `backend/**`, `frontend/**`, or `e2e/**` changed | merges the shard blob reports into one HTML report artifact and the `E2E tests` check run |
     | `terraform` | `infrastructure/**` changed | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate` |
+    | `actionlint` | workflow, action, or tool change | `npm ci`, `typecheck`, `test`, and `check` (actionlint over `.github/workflows/`, shellcheck and pyflakes off) in `tools/actionlint/` |
+    | `deploy-build` | pull request touching `backend/**` or `frontend/**` | runs the shared `.github/actions/build-*` build steps with non-secret placeholders; no Azure login, no push, no secrets |
     | `backlog` | always | `npm ci`, `typecheck`, `test`, and `check` (`--check` on every PBI file, see `docs/backlog.md`) in `tools/backlog/` |
     | `ascii` | always | `npm ci`, `typecheck`, `test`, and `check` (non-ASCII characters in tracked files, minus the exclusions and baseline in `tools/ascii-check/src/asciiPolicy.ts`) in `tools/ascii-check/` |
     | `ci-success` | always | aggregates the results of all jobs above; the only required status check |
   - A change to `.github/workflows/**`, `.github/actions/**`, `global.json`, `.nvmrc`, or `.config/dotnet-tools.json` runs every job. A `push` to `master` runs every job.
-  - Caches: NuGet packages, npm for `frontend/package-lock.json`, `e2e/package-lock.json`, `tools/backlog/package-lock.json`, and `tools/ascii-check/package-lock.json`, Playwright browsers keyed on the Playwright version.
+  - Caches: NuGet packages, npm for `frontend/package-lock.json`, `e2e/package-lock.json`, `tools/backlog/package-lock.json`, `tools/ascii-check/package-lock.json`, and `tools/actionlint/package-lock.json`, Playwright browsers keyed on the Playwright version.
+- **Workflow lint:** `node tools/actionlint/src/cli.ts` from the repo root lints `.github/workflows/` with the pinned actionlint (version and sha256 in `tools/actionlint/src/actionlintPin.ts`); the binary is never downloaded ad hoc. The `actionlint` CI job runs the same command, and the pre-commit hook runs it when a workflow or action file is staged.
 - **SQL Server connection configuration:**
   - Environment variable `COC_SQLSERVER_CONNECTION` holds the server portion of a connection string (server, credentials, `TrustServerCertificate`) without a database.
   - Each consumer appends its own database name: `CocAssistantIdentityTests` (`backend/tests/CocAssistant.Api.IntegrationTests/IdentityApiFactory.cs`), `CocAssistantCampaignPlayMigrationTests` (`backend/tests/CocAssistant.Api.IntegrationTests/CampaignPlayMigrationTests.cs`), and `CocAssistantE2E` (`e2e/playwright.config.ts`, `e2e/globalSetup.ts`).
@@ -70,7 +73,9 @@ The existing integration tests and E2E harness were written local-first against 
 - A skipped job (no relevant changes) never causes `ci-success` to fail.
 - The `backlog` job runs on every pull request and push, and a PBI file that fails `--check` fails `ci-success`.
 - The `ascii` job runs on every pull request and push, and a non-ASCII character in a scanned file fails `ci-success`.
-- Every `push` to `master` runs every job regardless of changed paths.
+- Every `push` to `master` runs every job regardless of changed paths, except `deploy-build`: it runs on pull requests only, because `deploy-dev` runs the same steps on `master` a few minutes later.
+- The `actionlint` job runs on every `push` to `master` and on pull requests that touch `.github/workflows/**`, `.github/actions/**`, or `tools/actionlint/**`; an invalid workflow file fails `ci-success`.
+- The `deploy-build` job has `contents: read` only, with no `id-token`, `packages` or `environment`, and makes no Azure or GHCR push access and reads no secret.
 - With `COC_SQLSERVER_CONNECTION` unset, integration tests and the E2E harness target LocalDB exactly as before.
 - Each SQL Server consumer keeps its own database name; consumers never share a database through the connection helper.
 - The workflow runs without repository secrets.
@@ -97,7 +102,8 @@ Scenario: Runs on master are never cancelled
 Scenario: A push to master runs every job
   Given a commit pushed to master that changes only files under docs/
   When the CI workflow runs
-  Then the backend, backend-integration, frontend, e2e, merge-reports, terraform, backlog, and ascii jobs all run
+  Then the backend, backend-integration, frontend, e2e, merge-reports, terraform, backlog, ascii, and actionlint jobs all run
+  And the deploy-build job is skipped, the single exception to running every job on master
 
 Scenario: A Terraform-only pull request skips application jobs
   Given a pull request that changes only files under infrastructure/
@@ -176,4 +182,22 @@ Scenario: A failing shard fails the required check
   When the CI workflow runs
   Then the e2e job fails
   And ci-success fails
+
+Scenario: An invalid workflow file fails the required check
+  Given a pull request that adds a job-level `env` block reading `${{ env.DEPLOY_SHA }}`
+  When the CI workflow runs
+  Then the actionlint job fails
+  And ci-success fails
+
+Scenario: A broken deploy build step fails the required check
+  Given a pull request that touches `backend/**` and removes the Restore backend step from the shared build steps
+  When the CI workflow runs
+  Then the deploy-build job fails
+  And ci-success fails
+
+Scenario: A docs-only pull request skips the deploy build check
+  Given a pull request that changes only files under docs/
+  When the CI workflow runs
+  Then the deploy-build job is skipped
+  And ci-success passes when the backlog and ascii jobs pass
 ```

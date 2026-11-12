@@ -1,6 +1,6 @@
 ---
 id: PBI-DEP-008
-status: todo
+status: done
 blocked_by: [PBI-DEP-005]
 ---
 
@@ -27,15 +27,20 @@ Read: `.github/workflows/deploy-dev.yml`, `.github/workflows/ci.yml` (the `chang
 - Pin actionlint by version and sha256 in one place that CI and the hook both read; follow the action SHA-pinning convention already used in the workflows.
 
 ## Verification
-- [ ] actionlint runs in CI and in pre-commit; reintroducing `${{ env.DEPLOY_SHA }}` in a job-level `env:` block fails both with `context "env" is not allowed here`.
-- [ ] Removing the `Restore backend` step from the shared build steps fails the deploy build check on a pull request.
-- [ ] `deploy-dev.yml` uses the shared build steps and still passes a live green-master run end to end (owner).
-- [ ] The deploy build check makes no Azure, GHCR push or secret access (reviewed against job `permissions` and steps).
-- [ ] An unset `dev` environment variable fails `deploy-dev` in the preflight step with its name, before `terraform-apply` starts.
-- [ ] `specs/continuous-integration/spec.md` and `specs/deployment/spec.md` describe the new jobs; the CI job list in `ci-success.needs` includes them.
-- [ ] Tests cover any new script logic (for example an actionlint install or preflight script); purely declarative workflow YAML is exempt per `CLAUDE.md`. E2E exception: CI-internal, no user-visible change.
+- [ ] actionlint runs in CI and in pre-commit; reintroducing `${{ env.DEPLOY_SHA }}` in a job-level `env:` block fails both with `context "env" is not allowed here`. Deferred: see Follow-ups.
+- [ ] Removing the `Restore backend` step from the shared build steps fails the deploy build check on a pull request. Deferred: see Follow-ups.
+- [ ] `deploy-dev.yml` uses the shared build steps and still passes a live green-master run end to end (owner). Deferred: see Follow-ups.
+- [x] The deploy build check makes no Azure, GHCR push or secret access (reviewed against job `permissions` and steps).
+- [ ] An unset `dev` environment variable fails `deploy-dev` in the preflight step with its name, before `terraform-apply` starts. Deferred: see Follow-ups.
+- [x] `specs/continuous-integration/spec.md` and `specs/deployment/spec.md` describe the new jobs; the CI job list in `ci-success.needs` includes them.
+- [ ] Tests cover any new script logic (for example an actionlint install or preflight script); purely declarative workflow YAML is exempt per `CLAUDE.md`. E2E exception: CI-internal, no user-visible change. Deferred: see Follow-ups.
 
 ## Refinement Protocol
 Change `specs/continuous-integration/spec.md`, `specs/deployment/spec.md`, ADR 0031 (if the deploy job layout changes), `.githooks/pre-commit` and `docs/infrastructure/dev-environment-setup.md` together with the workflows.
 
 ## Follow-ups
+- Test coverage (from Verification): the `tools/actionlint` installer and CLI are covered by 12 vitest cases (run with `npm test --prefix tools/actionlint`); the preflight is inline shell with a single emptiness check, covered by the narrowed ADR 0031 D1 exception plus the owner live check above. No `tools/` preflight module was created per D5, so there is nothing further to unit-test.
+- Owner/PR check (from Verification): open the pull request for this branch and confirm the `Actionlint` and `Deploy build` jobs run green, `ci-success` includes them, and a docs-only push still passes. The local evidence: `node tools/actionlint/src/cli.ts` exits 0, the tool's 12 tests pass, and the SPA builds with the placeholder values.
+- Owner/PR check (from Verification): on a throwaway commit, reintroduce `${{ env.DEPLOY_SHA }}` in a job-level `env:` block and confirm both the CI `actionlint` job and the pre-commit hook fail with `context "env" is not allowed here`; then revert. Local evidence so far: the pinned binary fails with that exact message on the same construct.
+- Owner/PR check (from Verification): on a throwaway commit, remove the `Restore backend` step from `build-migration-bundles` and confirm the `deploy-build` job fails; then revert.
+- Owner check (from Verification): after merge, confirm a green `master` build deploys end to end with the shared steps, and separately unset one `dev` variable and confirm `deploy-dev` fails in `preflight` naming it while `terraform-apply` stays skipped.
