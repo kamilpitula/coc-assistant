@@ -39,3 +39,5 @@ Read: [roll-requests spec](../../../specs/roll-requests/spec.md); [dice spec](..
 A change to Roll Requests updates the roll-requests spec and ux.md, the campaign-play Wall Entry contract when the card changes, the design record, and tests together.
 
 ## Follow-ups
+- Cancelling waiting rolls on Finish Scene and on removing an Investigator present, and the Finish-dialog count, are deferred (design record, Human decisions Q4) -> PBI-DICE-007
+- UX prototype kept as evidence on the local, never-merged branch `prototype/dice-005-roll-requests` (`specs/roll-requests/prototype/roll-requests-prototype.html`); verdict in [ux.md section 12](../../../specs/roll-requests/ux.md#12-prototype-validation).
