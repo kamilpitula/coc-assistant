@@ -6,7 +6,7 @@ namespace CocAssistant.Api.IntegrationTests;
 /// gets 401; a Player gets the row's status (404 for Keeper-only rows, 200 with the non-present shape for the Active Scene
 /// read, 200 with only their Investigator's Reveals for the Scene History read); another
 /// Campaign's Keeper and the Keeper addressing a missing Campaign get 404. A refused call changes no Scene, no present Investigator,
-/// and no Wall Entry, and no response carries prepared text. The Reveal rows (PBI-SPL-002) answer a Player 404, because the matrix
+/// no Wall Entry, and no Roll Request, and no response carries prepared text. The Reveal rows (PBI-SPL-002) answer a Player 404, because the matrix
 /// Player is not a recipient and has no Approved Investigator; a refused call adds no Reveal or recipient. The Item holder
 /// rows (PBI-SPL-003) answer a Player 404 for the same reason, because the matrix Player holds nothing and has no Approved
 /// Investigator; a refused call changes no Item and adds no Reveal.
@@ -33,7 +33,7 @@ public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactor
 
     private sealed record Seeded(Guid CampaignId, Guid PreparedSceneId, Guid RevealId, Guid InvestigatorId, Guid ItemId);
 
-    private sealed record Addresses(Guid CampaignId, Guid SceneId, Guid RevealId, Guid InvestigatorId, Guid ItemId);
+    private sealed record Addresses(Guid CampaignId, Guid SceneId, Guid RevealId, Guid RollRequestId, Guid InvestigatorId, Guid ItemId);
 
     [Fact]
     public void Given_the_registered_endpoints_When_comparing_with_the_matrix_Then_every_endpoint_has_a_row_and_every_row_an_endpoint()
@@ -102,8 +102,8 @@ public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactor
 
         foreach (var row in Rows())
         {
-            var target = address(new Addresses(seeded.CampaignId, seeded.PreparedSceneId, seeded.RevealId, seeded.InvestigatorId, seeded.ItemId));
-            using var request = new HttpRequestMessage(new HttpMethod(row.Method), row.Template.Replace("{campaignId}", target.CampaignId.ToString()).Replace("{sceneId}", target.SceneId.ToString()).Replace("{revealId}", target.RevealId.ToString()).Replace("{investigatorId}", target.InvestigatorId.ToString()).Replace("{itemId}", target.ItemId.ToString()))
+            var target = address(new Addresses(seeded.CampaignId, seeded.PreparedSceneId, seeded.RevealId, SomeId, seeded.InvestigatorId, seeded.ItemId));
+            using var request = new HttpRequestMessage(new HttpMethod(row.Method), row.Template.Replace("{campaignId}", target.CampaignId.ToString()).Replace("{sceneId}", target.SceneId.ToString()).Replace("{revealId}", target.RevealId.ToString()).Replace("{rollRequestId}", target.RollRequestId.ToString()).Replace("{investigatorId}", target.InvestigatorId.ToString()).Replace("{itemId}", target.ItemId.ToString()))
             {
                 Content = row.Content(),
             };
@@ -184,7 +184,7 @@ public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactor
     {
         using var scope = _factory.Services.CreateScope();
         var lines = new List<string>();
-        lines.AddRange(await ChecksumsAsync(scope.ServiceProvider.GetRequiredService<ScenarioPreparationDbContext>(), "Scenes", "SceneInvestigatorsPresent", "Reveals", "RevealRecipients", "Items"));
+        lines.AddRange(await ChecksumsAsync(scope.ServiceProvider.GetRequiredService<ScenarioPreparationDbContext>(), "Scenes", "SceneInvestigatorsPresent", "Reveals", "RevealRecipients", "Items", "RollRequests", "RequestedRolls"));
         lines.AddRange(await ChecksumsAsync(scope.ServiceProvider.GetRequiredService<CampaignPlayDbContext>(), "WallEntries"));
         return string.Join('\n', lines);
     }
@@ -232,6 +232,11 @@ public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactor
             new("GET", campaign + "/investigators/{investigatorId}/items", NoBody, HttpStatusCode.NotFound),
             new("GET", campaign + "/investigators/mine/clues", NoBody, HttpStatusCode.NotFound),
             new("GET", campaign + "/investigators/{investigatorId}/clues", NoBody, HttpStatusCode.NotFound),
+            new("POST", campaign + "/active-scene/roll-requests", Json(new { target = new { kind = "Luck" }, investigators = new[] { new { investigatorId = SomeId } } }), HttpStatusCode.NotFound),
+            new("GET", campaign + "/roll-requests/{rollRequestId}", NoBody, HttpStatusCode.NotFound),
+            new("GET", campaign + "/active-scene/roll-requests", NoBody, HttpStatusCode.NotFound),
+            new("GET", campaign + "/investigators/mine/requested-rolls", NoBody, HttpStatusCode.NotFound),
+            new("POST", campaign + "/roll-requests/{rollRequestId}/requested-rolls/{investigatorId}/roll", NoBody, HttpStatusCode.NotFound),
         ];
     }
 }

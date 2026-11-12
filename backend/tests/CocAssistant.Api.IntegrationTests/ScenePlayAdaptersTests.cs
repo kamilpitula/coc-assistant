@@ -84,6 +84,27 @@ public class ScenePlayAdaptersTests : IClassFixture<IdentityApiFactory>, IAsyncL
     }
 
     [Fact]
+    public void Given_the_Roll_Request_names_When_mapping_by_name_Then_every_member_has_a_counterpart_on_the_other_side()
+    {
+        Assert.Empty(Enum.GetNames<CocAssistant.ScenarioPreparation.Domain.RollRequests.RollTargetKind>().Except(Enum.GetNames<RollRequestTargetKind>()));
+        Assert.Empty(Enum.GetNames<RollRequestTargetKind>().Except(Enum.GetNames<CocAssistant.ScenarioPreparation.Domain.RollRequests.RollTargetKind>()).Except([nameof(RollRequestTargetKind.Unknown)]));
+        Assert.Empty(Enum.GetNames<CocAssistant.GameRules.Domain.Dice.Difficulty>().Except(Enum.GetNames<RollRequestDifficulty>()));
+        Assert.Empty(Enum.GetNames<RollRequestDifficulty>().Except(Enum.GetNames<CocAssistant.GameRules.Domain.Dice.Difficulty>()).Except([nameof(RollRequestDifficulty.Unknown)]));
+        Assert.Empty(Enum.GetNames<CocAssistant.ScenarioPreparation.Domain.RollRequests.RollRequestVisibility>().Except(Enum.GetNames<CocAssistant.ScenePlay.Application.RollRequestVisibility>()));
+        Assert.Empty(Enum.GetNames<CocAssistant.ScenePlay.Application.RollRequestVisibility>().Except(Enum.GetNames<CocAssistant.ScenarioPreparation.Domain.RollRequests.RollRequestVisibility>()).Except([nameof(CocAssistant.ScenePlay.Application.RollRequestVisibility.Unknown)]));
+        Assert.Empty(Enum.GetNames<CocAssistant.ScenePlay.Application.RollRequestVisibility>().Except(Enum.GetNames<CocAssistant.CampaignPlay.Domain.Wall.WallEntryVisibility>()).Except([nameof(CocAssistant.ScenePlay.Application.RollRequestVisibility.Unknown)]));
+        Assert.Empty(Enum.GetNames<CocAssistant.ScenarioPreparation.Domain.RollRequests.RequestedRollStatus>().Except(Enum.GetNames<CocAssistant.ScenePlay.Application.RequestedRollStatus>()));
+        Assert.Empty(Enum.GetNames<CocAssistant.ScenePlay.Application.RequestedRollStatus>().Except(Enum.GetNames<CocAssistant.ScenarioPreparation.Domain.RollRequests.RequestedRollStatus>()));
+        Assert.Empty(Enum.GetNames<CocAssistant.GameRules.Domain.Dice.SuccessLevel>().Except(Enum.GetNames<RollSuccessLevel>()));
+        Assert.Empty(Enum.GetNames<RollSuccessLevel>().Except(Enum.GetNames<CocAssistant.GameRules.Domain.Dice.SuccessLevel>()));
+        Assert.Empty(Enum.GetNames<CocAssistant.ScenarioPreparation.Application.RollRequestWriteOutcome>().Except(Enum.GetNames<CocAssistant.ScenePlay.Application.RollRequestWriteOutcome>()));
+        Assert.Empty(Enum.GetNames<CocAssistant.ScenePlay.Application.RollRequestWriteOutcome>().Except(Enum.GetNames<CocAssistant.ScenarioPreparation.Application.RollRequestWriteOutcome>()));
+        Assert.Empty(Enum.GetNames<CocAssistant.ScenarioPreparation.Application.RequestedRollWriteOutcome>().Except(Enum.GetNames<CocAssistant.ScenePlay.Application.RequestedRollWriteOutcome>()));
+        Assert.Empty(Enum.GetNames<CocAssistant.ScenePlay.Application.RequestedRollWriteOutcome>().Except(Enum.GetNames<CocAssistant.ScenarioPreparation.Application.RequestedRollWriteOutcome>()));
+        Assert.Empty(Enum.GetNames<CocAssistant.CampaignPlay.Application.TargetValueRefusal>().Except(Enum.GetNames<CocAssistant.ScenePlay.Application.TargetValueRefusal>()));
+        Assert.Empty(Enum.GetNames<CocAssistant.ScenePlay.Application.TargetValueRefusal>().Except(Enum.GetNames<CocAssistant.CampaignPlay.Application.TargetValueRefusal>()));
+    }
+    [Fact]
     public void Given_the_Reveal_names_When_mapping_by_name_Then_every_member_has_a_counterpart_on_the_other_side()
     {
         Assert.Empty(Enum.GetNames<SceneRevealOutcome>().Except(Enum.GetNames<CocAssistant.ScenePlay.Application.RevealOutcome>()));

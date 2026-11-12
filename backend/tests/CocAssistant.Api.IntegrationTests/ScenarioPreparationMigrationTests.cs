@@ -235,7 +235,7 @@ public class ScenarioPreparationMigrationTests : IAsyncLifetime
             scene.Id,
             new RollTarget(CocAssistant.ScenarioPreparation.Domain.RollRequests.RollTargetKind.Skill, skill: "Spot Hidden"),
             "Something moves upstairs.",
-            RollRequestVisibility.Public,
+            CocAssistant.ScenarioPreparation.Domain.RollRequests.RollRequestVisibility.Public,
             Difficulty.Regular,
             0,
             0,
@@ -255,7 +255,7 @@ public class ScenarioPreparationMigrationTests : IAsyncLifetime
 
         Assert.Equal(("Spot Hidden", "Something moves upstairs."), (stored.Target.Skill, stored.Message));
         var roll = Assert.Single(stored.RequestedRolls);
-        Assert.Equal((harvey, RequestedRollStatus.Rolled, 60), (roll.InvestigatorId, roll.Status, roll.TargetValue));
+        Assert.Equal((harvey, CocAssistant.ScenarioPreparation.Domain.RollRequests.RequestedRollStatus.Rolled, 60), (roll.InvestigatorId, roll.Status, roll.TargetValue));
         var record = Assert.Single(roll.RollRecords);
         Assert.Equal((25, true), (record.Result, record.EarnsExperienceCheck));
         Assert.Equal(new PercentileRoll(60, 60, 30, 12, Difficulty.Regular, 0, 0, 5, [20], 20, 25, SuccessLevel.Hard, true), record.Percentile);
@@ -275,7 +275,7 @@ public class ScenarioPreparationMigrationTests : IAsyncLifetime
             scene.Id,
             new RollTarget(CocAssistant.ScenarioPreparation.Domain.RollRequests.RollTargetKind.Luck),
             null,
-            RollRequestVisibility.Public,
+            CocAssistant.ScenarioPreparation.Domain.RollRequests.RollRequestVisibility.Public,
             Difficulty.Regular,
             0,
             0,

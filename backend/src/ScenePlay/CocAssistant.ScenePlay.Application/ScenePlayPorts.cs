@@ -101,11 +101,17 @@ public interface IPlayableScenes
         CancellationToken cancellationToken);
 }
 
-/// <summary>Consumer-owned port: creates a Public Wall Entry authored by the Keeper, through the Campaign Play Wall Entry behavior.</summary>
+/// <summary>Consumer-owned port: creates Wall Entries through the Campaign Play Wall Entry behavior.</summary>
 public interface ISceneWallEntries
 {
     /// <summary>Throws when the entry could not be created; the caller treats that as best-effort (ADR 0024).</summary>
     Task AddPublicAsync(Guid campaignId, Guid keeperAccountId, string text, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Records a Roll Request as a Public card authored by the Keeper (ADR 0033). Throws when the entry could not be
+    /// created; the caller treats that as best-effort (ADR 0024).
+    /// </summary>
+    Task AddRollRequestAsync(Guid campaignId, Guid keeperAccountId, Guid rollRequestId, RollRequestVisibility visibility, CancellationToken cancellationToken);
 }
 
 /// <summary>A played Scene as the provider returns it: the fields history shows, the ids of the Investigators present, and its Reveals.</summary>

@@ -15,8 +15,13 @@ public static class ScenePlayInfrastructureServiceCollectionExtensions
         services.AddScoped<IRevealSignals, CampaignPlayRevealSignals>();
         services.AddScoped<ISceneItemHolders, ScenarioPreparationSceneItemHolders>();
         services.AddScoped<IItemHolderSignals, CampaignPlayItemHolderSignals>();
+        services.AddScoped<IRollRequests, ScenarioPreparationRollRequests>();
+        services.AddScoped<IInvestigatorTargetValues, CampaignPlayInvestigatorTargetValues>();
+        services.AddScoped<IRollRequestSignals, CampaignPlayRollRequestSignals>();
+        services.AddScoped<IAccountNames, CampaignPlayAccountNames>();
         services.AddScoped<ActiveSceneService>();
         services.AddScoped<RevealService>();
+        services.AddScoped<RollRequestService>();
         services.AddScoped<ItemHolderService>();
         services.AddScoped<ISceneHistory, ScenarioPreparationSceneHistory>();
         services.AddScoped<SceneHistoryService>();
