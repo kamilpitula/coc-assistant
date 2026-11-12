@@ -365,11 +365,14 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: ./.github/actions/build-migration-bundles
+      # The image builds first, from a pristine checkout: the host dotnet build and
+      # ef bundle below leave backslash-named bin directories that break the image
+      # build (MSB3552, PR #71). Matches the green deploy-dev image job.
       - uses: ./.github/actions/build-api-image
         with:
           # A local tag that is never pushed.
           image: coc-assistant-api:ci-${{ github.sha }}
+      - uses: ./.github/actions/build-migration-bundles
       - uses: ./.github/actions/build-spa
         with:
           # Non-secret placeholders; the .invalid top-level domain can never resolve.
