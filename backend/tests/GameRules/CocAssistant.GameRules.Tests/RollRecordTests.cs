@@ -56,4 +56,52 @@ public class RollRecordTests
 
         Assert.NotEqual(left, right);
     }
+
+    [Fact]
+    public void Given_two_records_with_equal_percentile_rolls_When_compared_Then_they_are_equal()
+    {
+        var rolledBy = Guid.NewGuid();
+        var left = PercentileRecord(25, SuccessLevel.Hard, true, rolledBy);
+        var right = PercentileRecord(25, SuccessLevel.Hard, true, rolledBy);
+
+        Assert.Equal(left, right);
+        Assert.Equal(left.GetHashCode(), right.GetHashCode());
+    }
+
+    [Fact]
+    public void Given_two_records_with_different_percentile_results_When_compared_Then_they_are_not_equal()
+    {
+        var rolledBy = Guid.NewGuid();
+        var left = PercentileRecord(25, SuccessLevel.Hard, true, rolledBy);
+        var right = PercentileRecord(73, SuccessLevel.Failure, false, rolledBy);
+
+        Assert.NotEqual(left, right);
+    }
+
+    [Fact]
+    public void Given_two_records_with_different_experience_check_flags_When_compared_Then_they_are_not_equal()
+    {
+        var rolledBy = Guid.NewGuid();
+        var left = PercentileRecord(25, SuccessLevel.Hard, true, rolledBy);
+        var right = PercentileRecord(25, SuccessLevel.Hard, false, rolledBy);
+
+        Assert.NotEqual(left, right);
+    }
+
+    private static RollRecord PercentileRecord(int result, SuccessLevel level, bool earnsCheck, Guid rolledBy)
+    {
+        var rolledAt = new DateTimeOffset(2026, 11, 8, 12, 0, 0, TimeSpan.Zero);
+        var percentile = new PercentileRoll(
+            60, 60, 30, 12, Difficulty.Regular, 0, 0, 5, [20], 20, result, level, level != SuccessLevel.Failure);
+        return new RollRecord(
+            "RollRequest:request:investigator",
+            "1D100",
+            result,
+            RollSource.Server,
+            [2, 5],
+            rolledBy,
+            rolledAt,
+            percentile,
+            earnsCheck);
+    }
 }

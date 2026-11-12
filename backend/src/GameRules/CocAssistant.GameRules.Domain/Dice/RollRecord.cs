@@ -11,7 +11,8 @@ public enum RollSource
 /// <summary>
 /// A kept dice result: what it was rolled for, the dice, the raw total, and its source. Rolls the server makes
 /// keep their faces, who asked for them, and when; results the Player entered predate that audit
-/// (docs/game-rules/project_ruleset.md section 4.3).
+/// (docs/game-rules/project_ruleset.md section 4.3). A percentile roll against a target value also keeps its resolved
+/// roll and whether it earns an experience check (specs/dice/spec.md); other records leave both null.
 /// </summary>
 public sealed record RollRecord(
     string Purpose,
@@ -20,7 +21,9 @@ public sealed record RollRecord(
     RollSource Source,
     IReadOnlyList<int>? Faces = null,
     Guid? RolledByAccountId = null,
-    DateTimeOffset? RolledAt = null)
+    DateTimeOffset? RolledAt = null,
+    PercentileRoll? Percentile = null,
+    bool? EarnsExperienceCheck = null)
 {
     /// <summary>A result the server rolled: it keeps the faces, who asked for it, and when.</summary>
     public static RollRecord FromServer(string purpose, DiceRoll roll, Guid rolledByAccountId, DateTimeOffset rolledAt) =>
@@ -38,10 +41,15 @@ public sealed record RollRecord(
         && Source == other.Source
         && Nullable.Equals(RolledByAccountId, other.RolledByAccountId)
         && Nullable.Equals(RolledAt, other.RolledAt)
-        && FacesEqual(Faces, other.Faces);
+        && FacesEqual(Faces, other.Faces)
+        && Equals(Percentile, other.Percentile)
+        && EarnsExperienceCheck == other.EarnsExperienceCheck;
 
     public override int GetHashCode() =>
-        HashCode.Combine(Purpose, Dice, Result, Source, RolledByAccountId, RolledAt, Faces is null ? 0 : Faces.Count);
+        HashCode.Combine(
+            HashCode.Combine(Purpose, Dice, Result, Source, RolledByAccountId, RolledAt, Faces is null ? 0 : Faces.Count),
+            Percentile,
+            EarnsExperienceCheck);
 
     private static bool FacesEqual(IReadOnlyList<int>? left, IReadOnlyList<int>? right) =>
         left is null ? right is null : right is not null && left.SequenceEqual(right);
