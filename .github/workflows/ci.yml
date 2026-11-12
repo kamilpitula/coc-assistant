@@ -34,6 +34,10 @@ jobs:
       backend: ${{ steps.scope.outputs.run-all == 'true' || steps.filter.outputs.backend == 'true' }}
       frontend: ${{ steps.scope.outputs.run-all == 'true' || steps.filter.outputs.frontend == 'true' }}
       infrastructure: ${{ steps.scope.outputs.run-all == 'true' || steps.filter.outputs.infrastructure == 'true' }}
+      deploy-build: >-
+        ${{ steps.scope.outputs.run-all == 'true' || steps.filter.outputs.backend == 'true'
+        || steps.filter.outputs.frontend == 'true' }}
+      workflows: ${{ steps.scope.outputs.run-all == 'true' || steps.filter.outputs.workflows == 'true' }}
       e2e: >-
         ${{ steps.scope.outputs.run-all == 'true' || steps.filter.outputs.backend == 'true'
         || steps.filter.outputs.frontend == 'true' || steps.filter.outputs.e2e == 'true' }}
@@ -67,6 +71,10 @@ jobs:
               - 'global.json'
               - '.nvmrc'
               - '.config/dotnet-tools.json'
+            workflows:
+              - '.github/workflows/**'
+              - '.github/actions/**'
+              - 'tools/actionlint/**'
       - name: Decide whether every job runs
         id: scope
         env:
@@ -393,9 +401,33 @@ jobs:
       - name: Check for non-ASCII characters
         run: npm run check
 
+  actionlint:
+    name: Actionlint
+    needs: changes
+    if: needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/actionlint
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: tools/actionlint/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Type check
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Lint workflows
+        run: npm run check
+
   ci-success:
     name: ci-success
-    needs: [changes, backend, backend-integration, frontend, e2e, merge-reports, terraform, backlog, ascii]
+    needs: [changes, backend, backend-integration, frontend, e2e, merge-reports, terraform, backlog, ascii, actionlint]
     if: always()
     runs-on: ubuntu-latest
     steps:

@@ -10,6 +10,12 @@ for tool in ascii-check backlog; do
 done
 echo "pre-commit: ascii-check"
 node tools/ascii-check/src/cli.ts
+# Lint changed workflows and composite actions; actionlint has no runtime
+# dependencies, so it stays out of the node_modules check above.
+if git diff --cached --name-only | grep -Eq '^\.github/(workflows|actions)/'; then
+  echo "pre-commit: actionlint"
+  node tools/actionlint/src/cli.ts
+fi
 echo "pre-commit: backlog --check"
 node tools/backlog/src/cli.ts --check
 # Type-check staged frontend changes; `tsc --noEmit` in frontend/ checks nothing (root tsconfig has "files": []).

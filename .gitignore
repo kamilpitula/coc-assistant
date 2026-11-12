@@ -44,5 +44,7 @@ infrastructure/terraform/**/*.plan
 frontend/test-results/
 e2e/e2e-out.txt
 e2e/*.log
+# actionlint binary cache (pin change invalidates it)
+tools/actionlint/.cache/
 # Handout files stored locally in development
 backend/src/CocAssistant.Api/App_Data/
