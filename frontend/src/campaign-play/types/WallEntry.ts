@@ -13,6 +13,9 @@ export interface WallEntry {
   visibility: WallEntryVisibility
   createdAt: string
   authorDisplayName: string
+  /** A RollRequest entry carries the request id and no text; its card reads the Roll Request (specs/roll-requests/ux.md section 5). */
+  kind: 'Text' | 'RollRequest'
+  rollRequestId: string | null
 }
 
 /** One page of the Wall, newest first; the cursor is set only when older entries visible to the caller exist. */

@@ -25,6 +25,8 @@ describe('useAddWallEntry', () => {
       visibility: 'Public',
       createdAt: '2026-10-16T19:02:00Z',
       authorDisplayName: 'Eleanor Hart',
+      kind: 'Text',
+      rollRequestId: null,
     })
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>

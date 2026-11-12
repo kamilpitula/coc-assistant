@@ -12,6 +12,8 @@ const entries: WallEntry[] = [
     visibility: 'Public',
     createdAt: '2026-10-16T19:02:00Z',
     authorDisplayName: 'Eleanor Hart',
+    kind: 'Text',
+    rollRequestId: null,
   },
   {
     id: 'e2',
@@ -19,6 +21,8 @@ const entries: WallEntry[] = [
     visibility: 'KeeperOnly',
     createdAt: '2026-10-16T18:55:00Z',
     authorDisplayName: 'Eleanor Hart',
+    kind: 'Text',
+    rollRequestId: null,
   },
   {
     id: 'e1',
@@ -26,13 +30,15 @@ const entries: WallEntry[] = [
     visibility: 'Public',
     createdAt: '2025-10-03T19:02:00Z',
     authorDisplayName: 'Ana Ruiz with a rather long display name for narrow screens',
+    kind: 'Text',
+    rollRequestId: null,
   },
 ]
 
 const meta = {
   title: 'CampaignPlay/WallEntryList',
   component: WallEntryList,
-  args: { entries, viewerRole: 'Keeper', fallbackFocusId: 'wall-entry-text', onRemove: async () => true },
+  args: { campaignId: 'c1', entries, viewerRole: 'Keeper', fallbackFocusId: 'wall-entry-text', onRemove: async () => true },
 } satisfies Meta<typeof WallEntryList>
 
 export default meta

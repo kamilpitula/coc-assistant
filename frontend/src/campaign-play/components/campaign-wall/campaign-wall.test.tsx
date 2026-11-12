@@ -24,7 +24,7 @@ vi.mock('@/campaign-play/hooks/useWallEntries', () => ({
 }))
 
 function entry(id: string, overrides: Partial<WallEntry> = {}): WallEntry {
-  return { id, text: `Text ${id}`, visibility: 'Public', createdAt: '2026-10-03T19:02:00Z', authorDisplayName: 'Eleanor Hart', ...overrides }
+  return { id, text: `Text ${id}`, visibility: 'Public', createdAt: '2026-10-03T19:02:00Z', authorDisplayName: 'Eleanor Hart', kind: 'Text', rollRequestId: null, ...overrides }
 }
 
 function loaded(pages: WallEntry[][], overrides: Record<string, unknown> = {}) {

@@ -53,6 +53,7 @@ export function CampaignWall({ campaignId }: CampaignWallProps) {
       </div>
       {entries ? (
         <Entries
+          campaignId={campaignId}
           entries={entries}
           viewerRole={campaign.data.role}
           onRemove={remove}
@@ -78,20 +79,21 @@ interface OlderEntries {
 }
 
 interface EntriesProps {
+  campaignId: React.ComponentProps<typeof WallEntryList>['campaignId']
   entries: React.ComponentProps<typeof WallEntryList>['entries']
   viewerRole: React.ComponentProps<typeof WallEntryList>['viewerRole']
   onRemove: React.ComponentProps<typeof WallEntryList>['onRemove']
   olderEntries: OlderEntries
 }
 
-function Entries({ entries, viewerRole, onRemove, olderEntries }: EntriesProps) {
+function Entries({ campaignId, entries, viewerRole, onRemove, olderEntries }: EntriesProps) {
   if (entries.length === 0) {
     return <p className="text-sm text-muted-foreground">Nothing on the Wall yet.</p>
   }
 
   return (
     <>
-      <WallEntryList entries={entries} viewerRole={viewerRole} fallbackFocusId={WALL_COMPOSER_TEXT_ID} onRemove={onRemove} />
+      <WallEntryList campaignId={campaignId} entries={entries} viewerRole={viewerRole} fallbackFocusId={WALL_COMPOSER_TEXT_ID} onRemove={onRemove} />
       {olderEntries.failed && (
         <p role="alert" className="text-sm text-destructive">
           We couldn&apos;t load older entries.

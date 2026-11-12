@@ -16,6 +16,8 @@ const entry = {
   visibility: 'Public',
   createdAt: '2026-10-16T19:02:00+00:00',
   authorDisplayName: 'Eleanor Hart',
+  kind: 'Text',
+  rollRequestId: null,
 }
 
 describe('wall entry API', () => {

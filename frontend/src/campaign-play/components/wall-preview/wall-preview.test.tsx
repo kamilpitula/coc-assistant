@@ -12,9 +12,12 @@ const { mockUseWallPreview } = vi.hoisted(() => ({ mockUseWallPreview: vi.fn() }
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/campaign-play/hooks/useWallEntries', () => ({ useWallPreview: mockUseWallPreview }))
+vi.mock('@/roll-requests/components/roll-request-card/roll-request-card', () => ({
+  RollRequestCard: ({ rollRequestId }: { rollRequestId: string }) => <div data-testid={`roll-request-card-${rollRequestId}`} />,
+}))
 
 function entry(id: string, overrides: Partial<WallEntry> = {}): WallEntry {
-  return { id, text: `Text ${id}`, visibility: 'Public', createdAt: '2026-10-03T19:02:00Z', authorDisplayName: 'Eleanor Hart', ...overrides }
+  return { id, text: `Text ${id}`, visibility: 'Public', createdAt: '2026-10-03T19:02:00Z', authorDisplayName: 'Eleanor Hart', kind: 'Text', rollRequestId: null, ...overrides }
 }
 
 function loaded(entries: WallEntry[], isFetchedAfterMount = true) {
@@ -51,6 +54,15 @@ describe('WallPreview', () => {
     render(<WallPreview campaignId="c1" />)
 
     expect(screen.getAllByText('Keeper only')).toHaveLength(1)
+  })
+
+  it('renders a RollRequest entry as its full card, never clamped (specs/roll-requests/ux.md section 5; RR-UX-10)', () => {
+    mockUseWallPreview.mockReturnValue(loaded([entry('a'), entry('rr', { kind: 'RollRequest', rollRequestId: 'r1', text: '' })]))
+
+    render(<WallPreview campaignId="c1" />)
+
+    expect(screen.getByTestId('roll-request-card-r1')).toBeInTheDocument()
+    expect(screen.queryByText('Text rr')).not.toBeInTheDocument()
   })
 
   it('has no compose box: "Open the Wall" is the only action', () => {

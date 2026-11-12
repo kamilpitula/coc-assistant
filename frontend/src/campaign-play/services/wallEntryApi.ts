@@ -16,6 +16,8 @@ const wallEntrySchema = z.strictObject({
   visibility: z.enum(WALL_ENTRY_VISIBILITIES),
   createdAt: z.string(),
   authorDisplayName: z.string(),
+  kind: z.enum(['Text', 'RollRequest']),
+  rollRequestId: z.string().nullable(),
 })
 
 const wallEntryPageSchema = z.strictObject({

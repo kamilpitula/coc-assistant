@@ -7,6 +7,7 @@ import { activeSceneQueryKeys } from '@/scene-play/services/activeSceneApi'
 import { cluesQueryKeys } from '@/scene-play/services/cluesApi'
 import { heldItemsQueryKeys } from '@/scene-play/services/itemHolderApi'
 import { sceneHistoryQueryKeys } from '@/scene-play/services/sceneHistoryApi'
+import { rollRequestQueryKeys } from '@/roll-requests/services/rollRequestApi'
 
 /**
  * The queries each CampaignDataChanged topic invalidates (specs/campaign-play/spec.md, Live connection contract;
@@ -37,6 +38,10 @@ const queryKeysByTopic: Record<string, (campaignId: string) => QueryKey[]> = {
   sceneHistory: (campaignId) => [sceneHistoryQueryKeys.detail(campaignId)],
   // An Item given to the caller's Investigator reaches only its holder (PBI-SPL-003 D6).
   myItems: (campaignId) => [heldItemsQueryKeys.mine(campaignId)],
+  // A Roll Request change reaches every member watching the Active Scene, and the targeted Players' own lists
+  // directly (PBI-DICE-005 D2, single-option live publication).
+  rollRequests: (campaignId) => [rollRequestQueryKeys.all(campaignId)],
+  myRequestedRolls: (campaignId) => [rollRequestQueryKeys.mine(campaignId)],
 }
 
 /** The query keys to refetch for the topics; unknown topics are ignored and each key appears once. */

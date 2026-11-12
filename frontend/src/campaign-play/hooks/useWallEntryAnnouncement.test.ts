@@ -10,7 +10,7 @@ import { useWallEntryAnnouncement } from './useWallEntryAnnouncement'
 
 function entry(id: string, minute: number, author = 'Eleanor Hart'): WallEntry {
   const createdAt = new Date(Date.UTC(2026, 9, 16, 19, minute)).toISOString()
-  return { id, text: id, visibility: 'Public', createdAt, authorDisplayName: author }
+  return { id, text: id, visibility: 'Public', createdAt, authorDisplayName: author, kind: 'Text', rollRequestId: null }
 }
 
 const first = entry('first', 0)

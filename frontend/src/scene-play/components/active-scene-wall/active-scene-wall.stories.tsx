@@ -18,6 +18,8 @@ const page: WallEntryPage = {
       visibility: 'Public',
       createdAt: '2026-10-28T19:14:00Z',
       authorDisplayName: 'Keeper',
+      kind: 'Text',
+      rollRequestId: null,
     },
     {
       id: 'e1',
@@ -25,6 +27,8 @@ const page: WallEntryPage = {
       visibility: 'KeeperOnly',
       createdAt: '2026-10-28T19:10:00Z',
       authorDisplayName: 'Keeper',
+      kind: 'Text',
+      rollRequestId: null,
     },
   ],
 }

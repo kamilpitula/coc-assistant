@@ -5,6 +5,7 @@ import { WallEntryTime } from '@/campaign-play/components/wall-entry-time/wall-e
 import { useWallPreview } from '@/campaign-play/hooks/useWallEntries'
 import { useWallEntryAnnouncement } from '@/campaign-play/hooks/useWallEntryAnnouncement'
 import type { WallEntry } from '@/campaign-play/types/WallEntry'
+import { RollRequestCard } from '@/roll-requests/components/roll-request-card/roll-request-card'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Card } from '@/shared/components/ui/card'
@@ -28,7 +29,7 @@ export function WallPreview({ campaignId, composer }: WallPreviewProps) {
         Wall
       </h2>
       {composer}
-      <PreviewBody entries={preview.data?.entries} failed={preview.isError} onRetry={() => void preview.refetch()} />
+      <PreviewBody campaignId={campaignId} entries={preview.data?.entries} failed={preview.isError} onRetry={() => void preview.refetch()} />
       {!preview.isPending && !preview.isError && (
         <Link to="/campaigns/$campaignId/wall" params={{ campaignId }} className={buttonVariants({ variant: 'link', className: 'self-start px-0' })}>
           Open the Wall
@@ -42,12 +43,13 @@ export function WallPreview({ campaignId, composer }: WallPreviewProps) {
 }
 
 interface PreviewBodyProps {
+  campaignId: string
   entries: WallEntry[] | undefined
   failed: boolean
   onRetry: () => void
 }
 
-function PreviewBody({ entries, failed, onRetry }: PreviewBodyProps) {
+function PreviewBody({ campaignId, entries, failed, onRetry }: PreviewBodyProps) {
   if (failed) {
     return (
       <div className="flex flex-col items-start gap-3">
@@ -77,16 +79,31 @@ function PreviewBody({ entries, failed, onRetry }: PreviewBodyProps) {
     <Card>
       <ol className="divide-y">
         {entries.map((entry) => (
-          <li key={entry.id} className="flex flex-col gap-1 p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <WallEntryTime createdAt={entry.createdAt} />
-              <span className="font-medium break-words">{entry.authorDisplayName}</span>
-              {entry.visibility === 'KeeperOnly' && <Badge variant="outline">Keeper only</Badge>}
-            </div>
-            <p className="line-clamp-3 break-words whitespace-pre-line">{entry.text}</p>
-          </li>
+          <PreviewRow key={entry.id} campaignId={campaignId} entry={entry} />
         ))}
       </ol>
     </Card>
+  )
+}
+
+function PreviewRow({ campaignId, entry }: { campaignId: string; entry: WallEntry }) {
+  // A RollRequest entry is its card, never clamped (specs/roll-requests/ux.md section 5).
+  if (entry.kind === 'RollRequest' && entry.rollRequestId !== null) {
+    return (
+      <li className="border-l-4 p-4">
+        <RollRequestCard campaignId={campaignId} rollRequestId={entry.rollRequestId} requestedByDisplayName={entry.authorDisplayName} />
+      </li>
+    )
+  }
+
+  return (
+    <li className="flex flex-col gap-1 p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <WallEntryTime createdAt={entry.createdAt} />
+        <span className="font-medium break-words">{entry.authorDisplayName}</span>
+        {entry.visibility === 'KeeperOnly' && <Badge variant="outline">Keeper only</Badge>}
+      </div>
+      <p className="line-clamp-3 break-words whitespace-pre-line">{entry.text}</p>
+    </li>
   )
 }

@@ -13,6 +13,8 @@ const publicEntry: WallEntry = {
   visibility: 'Public',
   createdAt: '2026-10-16T19:02:00Z',
   authorDisplayName: 'Eleanor Hart',
+  kind: 'Text',
+  rollRequestId: null,
 }
 
 function renderDialog(overrides: Partial<React.ComponentProps<typeof RemoveWallEntryDialog>> = {}) {
