@@ -355,6 +355,30 @@ jobs:
         working-directory: infrastructure/terraform/bootstrap
         run: terraform test
 
+  deploy-build:
+    name: Deploy build
+    needs: changes
+    # Master does not need this: deploy-dev runs the same steps a few minutes later.
+    if: github.event_name == 'pull_request' && needs.changes.outputs.deploy-build == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/build-migration-bundles
+      - uses: ./.github/actions/build-api-image
+        with:
+          # A local tag that is never pushed.
+          image: coc-assistant-api:ci-${{ github.sha }}
+      - uses: ./.github/actions/build-spa
+        with:
+          # Non-secret placeholders; the .invalid top-level domain can never resolve.
+          entra-client-id: 00000000-0000-0000-0000-000000000000
+          entra-authority: https://login.invalid/ci-placeholder
+          entra-redirect-uri: https://spa.invalid
+          api-scope: api://00000000-0000-0000-0000-000000000000/ci-placeholder
+          api-base-url: https://api.invalid
+
   # Always runs: PBI files change in docs-only pull requests (docs/backlog.md).
   backlog:
     name: Backlog
@@ -427,7 +451,7 @@ jobs:
 
   ci-success:
     name: ci-success
-    needs: [changes, backend, backend-integration, frontend, e2e, merge-reports, terraform, backlog, ascii, actionlint]
+    needs: [changes, backend, backend-integration, frontend, e2e, merge-reports, terraform, deploy-build, backlog, ascii, actionlint]
     if: always()
     runs-on: ubuntu-latest
     steps:

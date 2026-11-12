@@ -30,16 +30,43 @@ env:
   DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
-  terraform-apply:
-    name: Terraform apply (dev)
-    # Nothing runs unless a master push passed CI, or the owner dispatched on
-    # master. The event == 'push' check stops a fork PR whose branch is named
-    # master. Later jobs are gated through needs.
+  preflight:
+    name: Variables preflight (dev)
+    # Owns the master gate; every build job is gated through needs, so a
+    # missing variable fails the run before terraform-apply or image starts.
     if: >-
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') ||
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.head_branch == 'master' &&
        github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      contents: read
+    steps:
+      - name: Check required variables
+        shell: bash
+        run: |
+          missing=0
+          check_var() {
+            if [ -z "$4" ]; then
+              echo "::error::Missing $1 ($2, docs/infrastructure/dev-environment-setup.md section $3)"
+              missing=1
+            fi
+          }
+          check_var vars.AZURE_TENANT_ID "repository variable" 7 "${{ vars.AZURE_TENANT_ID }}"
+          check_var vars.AZURE_SUBSCRIPTION_ID "repository variable" 7 "${{ vars.AZURE_SUBSCRIPTION_ID }}"
+          check_var vars.AZURE_DEPLOY_CLIENT_ID "environment dev variable" 8 "${{ vars.AZURE_DEPLOY_CLIENT_ID }}"
+          check_var vars.VITE_ENTRA_CLIENT_ID "environment dev variable" 8 "${{ vars.VITE_ENTRA_CLIENT_ID }}"
+          check_var vars.VITE_ENTRA_AUTHORITY "environment dev variable" 8 "${{ vars.VITE_ENTRA_AUTHORITY }}"
+          check_var vars.VITE_API_SCOPE "environment dev variable" 8 "${{ vars.VITE_API_SCOPE }}"
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+  terraform-apply:
+    name: Terraform apply (dev)
+    needs: preflight
     runs-on: ubuntu-latest
     environment: dev
     permissions:
@@ -96,11 +123,7 @@ jobs:
 
   image:
     name: Build and push API image
-    if: >-
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == 'master' &&
-       github.event.workflow_run.event == 'push')
+    needs: preflight
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -111,11 +134,11 @@ jobs:
           ref: ${{ env.DEPLOY_SHA }}
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      - name: Build and push
-        run: |
-          IMAGE="ghcr.io/kamilpitula/coc-assistant-api:${{ env.DEPLOY_SHA }}"
-          docker build -f backend/Dockerfile -t "$IMAGE" --label "org.opencontainers.image.source=https://github.com/${{ github.repository }}" .
-          docker push "$IMAGE"
+      - uses: ./.github/actions/build-api-image
+        with:
+          image: ghcr.io/kamilpitula/coc-assistant-api:${{ env.DEPLOY_SHA }}
+      - name: Push image
+        run: docker push "ghcr.io/kamilpitula/coc-assistant-api:${{ env.DEPLOY_SHA }}"
 
   migrate:
     name: Migrate database
@@ -137,25 +160,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.DEPLOY_SHA }}
-      - uses: ./.github/actions/setup-dotnet
-      - name: Restore dotnet-ef
-        run: dotnet tool restore
-      # Restore and build exactly like CI (the Backend job in ci.yml): the
-      # bundle command hides its own build errors and its build fails
-      # intermittently on Linux, so build here with visible errors and let
-      # the bundles reuse that build through --no-build.
-      - name: Restore backend
-        run: dotnet restore backend/CocAssistant.slnx
-      - name: Build backend
-        run: dotnet build backend/CocAssistant.slnx --no-restore --configuration Release
-      # Bundles are built before the firewall rule is opened, which keeps the
-      # open window short.
-      - name: Build migration bundles
-        run: |
-          mkdir -p "$RUNNER_TEMP/bundles"
-          dotnet ef migrations bundle --project backend/src/Identity/CocAssistant.Identity.Infrastructure/CocAssistant.Identity.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context IdentityDbContext --configuration Release --no-build --force --output "$RUNNER_TEMP/bundles/identity-bundle"
-          dotnet ef migrations bundle --project backend/src/CampaignPlay/CocAssistant.CampaignPlay.Infrastructure/CocAssistant.CampaignPlay.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context CampaignPlayDbContext --configuration Release --no-build --force --output "$RUNNER_TEMP/bundles/campaignplay-bundle"
-          dotnet ef migrations bundle --project backend/src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Infrastructure/CocAssistant.ScenarioPreparation.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context ScenarioPreparationDbContext --configuration Release --no-build --force --output "$RUNNER_TEMP/bundles/scenarioprep-bundle"
+      - uses: ./.github/actions/build-migration-bundles
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         id: azure-login
         with:
@@ -312,27 +317,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.DEPLOY_SHA }}
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/build-spa
         with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
-      # routeTree.gen.ts is gitignored; the build needs it before Vite would generate it.
-      - name: Generate route tree
-        working-directory: frontend
-        run: npm run generate-routes
-      - name: Build
-        working-directory: frontend
-        run: npm run build
-        env:
-          VITE_ENTRA_CLIENT_ID: ${{ vars.VITE_ENTRA_CLIENT_ID }}
-          VITE_ENTRA_AUTHORITY: ${{ vars.VITE_ENTRA_AUTHORITY }}
-          VITE_API_SCOPE: ${{ vars.VITE_API_SCOPE }}
-          VITE_ENTRA_REDIRECT_URI: ${{ needs.terraform-apply.outputs.static_web_app_url }}
-          VITE_API_BASE_URL: ${{ needs.terraform-apply.outputs.api_url }}
+          entra-client-id: ${{ vars.VITE_ENTRA_CLIENT_ID }}
+          entra-authority: ${{ vars.VITE_ENTRA_AUTHORITY }}
+          entra-redirect-uri: ${{ needs.terraform-apply.outputs.static_web_app_url }}
+          api-scope: ${{ vars.VITE_API_SCOPE }}
+          api-base-url: ${{ needs.terraform-apply.outputs.api_url }}
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ vars.AZURE_DEPLOY_CLIENT_ID }}
