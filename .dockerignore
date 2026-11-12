@@ -12,5 +12,14 @@ docs/*
 !docs/game-rules/catalogs/*
 **/bin/
 **/obj/
+# Explicit bin/obj depths without `**`: the `**` patterns above did not filter on the
+# GitHub runner (PR #71: 18MB context vs 1.36MB green), while `**`-free patterns did.
+# `bin*` also matches the literal-backslash `bin\Release` directories the host ef
+# tooling leaves on Linux, which break MSBuild glob expansion (MSB3552). No tracked
+# file under backend/src starts with bin or obj, so these match build output only.
+backend/src/*/bin*/
+backend/src/*/obj*/
+backend/src/*/*/bin*/
+backend/src/*/*/obj*/
 backend/tests/
 backend/src/CocAssistant.Api/App_Data/

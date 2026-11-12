@@ -1,0 +1,14 @@
+name: Build API image
+description: Builds the API container image from backend/Dockerfile without pushing it.
+
+inputs:
+  image:
+    description: Full image reference to build (for example a local tag in CI or the GHCR reference in a deploy).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Build API image
+      shell: bash
+      run: docker build -f backend/Dockerfile -t "${{ inputs.image }}" --label "org.opencontainers.image.source=https://github.com/${{ github.repository }}" .

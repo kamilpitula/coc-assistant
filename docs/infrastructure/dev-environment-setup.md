@@ -137,14 +137,22 @@ The plan workflow uses no environment. Variable values are ids, not secrets.
 1. Repository settings > Environments > New environment > `dev`.
 2. Deployment branches: limit to `master` only, with no required reviewers.
    The branch limit is what keeps pull request workflows read-only.
-3. Environment variables:
+3. Environment variables (every one is read by `deploy-dev.yml`; the
+   `preflight` job fails the run before `terraform-apply` starts when any
+   is unset, naming each missing one):
    - `AZURE_DEPLOY_CLIENT_ID` (the `deploy_client_id` bootstrap output)
+   - `VITE_ENTRA_CLIENT_ID` (the SPA client id from `docs/entra-external-id-setup.md` section 8)
+   - `VITE_ENTRA_AUTHORITY` (the Entra External ID authority URL for the sign-up user flow)
+   - `VITE_API_SCOPE` (the API App ID URI plus scope name the SPA requests)
 
 ## 9. Later manual steps (PBI-DEP-003 and later)
 
 - Placeholder for the remaining one-time steps from
   `specs/deployment/spec.md`: the Static Web App redirect URI, the database
   firewall rule for local plans, and the first GHCR image push.
+- If a deploy fails in the `preflight` job, it names each missing variable:
+  add it in section 7 (repository variable) or section 8 (`dev`
+  environment variable) and Re-run the failed jobs.
 - After the first deploy run stops at the anonymous-pull preflight in the
   rollout job, make the GHCR package `coc-assistant-api` public (package
   settings; `GITHUB_TOKEN` cannot do this), then Re-run failed jobs from the

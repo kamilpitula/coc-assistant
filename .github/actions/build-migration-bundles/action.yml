@@ -1,0 +1,30 @@
+name: Build migration bundles
+description: Restores and builds the backend, then builds one EF Core migration bundle per DbContext.
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/setup-dotnet
+    - name: Restore dotnet-ef
+      shell: bash
+      run: dotnet tool restore
+    # Restore and build exactly like CI (the Backend job in ci.yml): the
+    # bundle command hides its own build errors and its build fails
+    # intermittently on Linux, so build here with visible errors and let
+    # the bundles reuse that build through --no-build.
+    - name: Restore backend
+      shell: bash
+      run: dotnet restore backend/CocAssistant.slnx
+    - name: Build backend
+      shell: bash
+      run: dotnet build backend/CocAssistant.slnx --no-restore --configuration Release
+    # Bundles are built before the firewall rule is opened, which keeps the
+    # open window short. They land in $RUNNER_TEMP/bundles, a contract the
+    # migrate job relies on to run them.
+    - name: Build migration bundles
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/bundles"
+        dotnet ef migrations bundle --project backend/src/Identity/CocAssistant.Identity.Infrastructure/CocAssistant.Identity.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context IdentityDbContext --configuration Release --no-build --force --output "$RUNNER_TEMP/bundles/identity-bundle"
+        dotnet ef migrations bundle --project backend/src/CampaignPlay/CocAssistant.CampaignPlay.Infrastructure/CocAssistant.CampaignPlay.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context CampaignPlayDbContext --configuration Release --no-build --force --output "$RUNNER_TEMP/bundles/campaignplay-bundle"
+        dotnet ef migrations bundle --project backend/src/ScenarioPreparation/CocAssistant.ScenarioPreparation.Infrastructure/CocAssistant.ScenarioPreparation.Infrastructure.csproj --startup-project backend/src/CocAssistant.Api/CocAssistant.Api.csproj --context ScenarioPreparationDbContext --configuration Release --no-build --force --output "$RUNNER_TEMP/bundles/scenarioprep-bundle"

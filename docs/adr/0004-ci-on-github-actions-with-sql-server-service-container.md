@@ -15,3 +15,9 @@ Continuous Integration runs as a single GitHub Actions workflow (`.github/workfl
 - On the runner, the exported dev certificate is added to the OpenSSL trust store because the API fetches the mock issuer's metadata over HTTPS; Windows workstations get the same trust from `dotnet dev-certs https --trust`.
 - A clean checkout of `frontend/` needs `frontend/.npmrc` (`legacy-peer-deps`, because `eslint-plugin-jsx-a11y` does not declare ESLint 10) and an explicit `generate-routes` step (the TanStack route tree is gitignored).
 - This change has no user-visible behavior, so it adds no Playwright scenarios; the existing E2E suite runs in CI instead, which is the change's own end-to-end verification.
+
+## Amendment (2026-11-12, PBI-DEP-008)
+How pull requests validate the deploy workflow ([design record](../deployment/issues/08-validate-the-deploy-workflow-on-pull-requests.design.md)):
+- **`actionlint` job:** the pinned actionlint lints `.github/workflows/` (shellcheck and pyflakes off, so CI and local results match), and an invalid file fails `ci-success`. It runs on every `push` to `master` and on pull requests touching workflows, actions, or the tool itself.
+- **`deploy-build` job:** on pull requests touching `backend/**` or `frontend/**`, it runs the shared `.github/actions/build-*` steps (the same steps `deploy-dev.yml` runs) with non-secret placeholders. It has `contents: read` only and makes no Azure, GHCR push or secret access. It is skipped on `master` pushes, the single stated exception to the every-job-on-master rule, because `deploy-dev` runs the same steps minutes later.
+- **Pinned third-party binaries** come through a tested `tools/` command that checks the sha256 before running anything (`tools/actionlint` pins the version and per-platform sha256 in one module read by CI, the pre-commit hook, and the local `node tools/actionlint/src/cli.ts` command).
