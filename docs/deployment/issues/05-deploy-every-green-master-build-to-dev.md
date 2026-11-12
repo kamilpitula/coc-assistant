@@ -1,6 +1,6 @@
 ---
 id: PBI-DEP-005
-status: todo
+status: done
 blocked_by: [PBI-DEP-002, PBI-DEP-003, PBI-DEP-007]
 ---
 
@@ -26,7 +26,7 @@ Read: `specs/deployment/spec.md` (Workflows, API configuration in `dev`, Fronten
 - [ ] A green push to `master` runs the workflow to completion, and the active revision runs the image tagged with that SHA. Deferred: see Follow-ups.
 - [ ] A failed CI run deploys nothing. Deferred: see Follow-ups.
 - [ ] After a forced migration failure, the SQL server has no runner-IP firewall rule and the rollout did not run. Deferred: see Follow-ups.
-- [ ] No Azure client secret or SQL password is stored in GitHub.
+- [ ] No Azure client secret or SQL password is stored in GitHub. Deferred: see Follow-ups.
 
 ## Refinement Protocol
 Change `specs/deployment/spec.md` and ADR 0031 together with the workflow.
@@ -37,3 +37,4 @@ Change `specs/deployment/spec.md` and ADR 0031 together with the workflow.
 - Owner live runs (PBI stays open until these are evidenced): a green push runs to completion with the active revision on the SHA image; a failed CI run leaves every job skipped; a `simulate_migration_failure` dispatch leaves no `gh-deploy-*` rule and skips rollout and spa; the API reads data after deploy (proves the user and SID mapping); a re-run is idempotent. The last Verification item (no stored secret) is evidenced by this diff itself.
 - Out-of-order CI finishes are not handled: when runs finish out of order, the newest run wins with no SHA comparison. Single-owner repo with additive migrations so far; revisit when this causes a real problem.
 - First run stops at the GHCR preflight: the owner makes the `coc-assistant-api` package public, then Re-run failed jobs (docs/infrastructure/dev-environment-setup.md section 9).
+- Human closure (2026-11-12): the human closed this PBI as done with the owner live runs above still open and not evidenced in this session (green-push completion on the SHA image, failed CI deploys nothing, forced migration failure cleanup, API data read proving the user and SID mapping, re-run idempotency, no stored secret). If any of those runs fails when the owner performs it, raise a follow-up PBI.
