@@ -23,6 +23,8 @@ public class ScenarioPreparationDbContext : DbContext
 
     public DbSet<MythosCreature> MythosCreatures => Set<MythosCreature>();
 
+    public DbSet<RollRequest> RollRequests => Set<RollRequest>();
+
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         DeleteOrphanedHandouts();
@@ -356,6 +358,72 @@ public class ScenarioPreparationDbContext : DbContext
 
             // Serves the Campaign list read.
             builder.HasIndex(mythosCreature => mythosCreature.CampaignId);
+        });
+
+        // A Roll Request is an aggregate beside the Scene, reached through the provider service (ADR 0032). Its Scene key is
+        // an in-context foreign key that refuses deleting a Scene with requests, like Scenarios guard their Scenes (ADR 0013).
+        modelBuilder.Entity<RollRequest>(builder =>
+        {
+            builder.HasKey(request => request.Id);
+            builder.Property(request => request.Id).ValueGeneratedNever();
+            builder.Property(request => request.CampaignId).IsRequired();
+            builder.HasOne<Scene>().WithMany().HasForeignKey(request => request.SceneId).OnDelete(DeleteBehavior.Restrict);
+            builder.OwnsOne(request => request.Target, target =>
+            {
+                target.Property(candidate => candidate.Kind).IsRequired().HasConversion<string>().HasMaxLength(20).HasColumnName("TargetKind");
+                target.Property(candidate => candidate.Skill).HasColumnName("TargetSkill").HasMaxLength(200);
+                target.Property(candidate => candidate.Specialization).HasColumnName("TargetSpecialization").HasMaxLength(200);
+                target.Property(candidate => candidate.Characteristic).HasConversion<string>().HasMaxLength(20).HasColumnName("TargetCharacteristic");
+            });
+            builder.Property(request => request.Message).HasMaxLength(RollRequest.MessageMaxLength);
+            builder.Property(request => request.Visibility).IsRequired().HasConversion<string>().HasMaxLength(20);
+            builder.Property(request => request.Difficulty).IsRequired().HasConversion<string>().HasMaxLength(20);
+            builder.Property(request => request.BonusDice).IsRequired();
+            builder.Property(request => request.PenaltyDice).IsRequired();
+            builder.Property(request => request.CreatedAt).IsRequired().HasConversion(
+                createdAt => createdAt.UtcDateTime,
+                stored => new DateTimeOffset(DateTime.SpecifyKind(stored, DateTimeKind.Utc)));
+
+            // Serves the Active Scene's oldest-first read.
+            builder.HasIndex(request => new { request.CampaignId, request.SceneId });
+        });
+
+        // A Requested Roll is a child of its Roll Request with one row per Investigator; its Roll Records are a versioned JSON
+        // column following the CharacterSheet Roll Record mapping, extended with the percentile and the experience flag.
+        modelBuilder.Entity<RollRequest>().HasMany<RequestedRoll>("_requestedRolls")
+            .WithOne()
+            .HasForeignKey(roll => roll.RollRequestId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<RollRequest>().Navigation("_requestedRolls").UsePropertyAccessMode(PropertyAccessMode.Field);
+        modelBuilder.Entity<RollRequest>().Ignore(request => request.RequestedRolls);
+
+        modelBuilder.Entity<RequestedRoll>(builder =>
+        {
+            builder.ToTable("RequestedRolls");
+            builder.HasKey(roll => new { roll.RollRequestId, roll.InvestigatorId });
+            builder.Property(roll => roll.TargetValue).IsRequired();
+            builder.Property(roll => roll.UsesBaseValue).IsRequired();
+            builder.Property(roll => roll.CanEarnExperienceCheck).IsRequired();
+            builder.Property(roll => roll.Difficulty).IsRequired().HasConversion<string>().HasMaxLength(20);
+            builder.Property(roll => roll.BonusDice).IsRequired();
+            builder.Property(roll => roll.PenaltyDice).IsRequired();
+            builder.Property(roll => roll.Status).IsRequired().HasConversion<string>().HasMaxLength(20);
+            builder.Property(roll => roll.RollRecords)
+                .IsRequired()
+                .HasField("_rollRecords")
+                .HasConversion(
+                    records => RollRequestJsonStorage.ToStorage(records),
+                    stored => RollRequestJsonStorage.FromStorage(stored),
+                    new ValueComparer<IReadOnlyList<RollRecord>>(
+                        (left, right) => RollRequestJsonStorage.ToStorage(left!) == RollRequestJsonStorage.ToStorage(right!),
+                        records => RollRequestJsonStorage.ToStorage(records).GetHashCode(),
+                        records => RollRequestJsonStorage.FromStorage(RollRequestJsonStorage.ToStorage(records))));
+
+            // The optimistic token that stops a Requested Roll being rolled twice (ADR 0032).
+            builder.Property(roll => roll.Version).IsConcurrencyToken();
+
+            // Serves the Investigator's Waiting read.
+            builder.HasIndex(roll => roll.InvestigatorId);
         });
     }
 

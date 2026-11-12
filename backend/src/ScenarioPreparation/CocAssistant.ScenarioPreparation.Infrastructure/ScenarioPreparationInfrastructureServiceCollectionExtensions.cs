@@ -15,6 +15,7 @@ public static class ScenarioPreparationInfrastructureServiceCollectionExtensions
 
         services.AddScoped<IScenarioRepository, EfScenarioRepository>();
         services.AddScoped<ISceneRepository, EfSceneRepository>();
+        services.AddScoped<ISceneRollRequestRepository, EfSceneRollRequestRepository>();
         services.AddScoped<IHumanNpcRepository, EfHumanNpcRepository>();
         services.AddScoped<IMythosCreatureRepository, EfMythosCreatureRepository>();
         services.AddScoped<INonPlayerEntityDirectory, EfNonPlayerEntityDirectory>();
@@ -29,6 +30,7 @@ public static class ScenarioPreparationInfrastructureServiceCollectionExtensions
         services.AddScoped<ScenarioService>();
         services.AddScoped<SceneService>();
         services.AddScoped<SceneLifecycleService>();
+        services.AddScoped<SceneRollRequestService>();
         services.AddScoped<SceneRevealService>();
         services.AddScoped<ItemHolderCommandService>();
         services.AddScoped<LinkedSceneGuard>();

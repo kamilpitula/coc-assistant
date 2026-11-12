@@ -346,6 +346,97 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                     b.ToTable("RevealRecipients", (string)null);
                 });
 
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.RollRequests.RequestedRoll", b =>
+                {
+                    b.Property<Guid>("RollRequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("InvestigatorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("BonusDice")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("CanEarnExperienceCheck")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Difficulty")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("PenaltyDice")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RollRecords")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("TargetValue")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("UsesBaseValue")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.HasKey("RollRequestId", "InvestigatorId");
+
+                    b.HasIndex("InvestigatorId");
+
+                    b.ToTable("RequestedRolls", (string)null);
+                });
+
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.RollRequests.RollRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("BonusDice")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("CampaignId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Difficulty")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("PenaltyDice")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SceneId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Visibility")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SceneId");
+
+                    b.HasIndex("CampaignId", "SceneId");
+
+                    b.ToTable("RollRequests");
+                });
+
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Scenario", b =>
                 {
                     b.Property<Guid>("Id")
@@ -515,6 +606,61 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.RollRequests.RequestedRoll", b =>
+                {
+                    b.HasOne("CocAssistant.ScenarioPreparation.Domain.RollRequests.RollRequest", null)
+                        .WithMany("_requestedRolls")
+                        .HasForeignKey("RollRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.RollRequests.RollRequest", b =>
+                {
+                    b.HasOne("CocAssistant.ScenarioPreparation.Domain.Scene", null)
+                        .WithMany()
+                        .HasForeignKey("SceneId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("CocAssistant.ScenarioPreparation.Domain.RollRequests.RollTarget", "Target", b1 =>
+                        {
+                            b1.Property<Guid>("RollRequestId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<string>("Characteristic")
+                                .HasMaxLength(20)
+                                .HasColumnType("nvarchar(20)")
+                                .HasColumnName("TargetCharacteristic");
+
+                            b1.Property<string>("Kind")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .HasColumnType("nvarchar(20)")
+                                .HasColumnName("TargetKind");
+
+                            b1.Property<string>("Skill")
+                                .HasMaxLength(200)
+                                .HasColumnType("nvarchar(200)")
+                                .HasColumnName("TargetSkill");
+
+                            b1.Property<string>("Specialization")
+                                .HasMaxLength(200)
+                                .HasColumnType("nvarchar(200)")
+                                .HasColumnName("TargetSpecialization");
+
+                            b1.HasKey("RollRequestId");
+
+                            b1.ToTable("RollRequests");
+
+                            b1.WithOwner()
+                                .HasForeignKey("RollRequestId");
+                        });
+
+                    b.Navigation("Target")
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Scene", b =>
                 {
                     b.HasOne("CocAssistant.ScenarioPreparation.Domain.Scenario", null)
@@ -532,6 +678,11 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Reveal", b =>
                 {
                     b.Navigation("_recipients");
+                });
+
+            modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.RollRequests.RollRequest", b =>
+                {
+                    b.Navigation("_requestedRolls");
                 });
 
             modelBuilder.Entity("CocAssistant.ScenarioPreparation.Domain.Scene", b =>

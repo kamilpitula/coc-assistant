@@ -10,6 +10,7 @@ global using CocAssistant.CampaignPlay.Infrastructure;
 global using CocAssistant.ScenarioPreparation.Application;
 global using CocAssistant.ScenarioPreparation.Controllers;
 global using CocAssistant.ScenarioPreparation.Domain;
+global using CocAssistant.ScenarioPreparation.Domain.RollRequests;
 global using CocAssistant.ScenarioPreparation.Infrastructure;
 global using Microsoft.AspNetCore.Authentication;
 global using Microsoft.AspNetCore.Authentication.JwtBearer;

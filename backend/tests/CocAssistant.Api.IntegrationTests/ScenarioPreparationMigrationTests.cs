@@ -221,6 +221,84 @@ public class ScenarioPreparationMigrationTests : IAsyncLifetime
             await _dbContext.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM Scenes").SingleAsync()));
     }
 
+    [Fact]
+    public async Task Given_a_new_database_When_migrating_to_latest_Then_a_roll_request_is_stored_with_its_target_rolls_and_records()
+    {
+        await _dbContext.Database.MigrateAsync();
+        var campaignId = Guid.NewGuid();
+        var harvey = Guid.NewGuid();
+        var now = new DateTimeOffset(2026, 11, 12, 12, 0, 0, TimeSpan.Zero);
+        var scenario = Scenario.Create(campaignId, "The Haunting", null, 1, now).Scenario!;
+        var scene = Scene.Create(scenario, "The Corbitt House", null, null, 1, now).Scene!;
+        var creation = RollRequest.Create(
+            campaignId,
+            scene.Id,
+            new RollTarget(CocAssistant.ScenarioPreparation.Domain.RollRequests.RollTargetKind.Skill, skill: "Spot Hidden"),
+            "Something moves upstairs.",
+            RollRequestVisibility.Public,
+            Difficulty.Regular,
+            0,
+            0,
+            [new RequestedRollInput(harvey, 60, false, true)],
+            [harvey],
+            now);
+        Assert.Equal(RollRequestCreationOutcome.Created, creation.Outcome);
+        var request = creation.Request!;
+        Assert.Equal(RequestedRollOutcome.Rolled, request.RollInvestigatorRoll(new FixedRoller(2, 5), harvey, harvey, now).Outcome);
+        _dbContext.Scenarios.Add(scenario);
+        _dbContext.Scenes.Add(scene);
+        _dbContext.Set<RollRequest>().Add(request);
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+
+        var stored = (await new EfSceneRollRequestRepository(_dbContext).FindAsync(campaignId, request.Id, CancellationToken.None))!;
+
+        Assert.Equal(("Spot Hidden", "Something moves upstairs."), (stored.Target.Skill, stored.Message));
+        var roll = Assert.Single(stored.RequestedRolls);
+        Assert.Equal((harvey, RequestedRollStatus.Rolled, 60), (roll.InvestigatorId, roll.Status, roll.TargetValue));
+        var record = Assert.Single(roll.RollRecords);
+        Assert.Equal((25, true), (record.Result, record.EarnsExperienceCheck));
+        Assert.Equal(new PercentileRoll(60, 60, 30, 12, Difficulty.Regular, 0, 0, 5, [20], 20, 25, SuccessLevel.Hard, true), record.Percentile);
+    }
+
+    [Fact]
+    public async Task Given_a_scene_with_roll_requests_When_deleting_the_scene_Then_the_database_refuses()
+    {
+        await _dbContext.Database.MigrateAsync();
+        var campaignId = Guid.NewGuid();
+        var harvey = Guid.NewGuid();
+        var now = DateTimeOffset.UtcNow;
+        var scenario = Scenario.Create(campaignId, "The Haunting", null, 1, now).Scenario!;
+        var scene = Scene.Create(scenario, "The Corbitt House", null, null, 1, now).Scene!;
+        var creation = RollRequest.Create(
+            campaignId,
+            scene.Id,
+            new RollTarget(CocAssistant.ScenarioPreparation.Domain.RollRequests.RollTargetKind.Luck),
+            null,
+            RollRequestVisibility.Public,
+            Difficulty.Regular,
+            0,
+            0,
+            [new RequestedRollInput(harvey, 50, false, false)],
+            [harvey],
+            now);
+        Assert.Equal(RollRequestCreationOutcome.Created, creation.Outcome);
+        _dbContext.Scenarios.Add(scenario);
+        _dbContext.Scenes.Add(scene);
+        _dbContext.Set<RollRequest>().Add(creation.Request!);
+        await _dbContext.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<SqlException>(() => _dbContext.Scenes.ExecuteDeleteAsync());
+    }
+
+    /// <summary>Fixed dice for migration tests: faces come out in the queued order.</summary>
+    private sealed class FixedRoller(params int[] faces) : IDiceRoller
+    {
+        private readonly Queue<int> _faces = new(faces);
+
+        public int Roll(int sides) => _faces.Dequeue();
+    }
+
     private static readonly Guid CampaignId = Guid.NewGuid();
 
     private const string Text = "{\"root\":{\"type\":\"root\",\"children\":[{\"type\":\"paragraph\",\"children\":[{\"type\":\"text\",\"text\":\"A key\"}]}]}}";
