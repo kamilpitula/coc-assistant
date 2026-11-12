@@ -366,6 +366,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/build-migration-bundles
+      # TEMP (PBI-DEP-008): throwaway MSB3552 instrumentation, revert after diagnosis.
+      - name: Dump stray checkout files before image build (TEMP)
+        shell: bash
+        # TEMP: host dotnet build and ef bundle run first in this job and may leave stray files.
+        run: |
+          mkdir -p ./ci-debug-out
+          git status --short --ignored > ./ci-debug-out/git-status.txt
+          git ls-files --others > ./ci-debug-out/git-others.txt
       - uses: ./.github/actions/build-api-image
         with:
           # A local tag that is never pushed.
@@ -378,6 +386,21 @@ jobs:
           entra-redirect-uri: https://spa.invalid
           api-scope: api://00000000-0000-0000-0000-000000000000/ci-placeholder
           api-base-url: https://api.invalid
+      # TEMP (PBI-DEP-008): throwaway MSB3552 instrumentation, revert after diagnosis.
+      - name: Reproduce image publish with binlog (TEMP)
+        if: always()
+        shell: bash
+        # TEMP: debug Dockerfile mirrors backend/Dockerfile through publish with -bl; --output exports /out even when publish fails.
+        run: docker build -f backend/Dockerfile.ci-debug --target export --output type=local,dest=./ci-debug-out .
+      # TEMP (PBI-DEP-008): throwaway MSB3552 instrumentation, revert after diagnosis.
+      - name: Upload deploy-build debug evidence (TEMP)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: deploy-build-debug-${{ github.sha }}
+          path: ./ci-debug-out/
+          retention-days: 7
+          if-no-files-found: error
 
   # Always runs: PBI files change in docs-only pull requests (docs/backlog.md).
   backlog:
