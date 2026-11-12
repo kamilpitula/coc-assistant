@@ -149,6 +149,10 @@ The plan workflow uses no environment. Variable values are ids, not secrets.
   rollout job, make the GHCR package `coc-assistant-api` public (package
   settings; `GITHUB_TOKEN` cannot do this), then Re-run failed jobs from the
   failed run.
+- Cost re-check (PBI-DEP-006): open Cost Management > Cost analysis for the
+  subscription, scope it to the month so far, and compare every non-zero line
+  against `docs/infrastructure/costs.md`. Any charge not listed there means
+  stop and raise a follow-up before approving it.
 
 ## 10. Run a local plan for the dev stack
 
