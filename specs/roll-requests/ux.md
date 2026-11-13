@@ -157,13 +157,15 @@ The Corbitt House                                     (h1)
 | Rolls waiting for you  [1]                              (h2)  |
 | Listen . Regular . no Bonus or Penalty Dice                   |
 | "A creak on the stairs."                    [ Roll Listen ]   |
++---------------------------------------------------------------+
+| Your last roll                                       (h3)  |
 | You rolled 25: Hard success. Experience check earned. (status)|
 +---------------------------------------------------------------+
 ```
 
 - **Where:** in both Player views of the Active Scene ([scene-play ux](../scene-play/ux.md) sections 4.1 and 4.2, 21.9), directly after the `h1` (and after Location when present), before "Investigators present". A Player whose Investigator was removed from the Investigators present still sees their Waiting rolls here until PBI-DICE-007 cancels them.
 - **Shown when:** the Player's `GET .../investigators/mine/requested-rolls` returns at least one roll, or a result from this tab is still in its status line. Otherwise it is not rendered: no empty box and no placeholder.
-- **Structure:** a `section` labelled by its `h2` "Rolls waiting for you", with a count `Badge` that is part of the heading's accessible name ("Rolls waiting for you, 1"). The panel is drawn with a warning-colour border and tinted background, and the heading text carries the meaning. Under it is an `ul` of rolls, oldest first. Each `li` has "{target} . {Difficulty} . {dice}", the message in quotes when present, and a primary `Button` "Roll {target}". When two rows share a target, the accessible name adds the time: "Roll Listen, requested 19:21".
+- **Structure:** a `section` labelled by its `h2` "Rolls waiting for you", with a count `Badge` that is part of the heading's accessible name ("Rolls waiting for you, 1"). The panel is drawn with a warning-colour border and tinted background, and the heading text carries the meaning. Under it is an `ul` of rolls, oldest first. Each `li` has "{target} . {Difficulty} . {dice}", the message in quotes when present, and a primary `Button` "Roll {target}". When two rows share a target, the accessible name adds the time: "Roll Listen, requested 19:21". The result notice lives in its own `section` labelled by its `h3` "Your last roll", separated from the queue by spacing and a divider, so it never reads as another row.
 - **Rolling:** the button is disabled and reads "Rolling..." (no optimistic result). On success the row leaves the list, and the panel's status line (`p`, `role="status"`, `tabIndex=-1`) says "You rolled {result}: {outcome}." plus " Experience check earned." when earned. Focus moves to that line. The line stays until the next roll or until the page is left.
 - **409** (already rolled, for example by the Keeper): the row leaves the list, and the status line says "Your {target} roll was already made by the Keeper." Focus goes to the status line.
 - **404** (no longer visible): the row leaves the list without a message.

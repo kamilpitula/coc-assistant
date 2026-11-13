@@ -77,7 +77,7 @@ function PreviewBody({ campaignId, entries, failed, onRetry }: PreviewBodyProps)
 
   return (
     <Card>
-      <ol className="divide-y">
+      <ol className="divide-y overflow-hidden rounded-xl">
         {entries.map((entry) => (
           <PreviewRow key={entry.id} campaignId={campaignId} entry={entry} />
         ))}

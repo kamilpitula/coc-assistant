@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useId, useEffect, useMemo, useRef, useState } from 'react'
 
 import { NoActiveSceneError } from '@/scene-play/services/activeSceneApi'
 import { formatWallEntryTime } from '@/campaign-play/services/wallEntryTime'
@@ -33,6 +33,7 @@ export function WaitingRollsPanel({ campaignId }: WaitingRollsPanelProps) {
   const mine = useMyRequestedRolls(campaignId)
   const rollMutation = useRollRequestedRoll(campaignId)
   const statusRef = useRef<HTMLParagraphElement>(null)
+  const resultHeadingId = useId()
   const [rollingKey, setRollingKey] = useState<string | null>(null)
   const [failedKey, setFailedKey] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
@@ -118,9 +119,14 @@ export function WaitingRollsPanel({ campaignId }: WaitingRollsPanelProps) {
         </ul>
       )}
       {status && (
-        <p ref={statusRef} role="status" tabIndex={-1} className="mt-2 break-words">
-          {status}
-        </p>
+        <section aria-labelledby={resultHeadingId} className="mt-4 border-t border-warning/40 pt-3">
+          <h3 id={resultHeadingId} className="text-sm font-semibold">
+            Your last roll
+          </h3>
+          <p ref={statusRef} role="status" tabIndex={-1} className="mt-1 break-words">
+            {status}
+          </p>
+        </section>
       )}
     </section>
   )

@@ -24,45 +24,51 @@ interface RunViewProps {
 
 /**
  * Run (specs/scene-play/ux.md sections 21.3 and 21.8, amended by specs/roll-requests/ux.md section 2): Keeper notes,
- * Request a roll, Waiting rolls, Investigators present, and the Wall as bordered cards, in that DOM order; from 1024px
- * the Wall sits above Investigators present in the right column. Handouts, Non-Player Entities, and Items never show here.
+ * Request a roll, Waiting rolls, Investigators present, and the Wall as bordered cards, in that DOM order. Each column
+ * stacks its own cards, so a tall Wall never pushes "Request a roll" away from the notes. From 1024px the right
+ * column renders visually first (Wall above Investigators present) while the DOM order stays unchanged. Handouts,
+ * Non-Player Entities, and Items never show here.
  */
 export function RunView({ campaignId, scene, onPresentSaved, onWallEntryAdded, onFinishedMeanwhile, onRollRequested }: RunViewProps) {
   const campaign = useCampaign(campaignId)
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[auto_auto_1fr] lg:[grid-template-areas:'notes_wall'_'form_present'_'waiting_present']">
-      <div className="min-w-0 lg:[grid-area:notes]">
-        <RunCard>
-          <KeeperNotesRegion campaignId={campaignId} scene={scene} />
-        </RunCard>
-      </div>
-      <div className="min-w-0 lg:[grid-area:form]">
-        <RunCard>
-          <RollRequestForm
-            campaignId={campaignId}
-            investigators={scene.investigatorsPresent}
-            onRequested={onRollRequested}
-            // A 409 refetches the Active Scene, which lands on the no-Active-Scene state when the Scene is gone.
-            onNoActiveScene={onFinishedMeanwhile}
-          />
-        </RunCard>
-      </div>
-      <div className="min-w-0 lg:[grid-area:waiting]">
-        <RunCard>
-          <WaitingRolls campaignId={campaignId} />
-        </RunCard>
-      </div>
-      <div className="min-w-0 lg:[grid-area:present]">
-        <RunCard>
-          <InvestigatorsPresentSection campaignId={campaignId} scene={scene} onSaved={onPresentSaved} onFinishedMeanwhile={onFinishedMeanwhile} />
-        </RunCard>
-      </div>
-      {campaign.data && (
-        <div className="min-w-0 lg:[grid-area:wall]">
-          <ActiveSceneWall campaignId={campaignId} viewerRole={campaign.data.role} onWallEntryAdded={onWallEntryAdded} />
+    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+      <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
+        <div className="min-w-0">
+          <RunCard>
+            <KeeperNotesRegion campaignId={campaignId} scene={scene} />
+          </RunCard>
         </div>
-      )}
+        <div className="min-w-0">
+          <RunCard>
+            <RollRequestForm
+              campaignId={campaignId}
+              investigators={scene.investigatorsPresent}
+              onRequested={onRollRequested}
+              // A 409 refetches the Active Scene, which lands on the no-Active-Scene state when the Scene is gone.
+              onNoActiveScene={onFinishedMeanwhile}
+            />
+          </RunCard>
+        </div>
+        <div className="min-w-0">
+          <RunCard>
+            <WaitingRolls campaignId={campaignId} />
+          </RunCard>
+        </div>
+      </div>
+      <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
+        <div className="min-w-0">
+          <RunCard>
+            <InvestigatorsPresentSection campaignId={campaignId} scene={scene} onSaved={onPresentSaved} onFinishedMeanwhile={onFinishedMeanwhile} />
+          </RunCard>
+        </div>
+        {campaign.data && (
+          <div className="min-w-0 lg:order-first">
+            <ActiveSceneWall campaignId={campaignId} viewerRole={campaign.data.role} onWallEntryAdded={onWallEntryAdded} />
+          </div>
+        )}
+      </div>
     </div>
   )
 }
