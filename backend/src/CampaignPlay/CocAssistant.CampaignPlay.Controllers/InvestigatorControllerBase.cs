@@ -25,6 +25,9 @@ public abstract class InvestigatorControllerBase : CampaignPlayControllerBase
             InvestigatorCommandOutcome.InvalidChangeRequestComment => Problem(
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "A Change Request needs a comment of at most 2000 characters."),
+            InvestigatorCommandOutcome.InvalidRerollGrant => Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "A re-roll can only be granted for a group that has Roll Records."),
             _ => NotFound(),
         };
 

@@ -1,4 +1,5 @@
 import { WizardField } from '@/campaign-play/components/wizard-field/wizard-field'
+import { rollGroupOf } from '@/campaign-play/services/rollGroups'
 import type { CharacterSheetView, IdentityInputs } from '@/campaign-play/types/CharacterSheet'
 import type { WizardStepProps } from '@/campaign-play/types/WizardStepProps'
 
@@ -15,14 +16,6 @@ const textFields: { field: Exclude<keyof IdentityInputs, 'age'>; label: string }
   { field: 'birthplace', label: 'Birthplace' },
 ]
 
-function isLuckPurpose(purpose: string): boolean {
-  return purpose === 'Luck' || purpose === 'Luck:SecondRoll'
-}
-
-function isEduPurpose(purpose: string): boolean {
-  return purpose.startsWith('EduImprovement[')
-}
-
 /**
  * The age hint naming what fixed the bracket (ux.md section 6.8), or null when the age-bracket lock does not apply.
  */
@@ -31,10 +24,10 @@ function ageLockHint(sheet: CharacterSheetView): string | null {
     return null
   }
 
-  const rolled = sheet.luckRolls.some((roll) => roll !== null) || sheet.rollRecords.some((record) => isLuckPurpose(record.purpose))
+  const rolled = sheet.luckRolls.some((roll) => roll !== null) || sheet.rollRecords.some((record) => rollGroupOf(record.purpose) === 'Luck')
     ? 'Luck'
     : null
-  const edu = sheet.ageEffects.eduImprovementChecks.length > 0 || sheet.rollRecords.some((record) => isEduPurpose(record.purpose))
+  const edu = sheet.ageEffects.eduImprovementChecks.length > 0 || sheet.rollRecords.some((record) => rollGroupOf(record.purpose) === 'EduImprovementChecks')
     ? 'EDU checks'
     : null
   const what = [rolled, edu].filter((part): part is string => part !== null).join(' and ')

@@ -103,10 +103,26 @@ describe('InvestigatorReview', () => {
     await userEvent.type(screen.getByLabelText('What should the Player change?'), 'Lower it')
     await userEvent.click(screen.getByRole('button', { name: 'Send to Player' }))
 
-    expect(mockRequestChanges).toHaveBeenCalledWith('Lower it')
+    expect(mockRequestChanges).toHaveBeenCalledWith({ comment: 'Lower it', rerollGrants: [] })
     expect(await screen.findByText('Sent to the Player.')).toBeInTheDocument()
     expect(screen.getByText('Changes requested')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
+  })
+
+  it('UX-39: offers a re-roll grant for every group with current Roll Records', async () => {
+    withInvestigator(keeperInvestigator())
+    render(<InvestigatorReview campaignId="c1" investigatorId="i1" />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Request changes' }))
+
+    expect(screen.getByRole('checkbox', { name: 'Luck' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'EDU checks' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Characteristics' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Luck' }))
+    await userEvent.type(screen.getByLabelText('What should the Player change?'), 'Roll Luck again')
+    await userEvent.click(screen.getByRole('button', { name: 'Send to Player' }))
+
+    expect(mockRequestChanges).toHaveBeenCalledWith({ comment: 'Roll Luck again', rerollGrants: ['Luck'] })
   })
 
   it('offers "Reload" when the Investigator changed since the screen opened', async () => {

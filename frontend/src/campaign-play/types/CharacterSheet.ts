@@ -187,7 +187,14 @@ export interface RollRecord {
   rolledByDisplayName: string | null
   /** When the roll happened; null for Player-entered rows, which record no time. */
   rolledAt: string | null
+  /** True for a Roll Record a re-roll grant replaced; the Player's view never carries one. */
+  isReplaced: boolean
 }
+
+/** A group of Roll Records the Keeper may grant a re-roll for with a Change Request, in grant order. */
+export const ROLL_GROUPS = ['Characteristics', 'Luck', 'EduImprovementChecks'] as const
+
+export type RollGroup = (typeof ROLL_GROUPS)[number]
 
 /** The Occupation inputs plus what they resolve to; resolved values are null while unknown. */
 export interface OccupationView extends OccupationInputs {
@@ -236,6 +243,8 @@ export interface CharacterSheetView {
   rollRecords: RollRecord[]
   /** Which creation inputs the Roll Records already on the sheet lock. */
   locks: { creationMethod: boolean; ageBracket: boolean; edu: boolean }
+  /** The groups the Keeper granted that the Player has not rolled again yet, in grant order. */
+  rerollGrants: RollGroup[]
 }
 
 /** A Standard rolling formula: (raw dice total + bonus) x multiplier (docs/game-rules section 2.1). */

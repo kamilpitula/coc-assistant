@@ -195,6 +195,7 @@ function EduCheckGroups({ inputs, errors, rules, bracket, sheet, roll }: EduChec
             rules={rules}
             bracket={bracket}
             pointMethod={inputs.creationMethod === 'PointBuy' || inputs.creationMethod === 'QuickFire'}
+            granted={sheet.rerollGrants.includes('EduImprovementChecks')}
             errors={errors}
             roll={{ ...roll, onRoll: sendRoll(index) }}
           />
@@ -282,19 +283,22 @@ interface NextEduCheckProps {
   bracket: AgeBracket
   /** True under Point buy or Quick fire, where the dialog also says the EDU can't change. */
   pointMethod: boolean
+  /** True while the Keeper grants an EDU improvement check re-roll (ux.md section 6.8, U1 and U2). */
+  granted: boolean
   errors: Record<string, string>
   roll: { status: RollStatus; onRoll: () => void; onRetry: () => void }
 }
 
 /** The next unrolled check: the roll action with its dialog (ux.md sections 6.3 and 6.8). */
-function NextEduCheck({ index, count, eduBefore, rules, bracket, pointMethod, errors, roll }: NextEduCheckProps) {
+function NextEduCheck({ index, count, eduBefore, rules, bracket, pointMethod, granted, errors, roll }: NextEduCheckProps) {
   const groupField = eduCheckField(index)
   const inlineError = errors[`${groupField}.check`] ?? errors[groupField]
   const body =
     `The app rolls ${rules.eduImprovementCheckDice} against your EDU of ${eduBefore}, ` +
     `and ${rules.eduImprovementGainDice} more if it improves. You can't roll it again. ` +
     `Afterwards your age must stay between ${bracket.minimumAge} and ${bracket.maximumAge}` +
-    `${pointMethod ? " and your EDU can't change" : ''}.`
+    `${pointMethod ? " and your EDU can't change" : ''}.` +
+    `${granted ? ' Only your Keeper can allow a re-roll.' : ''}`
 
   return (
     <fieldset
@@ -309,7 +313,7 @@ function NextEduCheck({ index, count, eduBefore, rules, bracket, pointMethod, er
       <CreationRollAction
         id={EDU_TRIGGER_ID}
         describedBy={inlineError ? EDU_ERROR_ID : undefined}
-        label={`Roll EDU check ${index + 1}`}
+        label={granted ? `Roll EDU check ${index + 1} again` : `Roll EDU check ${index + 1}`}
         body={body}
         pending={roll.status.state === 'pending'}
         onRoll={roll.onRoll}

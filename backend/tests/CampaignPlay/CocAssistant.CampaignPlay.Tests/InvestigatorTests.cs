@@ -21,10 +21,22 @@ public class InvestigatorTests
 
     private static Investigator NewDraft() => Investigator.Create(Guid.NewGuid(), Guid.NewGuid(), CreatedAt);
 
+    private static readonly Guid Roller = Guid.NewGuid();
+
     private static Investigator Submitted()
     {
         var investigator = NewDraft();
         investigator.Submit(NoErrors, CreatedAt);
+        return investigator;
+    }
+
+    private static Investigator SubmittedWithLuck()
+    {
+        var investigator = NewDraft();
+        var inputs = new CharacterSheetBuilder().WithLuckRolls().WithEduImprovementChecks().Build();
+        Assert.True(investigator.ReplaceCharacterSheet(inputs, TestRules.Creation.AgeRules, CreatedAt));
+        Assert.True(investigator.RollLuck(TestRules.Creation.AgeRules, new ScriptedDiceRoller([4, 4, 4]), Roller, CreatedAt));
+        Assert.True(investigator.Submit(NoErrors, CreatedAt));
         return investigator;
     }
 
@@ -109,7 +121,7 @@ public class InvestigatorTests
     {
         var investigator = Submitted();
 
-        var requested = investigator.RequestChanges("Credit Rating seems high for this Occupation", Later);
+        var requested = investigator.RequestChanges("Credit Rating seems high for this Occupation", [], Later);
 
         Assert.True(requested);
         Assert.Equal(InvestigatorStatus.ChangesRequested, investigator.Status);
@@ -125,7 +137,7 @@ public class InvestigatorTests
     {
         var investigator = Submitted();
 
-        Assert.False(investigator.RequestChanges(comment, Later));
+        Assert.False(investigator.RequestChanges(comment, [], Later));
         Assert.Equal(InvestigatorStatus.Submitted, investigator.Status);
         Assert.Null(investigator.ChangeRequestComment);
     }
@@ -135,10 +147,10 @@ public class InvestigatorTests
     {
         var investigator = Submitted();
 
-        Assert.True(investigator.RequestChanges(new string('a', Investigator.ChangeRequestCommentMaxLength), Later));
+        Assert.True(investigator.RequestChanges(new string('a', Investigator.ChangeRequestCommentMaxLength), [], Later));
 
         var resubmitted = Submitted();
-        Assert.False(resubmitted.RequestChanges(new string('a', Investigator.ChangeRequestCommentMaxLength + 1), Later));
+        Assert.False(resubmitted.RequestChanges(new string('a', Investigator.ChangeRequestCommentMaxLength + 1), [], Later));
         Assert.Equal(InvestigatorStatus.Submitted, resubmitted.Status);
     }
 
@@ -146,14 +158,110 @@ public class InvestigatorTests
     public void Given_changes_were_requested_When_the_player_resubmits_Then_it_is_submitted_and_keeps_the_latest_comment()
     {
         var investigator = Submitted();
-        investigator.RequestChanges("Lower the Credit Rating", Later);
+        investigator.RequestChanges("Lower the Credit Rating", [], Later);
 
         Assert.True(investigator.Submit(NoErrors, Later));
         Assert.Equal(InvestigatorStatus.Submitted, investigator.Status);
         Assert.Equal("Lower the Credit Rating", investigator.ChangeRequestComment);
 
-        investigator.RequestChanges("Now check the age", Later);
+        investigator.RequestChanges("Now check the age", [], Later);
         Assert.Equal("Now check the age", investigator.ChangeRequestComment);
+    }
+
+    [Fact]
+    public void Given_a_submitted_investigator_When_requesting_changes_with_a_luck_grant_Then_the_luck_records_move_and_the_grant_opens()
+    {
+        var investigator = SubmittedWithLuck();
+
+        var requested = investigator.RequestChanges("Roll Luck again", [RollGroup.Luck], Later);
+
+        Assert.True(requested);
+        Assert.Equal(InvestigatorStatus.ChangesRequested, investigator.Status);
+        Assert.Empty(investigator.CharacterSheet.RollRecords);
+        var replaced = Assert.Single(investigator.CharacterSheet.ReplacedRollRecords);
+        Assert.Equal(RollPurposes.Luck, replaced.Purpose);
+        Assert.Equal(RollSource.Server, replaced.Source);
+        Assert.Equal([RollGroup.Luck], investigator.CharacterSheet.RerollGrants);
+    }
+
+    [Fact]
+    public void Given_a_submitted_investigator_When_requesting_changes_without_a_grant_Then_the_records_stay_and_no_grant_opens()
+    {
+        var investigator = SubmittedWithLuck();
+
+        var requested = investigator.RequestChanges("Fix the name", [], Later);
+
+        Assert.True(requested);
+        Assert.Equal(InvestigatorStatus.ChangesRequested, investigator.Status);
+        Assert.Single(investigator.CharacterSheet.RollRecords);
+        Assert.Empty(investigator.CharacterSheet.ReplacedRollRecords);
+        Assert.Empty(investigator.CharacterSheet.RerollGrants);
+    }
+
+    [Theory]
+    [InlineData("Characteristics")]
+    [InlineData("Edu")]
+    public void Given_a_submitted_investigator_When_requesting_changes_for_a_group_without_current_records_Then_it_stays_submitted(string group)
+    {
+        var investigator = SubmittedWithLuck();
+        IReadOnlyCollection<RollGroup> grants = group == "Characteristics" ? [RollGroup.Characteristics] : [RollGroup.EduImprovementChecks];
+
+        var requested = investigator.RequestChanges("Roll again", grants, Later);
+
+        Assert.False(requested);
+        Assert.Equal(InvestigatorStatus.Submitted, investigator.Status);
+        Assert.Single(investigator.CharacterSheet.RollRecords);
+    }
+
+    [Fact]
+    public void Given_a_grant_When_the_player_resubmits_Then_the_grants_clear_and_the_replaced_records_stay()
+    {
+        var investigator = SubmittedWithLuck();
+        Assert.True(investigator.RequestChanges("Roll Luck again", [RollGroup.Luck], Later));
+
+        var submitted = investigator.Submit(NoErrors, Later);
+
+        Assert.True(submitted);
+        Assert.Equal(InvestigatorStatus.Submitted, investigator.Status);
+        Assert.Empty(investigator.CharacterSheet.RerollGrants);
+        Assert.Single(investigator.CharacterSheet.ReplacedRollRecords);
+    }
+
+    [Fact]
+    public void Given_a_grant_When_requesting_changes_for_its_group_again_Then_it_is_refused()
+    {
+        var investigator = SubmittedWithLuck();
+        Assert.True(investigator.RequestChanges("Roll Luck again", [RollGroup.Luck], Later));
+        Assert.True(investigator.Submit(NoErrors, Later));
+
+        var requested = investigator.RequestChanges("Roll Luck once more", [RollGroup.Luck], Later);
+
+        Assert.False(requested);
+        Assert.Equal(InvestigatorStatus.Submitted, investigator.Status);
+    }
+
+    [Fact]
+    public void Given_a_draft_When_requesting_changes_with_a_grant_Then_nothing_changes()
+    {
+        var investigator = NewDraft();
+
+        Assert.False(investigator.RequestChanges("Roll Luck again", [RollGroup.Luck], Later));
+        Assert.Equal(InvestigatorStatus.Draft, investigator.Status);
+    }
+
+    [Fact]
+    public void Given_a_grant_When_the_player_edits_the_sheet_Then_the_replaced_records_and_grants_carry_over()
+    {
+        var investigator = SubmittedWithLuck();
+        Assert.True(investigator.RequestChanges("Roll Luck again", [RollGroup.Luck], Later));
+        var next = new CharacterSheetBuilder().WithLuckRolls(11).Build() with { Identity = new InvestigatorIdentity("Harvey Walters", 25, null, null, null) };
+
+        var replaced = investigator.ReplaceCharacterSheet(next, TestRules.Creation.AgeRules, Later);
+
+        Assert.True(replaced);
+        Assert.Empty(investigator.CharacterSheet.RollRecords);
+        Assert.Single(investigator.CharacterSheet.ReplacedRollRecords);
+        Assert.Equal([RollGroup.Luck], investigator.CharacterSheet.RerollGrants);
     }
 
     [Fact]
@@ -164,7 +272,7 @@ public class InvestigatorTests
 
         Assert.False(investigator.ReplaceCharacterSheet(NamedSheet, TestRules.Creation.AgeRules, Later));
         Assert.False(investigator.Submit(NoErrors, Later));
-        Assert.False(investigator.RequestChanges("Too late", Later));
+        Assert.False(investigator.RequestChanges("Too late", [], Later));
         Assert.False(investigator.Approve(Later));
         Assert.Equal(InvestigatorStatus.Approved, investigator.Status);
     }
@@ -174,7 +282,7 @@ public class InvestigatorTests
     public void Given_each_status_When_checking_start_over_Then_only_a_draft_can_start_over()
     {
         var changesRequested = Submitted();
-        changesRequested.RequestChanges("Fix it", Later);
+        changesRequested.RequestChanges("Fix it", [], Later);
 
         Assert.True(NewDraft().CanStartOver);
         Assert.False(Submitted().CanStartOver);
@@ -213,7 +321,7 @@ public class InvestigatorTests
     public void Given_changes_requested_When_resubmitting_Then_investigator_submitted_is_raised()
     {
         var investigator = Submitted();
-        investigator.RequestChanges("Add a backstory.", Later);
+        investigator.RequestChanges("Add a backstory.", [], Later);
         investigator.ClearDomainEvents();
 
         investigator.Submit(NoErrors, Later);
@@ -239,7 +347,7 @@ public class InvestigatorTests
         var investigator = Submitted();
         investigator.ClearDomainEvents();
 
-        investigator.RequestChanges("A private note.", Later);
+        investigator.RequestChanges("A private note.", [], Later);
 
         var raised = Assert.Single(investigator.DomainEvents);
         Assert.Equal(new InvestigatorChangesRequested(investigator.CampaignId, investigator.Id, investigator.PlayerAccountId), raised);
@@ -252,11 +360,11 @@ public class InvestigatorTests
         draft.ClearDomainEvents();
         var invalidSubmission = draft.Submit([AnError], Later);
         var approveDraft = draft.Approve(Later);
-        var requestOnDraft = draft.RequestChanges("Too early.", Later);
+        var requestOnDraft = draft.RequestChanges("Too early.", [], Later);
 
         var submitted = Submitted();
         submitted.ClearDomainEvents();
-        var blankComment = submitted.RequestChanges(" ", Later);
+        var blankComment = submitted.RequestChanges(" ", [], Later);
         var submitAgain = submitted.Submit(NoErrors, Later);
         var startOverSubmitted = submitted.StartOver();
 
@@ -298,7 +406,7 @@ public class InvestigatorTests
         var investigator = Submitted();
         if (status == InvestigatorStatus.ChangesRequested)
         {
-            investigator.RequestChanges("Add a backstory.", Later);
+            investigator.RequestChanges("Add a backstory.", [], Later);
         }
 
         if (status == InvestigatorStatus.Approved)

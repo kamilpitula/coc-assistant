@@ -8,9 +8,13 @@ public static class CharacterSheetViews
         IAccountDisplayNames displayNames,
         Investigator investigator,
         Campaign campaign,
+        bool includeReplacedRollRecords,
         CancellationToken cancellationToken)
     {
-        var rollerIds = investigator.CharacterSheet.RollRecords
+        var records = includeReplacedRollRecords
+            ? investigator.CharacterSheet.RollRecords.Concat(investigator.CharacterSheet.ReplacedRollRecords)
+            : investigator.CharacterSheet.RollRecords;
+        var rollerIds = records
             .Select(record => record.RolledByAccountId)
             .OfType<Guid>()
             .Distinct()
@@ -20,6 +24,7 @@ public static class CharacterSheetViews
             investigator,
             campaign,
             names.GetValueOrDefault(investigator.PlayerAccountId),
-            rollerIds.Where(names.ContainsKey).ToDictionary(accountId => accountId, accountId => names[accountId]));
+            rollerIds.Where(names.ContainsKey).ToDictionary(accountId => accountId, accountId => names[accountId]),
+            includeReplacedRollRecords);
     }
 }

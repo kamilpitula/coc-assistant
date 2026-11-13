@@ -39,12 +39,33 @@ public class InvestigatorRollCharacteristicsTests
         var investigator = NewDraft();
         investigator.ReplaceCharacterSheet(BlankStandardRollingSheet(), TestRules.Creation.AgeRules, CreatedAt);
         investigator.Submit([], CreatedAt);
-        investigator.RequestChanges("Roll them.", CreatedAt);
+        investigator.RequestChanges("Roll them.", [], CreatedAt);
 
         var rolled = investigator.RollCharacteristics(new ScriptedDiceRoller(AllThrees), Roller, RolledAt);
 
         Assert.True(rolled);
         Assert.Equal(8, investigator.CharacterSheet.RollRecords.Count);
+    }
+
+    [Fact]
+    public void Given_a_characteristics_grant_When_rolling_characteristics_Then_the_group_is_rolled_again_and_locks_again()
+    {
+        var investigator = NewDraft();
+        investigator.ReplaceCharacterSheet(BlankStandardRollingSheet(), TestRules.Creation.AgeRules, CreatedAt);
+        Assert.True(investigator.RollCharacteristics(new ScriptedDiceRoller(AllThrees), Roller, RolledAt));
+        investigator.Submit([], CreatedAt);
+        Assert.True(investigator.RequestChanges("Roll them again.", [RollGroup.Characteristics], CreatedAt));
+        Assert.Equal(8, investigator.CharacterSheet.ReplacedRollRecords.Count);
+
+        var rolled = investigator.RollCharacteristics(new ScriptedDiceRoller([.. AllThrees, .. AllThrees]), Roller, RolledAt);
+
+        Assert.True(rolled);
+        Assert.Equal(8, investigator.CharacterSheet.RollRecords.Count);
+        Assert.Equal(8, investigator.CharacterSheet.ReplacedRollRecords.Count);
+        Assert.Empty(investigator.CharacterSheet.RerollGrants);
+        Assert.All(investigator.CharacterSheet.RollRecords, record => Assert.Equal(RollSource.Server, record.Source));
+        var bracket = TestRules.Creation.AgeRules.BracketFor(25);
+        Assert.Equal(new CreationLocks(true, false, false), CreationLocks.Of(investigator.CharacterSheet, bracket));
     }
 
     [Theory]

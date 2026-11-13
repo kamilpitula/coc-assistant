@@ -24,10 +24,11 @@ public sealed class CharacterSheetEvaluator
         Investigator investigator,
         Campaign campaign,
         string? playerName,
-        IReadOnlyDictionary<Guid, string> rolledByDisplayNames)
+        IReadOnlyDictionary<Guid, string> rolledByDisplayNames,
+        bool includeReplacedRollRecords = false)
     {
         var (computation, errors) = Evaluate(investigator.CharacterSheet, campaign);
-        return new CharacterSheetView(investigator, playerName, computation, errors, rolledByDisplayNames);
+        return new CharacterSheetView(investigator, playerName, computation, errors, rolledByDisplayNames, includeReplacedRollRecords);
     }
 }
 

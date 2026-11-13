@@ -112,6 +112,7 @@ function rollList(missing: readonly CharacteristicCode[], rules: CharacterSheetR
 function StandardRollingSection({ inputs, errors, rules, sheet, roll }: CharacteristicsStepProps) {
   const missing = CHARACTERISTIC_CODES.filter((code) => (inputs.characteristics[code] ?? null) === null)
   const hasValues = missing.length < CHARACTERISTIC_CODES.length
+  const granted = sheet.rerollGrants.includes('Characteristics')
   const announced = roll.status.state === 'rolled' || roll.status.state === 'alreadyRolled'
   const heading = useRef<HTMLHeadingElement>(null)
   const wasAnnounced = useRef(false)
@@ -170,8 +171,8 @@ function StandardRollingSection({ inputs, errors, rules, sheet, roll }: Characte
       <CreationRollAction
         id={ROLL_TRIGGER_ID}
         describedBy={inlineError ? ROLL_ERROR_ID : undefined}
-        label={hasValues ? 'Roll the remaining characteristics' : 'Roll characteristics'}
-        body={`The app rolls ${rollList(missing, rules)} once. You can't roll them again, and you can't change your creation method afterwards.`}
+        label={granted ? 'Roll characteristics again' : hasValues ? 'Roll the remaining characteristics' : 'Roll characteristics'}
+        body={`The app rolls ${rollList(missing, rules)} once. You can't roll them again, and you can't change your creation method afterwards.${granted ? ' Only your Keeper can allow a re-roll.' : ''}`}
         pending={roll.status.state === 'pending'}
         onRoll={roll.onRoll}
       />
@@ -332,6 +333,7 @@ function LuckSection({ rules, bracket, errors, sheet, luckRoll }: Characteristic
           rules={rules}
           bracket={bracket}
           secondOnly={first !== null}
+          granted={sheet.rerollGrants.includes('Luck')}
           inlineError={inlineError}
           luckRoll={luckRoll}
         />
@@ -355,6 +357,7 @@ function LuckRollAction({
   rules,
   bracket,
   secondOnly,
+  granted,
   inlineError,
   luckRoll,
 }: {
@@ -362,14 +365,16 @@ function LuckRollAction({
   bracket: AgeBracket
   /** True when only a typed-in first roll exists in the two-roll bracket: the action rolls just the second. */
   secondOnly: boolean
+  /** True while the Keeper grants a Luck re-roll (ux.md section 6.8, U1 and U2). */
+  granted: boolean
   inlineError: string | undefined
   luckRoll: CharacteristicsStepProps['luckRoll']
 }) {
   const range = `your age must then stay between ${bracket.minimumAge} and ${bracket.maximumAge}`
-  const label = secondOnly ? 'Roll your second Luck roll' : 'Roll Luck'
+  const label = granted ? 'Roll Luck again' : secondOnly ? 'Roll your second Luck roll' : 'Roll Luck'
   const body = secondOnly
-    ? `The app rolls your second Luck roll (${rules.luckDice}) once, keeping the higher result. You can't roll it again, and ${range}.`
-    : `The app rolls Luck (${rules.luckDice}) ${bracket.luckRolls >= 2 ? 'twice at your age, keeping the higher result' : 'once'}. You can't roll it again, and ${range}.`
+    ? `The app rolls your second Luck roll (${rules.luckDice}) once, keeping the higher result. You can't roll it again, and ${range}.${granted ? ' Only your Keeper can allow a re-roll.' : ''}`
+    : `The app rolls Luck (${rules.luckDice}) ${bracket.luckRolls >= 2 ? 'twice at your age, keeping the higher result' : 'once'}. You can't roll it again, and ${range}.${granted ? ' Only your Keeper can allow a re-roll.' : ''}`
 
   return (
     <div className="flex flex-col gap-2">

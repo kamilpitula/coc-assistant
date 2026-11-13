@@ -73,4 +73,17 @@ public class LuckRollingTests
         Assert.Single(records);
         Assert.Equal(RollPurposes.Luck, records[0].Purpose);
     }
+
+    [Fact]
+    public void Given_a_luck_grant_When_rolling_the_missing_Then_the_replaced_purposes_are_rolled_again()
+    {
+        var sheet = SheetWith(RollRecord.PlayerEntered(RollPurposes.Luck, "3D6", 11))
+            .WithRerollGranted([RollGroup.Luck]);
+
+        var records = LuckRolling.RollMissing(sheet, BracketFor(25), new ScriptedDiceRoller([2, 5, 6]), Roller, Now);
+
+        Assert.Equal(
+            [RollRecord.FromServer(RollPurposes.Luck, new DiceRoll("3D6", [2, 5, 6], 13), Roller, Now)],
+            records);
+    }
 }

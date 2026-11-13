@@ -7,6 +7,7 @@ import {
   requestChanges,
 } from '@/campaign-play/services/investigatorApi'
 import type { KeeperInvestigator } from '@/campaign-play/types/Investigator'
+import type { RollGroup } from '@/campaign-play/types/CharacterSheet'
 import { useAccessToken } from '@/shared/hooks/useAccessToken'
 
 /** A non-Draft Investigator for the Keeper's review; null outside the Keeper's visibility. */
@@ -39,13 +40,14 @@ export function useApproveInvestigator(campaignId: string, investigatorId: strin
   })
 }
 
-/** Returns the Investigator to its Player with the Keeper's comment. */
+/** Returns the Investigator to its Player with the Keeper's comment and the granted re-roll groups. */
 export function useRequestChanges(campaignId: string, investigatorId: string) {
   const getAccessToken = useAccessToken()
   const store = useStoreReviewedInvestigator(campaignId, investigatorId)
 
   return useMutation({
-    mutationFn: async (comment: string) => requestChanges(await getAccessToken(), campaignId, investigatorId, comment),
+    mutationFn: async ({ comment, rerollGrants }: { comment: string; rerollGrants: RollGroup[] }) =>
+      requestChanges(await getAccessToken(), campaignId, investigatorId, comment, rerollGrants),
     onSuccess: store,
   })
 }

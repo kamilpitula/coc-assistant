@@ -111,6 +111,22 @@ public class EduImprovementRollingTests
             records);
     }
 
+    [Fact]
+    public void Given_a_grant_for_a_legacy_check_missing_its_gain_When_rolling_next_Then_the_check_is_rolled_again_from_check_1()
+    {
+        var sheet = PointBuySheet(25, 50, RollRecord.PlayerEntered(RollPurposes.EduImprovementCheck(1), "D100", 80))
+            .WithRerollGranted([RollGroup.EduImprovementChecks]);
+
+        var records = EduImprovementRolling.RollNext(sheet, BracketFor(25), new ScriptedDiceRoller([70, 3]), Roller, Now);
+
+        Assert.Equal(
+            [
+                RollRecord.FromServer(RollPurposes.EduImprovementCheck(1), new DiceRoll("D100", [70], 70), Roller, Now),
+                RollRecord.FromServer(RollPurposes.EduImprovementGain(1), new DiceRoll("1D10", [3], 3), Roller, Now),
+            ],
+            records);
+    }
+
     [Theory]
     [InlineData(95)]
     [InlineData(null)]

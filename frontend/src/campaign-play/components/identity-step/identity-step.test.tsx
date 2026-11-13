@@ -60,7 +60,7 @@ describe('IdentityStep', () => {
       locks: { creationMethod: false, ageBracket: true, edu: false },
       ageEffects: { bracket: sheetView().ageEffects.bracket, deductions: {}, eduImprovementChecks: [] },
       rollRecords: [
-        { purpose: 'Luck', dice: '3D6', faces: [3, 3, 5], result: 11, source: 'Server', rolledByDisplayName: 'Ada Lovelace', rolledAt: '2026-11-08T14:30:00+00:00' },
+        { purpose: 'Luck', dice: '3D6', faces: [3, 3, 5], result: 11, source: 'Server', rolledByDisplayName: 'Ada Lovelace', rolledAt: '2026-11-08T14:30:00+00:00', isReplaced: false },
       ],
     })
     rerender(

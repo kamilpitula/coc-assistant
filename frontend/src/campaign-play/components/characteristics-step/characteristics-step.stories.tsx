@@ -80,6 +80,7 @@ const legacySheet: CharacterSheetView = {
         source: 'PlayerEntered',
         rolledByDisplayName: 'Ada Lovelace',
         rolledAt: null,
+        isReplaced: false,
       },
     ],
   }),

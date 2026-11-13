@@ -69,6 +69,7 @@ function serverCharacteristicRecords(): RollRecord[] {
     source: 'Server',
     rolledByDisplayName: 'Ada Lovelace',
     rolledAt: '2026-11-08T14:30:00+00:00',
+    isReplaced: false,
   }))
 }
 
@@ -88,6 +89,7 @@ function serverLucked(rolls: (number | null)[]): CharacterSheetView {
             source: 'Server',
             rolledByDisplayName: 'Ada Lovelace',
             rolledAt: '2026-11-08T14:30:00+00:00',
+            isReplaced: false,
           }],
     ),
   })
@@ -244,6 +246,30 @@ describe('CharacteristicsStep Luck', () => {
     )
   })
 
+  it('UX-39: while granted, the Luck action reads "Roll Luck again"', async () => {
+    const props = base()
+    render(
+      <CharacteristicsStep
+        inputs={validInputs}
+        errors={{}}
+        {...props}
+        sheet={sheetView({
+          identity: { ...validInputs.identity, age: 25 },
+          ageEffects: { bracket: bracket25, deductions: {}, eduImprovementChecks: [] },
+          luckRolls: [],
+          rollRecords: [],
+          rerollGrants: ['Luck'],
+        })}
+        luckRoll={props.luckRoll}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Roll Luck again' }))
+
+    const dialog = screen.getByRole('alertdialog', { name: 'Roll Luck again?' })
+    expect(dialog).toHaveTextContent('Only your Keeper can allow a re-roll.')
+  })
+
   it('UX-36: after rolling, shows the value, announces it, and focuses the heading', () => {
     render(
       <CharacteristicsStep
@@ -266,8 +292,8 @@ describe('CharacteristicsStep Luck', () => {
       ageEffects: { bracket: bracket17, deductions: {}, eduImprovementChecks: [] },
       luckRolls: [9, 11],
       rollRecords: [
-        { purpose: 'Luck', dice: '3D6', faces: [3, 3, 3], result: 9, source: 'Server', rolledByDisplayName: 'Ada Lovelace', rolledAt: '2026-11-08T14:30:00+00:00' },
-        { purpose: 'Luck:SecondRoll', dice: '3D6', faces: [4, 4, 3], result: 11, source: 'Server', rolledByDisplayName: 'Ada Lovelace', rolledAt: '2026-11-08T14:30:00+00:00' },
+        { purpose: 'Luck', dice: '3D6', faces: [3, 3, 3], result: 9, source: 'Server', rolledByDisplayName: 'Ada Lovelace', rolledAt: '2026-11-08T14:30:00+00:00', isReplaced: false },
+        { purpose: 'Luck:SecondRoll', dice: '3D6', faces: [4, 4, 3], result: 11, source: 'Server', rolledByDisplayName: 'Ada Lovelace', rolledAt: '2026-11-08T14:30:00+00:00', isReplaced: false },
       ],
     })
     render(
@@ -460,6 +486,25 @@ describe('CharacteristicsStep Standard rolling', () => {
     expect(props.roll.onRoll).toHaveBeenCalledTimes(1)
   })
 
+  it('UX-39: while granted, the characteristics action reads "Roll characteristics again"', async () => {
+    const props = base()
+    render(
+      <CharacteristicsStep
+        inputs={standardInputs}
+        errors={{}}
+        {...props}
+        sheet={{ ...standardSheet, rerollGrants: ['Characteristics'] }}
+        allowedMethods={['StandardRolling']}
+        roll={props.roll}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Roll characteristics again' }))
+
+    const dialog = screen.getByRole('alertdialog', { name: 'Roll characteristics again?' })
+    expect(dialog).toHaveTextContent('Only your Keeper can allow a re-roll.')
+  })
+
   it('UX-33: lists legacy typed-in values and rolls only the remaining characteristics', async () => {
     const props = base()
     const legacySheet: CharacterSheetView = {
@@ -475,6 +520,7 @@ describe('CharacteristicsStep Standard rolling', () => {
             source: 'PlayerEntered',
             rolledByDisplayName: 'Ada Lovelace',
             rolledAt: null,
+            isReplaced: false,
           },
         ],
       }),

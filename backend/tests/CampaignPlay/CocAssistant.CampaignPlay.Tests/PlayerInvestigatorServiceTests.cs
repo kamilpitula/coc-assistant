@@ -121,6 +121,23 @@ public class PlayerInvestigatorServiceTests : IDisposable
         Assert.Equal(inputs.ToCharacterSheet(), reread!.Investigator.CharacterSheet);
     }
 
+    // The Player's view leaves out replaced records but lists the open grants (specs/character-sheet/spec.md, Re-roll grant).
+    [Fact]
+    public async Task Given_a_luck_grant_When_the_player_reads_their_sheet_Then_the_view_lists_the_grant_without_replaced_records()
+    {
+        var campaignId = await CampaignWithPlayerAsync();
+        var investigatorId = await _scenario.CreateSubmittedAsync(campaignId, Player);
+        using var keeperContext = _scenario.Fixture.CreateContext();
+        var granted = await _scenario.KeeperService(keeperContext).RequestChangesAsync(
+            campaignId, investigatorId, CampaignPlayScenario.KeeperAccountId, "Roll Luck again", [RollGroup.Luck], CancellationToken.None);
+        Assert.Equal(InvestigatorCommandOutcome.Succeeded, granted.Outcome);
+
+        var reread = await AsPlayerAsync(service => service.GetMyCharacterSheetAsync(campaignId, Player, CancellationToken.None));
+
+        Assert.False(reread!.IncludesReplacedRollRecords);
+        Assert.Equal([RollGroup.Luck], reread.Investigator.CharacterSheet.RerollGrants);
+    }
+
     // Scenario: Player submits a valid Character Sheet
     [Fact]
     public async Task Given_a_draft_without_errors_When_submitting_Then_it_is_submitted_and_can_no_longer_be_edited()

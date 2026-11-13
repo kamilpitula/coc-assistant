@@ -4,8 +4,9 @@ namespace CocAssistant.CampaignPlay.Infrastructure;
 /// Stored JSON form of the Character Sheet with an explicit schema version (ADR 0005, ADR 0007). Only the Player's
 /// inputs are stored; a future schema version adds an upgrade step in <see cref="FromStorage"/>. Version 2 adds the
 /// Occupation, the skill allocations, and the Quick Fire skills; version 3 the Quick Fire extra skill; version 4 the
-/// Backstory, Key Connection, Custom Weapons, and Gear; version 5 the Roll Record faces, who rolled, and when.
-/// Earlier documents are upgraded on read with the missing fields empty.
+/// Backstory, Key Connection, Custom Weapons, and Gear; version 5 the Roll Record faces, who rolled, and when; version 6
+/// the replaced Roll Records and the open re-roll grants. Earlier documents are upgraded on read with the missing
+/// fields empty.
 /// </summary>
 public static class CharacterSheetJsonStorage
 {
@@ -48,7 +49,9 @@ public static class CharacterSheetJsonStorage
         BackstoryDocument? Backstory,
         BackstoryEntry? KeyConnection,
         IReadOnlyList<CustomWeaponDocument>? Weapons,
-        string? Gear)
+        string? Gear,
+        IReadOnlyList<RollRecordDocument>? ReplacedRollRecords,
+        IReadOnlyList<RollGroup>? RerollGrants)
     {
         public static CharacterSheetDocument From(CharacterSheet sheet) =>
             new(
@@ -64,7 +67,9 @@ public static class CharacterSheetJsonStorage
                 BackstoryDocument.From(sheet.BackstoryAndPossessions.Backstory),
                 sheet.BackstoryAndPossessions.KeyConnection,
                 sheet.BackstoryAndPossessions.Weapons.Select(CustomWeaponDocument.From).ToList(),
-                sheet.BackstoryAndPossessions.Gear);
+                sheet.BackstoryAndPossessions.Gear,
+                sheet.ReplacedRollRecords.Select(RollRecordDocument.From).ToList(),
+                sheet.RerollGrants.ToList());
 
         public CharacterSheet ToCharacterSheet() =>
             new(
@@ -72,15 +77,28 @@ public static class CharacterSheetJsonStorage
                 CreationMethod,
                 FromCodes(AssignedCharacteristics),
                 FromCodes(AgeDeductions),
-                (RollRecords ?? []).Select(record => record.ToRollRecord()).ToList(),
+                ToRollRecords(RollRecords),
                 Occupation?.ToSelection(),
-                (SkillAllocations ?? []).Select(allocation => allocation.ToAllocation()).ToList(),
+                ToAllocations(SkillAllocations),
                 QuickFire?.ToQuickFire() ?? QuickFireSkills.Empty,
                 new BackstoryAndPossessions(
                     Backstory?.ToBackstory() ?? Domain.CharacterSheets.Backstory.Empty,
                     KeyConnection,
-                    (Weapons ?? []).Select(weapon => weapon.ToWeapon()).ToList(),
-                    Gear));
+                    ToWeapons(Weapons),
+                    Gear))
+            {
+                ReplacedRollRecords = ToRollRecords(ReplacedRollRecords),
+                RerollGrants = RerollGrants?.ToList() ?? [],
+            };
+
+        private static IReadOnlyList<RollRecord> ToRollRecords(IReadOnlyList<RollRecordDocument>? records) =>
+            (records ?? []).Select(record => record.ToRollRecord()).ToList();
+
+        private static IReadOnlyList<SkillAllocation> ToAllocations(IReadOnlyList<SkillAllocationDocument>? allocations) =>
+            (allocations ?? []).Select(allocation => allocation.ToAllocation()).ToList();
+
+        private static IReadOnlyList<CustomWeapon> ToWeapons(IReadOnlyList<CustomWeaponDocument>? weapons) =>
+            (weapons ?? []).Select(weapon => weapon.ToWeapon()).ToList();
     }
 
     private sealed record BackstoryDocument(string? MyStory, Dictionary<BackstoryEntry, string>? Entries)

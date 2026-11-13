@@ -24,11 +24,12 @@ import { useWizardMoves, type CreationRollGroup, type PendingAction, type RollSt
 import { validateCharacterSheet } from '@/campaign-play/services/characterSheetValidation'
 import { fieldId } from '@/campaign-play/services/fieldIds'
 import { skillValuesLeft } from '@/campaign-play/services/quickFireValues'
+import { displayGrantedGroups } from '@/campaign-play/services/rollGroups'
 import { inlineErrorsForStep, isFieldTouched, mergeClientAndServerErrors } from '@/campaign-play/services/visibleErrors'
 import { stepOfField, stepStates, WIZARD_STEPS, type WizardStep } from '@/campaign-play/services/wizardProgress'
 import { characterSheetFormReducer, inputsForSave, inputsFromSheet, savedRollsFromSheet } from '@/campaign-play/state/characterSheetForm'
 import type { CreationMethod } from '@/campaign-play/types/Campaign'
-import type { CharacterSheetInputs, CharacterSheetView as CharacterSheetData, ValidationError } from '@/campaign-play/types/CharacterSheet'
+import type { CharacterSheetInputs, CharacterSheetView as CharacterSheetData, RollGroup, ValidationError } from '@/campaign-play/types/CharacterSheet'
 import type { MyCharacterSheet } from '@/campaign-play/types/Investigator'
 import type { OccupationCatalog, SkillCatalog } from '@/campaign-play/types/RuleData'
 import '@/campaign-play/types/navigationState'
@@ -247,7 +248,7 @@ function WizardForm({ campaignId, step, sheet, allowedMethods, occupationCatalog
           <p role="status" className="text-sm empty:hidden">
             {statusMessage}
           </p>
-          {sheet.status === 'ChangesRequested' && <KeeperComment comment={sheet.changeRequestComment} />}
+          {sheet.status === 'ChangesRequested' && <KeeperComment comment={sheet.changeRequestComment} rerollGrants={sheet.characterSheet.rerollGrants} />}
           {summaryErrors && summaryErrors.length > 0 && (
             <ValidationErrorSummary ref={summary} errors={summaryErrors} onSelect={selectError} />
           )}
@@ -312,11 +313,14 @@ function WizardForm({ campaignId, step, sheet, allowedMethods, occupationCatalog
   )
 }
 
-function KeeperComment({ comment }: { comment: string | null }) {
+function KeeperComment({ comment, rerollGrants }: { comment: string | null; rerollGrants: RollGroup[] }) {
   return (
     <Alert>
       <AlertTitle>Your Keeper asked for changes</AlertTitle>
       <AlertDescription className="whitespace-pre-line">{comment}</AlertDescription>
+      {rerollGrants.length > 0 && (
+        <AlertDescription>Your Keeper lets you roll again: {displayGrantedGroups(rerollGrants)}.</AlertDescription>
+      )}
     </Alert>
   )
 }

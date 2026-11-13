@@ -59,6 +59,48 @@ public class CreationLocksTests
     }
 
     [Fact]
+    public void Given_a_characteristics_grant_When_reading_the_locks_Then_the_creation_method_is_free()
+    {
+        var sheet = SheetWith(25, RollRecord.PlayerEntered(RollPurposes.Characteristic(Characteristic.Strength), "3D6", 12))
+            .WithRerollGranted([RollGroup.Characteristics]);
+
+        Assert.Equal(new CreationLocks(false, false, false), CreationLocks.Of(sheet, BracketFor(25)));
+    }
+
+    [Fact]
+    public void Given_a_luck_grant_with_a_current_edu_check_When_reading_the_locks_Then_the_age_bracket_and_edu_stay_locked()
+    {
+        var sheet = SheetWith(
+                25,
+                RollRecord.PlayerEntered(RollPurposes.Luck, "3D6", 11),
+                RollRecord.PlayerEntered(RollPurposes.EduImprovementCheck(1), "D100", 30))
+            .WithRerollGranted([RollGroup.Luck]);
+
+        Assert.Equal(new CreationLocks(false, true, true), CreationLocks.Of(sheet, BracketFor(25)));
+    }
+
+    [Fact]
+    public void Given_luck_and_edu_grants_When_reading_the_locks_Then_the_age_bracket_is_free()
+    {
+        var sheet = SheetWith(
+                25,
+                RollRecord.PlayerEntered(RollPurposes.Luck, "3D6", 11),
+                RollRecord.PlayerEntered(RollPurposes.EduImprovementCheck(1), "D100", 30))
+            .WithRerollGranted([RollGroup.Luck, RollGroup.EduImprovementChecks]);
+
+        Assert.Equal(new CreationLocks(false, false, false), CreationLocks.Of(sheet, BracketFor(25)));
+    }
+
+    [Fact]
+    public void Given_an_edu_grant_When_reading_the_locks_Then_the_age_bracket_and_edu_are_free()
+    {
+        var sheet = SheetWith(25, RollRecord.PlayerEntered(RollPurposes.EduImprovementCheck(1), "D100", 30))
+            .WithRerollGranted([RollGroup.EduImprovementChecks]);
+
+        Assert.Equal(new CreationLocks(false, false, false), CreationLocks.Of(sheet, BracketFor(25)));
+    }
+
+    [Fact]
     public void Given_an_age_within_the_stored_bracket_When_checking_the_locks_Then_nothing_is_refused()
     {
         var stored = SheetWith(25, RollRecord.PlayerEntered(RollPurposes.Luck, "3D6", 11));

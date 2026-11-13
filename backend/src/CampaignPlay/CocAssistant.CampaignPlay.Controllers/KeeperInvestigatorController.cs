@@ -66,7 +66,13 @@ public class KeeperInvestigatorController : InvestigatorControllerBase
             return Unauthorized();
         }
 
-        var result = await _service.RequestChangesAsync(campaignId, investigatorId, accountId.Value, request.Comment, cancellationToken);
+        var result = await _service.RequestChangesAsync(
+            campaignId,
+            investigatorId,
+            accountId.Value,
+            request.Comment,
+            request.RerollGrants?.Select(Enum.Parse<RollGroup>).Distinct().ToList() ?? [],
+            cancellationToken);
         return ToActionResult(result);
     }
 

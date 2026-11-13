@@ -1,0 +1,28 @@
+{
+  "_comment": "Contract for the purpose-to-re-roll-group mapping, read by both implementations' tests so the two copies cannot drift: backend CocAssistant.CampaignPlay.Tests RollRecordTests and frontend campaign-play rollGroups.test.ts. group is null for a purpose no grant covers. The EduImprovement entries pin that only the [n] number is classified, whatever follows it.",
+  "mapping": [
+    { "purpose": "Characteristic:STR", "group": "Characteristics" },
+    { "purpose": "Characteristic:CON", "group": "Characteristics" },
+    { "purpose": "Characteristic:DEX", "group": "Characteristics" },
+    { "purpose": "Characteristic:APP", "group": "Characteristics" },
+    { "purpose": "Characteristic:POW", "group": "Characteristics" },
+    { "purpose": "Characteristic:SIZ", "group": "Characteristics" },
+    { "purpose": "Characteristic:INT", "group": "Characteristics" },
+    { "purpose": "Characteristic:EDU", "group": "Characteristics" },
+    { "purpose": "Luck", "group": "Luck" },
+    { "purpose": "Luck:SecondRoll", "group": "Luck" },
+    { "purpose": "EduImprovement[1].Check", "group": "EduImprovementChecks" },
+    { "purpose": "EduImprovement[1].Gain", "group": "EduImprovementChecks" },
+    { "purpose": "EduImprovement[2].Check", "group": "EduImprovementChecks" },
+    { "purpose": "EduImprovement[2].Gain", "group": "EduImprovementChecks" },
+    { "purpose": "EduImprovement[10].Check", "group": "EduImprovementChecks" },
+    { "purpose": "EduImprovement[10].Gain", "group": "EduImprovementChecks" },
+    { "purpose": "EduImprovement[1].Foo", "group": "EduImprovementChecks" },
+    { "purpose": "", "group": null },
+    { "purpose": "SomethingElse", "group": null },
+    { "purpose": "Characteristic:XYZ", "group": null },
+    { "purpose": "luck", "group": null },
+    { "purpose": "EduImprovement[x].Check", "group": null },
+    { "purpose": "EduImprovement[].Check", "group": null }
+  ]
+}

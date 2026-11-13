@@ -79,7 +79,12 @@ public class Investigator : AggregateRoot
             return false;
         }
 
-        var next = characterSheet with { RollRecords = [.. CharacterSheet.RollRecords] };
+        var next = characterSheet with
+        {
+            RollRecords = [.. CharacterSheet.RollRecords],
+            ReplacedRollRecords = [.. CharacterSheet.ReplacedRollRecords],
+            RerollGrants = [.. CharacterSheet.RerollGrants],
+        };
         if (CreationLocks.Refuses(CharacterSheet, next, ageRules))
         {
             return false;
@@ -160,6 +165,7 @@ public class Investigator : AggregateRoot
         }
 
         Status = InvestigatorStatus.Submitted;
+        CharacterSheet = CharacterSheet with { RerollGrants = [] };
         Touch(now);
         Raise(new InvestigatorSubmitted(CampaignId, Id, PlayerAccountId));
         return true;
@@ -179,18 +185,24 @@ public class Investigator : AggregateRoot
         return true;
     }
 
-    /// <summary>Submitted -> Changes Requested with a required comment of at most the maximum length.</summary>
-    public bool RequestChanges(string comment, DateTimeOffset now)
+    /// <summary>
+    /// Submitted -> Changes Requested with a required comment of at most the maximum length. The grants move each
+    /// granted group's current Roll Records to the replaced collection and open that group's re-roll; every granted
+    /// group needs at least one current Roll Record (specs/character-sheet/spec.md, Re-roll grant).
+    /// </summary>
+    public bool RequestChanges(string comment, IReadOnlyCollection<RollGroup> grants, DateTimeOffset now)
     {
         if (Status != InvestigatorStatus.Submitted
             || string.IsNullOrWhiteSpace(comment)
-            || comment.Length > ChangeRequestCommentMaxLength)
+            || comment.Length > ChangeRequestCommentMaxLength
+            || grants.Any(grant => !CharacterSheet.HasCurrentRecordsIn(grant)))
         {
             return false;
         }
 
         Status = InvestigatorStatus.ChangesRequested;
         ChangeRequestComment = comment;
+        CharacterSheet = CharacterSheet.WithRerollGranted(grants);
         Touch(now);
         Raise(new InvestigatorChangesRequested(CampaignId, Id, PlayerAccountId));
         return true;

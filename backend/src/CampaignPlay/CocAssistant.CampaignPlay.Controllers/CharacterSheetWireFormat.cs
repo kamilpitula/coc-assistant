@@ -121,7 +121,8 @@ public static class CharacterSheetWireFormat
             sheet.BackstoryAndPossessions.Weapons.Select(BackstoryWireFormat.ToWeaponResponse).ToList(),
             sheet.BackstoryAndPossessions.Gear,
             ToDerived(computation.Derived),
-            view.Investigator.CharacterSheet.RollRecords.Select(record => ToRollRecord(record, view)).ToList(),
+            ToRollRecords(view),
+            view.Investigator.CharacterSheet.RerollGrants.OrderBy(grant => grant).Select(grant => grant.ToString()).ToList(),
             ToLocks(sheet, computation));
     }
 
@@ -131,7 +132,18 @@ public static class CharacterSheetWireFormat
         return new CharacterSheetLocksResponse(locks.CreationMethod, locks.AgeBracket, locks.Edu);
     }
 
-    private static RollRecordResponse ToRollRecord(RollRecord record, CharacterSheetView view) =>
+    private static IReadOnlyList<RollRecordResponse> ToRollRecords(CharacterSheetView view)
+    {
+        var current = view.Investigator.CharacterSheet.RollRecords.Select(record => ToRollRecord(record, view, false));
+        if (!view.IncludesReplacedRollRecords)
+        {
+            return current.ToList();
+        }
+
+        return [.. current, .. view.Investigator.CharacterSheet.ReplacedRollRecords.Select(record => ToRollRecord(record, view, true))];
+    }
+
+    private static RollRecordResponse ToRollRecord(RollRecord record, CharacterSheetView view, bool isReplaced) =>
         new(
             record.Purpose,
             record.Dice,
@@ -141,7 +153,8 @@ public static class CharacterSheetWireFormat
             record.RolledByAccountId is { } accountId
                 ? view.RolledByDisplayNames.GetValueOrDefault(accountId)
                 : view.PlayerName,
-            record.RolledAt);
+            record.RolledAt,
+            isReplaced);
 
     private static CharacteristicResponse ToCharacteristic(Characteristic characteristic, CharacterSheetComputation computation)
     {
