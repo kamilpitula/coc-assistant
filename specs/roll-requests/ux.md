@@ -10,6 +10,12 @@ Human decisions (2026-11-12):
 - Cancelling, and cancelling on finish or removal, stay in PBI-DICE-007 (section 10).
 - The request form leaves out each Investigator's target value; the values appear on the card (section 12, deviation 1).
 
+Human decisions (2026-11-13, PBI-DICE-006), chosen from a clickable prototype (section 12.1):
+- **Option A (a visibility choice in the form)** for hidden rolls (sections 3.1 and 5.2). Option B (two submit actions, "Request roll" and "Make a hidden roll") and Option C (two form modes with inline results) were rejected at the gate.
+- The visibility choice is kept after each request, not reset to Public. Keepers often make several hidden rolls in a row; the risk is handled at the commit point (section 3.1).
+- The hidden-roll status shows the results inline. It leaves out "Experience check earned", which the card shows.
+- No game rule covers hidden rolls; the authority is [spec.md](spec.md), Hidden roll, and the root CONTEXT.md glossary ("Hidden roll").
+
 Behavior and rules: [specs/roll-requests/spec.md](spec.md). This document covers presentation only. Rules are cited, never restated: [skill rolls](../../docs/game-rules/coc7_skill_rolls_rules.md) sections 2 to 5 and 7, [project_ruleset.md](../../docs/game-rules/project_ruleset.md) sections 4.2, 4.7, 4.8, and 4.9, and [character rules section 16.1](../../docs/game-rules/coc7_character_creation_and_development_rules.md#161-skill-experience-tick-during-play).
 
 ## 1. Information architecture
@@ -87,7 +93,46 @@ Choose at least one Investigator.                     (hint, only while none is 
   - 400: an inline `Alert` in the form, "We couldn't request that roll: {reason}.", where {reason} comes from the problem details. Known reasons: "an Investigator is no longer present", "that skill needs a specialization", "that specialization isn't allowed". Everything the Keeper entered is kept. If an Investigator present was removed meanwhile, the form refreshes the rows and keeps the other choices.
   - 409 (no Active Scene): the page shows the no-Active-Scene state with focus on the `h1`, as for a Reveal ([scene-play ux](../scene-play/ux.md) section 13).
   - Network or 5xx: the `Alert` "We couldn't request that roll. Your choices are still here. Try again."
-- **Leaving Run** (another sub-tab or page) discards the form. There is no unsaved-changes prompt.
+- **Leaving Run** (another sub-tab or page) discards the form, including the visibility choice (section 3.1). There is no unsaved-changes prompt.
+
+### 3.1 Who can see the roll (PBI-DICE-006)
+
+```
+Who rolls                                             (fieldset)
+  [x] Harvey Walters ...
+Who can see this roll?                                (radiogroup)
+  (o) Public - Players roll it themselves and everyone sees the result.
+  ( ) Keeper only (hidden roll) - The app rolls it now. Only you see it.
+Keeper only: the app rolls this now and only you see the results.   (only in Keeper only)
+                                                      [ Roll now for 2 ]
+```
+
+- **Control:** the shared `VisibilityChoice`, a `RadioGroup` labelled by the visible text "Who can see this roll?", placed after "Who rolls" and before the hints and the submit.
+  - Options: "Public", described as "Players roll it themselves and everyone sees the result.", and "Keeper only (hidden roll)", described as "The app rolls it now. Only you see it."
+  - Each description is linked to its option with `aria-describedby`.
+  - Players never see the form (RR-UX-14).
+- **Default:** "Public" whenever the form appears: on page load, on entering Run, and after a new Scene starts.
+- **After a request (human decision, 2026-11-13): the choice is kept.** It stays as last chosen across requests and errors, like the target.
+  - It returns to "Public" only when the form unmounts: when the Keeper leaves Run (another sub-tab or page), reloads, or the Active Scene ends.
+  - It is never stored on the server or in the browser.
+- **Why the choice is kept, and how the risk is handled:**
+  - Keepers often make several hidden rolls in a row, and resetting would make each of them risk going out Public.
+  - A mistaken hidden roll costs only a re-request: no Player sees anything.
+  - A mistaken Public roll shows a secret to every Player and can't be undone, because visibility never changes ([spec.md](spec.md), Constraints).
+  - So the commit point always states the mode in text:
+    - With "Keeper only" chosen, the submit reads "Roll now", or "Roll now for {n}" with more than one Investigator ("Rolling..." while in flight).
+    - The line "Keeper only: the app rolls this now and only you see the results." sits directly above the submit, in normal text with a leading `EyeOff` icon (`aria-hidden`), and is linked to the submit with `aria-describedby`.
+    - With "Public" chosen, the submit reads "Request roll" or "Request roll from {n}" and the line is absent.
+- **Submit rules:** the disabled rules are unchanged (RR-UX-5).
+- **Success for a hidden roll** (confirmed, not optimistic):
+  - The page `role=status` paragraph reads "{target} hidden roll: {name} rolled {result}: {outcome}; {name} rolled {result}: {outcome}." Investigators appear in the request's row order, joined with "; ", and the sentence ends with ".".
+    - Example: "Psychology hidden roll: Harvey Walters rolled 34: Regular success; Lucy Ward rolled 81: Failure."
+    - The text comes from the 201 response. The outcome copy is section 5's, and an unnamed Investigator is "Unnamed Investigator".
+  - "Experience check earned" is not in the status; the card shows it.
+  - **Several Investigators:** the paragraph wraps (`break-words`), is never truncated, and has no inner list. It is one `role=status` region, so screen readers read the whole sentence once, politely. With 3 or more Investigators it runs to several lines; that is accepted.
+  - Otherwise as section 3: the card appears on the Wall; the message, checks, per-Investigator changes, and defaults clear; the target and the visibility stay; focus moves to "What to roll".
+  - Nothing joins "Waiting rolls", and the tab badge does not change.
+- **Errors:** 400, 409, and network errors are as in section 3, with the same copy. The visibility choice is kept.
 
 ## 4. "Waiting rolls" list (`waiting-rolls`, Keeper)
 
@@ -145,9 +190,15 @@ Defined here so that later PBIs add data and controls only:
 | Push asked (DICE-009) | "Push asked" (warning) | "Push justification: "{text}"" | - |
 | Pushed (DICE-009) | "Pushed - waiting for the pushed roll" (warning) | the first result's lines stay above | - |
 | Pushed roll rolled (DICE-009) | as Rolled | the first result, then "Pushed roll:" with the second result's lines | - |
-| Hidden roll (DICE-006) | as Rolled | "Rolled by {Keeper} (hidden roll)" | an outline `Badge` "Keeper only", Keeper only |
 
-Keeper actions for these states (Cancel, Approve or Decline a push) belong to the "Waiting rolls" list of section 4, not to the card. Each PBI specifies them in this document.
+Keeper actions for these states (Cancel, Approve or Decline a push) belong to the "Waiting rolls" list of section 4, not to the card. Each PBI specifies them in this document. The hidden roll state is specified in section 5.2.
+
+### 5.2 Hidden roll card (PBI-DICE-006)
+
+- **Header:** after the Keeper's display name, an outline `Badge` "Keeper only". Only the Keeper is ever sent a hidden card.
+- **Rows:** always Rolled. Line 4 reads "Rolled by {Keeper display name} (hidden roll)". Every other line is as in section 5.
+- **Hosts:** `wall-entry-list` and `wall-preview` are unchanged. They render the card instead of the entry header for `RollRequest` entries, so the card's badge is the only "Keeper only" badge shown.
+- **Player:** the Wall query excludes the entry and a read by id returns 404, so the card renders nothing (section 5, Loading). There is no placeholder, gap, count, announcement, panel row, or badge (as [campaign-wall ux](../campaign-wall/ux.md) WL-UX-4 and WL-UX-12).
 
 ## 6. "Rolls waiting for you" panel (`waiting-rolls-panel`, Player)
 
@@ -234,6 +285,13 @@ Overview   Active Scene (Live) (2)   Scene History   Wall   Settings
 | Check | "Experience check earned" |
 | Player panel | "Rolls waiting for you"; "Roll {target}"; "You rolled {result}: {outcome}." |
 | Announcement | "Roll requested for {name}: {target}. Roll it on the Active Scene." |
+| Visibility legend (DICE-006) | "Who can see this roll?" |
+| Visibility options | "Public" / "Keeper only (hidden roll)" |
+| Visibility descriptions | "Players roll it themselves and everyone sees the result." / "The app rolls it now. Only you see it." |
+| Mode line | "Keeper only: the app rolls this now and only you see the results." |
+| Hidden submit | "Roll now" / "Roll now for {n}" / "Rolling..." |
+| Hidden status | "{target} hidden roll: {name} rolled {result}: {outcome}; ..." |
+| Hidden card | badge "Keeper only"; roller "Rolled by {Keeper} (hidden roll)" |
 
 ## 12. Prototype validation
 
@@ -247,13 +305,26 @@ Overview   Active Scene (Live) (2)   Scene History   Wall   Settings
   2. The panel is not rendered when empty; the prototype showed an empty box only as a demonstration.
   3. The empty-hint and status copy were refined.
 
+### 12.1 Prototype validation (PBI-DICE-006)
+
+- **Question:** how should the Keeper choose a hidden roll in "Request a roll", what happens to the choice after a request, and what does the status say?
+- **Branch:** UI (prototype skill, UI.md). A single self-contained HTML file with `?variant=A|B|C`, plus switches for the role, the after-request behaviour (reset or keep), the status copy (short or inline results), and the width (1280 or 375). A debug strip shows which action a submit fired and which audiences received live signals.
+- **Throwaway branch:** `prototype/dice-006-hidden-rolls` (local, never merged), commit `f588457`, file `specs/roll-requests/prototype/hidden-rolls-prototype.html`. Open it in a browser with `?variant=A`, `B`, or `C`.
+- **Verdict:** Option A; the choice is kept after a request; the results are inline in the status.
+- **Date and deciding human:** 2026-11-13, the project owner.
+- **Deviations of this specification from the prototype:**
+  1. The mode line above the submit was added to offset the risk of keeping the choice (section 3.1).
+  2. The prototype left out the per-Investigator changes and six characteristics; section 3 is unchanged.
+  3. The prototype's status had no experience-check text; this specification matches it.
+
 ## 13. Component mapping
 
 | Element | Component | Notes |
 |---|---|---|
 | Request form | new `roll-request-form` (roll-requests slice) | shadcn `Select`, `RadioGroup`, `Checkbox`, `Textarea`, `Input`, `Button`, `Alert`; the per-Investigator changes are an inline `role="group"` toggled by a button with `aria-expanded` |
+| Visibility choice (DICE-006) | new shared `visibility-choice` (`src/shared/components/visibility-choice/`), extracted from `wall-entry-composer` | `RadioGroup`; used by the Wall composer and `roll-request-form` |
 | Waiting rolls | new `waiting-rolls` (roll-requests slice) | `Card`, `Badge`, `Button` |
-| Card | new `roll-request-card` (roll-requests slice) | hosted by `wall-entry-list` and `wall-preview` (the ADR 0028 host-adapts pattern) |
+| Card | new `roll-request-card` (roll-requests slice) | hosted by `wall-entry-list` and `wall-preview` (the ADR 0028 host-adapts pattern); an outline `Badge` "Keeper only" for a hidden roll (section 5.2) |
 | Player panel | new `waiting-rolls-panel` (roll-requests slice) | hosted by `active-scene-player-view` |
 | Tab badge | `campaign-header` (`CampaignNavLink` gains a count) | `Badge` |
 | Assertive region | `campaign-layout` | the reducer of `wallEntryAnnouncementThrottle`, generalized |
@@ -266,7 +337,7 @@ Overview   Active Scene (Live) (2)   Scene History   Wall   Settings
 - **RR-UX-3** Choosing Luck disables Difficulty (Regular) and both dice (0) and shows the Luck hint. The per-Investigator changes are hidden.
 - **RR-UX-4** Checking an Investigator shows the defaults on their row. "Change for {first name}" changes only that row and marks it "(changed)". "Use the defaults" restores it.
 - **RR-UX-5** "Request roll" is disabled with no Investigator checked and shows "Choose at least one Investigator.". With several checked it reads "Request roll from {n}".
-- **RR-UX-6** Requesting shows "{target} roll requested from {names}.", adds one card to the Wall with every row Waiting, adds the rows to "Waiting rolls", clears the checks, message, and changes, and keeps the target.
+- **RR-UX-6** A Public request shows "{target} roll requested from {names}.", adds one card to the Wall with every row Waiting, adds the rows to "Waiting rolls", clears the checks, message, and changes, and keeps the target.
 - **RR-UX-7** "Roll for {name}" rolls the row. It leaves "Waiting rolls", the card shows the result for every member without reloading, and the card names the Keeper as the roller.
 - **RR-UX-8** A Player whose Investigator has Waiting rolls sees "Rolls waiting for you" after the `h1` with one "Roll {target}" per roll. A Player without any sees no panel.
 - **RR-UX-9** Rolling from the panel shows "You rolled {result}: {outcome}." (plus " Experience check earned." when earned) and removes the row. A second attempt that the server refuses says the roll was already made.
@@ -275,6 +346,11 @@ Overview   Active Scene (Live) (2)   Scene History   Wall   Settings
 - **RR-UX-12** The "Active Scene" tab shows the waiting count for the Keeper (all Waiting rolls) and for a Player (their own) on every Campaign page, and updates without reloading.
 - **RR-UX-13** A targeted Player on any Campaign page hears the assertive announcement once per new roll, merged within 5 seconds, and never on first load.
 - **RR-UX-14** A Player sees no control that rolls for another Investigator, and never sees the request form or "Waiting rolls".
+- **RR-UX-15** (PBI-DICE-006) The form shows "Who can see this roll?" with "Public" (the default whenever the form appears) and "Keeper only (hidden roll)", each with its description.
+- **RR-UX-16** (PBI-DICE-006) With "Keeper only" chosen, the submit reads "Roll now" or "Roll now for {n}" and the mode line shows directly above it. With "Public" chosen, the submit reads "Request roll" or "Request roll from {n}" and there is no mode line.
+- **RR-UX-17** (PBI-DICE-006) After any request, or after an error, the visibility choice stays as chosen. After leaving Run and coming back, or after a reload, it is "Public".
+- **RR-UX-18** (PBI-DICE-006) A hidden roll shows "{target} hidden roll: {name} rolled {result}: {outcome}; ..." in the status paragraph, adds one card whose rows are all rolled, with "Keeper only" in the header and "Rolled by {Keeper} (hidden roll)" on each row, and adds nothing to "Waiting rolls" or the tab badge.
+- **RR-UX-19** (PBI-DICE-006) A Player on any Campaign page receives nothing for a hidden roll: no card on the Wall or in the preview, no panel row, no badge, and no assertive or polite announcement.
 
 ## 15. Accessibility acceptance criteria (WCAG 2.2 AA)
 
@@ -288,8 +364,13 @@ Overview   Active Scene (Live) (2)   Scene History   Wall   Settings
 - **RR-A11Y-8** All buttons are at least 44px high and keyboard reachable in visual order (2.1.1, 2.5.8).
 - **RR-A11Y-9** At 320px and 200% zoom the form, the Waiting list, the panel, and the card reflow to one column without horizontal page scrolling (1.4.10).
 - **RR-A11Y-10** Live insertions and removals use no motion (2.3.3).
+- **RR-A11Y-11** (PBI-DICE-006) The visibility `RadioGroup` has a visible accessible name, has descriptions linked by `aria-describedby`, and is operable with the keyboard (1.3.1, 2.1.1, 3.3.2).
+- **RR-A11Y-12** (PBI-DICE-006) The submit's accessible name changes with the mode, and the mode line is linked to the submit by `aria-describedby` (2.4.6, 4.1.2).
+- **RR-A11Y-13** (PBI-DICE-006) The inline-results status is read once through the polite `role=status`. At 320px and 200% zoom it wraps without horizontal scrolling (4.1.3, 1.4.10).
+- **RR-A11Y-14** (PBI-DICE-006) "Keeper only" and "(hidden roll)" are conveyed by text; colour and icons are extra cues only (1.4.1).
 
 ## 16. Open decisions and research gaps
 
 - **Research gap:** whether merged assertive announcements are too interruptive in a busy scene. Validate with a screen-reader user at the table.
-- **Open (DICE-006/007/009):** the Keeper's actions for Cancel and push rulings live in "Waiting rolls" (section 5.1). Each PBI confirms its copy.
+- **Open (DICE-007/009):** the Keeper's actions for Cancel and push rulings live in "Waiting rolls" (section 5.1). Each PBI confirms its copy.
+- **Research gap (DICE-006):** whether Keepers who leave the form on "Keeper only" send an unintended hidden roll. The opposite mistake, a Public roll meant to be hidden, is the one the mode line and the "Roll now" label guard against (section 3.1). Check with early Keepers.
