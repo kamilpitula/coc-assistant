@@ -91,6 +91,21 @@ public class RollRequestApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
             investigators = investigatorIds.Select(id => new { investigatorId = id }).ToArray(),
         };
 
+    private static object HiddenLuckRequest(Guid investigatorId) =>
+        new
+        {
+            target = new { kind = "Luck" },
+            message = "Something moves upstairs.",
+            visibility = "KeeperOnly",
+            difficulty = "Regular",
+            bonusDice = 0,
+            penaltyDice = 0,
+            investigators = new[] { new { investigatorId } },
+        };
+
+    private static bool HasRollRequest(JsonElement entry, Guid requestId) =>
+        entry.TryGetProperty("rollRequestId", out var id) && id.ValueKind != JsonValueKind.Null && id.GetGuid() == requestId;
+
     private static object SkillRequest(Guid investigatorId) =>
         new
         {
@@ -182,20 +197,78 @@ public class RollRequestApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
         Assert.Empty((await JsonAsync(await ListActiveSceneRequestsAsync(table))).EnumerateArray());
     }
 
-    [Theory]
-    [InlineData("KeeperOnly", "visibility", "Keeper-only rolls arrive in a later update.")]
-    [InlineData("Banana", "target", "Choose a skill, a characteristic, or Luck to roll against.")]
-    public async Task Given_a_refused_shape_When_creating_Then_it_is_a_400_at_the_field(string visibilityOrKind, string field, string message)
+    [Fact]
+    public async Task Given_KeeperOnly_When_the_Keeper_creates_Then_it_is_201_with_every_roll_Rolled_and_the_Keeper_as_roller()
     {
         var table = await TableAsync("6");
-        var body = visibilityOrKind == "KeeperOnly"
-            ? new { target = new { kind = "Luck" }, visibility = "KeeperOnly", difficulty = "Regular", investigators = new[] { new { investigatorId = table.HarveyId } } }
-            : (object)new { target = new { kind = "Banana" }, investigators = new[] { new { investigatorId = table.HarveyId } } };
+
+        var response = await CreateRollRequestAsync(table, HiddenLuckRequest(table.HarveyId));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var request = await JsonAsync(response);
+        Assert.Equal("KeeperOnly", request.GetProperty("visibility").GetString());
+        var roll = Assert.Single(request.GetProperty("requestedRolls").EnumerateArray());
+        Assert.Equal("Rolled", roll.GetProperty("status").GetString());
+        var record = Assert.Single(roll.GetProperty("rolls").EnumerateArray());
+        Assert.Equal($"Account {table.KeeperOid}", record.GetProperty("rolledBy").GetString());
+    }
+
+    [Fact]
+    public async Task Given_a_KeeperOnly_request_When_a_Player_reads_or_rolls_Then_it_is_404()
+    {
+        var table = await TableAsync("6b");
+        var requestId = (await JsonAsync(await CreateRollRequestAsync(table, HiddenLuckRequest(table.HarveyId)))).GetProperty("id").GetGuid();
+
+        Assert.Equal(HttpStatusCode.NotFound, (await GetRollRequestAsync(table, requestId, table.HarveyOid)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await RollAsync(table, requestId, table.HarveyId, table.HarveyOid)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await GetRollRequestAsync(table, requestId)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_a_KeeperOnly_request_When_a_Player_reads_mine_or_the_Wall_Then_it_is_left_out()
+    {
+        var table = await TableAsync("6c");
+        var requestId = (await JsonAsync(await CreateRollRequestAsync(table, HiddenLuckRequest(table.HarveyId)))).GetProperty("id").GetGuid();
+
+        Assert.Empty((await JsonAsync(await MineAsync(table, table.HarveyOid))).GetProperty("rolls").EnumerateArray());
+        var playerWall = await JsonAsync(await table.Client.SendAsync(BuildRequest(HttpMethod.Get, CampaignUri(table, "/wall-entries"), table.HarveyOid)));
+        Assert.DoesNotContain(playerWall.GetProperty("entries").EnumerateArray(), entry => HasRollRequest(entry, requestId));
+        var keeperWall = await JsonAsync(await table.Client.SendAsync(BuildRequest(HttpMethod.Get, CampaignUri(table, "/wall-entries"), table.KeeperOid)));
+        var card = Assert.Single(keeperWall.GetProperty("entries").EnumerateArray(), entry => HasRollRequest(entry, requestId));
+        Assert.Equal("KeeperOnly", card.GetProperty("visibility").GetString());
+    }
+
+    [Fact]
+    public async Task Given_a_refused_shape_When_creating_Then_it_is_a_400_at_the_field()
+    {
+        var table = await TableAsync("6d");
+
+        var response = await CreateRollRequestAsync(table, new { target = new { kind = "Banana" }, investigators = new[] { new { investigatorId = table.HarveyId } } });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(
+            "Choose a skill, a characteristic, or Luck to roll against.",
+            (await JsonAsync(response)).GetProperty("errors").GetProperty("target")[0].GetString());
+    }
+
+    [Fact]
+    public async Task Given_an_unknown_visibility_When_creating_Then_it_is_a_400_at_visibility()
+    {
+        var table = await TableAsync("6e");
+        var body = new
+        {
+            target = new { kind = "Luck" },
+            visibility = "Banana",
+            difficulty = "Regular",
+            investigators = new[] { new { investigatorId = table.HarveyId } },
+        };
 
         var response = await CreateRollRequestAsync(table, body);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(message, (await JsonAsync(response)).GetProperty("errors").GetProperty(field)[0].GetString());
+        Assert.Equal(
+            "Choose Public or Keeper only visibility.",
+            (await JsonAsync(response)).GetProperty("errors").GetProperty("visibility")[0].GetString());
     }
 
     [Theory]

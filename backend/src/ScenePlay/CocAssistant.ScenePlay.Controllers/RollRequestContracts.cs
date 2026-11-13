@@ -7,8 +7,8 @@ public record RollRequestTargetRequest(string? Kind, string? Skill, string? Spec
 public record RequestedRollCreateRequest(Guid InvestigatorId, string? Difficulty, int? BonusDice, int? PenaltyDice);
 
 /// <summary>
-/// Requests rolls of the Active Scene. <c>visibility</c> defaults to <c>Public</c>; <c>KeeperOnly</c> answers 400 until PBI-DICE-006.
-/// A missing <c>investigators</c> list counts as empty.
+/// Requests rolls of the Active Scene. <c>visibility</c> defaults to <c>Public</c>; a <c>KeeperOnly</c> request is rolled at
+/// creation and reaches only the Keeper. A missing <c>investigators</c> list counts as empty.
 /// </summary>
 public record CreateRollRequestRequest(
     RollRequestTargetRequest? Target,
@@ -97,6 +97,5 @@ internal static class RollRequestProblems
     public const string InvalidDiceMessage = "Bonus and Penalty Dice are each between 0 and 2.";
     public const string MessageTooLongMessage = "The message is at most 2000 characters.";
     public const string UnknownDifficultyMessage = "Choose Regular, Hard, or Extreme difficulty.";
-    public const string UnknownVisibilityMessage = "Choose Public visibility.";
-    public const string KeeperOnlyNotAvailableMessage = "Keeper-only rolls arrive in a later update.";
+    public const string UnknownVisibilityMessage = "Choose Public or Keeper only visibility.";
 }
