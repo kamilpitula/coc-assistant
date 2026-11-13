@@ -1,6 +1,6 @@
 ---
 id: PBI-DICE-004
-status: todo
+status: done
 blocked_by: [PBI-DICE-003]
 ---
 
@@ -25,10 +25,10 @@ Read: [character-sheet spec](../../../specs/character-sheet/spec.md), Re-roll gr
 - A Roll Record is never changed except to mark it replaced, and never deleted.
 
 ## Verification
-- [ ] Requesting changes with a grant marks that group's Roll Records as replaced and lifts its locks; a grant for a group with no Roll Record returns 400.
-- [ ] After rolling the group again, the new Roll Records give the values and the group is locked again.
-- [ ] The Keeper sees replaced Roll Records; the Player does not.
-- [ ] Unit tests cover granting, rolling again, and the views; Playwright E2E covers the character-sheet scenario "Keeper grants a characteristics re-roll".
+- [x] Requesting changes with a grant marks that group's Roll Records as replaced and lifts its locks; a grant for a group with no Roll Record returns 400.
+- [x] After rolling the group again, the new Roll Records give the values and the group is locked again.
+- [x] The Keeper sees replaced Roll Records; the Player does not.
+- [x] Unit tests cover granting, rolling again, and the views; Playwright E2E covers the character-sheet scenario "Keeper grants a characteristics re-roll".
 
 ## Refinement Protocol
 A change to re-roll grants updates the character-sheet and campaign-play specs, the character-sheet ux.md, and tests together.
