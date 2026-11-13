@@ -77,4 +77,25 @@ public class RollRecordTests
             [new EduImprovementCheckInput(70, 4), new EduImprovementCheckInput(null, null), new EduImprovementCheckInput(20, null)],
             sheet.EduImprovementChecks);
     }
+
+    // Re-roll grant (specs/character-sheet/spec.md): each purpose belongs to one grantable group.
+    [Theory]
+    [InlineData("Characteristic:STR", RollGroup.Characteristics)]
+    [InlineData("Characteristic:EDU", RollGroup.Characteristics)]
+    [InlineData("Luck", RollGroup.Luck)]
+    [InlineData("Luck:SecondRoll", RollGroup.Luck)]
+    [InlineData("EduImprovement[1].Check", RollGroup.EduImprovementChecks)]
+    [InlineData("EduImprovement[2].Gain", RollGroup.EduImprovementChecks)]
+    public void Given_a_roll_purpose_When_reading_its_group_Then_it_maps_to_its_re_roll_group(string purpose, RollGroup group)
+    {
+        Assert.Equal(group, RollPurposes.GroupOf(purpose));
+    }
+
+    [Theory]
+    [InlineData("SomethingElse")]
+    [InlineData("")]
+    public void Given_an_unknown_purpose_When_reading_its_group_Then_it_has_no_re_roll_group(string purpose)
+    {
+        Assert.Null(RollPurposes.GroupOf(purpose));
+    }
 }

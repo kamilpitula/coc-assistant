@@ -12,9 +12,9 @@ public sealed record CreationLocks(bool CreationMethod, bool AgeBracket, bool Ed
     /// </summary>
     public static CreationLocks Of(CharacterSheet sheet, AgeBracket? bracket) =>
         new(
-            sheet.RollRecords.Any(record => RollPurposes.IsCharacteristicPurpose(record.Purpose)),
-            bracket is not null && sheet.RollRecords.Any(record => IsLuckOrEduPurpose(record.Purpose)),
-            sheet.RollRecords.Any(record => IsEduPurpose(record.Purpose)));
+            sheet.RollRecords.Any(record => RollPurposes.GroupOf(record.Purpose) == RollGroup.Characteristics),
+            bracket is not null && sheet.RollRecords.Any(record => RollPurposes.GroupOf(record.Purpose) is RollGroup.Luck or RollGroup.EduImprovementChecks),
+            sheet.RollRecords.Any(record => RollPurposes.GroupOf(record.Purpose) == RollGroup.EduImprovementChecks));
 
     /// <summary>Whether replacing the stored sheet with the next one would break a lock.</summary>
     public static bool Refuses(CharacterSheet stored, CharacterSheet next, AgeRules ageRules)
@@ -39,9 +39,4 @@ public sealed record CreationLocks(bool CreationMethod, bool AgeBracket, bool Ed
 
     private static AgeBracket? BracketOf(CharacterSheet sheet, AgeRules ageRules) =>
         sheet.Identity.Age is { } age ? ageRules.BracketFor(age) : null;
-
-    private static bool IsLuckOrEduPurpose(string purpose) =>
-        purpose is RollPurposes.Luck or RollPurposes.LuckSecondRoll || IsEduPurpose(purpose);
-
-    private static bool IsEduPurpose(string purpose) => RollPurposes.EduImprovementCheckNumberOf(purpose) is not null;
 }

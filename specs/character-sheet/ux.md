@@ -325,9 +325,9 @@ The server rolls every creation dice result when the Player asks for it ([spec.m
 - The Luck and EDU links do the same (sections 6.2 and 6.3).
 
 **Re-roll grant (PBI-DICE-004)**
-- The Keeper comment Alert adds "Your Keeper lets you roll again: {groups}."
-- Granted groups show their roll action again, labelled "Roll {group} again".
-- The dialog adds "Only your Keeper can allow a re-roll."
+- The Keeper comment Alert adds "Your Keeper lets you roll again: {groups}." only while `rerollGrants` is not empty. The group names are "characteristics", "Luck", and "EDU checks", joined with ", " in the order Characteristics, Luck, EDU checks.
+- Granted groups show their roll action again, labelled "Roll characteristics again" (characteristics step), "Roll Luck again" (Luck section), and "Roll EDU check {n} again" (age effects step, with the next check number).
+- The dialog title follows the label ("{Label}?"). For a granted group, the existing body gets " Only your Keeper can allow a re-roll." appended; the dialog of a group that is not granted is unchanged.
 - The Player never sees replaced results.
 
 No dice animation is used, so no result depends on motion.
@@ -350,8 +350,8 @@ No dice animation is used, so no result depends on motion.
   - **Typed-in rows:** Faces and When read "Not recorded".
   - The Player's views never show this table.
 - **Replaced results (PBI-DICE-004):**
-  - A replaced row reads "{Rolled for} (replaced)" and follows its replacement.
-  - The Request changes Dialog gains an optional fieldset, "Allow the Player to roll again". It has Checkboxes "Characteristics", "Luck", and "EDU checks", each shown only when that group has Roll Records, and the help text "Their current results stay visible to you and stop counting."
+  - A replaced row reads "{Rolled for} (replaced)". Each current row comes first; the replaced rows with the same purpose follow it, newest first; replaced rows whose purpose has no current record (for example an old EDU gain) go at the end, in stored order.
+  - The Request changes Dialog gains an optional fieldset, "Allow the Player to roll again". It has Checkboxes "Characteristics", "Luck", and "EDU checks", each shown only when that group has current (not replaced) Roll Records, and the help text "Their current results stay visible to you and stop counting." The fieldset is not rendered when no group has current Roll Records.
 - The actions sit at the end of the page, not sticky: "Request changes" (secondary) and "Approve" (primary). They appear only when the status is Submitted.
 - **Approve** has no confirmation. While pending the button reads "Approving..." and both buttons are disabled. On success the badge changes to "Approved", the actions are removed, the status message "Harvey Walters is approved and ready for play." is announced, and focus moves to the status message.
 - **Request changes** opens a Dialog titled "Request changes":

@@ -111,7 +111,7 @@ public class InvestigatorPersistenceTests : IDisposable
 
         toApprove!.Approve(Now);
         await approveRepository.SaveChangesAsync(CancellationToken.None);
-        toReturn!.RequestChanges("Fix the age", Now);
+        toReturn!.RequestChanges("Fix the age", [], Now);
 
         await Assert.ThrowsAsync<InvestigatorConflictException>(() => requestChangesRepository.SaveChangesAsync(CancellationToken.None));
     }

@@ -68,7 +68,7 @@ public class KeeperInvestigatorService
             campaignId,
             investigatorId,
             keeperAccountId,
-            investigator => investigator.RequestChanges(comment, _timeProvider.GetUtcNow()),
+            investigator => investigator.RequestChanges(comment, [], _timeProvider.GetUtcNow()),
             cancellationToken);
     }
 

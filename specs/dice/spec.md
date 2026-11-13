@@ -27,7 +27,7 @@ Every dice result in the app is produced by the server, so no Player or Keeper c
 - Every dice result is produced on the server. No API accepts a dice result from a client.
 - The percentile roll resolver is deterministic: the same input always gives the same `PercentileRoll`.
 - Code implementing a roll rule carries a comment pointing to its section of the skill rolls document, and its tests name that section.
-- A Roll Record is never changed after it is created.
+- A Roll Record is never changed after it is created. A consumer may classify a record as replaced without changing it (ADR 0034).
 
 ## Contract
 

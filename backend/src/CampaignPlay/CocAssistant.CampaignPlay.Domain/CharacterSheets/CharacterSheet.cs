@@ -20,10 +20,16 @@ public sealed record CharacterSheet(
     BackstoryAndPossessions BackstoryAndPossessions)
 {
     /// <summary>The schema version of the stored Character Sheet (ADR 0005, ADR 0007).</summary>
-    public const int CurrentSchemaVersion = 5;
+    public const int CurrentSchemaVersion = 6;
 
     public static readonly CharacterSheet Empty =
         new(InvestigatorIdentity.Empty, null, CharacteristicValues.Empty, CharacteristicValues.Empty, [], null, [], QuickFireSkills.Empty, BackstoryAndPossessions.Empty);
+
+    /// <summary>Roll Records a re-roll grant replaced; kept for the Keeper, never counted (specs/character-sheet/spec.md, Re-roll grant).</summary>
+    public IReadOnlyList<RollRecord> ReplacedRollRecords { get; init; } = [];
+
+    /// <summary>The groups the Keeper granted that the Player has not rolled again yet.</summary>
+    public IReadOnlyList<RollGroup> RerollGrants { get; init; } = [];
 
     /// <summary>The raw Standard Rolling totals, read from the characteristic Roll Records.</summary>
     public CharacteristicValues CharacteristicRolls =>
@@ -45,24 +51,61 @@ public sealed record CharacterSheet(
     public int? ResultFor(string purpose) =>
         RollRecords.Where(record => record.Purpose == purpose).Select(record => (int?)record.Result).SingleOrDefault();
 
-    /// <summary>Adds new Roll Records to the sheet; records already on it are never changed.</summary>
-    public CharacterSheet WithAddedRollRecords(IEnumerable<RollRecord> records) =>
-        this with { RollRecords = [.. RollRecords, .. records] };
+    /// <summary>Adds new Roll Records to the sheet; records already on it are never changed. Rolling a group clears only that group's open re-roll grant.</summary>
+    public CharacterSheet WithAddedRollRecords(IEnumerable<RollRecord> records)
+    {
+        var added = records.ToList();
+        return this with
+        {
+            RollRecords = [.. RollRecords, .. added],
+            RerollGrants = [.. RerollGrants.Where(grant => added.All(record => RollPurposes.GroupOf(record.Purpose) != grant))],
+        };
+    }
+
+    /// <summary>Whether the group has at least one current (not replaced) Roll Record and can be granted a re-roll.</summary>
+    public bool HasCurrentRecordsIn(RollGroup group) =>
+        RollRecords.Any(record => RollPurposes.GroupOf(record.Purpose) == group);
+
+    /// <summary>
+    /// Moves the groups' current Roll Records to the replaced collection, unchanged and never deleted, and opens their
+    /// re-roll grants (specs/character-sheet/spec.md, Re-roll grant).
+    /// </summary>
+    public CharacterSheet WithRerollGranted(IReadOnlyCollection<RollGroup> grants) =>
+        this with
+        {
+            RollRecords = RollRecords.Where(record => !IsGranted(record.Purpose, grants)).ToList(),
+            ReplacedRollRecords = [.. ReplacedRollRecords, .. RollRecords.Where(record => IsGranted(record.Purpose, grants))],
+            RerollGrants = [.. grants],
+        };
+
+    private static bool IsGranted(string purpose, IReadOnlyCollection<RollGroup> grants) =>
+        RollPurposes.GroupOf(purpose) is { } group && grants.Contains(group);
 
     public bool Equals(CharacterSheet? other) =>
         other is not null
-        && Identity == other.Identity
+        && SheetInputsEqual(other)
+        && RollRecordsEqual(other);
+
+    private bool SheetInputsEqual(CharacterSheet other) =>
+        Identity == other.Identity
         && CreationMethod == other.CreationMethod
         && AssignedCharacteristics.Equals(other.AssignedCharacteristics)
         && AgeDeductions.Equals(other.AgeDeductions)
-        && RollRecords.SequenceEqual(other.RollRecords)
         && Equals(Occupation, other.Occupation)
         && SkillAllocations.SequenceEqual(other.SkillAllocations)
         && QuickFire.Equals(other.QuickFire)
         && BackstoryAndPossessions.Equals(other.BackstoryAndPossessions);
 
+    private bool RollRecordsEqual(CharacterSheet other) =>
+        RollRecords.SequenceEqual(other.RollRecords)
+        && ReplacedRollRecords.SequenceEqual(other.ReplacedRollRecords)
+        && RerollGrants.SequenceEqual(other.RerollGrants);
+
     public override int GetHashCode() =>
-        HashCode.Combine(Identity, CreationMethod, AssignedCharacteristics, AgeDeductions, RollRecords.Count, Occupation, SkillAllocations.Count);
+        HashCode.Combine(
+            HashCode.Combine(Identity, CreationMethod, AssignedCharacteristics, AgeDeductions),
+            HashCode.Combine(RollRecords.Count, ReplacedRollRecords.Count, RerollGrants.Count, Occupation),
+            HashCode.Combine(SkillAllocations.Count, QuickFire, BackstoryAndPossessions));
 
     private int HighestEduImprovementCheckNumber() =>
         RollRecords
