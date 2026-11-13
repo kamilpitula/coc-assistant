@@ -38,6 +38,27 @@ interface DiceResultsProps {
   rollRecords: RollRecord[]
 }
 
+/**
+ * The display order for replaced results (specs/character-sheet/ux.md section 7.1): each current row comes first;
+ * the replaced rows with the same purpose follow it, newest first; replaced rows whose purpose has no current record
+ * go at the end, in stored order.
+ */
+function orderDiceResults(rollRecords: RollRecord[]): RollRecord[] {
+  const current = rollRecords.filter((record) => !record.isReplaced)
+  const replaced = rollRecords.filter((record) => record.isReplaced)
+  const currentPurposes = new Set(current.map((record) => record.purpose))
+  const attached = new Set<RollRecord>()
+  const rows: RollRecord[] = []
+  for (const record of current) {
+    rows.push(record)
+    const own = replaced.filter((candidate) => candidate.purpose === record.purpose && !attached.has(candidate)).reverse()
+    own.forEach((candidate) => attached.add(candidate))
+    rows.push(...own)
+  }
+  rows.push(...replaced.filter((record) => !currentPurposes.has(record.purpose)))
+  return rows
+}
+
 /** The Keeper's view of every dice result, collapsed by default (specs/character-sheet/ux.md section 7.1). */
 export function DiceResults({ rollRecords }: DiceResultsProps) {
   return (
@@ -62,9 +83,9 @@ export function DiceResults({ rollRecords }: DiceResultsProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rollRecords.map((record) => (
-                <TableRow key={record.purpose}>
-                  <TableCell>{rolledFor(record.purpose)}</TableCell>
+              {orderDiceResults(rollRecords).map((record, index) => (
+                <TableRow key={`${record.purpose}-${record.isReplaced ? 'replaced' : 'current'}-${index}`}>
+                  <TableCell>{rolledFor(record.purpose)}{record.isReplaced ? ' (replaced)' : ''}</TableCell>
                   <TableCell>{record.dice}</TableCell>
                   <TableCell>{record.faces?.join(', ') ?? 'Not recorded'}</TableCell>
                   <TableCell>{record.result}</TableCell>

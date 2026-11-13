@@ -295,7 +295,7 @@ export function sheetView(overrides: Partial<CharacterSheetView> = {}): Characte
       wealth: { currency: 'USD', spendingLevel: { amount: 10, orMore: false }, cash: { amount: 60, orMore: false }, assets: { amount: 1500, orMore: false } },
     },
     rollRecords: [
-      { purpose: 'Luck', dice: '3D6', faces: null, result: 11, source: 'PlayerEntered', rolledByDisplayName: 'Ada Lovelace', rolledAt: null },
+      { purpose: 'Luck', dice: '3D6', faces: null, result: 11, source: 'PlayerEntered', rolledByDisplayName: 'Ada Lovelace', rolledAt: null, isReplaced: false },
       {
         purpose: 'EduImprovement[1].Check',
         dice: 'D100',
@@ -304,9 +304,11 @@ export function sheetView(overrides: Partial<CharacterSheetView> = {}): Characte
         source: 'PlayerEntered',
         rolledByDisplayName: 'Ada Lovelace',
         rolledAt: null,
+        isReplaced: false,
       },
     ],
     locks: { creationMethod: false, ageBracket: false, edu: false },
+    rerollGrants: [],
     ...overrides,
   }
 }

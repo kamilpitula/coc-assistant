@@ -132,6 +132,21 @@ describe('AgeEffectsStep EDU checks', () => {
     expect(screen.getByText('Roll EDU check 1 first.')).toBeInTheDocument()
   })
 
+  it('UX-39: while granted, the EDU action reads "Roll EDU check {n} again"', async () => {
+    const props = base()
+    const sheet = sheetView({
+      identity: { ...validInputs.identity, age: 45 },
+      ageEffects: { bracket: bracket45, deductions: {}, eduImprovementChecks: [] },
+      rerollGrants: ['EduImprovementChecks'],
+    })
+    render(<AgeEffectsStep inputs={at45} errors={{}} rules={rules} bracket={bracket45} sheet={sheet} {...props} roll={props.roll} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Roll EDU check 1 again' }))
+
+    const dialog = screen.getByRole('alertdialog', { name: 'Roll EDU check 1 again?' })
+    expect(dialog).toHaveTextContent('Only your Keeper can allow a re-roll.')
+  })
+
   it('UX-37: confirms once before rolling, naming the EDU, the age range, and the EDU lock', async () => {
     const props = base()
     render(<AgeEffectsStep inputs={at45} errors={{}} rules={rules} bracket={bracket45} sheet={eduSheet([])} {...props} roll={props.roll} />)

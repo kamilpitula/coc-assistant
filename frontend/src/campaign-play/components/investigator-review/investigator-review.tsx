@@ -11,6 +11,7 @@ import { WorthCheckingAlert } from '@/campaign-play/components/worth-checking-al
 import { useApproveInvestigator, useKeeperInvestigator, useRequestChanges } from '@/campaign-play/hooks/useKeeperInvestigators'
 import { customContentNotes } from '@/campaign-play/services/customContent'
 import { InvestigatorConflictError } from '@/campaign-play/services/investigatorApi'
+import { grantableGroups } from '@/campaign-play/services/rollGroups'
 import type { KeeperInvestigator } from '@/campaign-play/types/Investigator'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
@@ -134,7 +135,8 @@ function Review({ campaignId, investigatorId, loaded, onReload }: ReviewProps) {
         <div className="flex flex-wrap gap-3">
           <RequestChangesDialog
             pending={pending !== null}
-            onSend={(comment) => run('requestChanges', () => requestChanges.mutateAsync(comment), 'Sent to the Player.')}
+            grantableGroups={grantableGroups(investigator.characterSheet.rollRecords)}
+            onSend={(comment, rerollGrants) => run('requestChanges', () => requestChanges.mutateAsync({ comment, rerollGrants }), 'Sent to the Player.')}
           />
           <Button
             type="button"

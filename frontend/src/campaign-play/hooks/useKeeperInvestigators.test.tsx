@@ -45,16 +45,16 @@ describe('useKeeperInvestigators mutations', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: campaignQueryKeys.investigators('c1'), exact: true })
   })
 
-  it('sends the comment when requesting changes and stores the result', async () => {
+  it('sends the comment and re-roll grants when requesting changes and stores the result', async () => {
     mockRequestChanges.mockResolvedValue({ id: 'i1', status: 'ChangesRequested' })
     const { queryClient, wrapper } = setup()
     const { result } = renderHook(() => useRequestChanges('c1', 'i1'), { wrapper })
 
     await act(async () => {
-      await result.current.mutateAsync('Lower the Credit Rating')
+      await result.current.mutateAsync({ comment: 'Lower the Credit Rating', rerollGrants: ['Luck'] })
     })
 
-    expect(mockRequestChanges).toHaveBeenCalledWith('token', 'c1', 'i1', 'Lower the Credit Rating')
+    expect(mockRequestChanges).toHaveBeenCalledWith('token', 'c1', 'i1', 'Lower the Credit Rating', ['Luck'])
     expect(queryClient.getQueryData(campaignQueryKeys.investigator('c1', 'i1'))).toEqual({ id: 'i1', status: 'ChangesRequested' })
   })
 })

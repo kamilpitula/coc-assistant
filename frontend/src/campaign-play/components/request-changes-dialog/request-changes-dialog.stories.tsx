@@ -11,6 +11,8 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Ready: Story = { args: { pending: false } }
+export const Ready: Story = { args: { pending: false, grantableGroups: [] } }
 
-export const Sending: Story = { args: { pending: true } }
+export const Sending: Story = { args: { pending: true, grantableGroups: [] } }
+
+export const WithGrantableGroups: Story = { args: { pending: false, grantableGroups: ['Luck', 'EduImprovementChecks'] } }

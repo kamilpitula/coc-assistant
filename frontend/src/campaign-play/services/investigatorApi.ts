@@ -6,7 +6,9 @@ import { creationMethodSchema } from '@/campaign-play/services/campaignApi'
 import {
   BACKSTORY_ENTRIES,
   CHARACTERISTIC_CODES,
+  ROLL_GROUPS,
   type CharacterSheetInputs,
+  type RollGroup,
 } from '@/campaign-play/types/CharacterSheet'
 import {
   INVESTIGATOR_STATUSES,
@@ -26,6 +28,7 @@ export class InvestigatorConflictError extends Error {
 
 const statusSchema = z.enum(INVESTIGATOR_STATUSES)
 const characteristicCodeSchema = z.enum(CHARACTERISTIC_CODES)
+const rollGroupSchema = z.enum(ROLL_GROUPS)
 const nullableNumber = z.number().int().nullable()
 
 const summarySchema = z.object({
@@ -192,9 +195,11 @@ const characterSheetViewSchema = z.object({
       source: z.string(),
       rolledByDisplayName: z.string().nullable(),
       rolledAt: z.string().nullable(),
+      isReplaced: z.boolean(),
     }),
   ),
   locks: z.object({ creationMethod: z.boolean(), ageBracket: z.boolean(), edu: z.boolean() }),
+  rerollGrants: z.array(rollGroupSchema),
 })
 
 const rulesSchema = z.object({
@@ -377,16 +382,17 @@ export async function approveInvestigator(
   return keeperInvestigatorSchema.parse(await response.json())
 }
 
-/** POST .../investigators/{id}/request-changes with the Keeper's comment. */
+/** POST .../investigators/{id}/request-changes with the Keeper's comment and the granted re-roll groups. */
 export async function requestChanges(
   accessToken: string,
   campaignId: string,
   investigatorId: string,
   comment: string,
+  rerollGrants: RollGroup[],
 ): Promise<KeeperInvestigator> {
   const response = await send(accessToken, `${investigatorsUrl(campaignId)}/${investigatorId}/request-changes`, {
     method: 'POST',
-    body: JSON.stringify({ comment }),
+    body: JSON.stringify({ comment, rerollGrants }),
   })
   ensureOk(response, 'request changes')
   return keeperInvestigatorSchema.parse(await response.json())

@@ -248,7 +248,22 @@ describe('InvestigatorWizard', () => {
 
     expect(screen.getByRole('heading', { name: 'Your Keeper asked for changes' })).toBeInTheDocument()
     expect(screen.getByText('Lower the Credit Rating')).toBeInTheDocument()
+    expect(screen.queryByText(/Your Keeper lets you roll again/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Start over' })).not.toBeInTheDocument()
+  })
+
+  it('UX-39: shows which groups the Keeper lets the Player roll again', () => {
+    withSheet(
+      myCharacterSheet({
+        status: 'ChangesRequested',
+        changeRequestComment: 'Roll them again',
+        characterSheet: sheetView({ rerollGrants: ['Characteristics', 'EduImprovementChecks'] }),
+      }),
+    )
+
+    render(<InvestigatorWizard campaignId="c1" step="characteristics" />)
+
+    expect(screen.getByText('Your Keeper lets you roll again: characteristics, EDU checks.')).toBeInTheDocument()
   })
 
   it('UX-16: "Start over" deletes the Draft and returns to the Campaign page with "Draft deleted."', async () => {

@@ -218,14 +218,28 @@ describe('investigatorApi', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/campaigns/c1/investigators/i1/approve', expect.objectContaining({ method: 'POST' }))
   })
 
-  it('requests changes with the comment, and reports a status conflict as a conflict error', async () => {
+  it('requests changes with the comment and re-roll grants, and reports a status conflict as a conflict error', async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse(200, { ...keeperInvestigator, status: 'ChangesRequested' }))
       .mockResolvedValueOnce(jsonResponse(409, { status: 409 }))
 
-    expect((await requestChanges('token', 'c1', 'i1', 'Lower the Credit Rating')).status).toBe('ChangesRequested')
-    expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toEqual({ comment: 'Lower the Credit Rating' })
-    await expect(requestChanges('token', 'c1', 'i1', 'Again')).rejects.toBeInstanceOf(InvestigatorConflictError)
+    expect((await requestChanges('token', 'c1', 'i1', 'Lower the Credit Rating', ['Luck'])).status).toBe('ChangesRequested')
+    expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toEqual({ comment: 'Lower the Credit Rating', rerollGrants: ['Luck'] })
+    await expect(requestChanges('token', 'c1', 'i1', 'Again', [])).rejects.toBeInstanceOf(InvestigatorConflictError)
+  })
+
+  it('parses isReplaced roll records and re-roll grants on the Character Sheet', async () => {
+    const granted = {
+      ...myCharacterSheet,
+      characterSheet: {
+        ...characterSheet,
+        rollRecords: [{ ...characterSheet.rollRecords[0], isReplaced: true }],
+        rerollGrants: ['Luck'],
+      },
+    }
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, granted))
+
+    expect(await getMyCharacterSheet('token', 'c1')).toEqual(granted)
   })
 
   it('throws on other failures', async () => {
