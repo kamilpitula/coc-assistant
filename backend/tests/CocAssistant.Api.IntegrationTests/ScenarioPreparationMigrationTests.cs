@@ -241,7 +241,9 @@ public class ScenarioPreparationMigrationTests : IAsyncLifetime
             0,
             [new RequestedRollInput(harvey, 60, false, true)],
             [harvey],
-            now);
+            now,
+            new FixedRoller(2, 5),
+            harvey);
         Assert.Equal(RollRequestCreationOutcome.Created, creation.Outcome);
         var request = creation.Request!;
         Assert.Equal(RequestedRollOutcome.Rolled, request.RollInvestigatorRoll(new FixedRoller(2, 5), harvey, harvey, now).Outcome);
@@ -281,7 +283,9 @@ public class ScenarioPreparationMigrationTests : IAsyncLifetime
             0,
             [new RequestedRollInput(harvey, 50, false, false)],
             [harvey],
-            now);
+            now,
+            new FixedRoller(2, 5),
+            harvey);
         Assert.Equal(RollRequestCreationOutcome.Created, creation.Outcome);
         _dbContext.Scenarios.Add(scenario);
         _dbContext.Scenes.Add(scene);

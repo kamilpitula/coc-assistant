@@ -238,6 +238,8 @@ public sealed class FakeRollRequests : IRollRequests
 
     public IReadOnlyList<RequestedRollValueInput>? LastInvestigators { get; private set; }
 
+    public Guid LastKeeperAccountId { get; private set; }
+
     public Task<RollRequestRecord?> FindAsync(Guid campaignId, Guid requestId, CancellationToken cancellationToken)
     {
         Calls.Add(nameof(FindAsync));
@@ -265,10 +267,12 @@ public sealed class FakeRollRequests : IRollRequests
         int bonusDice,
         int penaltyDice,
         IReadOnlyList<RequestedRollValueInput> investigators,
+        Guid keeperAccountId,
         CancellationToken cancellationToken)
     {
         Calls.Add(nameof(CreateAsync));
         LastInvestigators = investigators;
+        LastKeeperAccountId = keeperAccountId;
         return Task.FromResult(CreateResult);
     }
 

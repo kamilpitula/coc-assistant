@@ -69,7 +69,8 @@ public class RollRequest
     /// Creates a Roll Request for the Investigators present. Checks run in this order: the target, the Investigators (not
     /// empty, no duplicate, every one present), the dice (each within the skill rolls section 5 limits, then a Luck target
     /// at Regular with no dice under project_ruleset.md section 4.8), and the message. Overrides fall back to the defaults.
-    /// A refused creation changes nothing.
+    /// A KeeperOnly request is rolled at creation: every Requested Roll goes straight to Rolled with the creating Keeper
+    /// as the roller, in the same save. A refused creation changes nothing and draws no dice.
     /// </summary>
     public static RollRequestCreation Create(
         Guid campaignId,
@@ -82,7 +83,9 @@ public class RollRequest
         int penaltyDice,
         IReadOnlyList<RequestedRollInput> investigators,
         IReadOnlyCollection<Guid> presentInvestigatorIds,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        IDiceRoller dice,
+        Guid requestedByAccountId)
     {
         if (!IsTarget(target))
         {
@@ -123,6 +126,11 @@ public class RollRequest
             input.Difficulty ?? difficulty,
             input.BonusDice ?? bonusDice,
             input.PenaltyDice ?? penaltyDice)));
+        if (visibility == RollRequestVisibility.KeeperOnly)
+        {
+            request.RollHidden(dice, requestedByAccountId, now);
+        }
+
         return new RollRequestCreation(RollRequestCreationOutcome.Created, request);
     }
 
@@ -212,6 +220,14 @@ public class RollRequest
         string.IsNullOrWhiteSpace(message) ? null : message.Trim();
 
     private static bool IsMessageTooLong(string? trimmed) => trimmed is not null && trimmed.Length > MessageMaxLength;
+
+    private void RollHidden(IDiceRoller dice, Guid keeperAccountId, DateTimeOffset now)
+    {
+        foreach (var roll in _requestedRolls)
+        {
+            roll.Roll(dice, keeperAccountId, now);
+        }
+    }
 
     private static RollRequestCreation Refused(RollRequestCreationOutcome outcome) => new(outcome, null);
 }

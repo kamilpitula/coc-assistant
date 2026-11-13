@@ -24,19 +24,24 @@ public class RollRequestTests
         Difficulty difficulty = Difficulty.Regular,
         int bonusDice = 0,
         int penaltyDice = 0,
-        IReadOnlyList<RequestedRollInput>? investigators = null) =>
+        IReadOnlyList<RequestedRollInput>? investigators = null,
+        RollRequestVisibility visibility = RollRequestVisibility.Public,
+        IDiceRoller? dice = null,
+        Guid? keeper = null) =>
         RollRequest.Create(
             Guid.NewGuid(),
             Guid.NewGuid(),
             target ?? SpotHidden,
             message,
-            RollRequestVisibility.Public,
+            visibility,
             difficulty,
             bonusDice,
             penaltyDice,
             investigators ?? [Input(Harvey)],
             Present,
-            Now);
+            Now,
+            dice ?? new ScriptedRoller(),
+            keeper ?? Roller);
 
     [Fact]
     public void Given_targets_When_creating_Then_each_value_is_snapshot_on_the_request_and_its_rolls()
@@ -52,7 +57,9 @@ public class RollRequestTests
             0,
             [new(Harvey, 60, false, true), new(Lucy, 30, true, false, Difficulty.Regular, 0, 1)],
             Present,
-            Now);
+            Now,
+            new ScriptedRoller(),
+            Roller);
 
         Assert.Equal(RollRequestCreationOutcome.Created, creation.Outcome);
         var request = creation.Request!;
@@ -141,6 +148,60 @@ public class RollRequestTests
 
         Assert.Equal(RollRequestCreationOutcome.MessageTooLong, creation.Outcome);
         Assert.Null(creation.Request);
+    }
+
+    [Fact]
+    public void Given_KeeperOnly_When_creating_Then_every_roll_is_rolled_at_creation_with_the_Keeper_as_roller()
+    {
+        var creation = Create(
+            message: "Something moves upstairs.",
+            investigators: [Input(Harvey, 60), Input(Lucy, 30)],
+            visibility: RollRequestVisibility.KeeperOnly,
+            dice: new ScriptedRoller(2, 5, 4, 6));
+
+        Assert.Equal(RollRequestCreationOutcome.Created, creation.Outcome);
+        var request = creation.Request!;
+        Assert.All(request.RequestedRolls, roll => Assert.Equal(RequestedRollStatus.Rolled, roll.Status));
+        var harvey = request.RequestedRolls[0];
+        var harveyRecord = Assert.Single(harvey.RollRecords);
+        Assert.Equal($"RollRequest:{request.Id}:{Harvey}", harveyRecord.Purpose);
+        Assert.Equal(25, harveyRecord.Result);
+        Assert.Equal(Roller, harveyRecord.RolledByAccountId);
+        Assert.Equal(request.CreatedAt, harveyRecord.RolledAt);
+        var lucy = request.RequestedRolls[1];
+        var lucyRecord = Assert.Single(lucy.RollRecords);
+        Assert.Equal($"RollRequest:{request.Id}:{Lucy}", lucyRecord.Purpose);
+        Assert.Equal(Roller, lucyRecord.RolledByAccountId);
+        Assert.Equal(request.CreatedAt, lucyRecord.RolledAt);
+    }
+
+    [Fact]
+    public void Given_Public_When_creating_Then_every_roll_stays_waiting_and_no_dice_are_drawn()
+    {
+        var creation = Create(investigators: [Input(Harvey), Input(Lucy)]);
+
+        Assert.Equal(RollRequestCreationOutcome.Created, creation.Outcome);
+        Assert.All(creation.Request!.RequestedRolls, roll => Assert.Equal((RequestedRollStatus.Waiting, 0), (roll.Status, roll.RollRecords.Count)));
+    }
+
+    [Fact]
+    public void Given_a_refused_KeeperOnly_creation_When_creating_Then_it_is_refused_and_no_dice_are_drawn()
+    {
+        var creation = Create(investigators: [Input(Harvey), Input(Harvey)], visibility: RollRequestVisibility.KeeperOnly);
+
+        Assert.Equal(RollRequestCreationOutcome.DuplicateInvestigator, creation.Outcome);
+        Assert.Null(creation.Request);
+    }
+
+    [Fact]
+    public void Given_a_hidden_skill_success_When_creating_Then_it_earns_an_experience_check_like_a_Public_one()
+    {
+        var creation = Create(visibility: RollRequestVisibility.KeeperOnly, dice: new ScriptedRoller(2, 5));
+
+        Assert.Equal(RollRequestCreationOutcome.Created, creation.Outcome);
+        var record = Assert.Single(Assert.Single(creation.Request!.RequestedRolls).RollRecords);
+        Assert.Equal(25, record.Result);
+        Assert.True(record.EarnsExperienceCheck);
     }
 
     [Fact]

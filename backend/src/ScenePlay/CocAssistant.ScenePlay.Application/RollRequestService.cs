@@ -84,7 +84,7 @@ public class RollRequestService
 
         var result = await _requests.CreateAsync(
             campaignId, target, message, visibility, difficulty, bonusDice, penaltyDice,
-            ValueInputs(investigators, values.Values), cancellationToken);
+            ValueInputs(investigators, values.Values), callerAccountId, cancellationToken);
         if (result.Outcome != RollRequestWriteOutcome.Created)
         {
             return new CreateRollRequestResult(Enum.Parse<CreateRollRequestOutcome>(result.Outcome.ToString()), null);

@@ -38,6 +38,7 @@ public class SceneRollRequestService
         int bonusDice,
         int penaltyDice,
         IReadOnlyList<RequestedRollInput> investigators,
+        Guid keeperAccountId,
         CancellationToken cancellationToken)
     {
         var active = await _scenes.FindActiveAsync(campaignId, cancellationToken);
@@ -57,7 +58,9 @@ public class SceneRollRequestService
             penaltyDice,
             investigators,
             active.InvestigatorsPresent,
-            _timeProvider.GetUtcNow());
+            _timeProvider.GetUtcNow(),
+            _diceRoller,
+            keeperAccountId);
         if (creation.Outcome != RollRequestCreationOutcome.Created)
         {
             return Refused(ToWriteOutcome(creation.Outcome));
@@ -106,7 +109,7 @@ public class SceneRollRequestService
         return requests
             .SelectMany(request => request.RequestedRolls
                 .Where(roll => roll.InvestigatorId == investigatorId && roll.Status == RequestedRollStatus.Waiting)
-                .Select(roll => new WaitingRequestedRollView(request.Id, request.Target, request.Message, request.CreatedAt, ToView(roll))))
+                .Select(roll => new WaitingRequestedRollView(request.Id, request.Target, request.Message, request.Visibility, request.CreatedAt, ToView(roll))))
             .ToList();
     }
 

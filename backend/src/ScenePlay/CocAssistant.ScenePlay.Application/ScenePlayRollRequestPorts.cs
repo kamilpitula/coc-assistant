@@ -32,8 +32,8 @@ public enum RollRequestDifficulty
 }
 
 /// <summary>
-/// A Roll Request's visibility. Unknown is a value the request did not name; KeeperOnly is refused until PBI-DICE-006
-/// (fail closed: never stored). Neither reaches the provider.
+/// A Roll Request's visibility. Unknown is a value the request did not name; it is refused after the Active Scene
+/// check and never reaches the provider.
 /// </summary>
 public enum RollRequestVisibility
 {
@@ -141,11 +141,12 @@ public sealed record RollRequestRecord(
     DateTimeOffset CreatedAt,
     IReadOnlyList<RequestedRollRecord> RequestedRolls);
 
-/// <summary>One Investigator's Waiting Requested Roll with the Roll Request's target, message, and creation time.</summary>
+/// <summary>One Investigator's Waiting Requested Roll with the Roll Request's target, message, visibility, and creation time.</summary>
 public sealed record WaitingRequestedRollRecord(
     Guid RollRequestId,
     RollRequestTargetInput Target,
     string? Message,
+    RollRequestVisibility Visibility,
     DateTimeOffset CreatedAt,
     RequestedRollRecord Roll);
 
@@ -195,7 +196,7 @@ public interface IRollRequests
     /// <summary>The Investigator's Waiting Requested Rolls in the Active Scene, oldest first; an empty list when no Scene is Active.</summary>
     Task<IReadOnlyList<WaitingRequestedRollRecord>> ListWaitingForInvestigatorAsync(Guid campaignId, Guid investigatorId, CancellationToken cancellationToken);
 
-    /// <summary>Creates a Roll Request on the Active Scene; the snapshot values come from the caller.</summary>
+    /// <summary>Creates a Roll Request on the Active Scene; the snapshot values come from the caller and a KeeperOnly request is rolled for the Keeper at creation.</summary>
     Task<RollRequestWriteResult> CreateAsync(
         Guid campaignId,
         RollRequestTargetInput target,
@@ -205,6 +206,7 @@ public interface IRollRequests
         int bonusDice,
         int penaltyDice,
         IReadOnlyList<RequestedRollValueInput> investigators,
+        Guid keeperAccountId,
         CancellationToken cancellationToken);
 
     /// <summary>Rolls the Investigator's Requested Roll with the server's dice.</summary>

@@ -274,7 +274,7 @@ public class RollRequestServiceTests
     public async Task Given_Waiting_rolls_When_a_Player_reads_mine_Then_each_comes_with_its_requests_target_and_message()
     {
         var stored = StoredRequest();
-        _requests.WaitingForInvestigator.Add(new WaitingRequestedRollRecord(RequestId, stored.Target, stored.Message, stored.CreatedAt, stored.RequestedRolls[0]));
+        _requests.WaitingForInvestigator.Add(new WaitingRequestedRollRecord(RequestId, stored.Target, stored.Message, RollRequestVisibility.Public, stored.CreatedAt, stored.RequestedRolls[0]));
 
         var mine = (await Service.ListMineAsync(CampaignId, HarveyPlayerId, CancellationToken.None))!;
 
