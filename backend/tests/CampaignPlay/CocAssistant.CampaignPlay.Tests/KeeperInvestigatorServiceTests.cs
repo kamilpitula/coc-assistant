@@ -112,7 +112,7 @@ public class KeeperInvestigatorServiceTests : IDisposable
         var investigatorId = await _scenario.CreateSubmittedAsync(campaignId, Player);
 
         var approve = await AsKeeperServiceAsync(service => service.ApproveAsync(campaignId, investigatorId, Player, CancellationToken.None));
-        var requestChanges = await AsKeeperServiceAsync(service => service.RequestChangesAsync(campaignId, investigatorId, Player, "Mine", CancellationToken.None));
+        var requestChanges = await AsKeeperServiceAsync(service => service.RequestChangesAsync(campaignId, investigatorId, Player, "Mine", [], CancellationToken.None));
 
         Assert.Equal(InvestigatorCommandOutcome.NotFound, approve.Outcome);
         Assert.Equal(InvestigatorCommandOutcome.NotFound, requestChanges.Outcome);
@@ -139,7 +139,7 @@ public class KeeperInvestigatorServiceTests : IDisposable
         var investigatorId = await _scenario.CreateSubmittedAsync(campaignId, Player);
 
         var result = await AsKeeperServiceAsync(service => service.RequestChangesAsync(
-            campaignId, investigatorId, Keeper, "Credit Rating seems high for this Occupation", CancellationToken.None));
+            campaignId, investigatorId, Keeper, "Credit Rating seems high for this Occupation", [], CancellationToken.None));
 
         Assert.Equal(InvestigatorCommandOutcome.Succeeded, result.Outcome);
         using var context = _scenario.Fixture.CreateContext();
@@ -154,6 +154,59 @@ public class KeeperInvestigatorServiceTests : IDisposable
         Assert.Equal(InvestigatorStatus.Submitted, resubmitted.Investigator!.Status);
     }
 
+    // Scenario: Keeper requests changes
+    [Fact]
+    public async Task Given_a_submitted_investigator_When_the_keeper_grants_a_luck_re_roll_Then_the_luck_records_move_and_the_view_includes_them()
+    {
+        var campaignId = await CampaignWithPlayerAsync();
+        var investigatorId = await _scenario.CreateSubmittedAsync(campaignId, Player);
+
+        var result = await AsKeeperServiceAsync(service => service.RequestChangesAsync(
+            campaignId, investigatorId, Keeper, "Roll Luck again", [RollGroup.Luck], CancellationToken.None));
+
+        Assert.Equal(InvestigatorCommandOutcome.Succeeded, result.Outcome);
+        Assert.True(result.View!.IncludesReplacedRollRecords);
+        var stored = (await _scenario.LoadInvestigatorAsync(campaignId, investigatorId))!;
+        Assert.Equal([RollGroup.Luck], stored.CharacterSheet.RerollGrants);
+        Assert.Single(stored.CharacterSheet.RollRecords);
+        var replaced = Assert.Single(stored.CharacterSheet.ReplacedRollRecords);
+        Assert.Equal(RollPurposes.Luck, replaced.Purpose);
+
+        var review = await AsKeeperServiceAsync(service => service.GetAsync(campaignId, investigatorId, Keeper, CancellationToken.None));
+        Assert.True(review!.IncludesReplacedRollRecords);
+    }
+
+    // A grant for a group with no Roll Record returns 400 (specs/campaign-play/spec.md, request-changes).
+    [Fact]
+    public async Task Given_a_submitted_investigator_When_granting_a_group_without_records_Then_it_is_an_invalid_grant_and_nothing_moves()
+    {
+        var campaignId = await CampaignWithPlayerAsync();
+        var investigatorId = await _scenario.CreateSubmittedAsync(campaignId, Player);
+
+        var result = await AsKeeperServiceAsync(service => service.RequestChangesAsync(
+            campaignId, investigatorId, Keeper, "Roll them again", [RollGroup.Characteristics], CancellationToken.None));
+
+        Assert.Equal(InvestigatorCommandOutcome.InvalidRerollGrant, result.Outcome);
+        var stored = (await _scenario.LoadInvestigatorAsync(campaignId, investigatorId))!;
+        Assert.Equal(InvestigatorStatus.Submitted, stored.Status);
+        Assert.Equal(2, stored.CharacterSheet.RollRecords.Count);
+        Assert.Empty(stored.CharacterSheet.ReplacedRollRecords);
+    }
+
+    // A 409 for a status that does not allow the action takes precedence over the grant 400.
+    [Fact]
+    public async Task Given_a_non_submitted_investigator_When_requesting_changes_with_an_invalid_grant_Then_it_is_a_status_conflict()
+    {
+        var campaignId = await CampaignWithPlayerAsync();
+        var investigatorId = await _scenario.CreateSubmittedAsync(campaignId, Player);
+        await AsKeeperServiceAsync(service => service.ApproveAsync(campaignId, investigatorId, Keeper, CancellationToken.None));
+
+        var result = await AsKeeperServiceAsync(service => service.RequestChangesAsync(
+            campaignId, investigatorId, Keeper, "Roll them again", [RollGroup.Characteristics], CancellationToken.None));
+
+        Assert.Equal(InvestigatorCommandOutcome.StatusConflict, result.Outcome);
+    }
+
     // Scenario: Request changes requires a comment
     [Fact]
     public async Task Given_a_submitted_investigator_When_the_keeper_requests_changes_without_a_comment_Then_it_is_rejected_and_remains_submitted()
@@ -161,7 +214,7 @@ public class KeeperInvestigatorServiceTests : IDisposable
         var campaignId = await CampaignWithPlayerAsync();
         var investigatorId = await _scenario.CreateSubmittedAsync(campaignId, Player);
 
-        var result = await AsKeeperServiceAsync(service => service.RequestChangesAsync(campaignId, investigatorId, Keeper, "  ", CancellationToken.None));
+        var result = await AsKeeperServiceAsync(service => service.RequestChangesAsync(campaignId, investigatorId, Keeper, "  ", [], CancellationToken.None));
 
         Assert.Equal(InvestigatorCommandOutcome.InvalidChangeRequestComment, result.Outcome);
         Assert.Equal(InvestigatorStatus.Submitted, (await _scenario.LoadInvestigatorAsync(campaignId, investigatorId))!.Status);

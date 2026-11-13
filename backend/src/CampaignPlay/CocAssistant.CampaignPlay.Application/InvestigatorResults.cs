@@ -22,6 +22,9 @@ public enum InvestigatorCommandOutcome
 
     /// <summary>The Change Request comment is missing or too long.</summary>
     InvalidChangeRequestComment,
+
+    /// <summary>A re-roll was granted for a group with no current Roll Record.</summary>
+    InvalidRerollGrant,
 }
 
 public sealed record InvestigatorResult(
@@ -35,7 +38,8 @@ public sealed record CharacterSheetView(
     string? PlayerName,
     CharacterSheetComputation Computation,
     IReadOnlyList<ValidationError> ValidationErrors,
-    IReadOnlyDictionary<Guid, string> RolledByDisplayNames);
+    IReadOnlyDictionary<Guid, string> RolledByDisplayNames,
+    bool IncludesReplacedRollRecords = false);
 
 public sealed record CharacterSheetResult(InvestigatorCommandOutcome Outcome, CharacterSheetView? View = null);
 

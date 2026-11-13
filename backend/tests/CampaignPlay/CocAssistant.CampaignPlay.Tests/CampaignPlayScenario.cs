@@ -115,7 +115,7 @@ public sealed class CampaignPlayScenario : IDisposable
     public async Task RequestChangesAsync(Guid campaignId, Guid investigatorId, string comment)
     {
         using var context = Fixture.CreateContext();
-        await KeeperService(context).RequestChangesAsync(campaignId, investigatorId, KeeperAccountId, comment, CancellationToken.None);
+        await KeeperService(context).RequestChangesAsync(campaignId, investigatorId, KeeperAccountId, comment, [], CancellationToken.None);
     }
 
     /// <summary>Reads the Investigator as stored.</summary>

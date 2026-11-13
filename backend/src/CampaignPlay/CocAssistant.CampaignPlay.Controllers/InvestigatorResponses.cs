@@ -49,6 +49,7 @@ public record CharacterSheetViewResponse(
     string? Gear,
     DerivedResponse Derived,
     IReadOnlyList<RollRecordResponse> RollRecords,
+    IReadOnlyList<string> RerollGrants,
     CharacterSheetLocksResponse Locks);
 
 /// <summary>A Custom Weapon as entered; every v1 weapon is custom (docs/game-rules/project_ruleset.md section 4.2).</summary>
@@ -157,7 +158,8 @@ public record RollRecordResponse(
     int Result,
     string Source,
     string? RolledByDisplayName,
-    DateTimeOffset? RolledAt);
+    DateTimeOffset? RolledAt,
+    bool IsReplaced);
 
 /// <summary>Which creation inputs the Roll Records already on the sheet lock (more groups follow in later PBIs).</summary>
 public record CharacterSheetLocksResponse(bool CreationMethod, bool AgeBracket, bool Edu);

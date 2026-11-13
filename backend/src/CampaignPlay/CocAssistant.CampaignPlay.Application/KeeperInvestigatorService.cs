@@ -52,24 +52,51 @@ public class KeeperInvestigatorService
     public Task<CharacterSheetResult> ApproveAsync(Guid campaignId, Guid investigatorId, Guid keeperAccountId, CancellationToken cancellationToken) =>
         ChangeAsync(campaignId, investigatorId, keeperAccountId, investigator => investigator.Approve(_timeProvider.GetUtcNow()), cancellationToken);
 
-    public Task<CharacterSheetResult> RequestChangesAsync(
+    public async Task<CharacterSheetResult> RequestChangesAsync(
         Guid campaignId,
         Guid investigatorId,
         Guid keeperAccountId,
         string comment,
+        IReadOnlyCollection<RollGroup> grants,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(comment) || comment.Length > Investigator.ChangeRequestCommentMaxLength)
         {
-            return Task.FromResult(new CharacterSheetResult(InvestigatorCommandOutcome.InvalidChangeRequestComment));
+            return new CharacterSheetResult(InvestigatorCommandOutcome.InvalidChangeRequestComment);
         }
 
-        return ChangeAsync(
-            campaignId,
-            investigatorId,
-            keeperAccountId,
-            investigator => investigator.RequestChanges(comment, [], _timeProvider.GetUtcNow()),
-            cancellationToken);
+        var found = await FindVisibleAsync(campaignId, investigatorId, keeperAccountId, cancellationToken);
+        if (found is null)
+        {
+            return new CharacterSheetResult(InvestigatorCommandOutcome.NotFound);
+        }
+
+        var (investigator, campaign) = found.Value;
+        if (investigator.Status != InvestigatorStatus.Submitted)
+        {
+            return new CharacterSheetResult(InvestigatorCommandOutcome.StatusConflict);
+        }
+
+        if (grants.Any(grant => !investigator.CharacterSheet.HasCurrentRecordsIn(grant)))
+        {
+            return new CharacterSheetResult(InvestigatorCommandOutcome.InvalidRerollGrant);
+        }
+
+        if (!investigator.RequestChanges(comment, grants, _timeProvider.GetUtcNow()))
+        {
+            return new CharacterSheetResult(InvestigatorCommandOutcome.StatusConflict);
+        }
+
+        try
+        {
+            await _investigators.SaveChangesAsync(cancellationToken);
+        }
+        catch (InvestigatorConflictException)
+        {
+            return new CharacterSheetResult(InvestigatorCommandOutcome.StatusConflict);
+        }
+
+        return new CharacterSheetResult(InvestigatorCommandOutcome.Succeeded, await ViewAsync(investigator, campaign, cancellationToken));
     }
 
     private async Task<CharacterSheetResult> ChangeAsync(
@@ -123,5 +150,5 @@ public class KeeperInvestigatorService
     }
 
     private Task<CharacterSheetView> ViewAsync(Investigator investigator, Campaign campaign, CancellationToken cancellationToken) =>
-        CharacterSheetViews.ViewAsync(_evaluator, _displayNames, investigator, campaign, cancellationToken);
+        CharacterSheetViews.ViewAsync(_evaluator, _displayNames, investigator, campaign, includeReplacedRollRecords: true, cancellationToken);
 }

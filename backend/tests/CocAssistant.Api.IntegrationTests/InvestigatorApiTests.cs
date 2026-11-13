@@ -135,7 +135,7 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         Assert.Equal(DisplayNameFor(Player), body.GetProperty("playerName").GetString());
         Assert.Equal("Draft", body.GetProperty("status").GetString());
         var sheet = body.GetProperty("characterSheet");
-        Assert.Equal(5, sheet.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(6, sheet.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("Boston", sheet.GetProperty("identity").GetProperty("residence").GetString());
         var strength = sheet.GetProperty("characteristics").GetProperty("STR");
         Assert.Equal((60, 60, 30, 12), (strength.GetProperty("assigned").GetInt32(), strength.GetProperty("value").GetInt32(), strength.GetProperty("hard").GetInt32(), strength.GetProperty("extreme").GetInt32()));
@@ -732,7 +732,7 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var sheet = (await JsonAsync(response)).GetProperty("characterSheet");
-        Assert.Equal(5, sheet.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(6, sheet.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("Grew up above a bookshop.", sheet.GetProperty("backstory").GetProperty("myStory").GetString());
         Assert.Equal("My sister Ada", sheet.GetProperty("backstory").GetProperty("significantPeople").GetString());
         Assert.Equal(JsonValueKind.Null, sheet.GetProperty("backstory").GetProperty("traits").ValueKind);
@@ -1027,6 +1027,83 @@ public class InvestigatorApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         Assert.Equal(HttpStatusCode.OK, (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, ValidSheet("Harvey W."))).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/submit", Player)).StatusCode);
         Assert.Equal("Submitted", await StatusOfMineAsync());
+    }
+
+    // Scenario: Keeper grants a characteristics re-roll (Luck here; Characteristics needs Standard Rolling)
+    [Fact]
+    public async Task Given_a_submitted_investigator_When_the_keeper_grants_a_luck_re_roll_Then_the_keeper_sees_the_replaced_record_and_the_player_does_not()
+    {
+        var id = await CreateSubmittedAsync();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/{id}/request-changes", Keeper, new { comment = "Roll Luck again", rerollGrants = new[] { "Luck" } });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var keeperView = (await JsonAsync(response)).GetProperty("characterSheet");
+        Assert.Equal(["Luck"], keeperView.GetProperty("rerollGrants").EnumerateArray().Select(grant => grant.GetString()));
+        var keeperRecords = keeperView.GetProperty("rollRecords").EnumerateArray().ToList();
+        var replaced = Assert.Single(keeperRecords, record => record.GetProperty("isReplaced").GetBoolean());
+        Assert.Equal("Luck", replaced.GetProperty("purpose").GetString());
+        Assert.All(keeperRecords.Where(record => !record.GetProperty("isReplaced").GetBoolean()), record => Assert.False(record.GetProperty("isReplaced").GetBoolean()));
+
+        var playerSheet = (await JsonAsync(await SendAsync(HttpMethod.Get, $"{Investigators}/mine/character-sheet", Player))).GetProperty("characterSheet");
+        Assert.Equal(["Luck"], playerSheet.GetProperty("rerollGrants").EnumerateArray().Select(grant => grant.GetString()));
+        var playerRecords = playerSheet.GetProperty("rollRecords").EnumerateArray().ToList();
+        Assert.DoesNotContain(playerRecords, record => record.GetProperty("isReplaced").GetBoolean());
+        Assert.DoesNotContain(playerRecords, record => record.GetProperty("purpose").GetString() == "Luck");
+    }
+
+    [Fact]
+    public async Task Given_a_submitted_point_buy_investigator_When_granting_characteristics_Then_it_is_a_bad_request()
+    {
+        var id = await CreateSubmittedAsync();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/{id}/request-changes", Keeper, new { comment = "Roll again", rerollGrants = new[] { "Characteristics" } });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("Submitted", await StatusOfMineAsync());
+    }
+
+    [Fact]
+    public async Task Given_a_submitted_investigator_When_granting_an_unknown_group_Then_it_is_a_bad_request()
+    {
+        var id = await CreateSubmittedAsync();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/{id}/request-changes", Keeper, new { comment = "Roll again", rerollGrants = new[] { "Strength" } });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("Submitted", await StatusOfMineAsync());
+    }
+
+    [Fact]
+    public async Task Given_a_changes_requested_investigator_When_requesting_changes_again_Then_it_is_a_conflict()
+    {
+        var id = await CreateSubmittedAsync();
+        (await SendAsync(HttpMethod.Post, $"{Investigators}/{id}/request-changes", Keeper, new { comment = "Fix the name" })).EnsureSuccessStatusCode();
+
+        var response = await SendAsync(HttpMethod.Post, $"{Investigators}/{id}/request-changes", Keeper, new { comment = "Roll again", rerollGrants = new[] { "Luck" } });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_a_luck_grant_When_the_player_re_rolls_Then_the_new_record_counts_and_the_locks_apply_again()
+    {
+        var id = await CreateSubmittedAsync();
+        (await SendAsync(HttpMethod.Post, $"{Investigators}/{id}/request-changes", Keeper, new { comment = "Roll Luck again", rerollGrants = new[] { "Luck" } })).EnsureSuccessStatusCode();
+
+        var roll = await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", Player);
+
+        Assert.Equal(HttpStatusCode.OK, roll.StatusCode);
+        var sheet = (await JsonAsync(roll)).GetProperty("characterSheet");
+        Assert.Empty(sheet.GetProperty("rerollGrants").EnumerateArray());
+        var luck = sheet.GetProperty("rollRecords").EnumerateArray().Single(record => record.GetProperty("purpose").GetString() == "Luck");
+        Assert.False(luck.GetProperty("isReplaced").GetBoolean());
+        var result = luck.GetProperty("result").GetInt32();
+        Assert.InRange(result, 3, 18);
+        var aged = SheetWith(("identity", new { name = "Harvey Walters", age = 45 }));
+        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(HttpMethod.Put, $"{Investigators}/mine/character-sheet", Player, aged)).StatusCode);
+
+        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(HttpMethod.Post, $"{Investigators}/mine/character-sheet/rolls/luck", Player)).StatusCode);
     }
 
     [Fact]

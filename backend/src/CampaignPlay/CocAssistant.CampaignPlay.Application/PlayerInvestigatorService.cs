@@ -209,7 +209,7 @@ public class PlayerInvestigatorService
     }
 
     private Task<CharacterSheetView> ViewAsync(Investigator investigator, Campaign campaign, CancellationToken cancellationToken) =>
-        CharacterSheetViews.ViewAsync(_evaluator, _displayNames, investigator, campaign, cancellationToken);
+        CharacterSheetViews.ViewAsync(_evaluator, _displayNames, investigator, campaign, includeReplacedRollRecords: false, cancellationToken);
 
     private async Task<InvestigatorResult> SaveAsync(
         Investigator investigator,

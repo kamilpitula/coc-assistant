@@ -91,8 +91,24 @@ public sealed class BackstoryTextsAttribute : ValidationAttribute
         || texts.All(text => BackstoryWireFormat.IsKey(text.Key) && (text.Value?.Length ?? 0) <= BackstoryWireFormat.TextLengthMax);
 }
 
-/// <summary>A Keeper's Change Request: a required comment of at most 2000 characters.</summary>
-public record RequestChangesRequest([Required, MaxLength(Investigator.ChangeRequestCommentMaxLength)] string Comment);
+/// <summary>A Keeper's Change Request: a required comment of at most 2000 characters, with the groups the Player may roll again.</summary>
+public record RequestChangesRequest(
+    [Required, MaxLength(Investigator.ChangeRequestCommentMaxLength)] string Comment,
+    [RerollGroupNames] IReadOnlyList<string>? RerollGrants = null);
+
+/// <summary>Accepts null or the names of the re-roll groups a Change Request may grant.</summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter)]
+public sealed class RerollGroupNamesAttribute : ValidationAttribute
+{
+    public RerollGroupNamesAttribute()
+        : base("Unknown re-roll group.")
+    {
+    }
+
+    public override bool IsValid(object? value) =>
+        value is null
+        || (value is IReadOnlyList<string> names && names.All(name => Enum.TryParse<RollGroup>(name, out _)));
+}
 
 /// <summary>Accepts null or the name of a Creation Method this version supports.</summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter)]
