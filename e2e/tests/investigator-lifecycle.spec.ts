@@ -28,11 +28,11 @@ import { attentionList, memberRow, ownRow } from '../fixtures/overview'
  * effects before Hard and Extreme values", "Draft resumes after leaving the wizard", "Standard Rolling characteristics
  * are rolled by the server", "Characteristics are rolled only once", "Rolled characteristics lock the Creation Method",
  * "Changing characteristics keeps later allocations", "Changing the Creation Method clears characteristics after
- * confirmation", and "Unspent personal interest points only warn"; and to specs/character-sheet/ux.md sections 3 to 7
- * (UX-3, UX-4, UX-5, UX-7, UX-8, UX-10, UX-11, UX-12, UX-13, UX-14, UX-15, UX-22, UX-23, UX-24, UX-25, UX-26,
- * UX-27, UX-28, UX-29, UX-30, UX-31, UX-32, UX-34, UX-35, UX-36, UX-37, UX-38; UX-33 has no API to create its legacy
- * state and is covered by storage and integration tests), with the Campaign page as the overview of
- * specs/campaign-overview/ux.md (CO-UX-4, CO-UX-6, CO-UX-9).
+ * confirmation", "Unspent personal interest points only warn", and "Keeper grants a characteristics re-roll"; and to
+ * specs/character-sheet/ux.md sections 3 to 7 (UX-3, UX-4, UX-5, UX-7, UX-8, UX-10, UX-11, UX-12, UX-13, UX-14, UX-15,
+ * UX-22, UX-23, UX-24, UX-25, UX-26, UX-27, UX-28, UX-29, UX-30, UX-31, UX-32, UX-34, UX-35, UX-36, UX-37, UX-38, UX-39,
+ * UX-40; UX-33 has no API to create its legacy state and is covered by storage and integration tests), with the
+ * Campaign page as the overview of specs/campaign-overview/ux.md (CO-UX-4, CO-UX-6, CO-UX-9).
  */
 test.describe('Investigator lifecycle', () => {
   test('A Player creates, saves, resumes, and submits an Investigator; the Keeper requests changes, then approves it', async ({
@@ -418,6 +418,125 @@ test.describe('Investigator lifecycle', () => {
             name: new RegExp(`^Luck 3D6 [\\d, ]+ \\d+ Server, for ${player.account.name} .+$`),
           }),
         ).toBeVisible()
+      })
+    } finally {
+      await player.context.close()
+    }
+  })
+
+  test('The Keeper grants a characteristics re-roll; the Player rolls again and the Keeper sees the replaced results', async ({
+    page,
+    browser,
+  }) => {
+    test.slow()
+
+    const keeper = newAccount('Keeper')
+    await signIn(page, keeper)
+    const campaignId = await createCampaignViaUi(page, `Re-roll ${keeper.oid.slice(0, 6)}`)
+    const player = await joinAsNewPlayer(browser, await issueInviteViaUi(page, campaignId))
+    const playerPage = player.page
+    const bearer = await openAndCaptureBearer(playerPage, `/campaigns/${campaignId}`)
+    let newValues: string[] = []
+
+    try {
+      await test.step('a Standard Rolling Investigator rolls characteristics and is submitted', async () => {
+        await attentionList(playerPage).getByRole('button', { name: 'Create Investigator' }).click()
+        await playerPage.getByLabel('Investigator name').fill('Nina Doyle')
+        await playerPage.getByLabel('Age').fill('25')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await chooseCreationMethod(playerPage, 'Standard rolling')
+        await rollCharacteristicsViaUi(playerPage)
+        await rollLuckViaUi(playerPage)
+        await pressWizardAction(playerPage, 'Save and continue')
+        await rollEduCheckViaUi(playerPage, 1)
+        await pressWizardAction(playerPage, 'Save and continue')
+        await chooseAntiquarianViaUi(playerPage)
+        await pickAntiquarianSkillsViaUi(playerPage)
+        await playerPage.getByLabel('Credit Rating, occupation points').fill('30')
+        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Personal interests' })).toBeVisible()
+        await pressWizardAction(playerPage, 'Save and continue')
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Sheet and submit' })).toBeVisible()
+        await playerPage.getByRole('button', { name: 'Submit to Keeper' }).click()
+        await expect(ownRow(playerPage)).toContainText('Submitted - waiting for your Keeper')
+      })
+
+      await test.step('the Keeper opens Request changes, sees the "Characteristics" checkbox, checks it, and sends', async () => {
+        await page.goto(`/campaigns/${campaignId}`)
+        await attentionList(page).getByRole('link', { name: 'Review Nina Doyle' }).click()
+        await page.getByRole('button', { name: 'Request changes' }).click()
+        const dialog = page.getByRole('dialog', { name: 'Request changes' })
+        await expect(dialog.getByRole('checkbox', { name: 'Characteristics' })).toBeVisible()
+        await dialog.getByRole('checkbox', { name: 'Characteristics' }).check()
+        await dialog.getByLabel('What should the Player change?').fill('Roll your characteristics again')
+        await dialog.getByRole('button', { name: 'Send to Player' }).click()
+        await expect(page.getByRole('status').filter({ hasText: 'Sent to the Player.' })).toBeVisible()
+        await expect(page.getByText('Changes requested')).toBeVisible()
+      })
+
+      await test.step('UX-39: the Player sees the grant and "Roll characteristics again"', async () => {
+        await playerPage.goto(`/campaigns/${campaignId}/investigator/characteristics`)
+        await expect(playerPage.getByText('Your Keeper lets you roll again: characteristics.')).toBeVisible()
+        await playerPage.getByRole('button', { name: 'Roll characteristics again' }).click()
+        const dialog = playerPage.getByRole('alertdialog', { name: 'Roll characteristics again?' })
+        await expect(dialog).toContainText('Only your Keeper can allow a re-roll.')
+        await dialog.getByRole('button', { name: 'Roll now' }).click()
+        await expect(playerPage.getByRole('status').filter({ hasText: 'Characteristics rolled.' })).toBeVisible()
+        newValues = (await characteristicValueItems(playerPage).allTextContents()).map(normalizeValueItem)
+        expect(newValues).toHaveLength(8)
+        await expect(playerPage.getByText(/\(replaced\)/)).toHaveCount(0)
+      })
+
+      await test.step('the Player resubmits', async () => {
+        await playerPage.goto(`/campaigns/${campaignId}/investigator/sheet`)
+        await expect(playerPage.getByRole('heading', { level: 1, name: 'Sheet and submit' })).toBeVisible()
+        await playerPage.getByRole('button', { name: 'Submit to Keeper' }).click()
+        await expect(ownRow(playerPage)).toContainText('Submitted - waiting for your Keeper')
+      })
+
+      await test.step('UX-40: the Keeper sees eight "(replaced)" characteristic rows, each after its replacement', async () => {
+        await page.goto(`/campaigns/${campaignId}`)
+        await attentionList(page).getByRole('link', { name: 'Review Nina Doyle' }).click()
+        await page.getByRole('button', { name: 'Dice results' }).click()
+        for (const [code, dice] of CHARACTERISTIC_DICE) {
+          await expect(
+            page.getByRole('row', {
+              name: new RegExp(`^${code} \\(replaced\\) ${dice} [\\d, ]+ \\d+ Server, for ${player.account.name} .+$`),
+            }),
+          ).toBeVisible()
+        }
+        const texts = (
+          await page
+            .getByRole('table')
+            .filter({ has: page.getByRole('row', { name: /\(replaced\)/ }) })
+            .getByRole('row')
+            .allInnerTexts()
+        ).map((text) => text.replace(/\s+/g, ' ').trim())
+        for (const [code, dice] of CHARACTERISTIC_DICE) {
+          const current = texts.findIndex((text) => text.startsWith(`${code} ${dice} `))
+          const replaced = texts.findIndex((text) => text.startsWith(`${code} (replaced) ${dice} `))
+          expect(replaced).toBe(current + 1)
+        }
+      })
+
+      await test.step('each characteristic value matches its non-replaced row', async () => {
+        const response = await playerPage.request.get(characterSheetUrl(campaignId), {
+          headers: { Authorization: bearer },
+        })
+        const body = (await response.json()) as {
+          rules: { standardRolling: Record<string, { bonus: number; multiplier: number }> }
+          characterSheet: {
+            characteristics: Record<string, { value: number | null }>
+            rollRecords: { purpose: string; result: number; isReplaced: boolean }[]
+          }
+        }
+        for (const [code] of CHARACTERISTIC_DICE) {
+          const formula = body.rules.standardRolling[code]
+          const current = body.characterSheet.rollRecords.find(
+            (record) => record.purpose === `Characteristic:${code}` && !record.isReplaced,
+          )
+          expect(body.characterSheet.characteristics[code].value).toBe((current!.result + formula.bonus) * formula.multiplier)
+        }
       })
     } finally {
       await player.context.close()
