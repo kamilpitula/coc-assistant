@@ -98,4 +98,36 @@ public class RollRecordTests
     {
         Assert.Null(RollPurposes.GroupOf(purpose));
     }
+
+    /// <summary>
+    /// The purpose-to-group contract shared with the frontend (specs/character-sheet/roll-group-mapping.json, read by
+    /// rollGroups.test.ts): GroupOf agrees with it for every listed purpose, so the two copies cannot drift.
+    /// </summary>
+    [Fact]
+    public void Given_the_shared_roll_group_mapping_When_mapping_every_listed_purpose_Then_it_matches()
+    {
+        foreach (var (purpose, group) in LoadRollGroupMapping())
+        {
+            Assert.Equal(group, RollPurposes.GroupOf(purpose));
+        }
+    }
+
+    private static IReadOnlyList<KeyValuePair<string, RollGroup?>> LoadRollGroupMapping()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "specs", "character-sheet", "roll-group-mapping.json")))
+        {
+            directory = directory.Parent;
+        }
+
+        Assert.NotNull(directory);
+        using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory!.FullName, "specs", "character-sheet", "roll-group-mapping.json")));
+        return document.RootElement.GetProperty("mapping").EnumerateArray()
+            .Select(entry => KeyValuePair.Create(
+                entry.GetProperty("purpose").GetString()!,
+                entry.GetProperty("group").ValueKind == JsonValueKind.Null
+                    ? (RollGroup?)null
+                    : Enum.Parse<RollGroup>(entry.GetProperty("group").GetString()!)))
+            .ToList();
+    }
 }

@@ -12,11 +12,34 @@ export function rollGroupOf(purpose: string): RollGroup | null {
     return 'Luck'
   }
 
-  if (/^EduImprovement\[\d+\]\.(Check|Gain)$/.test(purpose)) {
+  if (eduImprovementCheckNumberOf(purpose) !== null) {
     return 'EduImprovementChecks'
   }
 
   return null
+}
+
+/**
+ * The EDU improvement check number a purpose belongs to, or null for other purposes. Mirrors the backend
+ * RollPurposes.EduImprovementCheckNumberOf: only the [n] number is classified, whatever follows it.
+ */
+function eduImprovementCheckNumberOf(purpose: string): number | null {
+  const prefix = 'EduImprovement['
+  if (!purpose.startsWith(prefix)) {
+    return null
+  }
+
+  const end = purpose.indexOf(']', prefix.length)
+  if (end <= prefix.length) {
+    return null
+  }
+
+  const text = purpose.slice(prefix.length, end).trim()
+  if (!/^[+-]?\d+$/.test(text)) {
+    return null
+  }
+
+  return Number.parseInt(text, 10)
 }
 
 /**

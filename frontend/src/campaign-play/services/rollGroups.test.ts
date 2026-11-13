@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import type { RollRecord } from '@/campaign-play/types/CharacterSheet'
+import mapping from '../../../../specs/character-sheet/roll-group-mapping.json'
+import type { RollGroup, RollRecord } from '@/campaign-play/types/CharacterSheet'
 
 import { displayGrantedGroups, grantableGroups, rollGroupOf } from './rollGroups'
 
@@ -23,6 +24,12 @@ describe('rollGroupOf', () => {
 
   it.each(['SomethingElse', '', 'Characteristic:XYZ'])('maps %s to no group', (purpose) => {
     expect(rollGroupOf(purpose)).toBeNull()
+  })
+
+  it('matches the shared purpose-to-group contract read by the backend mapping test', () => {
+    for (const entry of mapping.mapping as { purpose: string; group: RollGroup | null }[]) {
+      expect(rollGroupOf(entry.purpose)).toBe(entry.group)
+    }
   })
 })
 
