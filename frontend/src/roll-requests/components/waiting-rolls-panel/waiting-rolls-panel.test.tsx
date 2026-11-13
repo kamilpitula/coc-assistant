@@ -136,6 +136,21 @@ describe('WaitingRollsPanel', () => {
     expect(status).toHaveFocus()
   })
 
+  it('shows the result in its own "Your last roll" subsection, visually separated from the queue', async () => {
+    const { rerenderWith } = setup()
+    const getCallbacks = captureRoll()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Roll Listen' }))
+    await act(async () => {
+      getCallbacks().onSuccess(rolled())
+    })
+    rerenderWith({ ...mine, rolls: [] })
+
+    const subsection = screen.getByRole('region', { name: 'Your last roll' })
+    expect(within(subsection).getByRole('heading', { level: 3, name: 'Your last roll' })).toBeInTheDocument()
+    expect(within(subsection).getByRole('status')).toHaveTextContent('You rolled 25: Hard success.')
+  })
+
   it('names a failure without the check line (RR-UX-9)', async () => {
     const { rerenderWith } = setup()
     const getCallbacks = captureRoll()
