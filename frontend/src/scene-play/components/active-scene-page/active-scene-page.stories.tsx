@@ -94,6 +94,8 @@ const storyWall: WallEntryPage = {
       visibility: 'Public',
       createdAt: '2026-10-28T19:14:00Z',
       authorDisplayName: 'Keeper',
+      kind: 'Text',
+      rollRequestId: null,
     },
   ],
 }

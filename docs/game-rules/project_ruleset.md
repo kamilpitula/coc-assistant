@@ -135,6 +135,18 @@ every other result fails.
 ([skill rolls section 7](coc7_skill_rolls_rules.md#7-luck-rolls)) is always made
 at Regular Difficulty with no Bonus or Penalty Dice.
 
+## 4.9 Experience checks when Bonus Dice are cancelled
+
+**House rule (resolves a rules gap).**
+[Character rules section 16.1](coc7_character_creation_and_development_rules.md#161-skill-experience-tick-during-play)
+and [skill rolls section 5](coc7_skill_rolls_rules.md#5-bonus-and-penalty-dice)
+say that a success which used a Bonus Die earns no skill experience check. They
+do not say what happens when Penalty Dice cancel the Bonus Dice
+([skill rolls section 9](coc7_skill_rolls_rules.md#9-rules-gaps)). In this
+project a success counts as having used a Bonus Die only when the roll has more
+Bonus Dice than Penalty Dice. A success with as many Penalty Dice as Bonus
+Dice, or more, earns a check wherever section 16.1 otherwise allows one.
+
 # 5. Non-Player Entity profiles
 
 This section applies

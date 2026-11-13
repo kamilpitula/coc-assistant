@@ -92,7 +92,11 @@ public sealed class RecordingSceneWallEntries : ISceneWallEntries
 {
     public List<string> Texts { get; } = [];
 
+    public List<Guid> RollRequests { get; } = [];
+
     public bool Fail { get; set; }
+
+    public bool FailRollRequest { get; set; }
 
     public Task AddPublicAsync(Guid campaignId, Guid keeperAccountId, string text, CancellationToken cancellationToken)
     {
@@ -102,6 +106,17 @@ public sealed class RecordingSceneWallEntries : ISceneWallEntries
         }
 
         Texts.Add(text);
+        return Task.CompletedTask;
+    }
+
+    public Task AddRollRequestAsync(Guid campaignId, Guid keeperAccountId, Guid rollRequestId, RollRequestVisibility visibility, CancellationToken cancellationToken)
+    {
+        if (FailRollRequest)
+        {
+            throw new InvalidOperationException("The Wall is down.");
+        }
+
+        RollRequests.Add(rollRequestId);
         return Task.CompletedTask;
     }
 }
@@ -204,4 +219,110 @@ public sealed class RecordingLogger<T> : ILogger<T>
 
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
         Levels.Add(logLevel);
+}
+
+/// <summary>Records each call and answers with set results, so the Roll Request service's decisions are observable.</summary>
+public sealed class FakeRollRequests : IRollRequests
+{
+    public List<string> Calls { get; } = [];
+
+    public RollRequestRecord? Found { get; set; }
+
+    public List<RollRequestRecord> ActiveSceneRequests { get; } = [];
+
+    public List<WaitingRequestedRollRecord> WaitingForInvestigator { get; } = [];
+
+    public RollRequestWriteResult CreateResult { get; set; } = new(RollRequestWriteOutcome.InvalidTarget, null);
+
+    public RequestedRollWriteResult RollResult { get; set; } = new(RequestedRollWriteOutcome.NotFound, null);
+
+    public IReadOnlyList<RequestedRollValueInput>? LastInvestigators { get; private set; }
+
+    public Task<RollRequestRecord?> FindAsync(Guid campaignId, Guid requestId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(FindAsync));
+        return Task.FromResult(Found);
+    }
+
+    public Task<IReadOnlyList<RollRequestRecord>> ListForActiveSceneAsync(Guid campaignId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(ListForActiveSceneAsync));
+        return Task.FromResult<IReadOnlyList<RollRequestRecord>>(ActiveSceneRequests.ToList());
+    }
+
+    public Task<IReadOnlyList<WaitingRequestedRollRecord>> ListWaitingForInvestigatorAsync(Guid campaignId, Guid investigatorId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(ListWaitingForInvestigatorAsync));
+        return Task.FromResult<IReadOnlyList<WaitingRequestedRollRecord>>(WaitingForInvestigator.ToList());
+    }
+
+    public Task<RollRequestWriteResult> CreateAsync(
+        Guid campaignId,
+        RollRequestTargetInput target,
+        string? message,
+        RollRequestVisibility visibility,
+        RollRequestDifficulty difficulty,
+        int bonusDice,
+        int penaltyDice,
+        IReadOnlyList<RequestedRollValueInput> investigators,
+        CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(CreateAsync));
+        LastInvestigators = investigators;
+        return Task.FromResult(CreateResult);
+    }
+
+    public Task<RequestedRollWriteResult> RollAsync(Guid campaignId, Guid requestId, Guid investigatorId, Guid rollerAccountId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(RollAsync));
+        return Task.FromResult(RollResult);
+    }
+}
+
+public sealed class FakeInvestigatorTargetValues : IInvestigatorTargetValues
+{
+    public Dictionary<Guid, InvestigatorTargetValue> Values { get; } = [];
+
+    public TargetValueRefusal? Refusal { get; set; }
+
+    public bool Queried { get; private set; }
+
+    public Task<TargetValueResult?> QueryAsync(Guid campaignId, RollRequestTargetInput target, IReadOnlyList<Guid> investigatorIds, CancellationToken cancellationToken)
+    {
+        Queried = true;
+        if (Refusal is not null)
+        {
+            return Task.FromResult<TargetValueResult?>(new TargetValueResult(Refusal, []));
+        }
+
+        return Task.FromResult<TargetValueResult?>(new TargetValueResult(null, investigatorIds.Select(id => Values[id]).ToList()));
+    }
+}
+
+public sealed class RecordingRollRequestSignals : IRollRequestSignals
+{
+    public sealed record Publication(RollRequestVisibility Visibility, IReadOnlyCollection<Guid> PlayerAccountIds);
+
+    public List<Publication> Publications { get; } = [];
+
+    public bool Fail { get; set; }
+
+    public Task RollRequestChangedAsync(Guid campaignId, RollRequestVisibility visibility, IReadOnlyCollection<Guid> playerAccountIds, CancellationToken cancellationToken)
+    {
+        if (Fail)
+        {
+            throw new InvalidOperationException("The hub is down.");
+        }
+
+        Publications.Add(new Publication(visibility, playerAccountIds));
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class FakeAccountNames : IAccountNames
+{
+    public Dictionary<Guid, string> Names { get; } = [];
+
+    public Task<IReadOnlyDictionary<Guid, string>> GetDisplayNamesAsync(IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyDictionary<Guid, string>>(accountIds.Where(Names.ContainsKey).ToDictionary(id => id, id => Names[id]));
 }

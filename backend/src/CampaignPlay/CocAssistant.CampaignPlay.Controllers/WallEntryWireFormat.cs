@@ -13,5 +13,5 @@ public static class WallEntryWireFormat
     }
 
     public static WallEntryResponse ToResponse(WallEntryView entry) =>
-        new(entry.Id, entry.Text, ToWire(entry.Visibility), entry.CreatedAt, entry.AuthorDisplayName);
+        new(entry.Id, entry.Text, ToWire(entry.Visibility), entry.CreatedAt, entry.AuthorDisplayName, entry.Kind.ToString(), entry.RollRequestId);
 }

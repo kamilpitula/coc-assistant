@@ -7,6 +7,8 @@ global using Microsoft.EntityFrameworkCore.Storage;
 global using System.Text;
 global using System.Text.Json;
 global using CocAssistant.GameRules.Domain;
+global using CocAssistant.GameRules.Domain.Dice;
+global using CocAssistant.ScenarioPreparation.Domain.RollRequests;
 global using CocAssistant.ScenarioPreparation.Controllers;
 global using Microsoft.Extensions.Logging;
 global using Microsoft.Extensions.Configuration;

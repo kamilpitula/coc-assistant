@@ -112,6 +112,7 @@ export function ActiveScenePage({ campaignId }: ActiveScenePageProps) {
           onPresentSaved={() => setMessage('Investigators present saved.')}
           onWallEntryAdded={() => setMessage(WALL_ENTRY_ADDED_MESSAGE)}
           onFinishedMeanwhile={() => void active.refetch()}
+          onRollRequested={(message) => setMessage(message)}
         />
         <ActiveScenePanel campaignId={campaignId} headingRef={headingRef} onReveal={flow.open} />
       </div>
@@ -240,9 +241,10 @@ interface ActiveSceneBodyProps {
   onPresentSaved: () => void
   onWallEntryAdded: () => void
   onFinishedMeanwhile: () => void
+  onRollRequested: (message: string) => void
 }
 
-function ActiveSceneBody({ campaignId, isKeeper, scene, subTab, headingRef, flow, giveFlow, takeBackFlow, onFinished, onAlreadyFinished, onPresentSaved, onWallEntryAdded, onFinishedMeanwhile }: ActiveSceneBodyProps) {
+function ActiveSceneBody({ campaignId, isKeeper, scene, subTab, headingRef, flow, giveFlow, takeBackFlow, onFinished, onAlreadyFinished, onPresentSaved, onWallEntryAdded, onFinishedMeanwhile, onRollRequested }: ActiveSceneBodyProps) {
   if (scene === null) {
     return <NoActiveScene campaignId={campaignId} isKeeper={isKeeper} headingRef={headingRef} />
   }
@@ -265,6 +267,7 @@ function ActiveSceneBody({ campaignId, isKeeper, scene, subTab, headingRef, flow
       onPresentSaved={onPresentSaved}
       onWallEntryAdded={onWallEntryAdded}
       onFinishedMeanwhile={onFinishedMeanwhile}
+      onRollRequested={onRollRequested}
     />
   )
 }
@@ -282,9 +285,10 @@ interface KeeperSubTabsProps {
   onPresentSaved: () => void
   onWallEntryAdded: () => void
   onFinishedMeanwhile: () => void
+  onRollRequested: (message: string) => void
 }
 
-function KeeperSubTabs({ campaignId, scene, subTab, headingRef, flow, giveFlow, takeBackFlow, onFinished, onAlreadyFinished, onPresentSaved, onWallEntryAdded, onFinishedMeanwhile }: KeeperSubTabsProps) {
+function KeeperSubTabs({ campaignId, scene, subTab, headingRef, flow, giveFlow, takeBackFlow, onFinished, onAlreadyFinished, onPresentSaved, onWallEntryAdded, onFinishedMeanwhile, onRollRequested }: KeeperSubTabsProps) {
   const material = useScene(campaignId, scene.scenarioId, scene.sceneId, true)
   const counts = material.data ? keeperSubTabCounts(material.data, scene) : null
   const reveal = revealDialogModel(flow, scene)
@@ -295,7 +299,7 @@ function KeeperSubTabs({ campaignId, scene, subTab, headingRef, flow, giveFlow, 
     <>
       <ActiveSceneHeader campaignId={campaignId} scene={scene} compact={subTab !== 'run'} headingRef={headingRef} onFinished={onFinished} onAlreadyFinished={onAlreadyFinished} />
       <ActiveSceneNav campaignId={campaignId} current={subTab} counts={counts} />
-      <ActiveSceneTabContext.Provider value={{ campaignId, scene, onReveal: flow.open, onGive: giveFlow.open, onTakeBack: takeBackFlow.open, onPresentSaved, onWallEntryAdded, onFinishedMeanwhile }}>
+      <ActiveSceneTabContext.Provider value={{ campaignId, scene, onReveal: flow.open, onGive: giveFlow.open, onTakeBack: takeBackFlow.open, onPresentSaved, onWallEntryAdded, onFinishedMeanwhile, onRollRequested }}>
         <Outlet />
       </ActiveSceneTabContext.Provider>
       <RevealDialog

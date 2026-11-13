@@ -51,6 +51,20 @@ public sealed class CampaignPlaySceneWallEntries : ISceneWallEntries
             throw new InvalidOperationException($"The Wall Entry was refused: {result.Outcome}.");
         }
     }
+
+    public async Task AddRollRequestAsync(Guid campaignId, Guid keeperAccountId, Guid rollRequestId, RollRequestVisibility visibility, CancellationToken cancellationToken)
+    {
+        var result = await _wallEntries.AddRollRequestAsync(
+            campaignId,
+            keeperAccountId,
+            rollRequestId,
+            ScenarioPreparationPlayableScenes.Map<CocAssistant.CampaignPlay.Domain.Wall.WallEntryVisibility>(visibility),
+            cancellationToken);
+        if (result.Outcome != CocAssistant.CampaignPlay.Domain.Wall.WallEntryAuthoringOutcome.Created)
+        {
+            throw new InvalidOperationException($"The Roll Request Wall Entry was refused: {result.Outcome}.");
+        }
+    }
 }
 
 /// <summary>Publishes sceneReveals to the Keeper and myClues to each recipient account, never to the Campaign (ADR 0009, PBI-SPL-002 D6).</summary>

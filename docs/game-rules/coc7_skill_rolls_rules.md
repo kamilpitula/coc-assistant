@@ -160,6 +160,8 @@ All tens dice share the one units die. The kept result is then resolved as in
 
 A success that used a Bonus Die earns no experience check
 ([character rules section 16.1](coc7_character_creation_and_development_rules.md#161-skill-experience-tick-during-play)).
+When Penalty Dice cancel the Bonus Dice, see
+[project_ruleset.md section 4.9](project_ruleset.md#49-experience-checks-when-bonus-dice-are-cancelled).
 
 ---
 
@@ -225,6 +227,11 @@ The rules leave these cases open. The project decisions are recorded in
 - **Difficulty and dice limits on Luck rolls.** Whether the Keeper may set a
   Hard or Extreme Difficulty, or Bonus and Penalty Dice, on a Luck roll.
   Decided in [project_ruleset.md section 4.8](project_ruleset.md#48-luck-rolls).
+- **Experience checks when Bonus Dice are cancelled.** Whether a success whose
+  Bonus Dice were cancelled by Penalty Dice ([section 5](#5-bonus-and-penalty-dice))
+  counts as having used a Bonus Die for the experience check of
+  [character rules section 16.1](coc7_character_creation_and_development_rules.md#161-skill-experience-tick-during-play).
+  Decided in [project_ruleset.md section 4.9](project_ruleset.md#49-experience-checks-when-bonus-dice-are-cancelled).
 
 ---
 

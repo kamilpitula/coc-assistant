@@ -24,6 +24,8 @@ const page: WallEntryPage = {
       visibility: 'Public',
       createdAt: '2026-10-16T19:02:00Z',
       authorDisplayName: 'Eleanor Hart',
+      kind: 'Text',
+      rollRequestId: null,
     },
     {
       id: 'e1',
@@ -31,6 +33,8 @@ const page: WallEntryPage = {
       visibility: 'KeeperOnly',
       createdAt: '2026-10-16T18:55:00Z',
       authorDisplayName: 'Eleanor Hart',
+      kind: 'Text',
+      rollRequestId: null,
     },
   ],
 }
@@ -47,6 +51,8 @@ const liveEntry = {
   visibility: 'Public' as const,
   createdAt: '2026-10-16T19:10:00Z',
   authorDisplayName: 'Ana Ruiz',
+  kind: 'Text',
+  rollRequestId: null,
 }
 
 function WallStory({ campaign, pages, liveArrival = false }: WallStoryProps) {

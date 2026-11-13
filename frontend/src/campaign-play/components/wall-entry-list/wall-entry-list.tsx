@@ -6,11 +6,13 @@ import { focusTargetAfterLiveRemoval, focusTargetAfterRemoval, removeWallEntryBu
 import { formatWallEntryTime } from '@/campaign-play/services/wallEntryTime'
 import type { CampaignRole } from '@/campaign-play/types/Campaign'
 import type { WallEntry } from '@/campaign-play/types/WallEntry'
+import { RollRequestCard } from '@/roll-requests/components/roll-request-card/roll-request-card'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
 import { Card } from '@/shared/components/ui/card'
 
 interface WallEntryListProps {
+  campaignId: string
   entries: WallEntry[]
   viewerRole: CampaignRole
   /** Where focus goes when the last entry is removed. */
@@ -39,7 +41,7 @@ function useFocusAfterLiveRemoval(entries: WallEntry[], fallbackFocusId: string)
 }
 
 /** The Wall's entries, newest first, with the Keeper's removal (specs/campaign-wall/ux.md sections 2, 4.3, and 4.5). */
-export function WallEntryList({ entries, viewerRole, fallbackFocusId, onRemove }: WallEntryListProps) {
+export function WallEntryList({ campaignId, entries, viewerRole, fallbackFocusId, onRemove }: WallEntryListProps) {
   const [removing, setRemoving] = useState<WallEntry | null>(null)
   const [pending, setPending] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -78,7 +80,7 @@ export function WallEntryList({ entries, viewerRole, fallbackFocusId, onRemove }
     <>
       <ol className="flex flex-col gap-3">
         {entries.map((entry) => (
-          <WallEntryItem key={entry.id} entry={entry} canRemove={viewerRole === 'Keeper'} onRemove={open} />
+          <WallEntryItem key={entry.id} campaignId={campaignId} entry={entry} canRemove={viewerRole === 'Keeper'} onRemove={open} />
         ))}
       </ol>
       <RemoveWallEntryDialog
@@ -94,12 +96,24 @@ export function WallEntryList({ entries, viewerRole, fallbackFocusId, onRemove }
 }
 
 interface WallEntryItemProps {
+  campaignId: string
   entry: WallEntry
   canRemove: boolean
   onRemove: (entry: WallEntry) => void
 }
 
-function WallEntryItem({ entry, canRemove, onRemove }: WallEntryItemProps) {
+function WallEntryItem({ campaignId, entry, canRemove, onRemove }: WallEntryItemProps) {
+  // A RollRequest entry is its card, with no Remove for anyone (specs/roll-requests/ux.md section 5).
+  if (entry.kind === 'RollRequest' && entry.rollRequestId !== null) {
+    return (
+      <li>
+        <Card className="border-l-4 p-4">
+          <RollRequestCard campaignId={campaignId} rollRequestId={entry.rollRequestId} requestedByDisplayName={entry.authorDisplayName} />
+        </Card>
+      </li>
+    )
+  }
+
   const time = formatWallEntryTime(entry.createdAt, new Date())
 
   return (

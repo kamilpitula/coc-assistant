@@ -11,7 +11,7 @@ import {
 // specs/campaign-wall/ux.md section 4.5: the first batch is announced at once, later batches within 5 seconds merge.
 
 function entry(id: string, author = 'Eleanor Hart'): WallEntry {
-  return { id, text: id, visibility: 'Public', createdAt: '2026-10-16T19:00:00Z', authorDisplayName: author }
+  return { id, text: id, visibility: 'Public', createdAt: '2026-10-16T19:00:00Z', authorDisplayName: author, kind: 'Text', rollRequestId: null }
 }
 
 function run(...actions: Parameters<typeof wallEntryAnnouncementReducer>[1][]): WallEntryAnnouncementState {

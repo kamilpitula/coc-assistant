@@ -48,6 +48,24 @@ public static class CampaignLivePublicationPolicy
     ];
 
     /// <summary>
+    /// A Roll Request change goes to the Keeper (rollRequests) and, one by one, the account of each distinct affected
+    /// Player (myRequestedRolls), so the Campaign group never learns which Player was asked to roll
+    /// (specs/roll-requests/spec.md, Notification). Anything not Public fails closed to the Keeper group with no account
+    /// topics, like <see cref="ForWallEntryChanged"/>.
+    /// </summary>
+    public static IReadOnlyList<LivePublication> ForRollRequestChanged(
+        Guid campaignId,
+        WallEntryVisibility visibility,
+        IReadOnlyCollection<Guid> playerAccountIds) =>
+        visibility != WallEntryVisibility.Public
+            ? [new LivePublication(LiveAudience.CampaignKeeper(campaignId), [CampaignDataTopic.RollRequests])]
+            :
+            [
+                new LivePublication(LiveAudience.Campaign(campaignId), [CampaignDataTopic.RollRequests]),
+                .. playerAccountIds.Distinct().Select(accountId => new LivePublication(LiveAudience.Account(accountId), [CampaignDataTopic.MyRequestedRolls])),
+            ];
+
+    /// <summary>
     /// An Item holder change tells the Keeper (sceneReveals), the gaining account (myItems and myClues, because the give Reveal
     /// reached them), and, when someone else lost it, the losing account (myItems). The Campaign is never told (PBI-SPL-003 D5).
     /// </summary>

@@ -6,6 +6,10 @@ import type { WallEntry } from '@/campaign-play/types/WallEntry'
 
 import { WallEntryList } from './wall-entry-list'
 
+vi.mock('@/roll-requests/components/roll-request-card/roll-request-card', () => ({
+  RollRequestCard: ({ rollRequestId }: { rollRequestId: string }) => <div data-testid={`roll-request-card-${rollRequestId}`} />,
+}))
+
 // specs/campaign-wall/ux.md sections 2 and 4.3; WL-UX-4, WL-UX-5, WL-UX-7, WL-A11Y-1, WL-A11Y-4, WL-A11Y-6.
 
 function entry(id: string, overrides: Partial<WallEntry> = {}): WallEntry {
@@ -15,6 +19,8 @@ function entry(id: string, overrides: Partial<WallEntry> = {}): WallEntry {
     visibility: 'Public',
     createdAt: '2026-10-03T19:02:00Z',
     authorDisplayName: 'Eleanor Hart',
+    kind: 'Text',
+    rollRequestId: null,
     ...overrides,
   }
 }
@@ -22,7 +28,7 @@ function entry(id: string, overrides: Partial<WallEntry> = {}): WallEntry {
 function renderList(overrides: Partial<React.ComponentProps<typeof WallEntryList>> = {}) {
   const onRemove = vi.fn().mockResolvedValue(true)
   const entries = [entry('a'), entry('b', { visibility: 'KeeperOnly', text: 'Secret b' }), entry('c')]
-  render(<WallEntryList entries={entries} viewerRole="Keeper" fallbackFocusId="fallback" onRemove={onRemove} {...overrides} />)
+  render(<WallEntryList campaignId="c1" entries={entries} viewerRole="Keeper" fallbackFocusId="fallback" onRemove={onRemove} {...overrides} />)
   return { onRemove, entries }
 }
 
@@ -82,6 +88,15 @@ describe('WallEntryList', () => {
     await waitFor(() => expect(remove).toHaveFocus())
   })
 
+  it('renders a RollRequest entry as its card with no Remove for anyone (specs/roll-requests/ux.md section 5; RR-UX-10)', () => {
+    renderList({
+      entries: [entry('rr', { kind: 'RollRequest', rollRequestId: 'r1', text: '' })],
+    })
+
+    expect(screen.getByTestId('roll-request-card-r1')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Remove/ })).not.toBeInTheDocument()
+  })
+
   it('keeps the dialog open with an error when the removal fails (WL-UX-7)', async () => {
     renderList({ onRemove: vi.fn().mockResolvedValue(false) })
 
@@ -95,7 +110,7 @@ describe('WallEntryList', () => {
   describe('live removal (WL-UX-13, WL-A11Y-11)', () => {
     const [a, b, c] = [entry('a'), entry('b'), entry('c')]
     const list = (entries: WallEntry[]) => (
-      <WallEntryList entries={entries} viewerRole="Keeper" fallbackFocusId="fallback" onRemove={vi.fn()} />
+      <WallEntryList campaignId="c1" entries={entries} viewerRole="Keeper" fallbackFocusId="fallback" onRemove={vi.fn()} />
     )
     const removeButtonOf = (index: number) => within(screen.getAllByRole('listitem')[index]).getByRole('button', { name: /Remove/ })
 

@@ -8,9 +8,10 @@ import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-pane
 import { ActiveScenePlayerView } from './active-scene-player-view'
 
 // specs/scene-play/ux.md sections 4 and 14; SPL-UX-12, SPL-UX-13, SPL-UX-26, SPL-UX-35, SPL-A11Y-1, SPL-A11Y-4, SPL-A11Y-8.
-const { mockUseMine, wallProps } = vi.hoisted(() => ({
+const { mockUseMine, wallProps, panelProps } = vi.hoisted(() => ({
   mockUseMine: vi.fn(),
   wallProps: { current: null as null | Record<string, unknown> },
+  panelProps: { current: null as null | Record<string, unknown> },
 }))
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/scene-play/components/active-scene-wall/active-scene-wall', () => ({
@@ -27,6 +28,16 @@ vi.mock('@/scene-play/hooks/useHeldItems', () => ({
   useMyHeldItems: mockUseMine,
   useInvestigatorHeldItems: vi.fn(),
   useTakeBackItem: () => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false, error: null }),
+}))
+vi.mock('@/roll-requests/components/waiting-rolls-panel/waiting-rolls-panel', () => ({
+  WaitingRollsPanel: (props: Record<string, unknown>) => {
+    panelProps.current = props
+    return (
+      <section aria-labelledby="panel-stub-heading">
+        <h2 id="panel-stub-heading">Rolls waiting for you</h2>
+      </section>
+    )
+  },
 }))
 vi.mock('@/scene-play/hooks/useReveals', () => ({ useRevealFile: vi.fn() }))
 
@@ -100,6 +111,17 @@ describe('ActiveScenePlayerView', () => {
     expect(screen.queryByRole('article')).not.toBeInTheDocument()
   })
 
+  it('shows "Rolls waiting for you" after the location and before Investigators present (RR-UX-8)', () => {
+    renderView(present())
+
+    const h1 = screen.getByRole('heading', { level: 1, name: 'The Corbitt House' })
+    const panel = screen.getByRole('region', { name: 'Rolls waiting for you' })
+    const presentSection = screen.getByRole('region', { name: 'Investigators present' })
+    expect(h1.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(panel.compareDocumentPosition(presentSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(panelProps.current).toMatchObject({ campaignId: 'c1' })
+  })
+
   it('shows the Player\'s Items after "Revealed to {name}" with the short Given time (SPL-UX-52)', () => {
     mockUseMine.mockReturnValue({
       data: { investigatorName: 'Harvey Walters', items: [] },
@@ -153,6 +175,16 @@ describe('ActiveScenePlayerView', () => {
     expect(screen.queryByRole('heading', { level: 2, name: 'Investigators present' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(container.querySelector('dl, ul, time')).toBeNull()
+  })
+
+  it('shows "Rolls waiting for you" to a Player who is not present, before the Wall (RR-UX-8)', () => {
+    renderView({ kind: 'absent-player', title: 'The Corbitt House' })
+
+    const h1 = screen.getByRole('heading', { level: 1, name: 'The Corbitt House' })
+    const panel = screen.getByRole('region', { name: 'Rolls waiting for you' })
+    const wall = screen.getByRole('region', { name: 'Wall' })
+    expect(h1.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(panel.compareDocumentPosition(wall) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('shows the Wall last for a present Player and passes it the Player role with the add callback (SPL-UX-49)', () => {

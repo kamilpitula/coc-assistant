@@ -6,6 +6,7 @@ import { activeSceneQueryKeys } from '@/scene-play/services/activeSceneApi'
 import { cluesQueryKeys } from '@/scene-play/services/cluesApi'
 import { heldItemsQueryKeys } from '@/scene-play/services/itemHolderApi'
 import { sceneHistoryQueryKeys } from '@/scene-play/services/sceneHistoryApi'
+import { rollRequestQueryKeys } from '@/roll-requests/services/rollRequestApi'
 
 import { campaignQueryKeys } from './campaignApi'
 import { queryKeysForTopics } from './liveTopics'
@@ -66,6 +67,14 @@ describe('queryKeysForTopics', () => {
 
   it('refetches the own held Items for the myItems topic, and nothing else (PBI-SPL-003)', () => {
     expect(queryKeysForTopics('c1', ['myItems'])).toEqual([heldItemsQueryKeys.mine('c1')])
+  })
+
+  it('refetches every Roll Request query for the rollRequests topic (RR-UX-7, RR-UX-10)', () => {
+    expect(queryKeysForTopics('c1', ['rollRequests'])).toEqual([rollRequestQueryKeys.all('c1')])
+  })
+
+  it('refetches only the own waiting rolls for the myRequestedRolls topic (RR-UX-8)', () => {
+    expect(queryKeysForTopics('c1', ['myRequestedRolls'])).toEqual([rollRequestQueryKeys.mine('c1')])
   })
 
   it('ignores topics this client does not know yet, so a newer server never breaks it', () => {

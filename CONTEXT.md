@@ -255,6 +255,10 @@ _Avoid_: Inventory, equipment list. An Item is a different concept.
 A dice result the app produced, for creating or developing an Investigator or during play, naming what it was rolled for, the dice and every die face, the result, who produced it, and when. Results typed in before the app rolled dice are kept as Player-entered Roll Records.
 _Avoid_: Dice log, roll history
 
+**Experience check**:
+The mark a successful skill roll can earn for later improvement, per [character rules section 16.1](docs/game-rules/coc7_character_creation_and_development_rules.md#161-skill-experience-tick-during-play).
+_Avoid_: Skill tick
+
 **Creation lock**:
 A creation input that can no longer change because a Roll Record depends on it: the Creation Method after a characteristic roll, the age bracket after a Luck roll or an EDU improvement check, and EDU after an EDU improvement check.
 _Avoid_: Freeze, locked field

@@ -7,7 +7,7 @@ import { describeNewWallEntries, findNewWallEntries } from './wallEntryAnnouncem
 // specs/campaign-wall/ux.md section 4.5 (WL-UX-14): which entries are new, and the announcement copy.
 
 function entry(id: string, createdAt: string, author = 'Eleanor Hart'): WallEntry {
-  return { id, text: `Text ${id}`, visibility: 'Public', createdAt, authorDisplayName: author }
+  return { id, text: `Text ${id}`, visibility: 'Public', createdAt, authorDisplayName: author, kind: 'Text', rollRequestId: null }
 }
 
 const oldest = entry('a', '2026-10-16T18:00:00Z')

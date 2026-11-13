@@ -6,7 +6,7 @@ import { prependWallEntry, withoutWallEntry } from './wallEntryCache'
 
 // specs/campaign-wall/ux.md section 4.2 and 4.3: a new entry is inserted at the top, a removed one leaves the list.
 function entry(id: string): WallEntry {
-  return { id, text: id, visibility: 'Public', createdAt: '2026-10-16T19:02:00Z', authorDisplayName: 'Eleanor Hart' }
+  return { id, text: id, visibility: 'Public', createdAt: '2026-10-16T19:02:00Z', authorDisplayName: 'Eleanor Hart', kind: 'Text', rollRequestId: null }
 }
 
 const cache = {

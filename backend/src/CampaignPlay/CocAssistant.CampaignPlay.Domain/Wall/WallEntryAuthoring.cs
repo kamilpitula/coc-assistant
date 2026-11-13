@@ -5,6 +5,7 @@ public enum WallEntryAuthoringOutcome
 {
     Created,
     NotAMember,
+    NotAKeeper,
     PlayersCanOnlyAuthorPublic,
     InvalidText,
 }

@@ -5,6 +5,9 @@ import { CampaignHeader } from '@/campaign-play/components/campaign-header/campa
 import type { CampaignSection } from '@/campaign-play/services/campaignSection'
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import { useActiveScene } from '@/scene-play/hooks/useActiveScene'
+import { useActiveSceneRollRequests, useMyRequestedRolls } from '@/roll-requests/hooks/useRollRequests'
+import { useRequestedRollAnnouncement } from '@/roll-requests/hooks/useRequestedRollAnnouncement'
+import type { RollRequest } from '@/roll-requests/types/RollRequest'
 import { Header } from '@/shared/components/header/header'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
@@ -37,6 +40,7 @@ export function CampaignLayout({ campaignId, section, isOverview, children }: Ca
 function CampaignFrame({ campaignId, section, isOverview, children }: CampaignLayoutProps) {
   const campaign = useCampaign(campaignId)
   const activeScene = useActiveScene(campaignId, Boolean(campaign.data))
+  const badge = useWaitingRollBadge(campaignId, section, campaign.data?.role === 'Keeper', activeScene.data != null)
 
   if (campaign.isPending) {
     return (
@@ -66,10 +70,56 @@ function CampaignFrame({ campaignId, section, isOverview, children }: CampaignLa
 
   return (
     <>
-      <CampaignHeader campaign={campaign.data} section={section} isOverview={isOverview} hasActiveScene={activeScene.data != null} />
+      <div aria-live="assertive" aria-atomic="true" className="sr-only">
+        {badge.announcement}
+      </div>
+      <CampaignHeader
+        campaign={campaign.data}
+        section={section}
+        isOverview={isOverview}
+        hasActiveScene={activeScene.data != null}
+        waitingRollCount={badge.count}
+      />
       {children}
     </>
   )
+}
+
+/**
+ * The waiting count for the Active Scene tab with the assertive announcement for a Player's new rolls
+ * (specs/roll-requests/ux.md sections 7 and 8). The Keeper counts every Waiting roll of the Active Scene, a Player
+ * counts their own; both queries stay off until the Campaign, and so the role, has loaded.
+ */
+function useWaitingRollBadge(campaignId: string, section: CampaignSection, isKeeper: boolean | undefined, hasActiveScene: boolean) {
+  const keeperRolls = useActiveSceneRollRequests(campaignId, isKeeper === true)
+  const mine = useMyRequestedRolls(campaignId, isKeeper === false)
+  // The region is always in the DOM, so it is mounted before any text is placed in it (RR-A11Y-5).
+  const announcement = useRequestedRollAnnouncement(
+    isKeeper === false ? mine.data?.rolls : undefined,
+    isKeeper === false && mine.isFetchedAfterMount,
+    mine.data?.investigatorName ?? null,
+    section === 'active-scene',
+  )
+
+  return { count: waitingRollCount(hasActiveScene, isKeeper, keeperRolls.data, mine.data?.rolls.length), announcement: announcement.message }
+}
+
+/** The waiting count for the Active Scene tab: every Waiting roll for the Keeper, the own rolls for a Player. */
+function waitingRollCount(
+  hasActiveScene: boolean,
+  isKeeper: boolean | undefined,
+  keeperRequests: RollRequest[] | null | undefined,
+  mineCount: number | undefined,
+): number | undefined {
+  if (!hasActiveScene) {
+    return undefined
+  }
+
+  if (isKeeper === true) {
+    return keeperRequests?.flatMap((request) => request.requestedRolls).filter((roll) => roll.status === 'Waiting').length
+  }
+
+  return mineCount
 }
 
 /** The Campaign does not exist or the caller is not a member (specs/character-sheet/ux.md section 3.3). */

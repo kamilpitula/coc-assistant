@@ -123,6 +123,70 @@ public class CampaignLivePublicationTests
         Assert.Equal([keeperWallEntries, keeperWallEntries], liveUpdates.Published);
     }
 
+    private static readonly Guid FirstPlayerAccountId = Guid.Parse("aaaaaaaa-0000-0000-0000-00000000000d");
+    private static readonly Guid SecondPlayerAccountId = Guid.Parse("aaaaaaaa-0000-0000-0000-00000000000e");
+
+    [Fact]
+    public void Given_a_public_roll_request_When_choosing_publications_Then_the_campaign_hears_roll_requests_and_each_distinct_player_hears_my_requested_rolls()
+    {
+        var publications = CampaignLivePublicationPolicy.ForRollRequestChanged(
+            CampaignId,
+            WallEntryVisibility.Public,
+            [FirstPlayerAccountId, SecondPlayerAccountId, FirstPlayerAccountId]);
+
+        Assert.Equal(
+            Describe([
+                new LivePublication(LiveAudience.Campaign(CampaignId), [CampaignDataTopic.RollRequests]),
+                new LivePublication(LiveAudience.Account(FirstPlayerAccountId), [CampaignDataTopic.MyRequestedRolls]),
+                new LivePublication(LiveAudience.Account(SecondPlayerAccountId), [CampaignDataTopic.MyRequestedRolls]),
+            ]),
+            Describe(publications));
+    }
+
+    [Theory]
+    [InlineData(WallEntryVisibility.KeeperOnly)]
+    [InlineData((WallEntryVisibility)99)]
+    public void Given_a_non_public_roll_request_When_choosing_publications_Then_only_the_keeper_hears_roll_requests(WallEntryVisibility visibility)
+    {
+        var publications = CampaignLivePublicationPolicy.ForRollRequestChanged(
+            CampaignId, visibility, [FirstPlayerAccountId]);
+
+        Assert.Equal(
+            Describe([new LivePublication(LiveAudience.CampaignKeeper(CampaignId), [CampaignDataTopic.RollRequests])]),
+            Describe(publications));
+        Assert.DoesNotContain(publications, publication => publication.Audience.Kind == LiveAudienceKind.Campaign);
+        Assert.DoesNotContain(publications, publication => publication.Topics.Contains(CampaignDataTopic.MyRequestedRolls));
+    }
+
+    [Fact]
+    public async Task Given_a_public_roll_request_When_published_Then_the_campaign_and_each_affected_player_are_told()
+    {
+        var liveUpdates = new RecordingCampaignLiveUpdates();
+        var publisher = new PublishRollRequestChanged(liveUpdates);
+
+        await publisher.PublishAsync(CampaignId, WallEntryVisibility.Public, [FirstPlayerAccountId], CancellationToken.None);
+
+        Assert.Equal(
+            [
+                new PublishedCampaignDataChanged(LiveAudience.Campaign(CampaignId), CampaignId, nameof(CampaignDataTopic.RollRequests)),
+                new PublishedCampaignDataChanged(LiveAudience.Account(FirstPlayerAccountId), CampaignId, nameof(CampaignDataTopic.MyRequestedRolls)),
+            ],
+            liveUpdates.Published);
+    }
+
+    [Fact]
+    public async Task Given_a_non_public_roll_request_When_published_Then_only_the_keeper_group_is_told()
+    {
+        var liveUpdates = new RecordingCampaignLiveUpdates();
+        var publisher = new PublishRollRequestChanged(liveUpdates);
+
+        await publisher.PublishAsync(CampaignId, (WallEntryVisibility)99, [FirstPlayerAccountId], CancellationToken.None);
+
+        Assert.Equal(
+            [new PublishedCampaignDataChanged(LiveAudience.CampaignKeeper(CampaignId), CampaignId, nameof(CampaignDataTopic.RollRequests))],
+            liveUpdates.Published);
+    }
+
     [Fact]
     public async Task Given_each_non_approval_investigator_event_When_handled_Then_the_keeper_and_the_owner_are_published_to()
     {
