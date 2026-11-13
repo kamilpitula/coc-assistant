@@ -531,6 +531,11 @@ test.describe('Investigator lifecycle', () => {
           }
         }
         for (const [code] of CHARACTERISTIC_DICE) {
+          // EDU's value is post-age-effects and folds in its improvement gains, so no single roll record fixes it.
+          if (code === 'EDU') {
+            continue
+          }
+
           const formula = body.rules.standardRolling[code]
           const current = body.characterSheet.rollRecords.find(
             (record) => record.purpose === `Characteristic:${code}` && !record.isReplaced,
