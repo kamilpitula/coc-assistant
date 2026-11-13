@@ -137,6 +137,27 @@ describe('RollRequestCard', () => {
     expect(screen.queryByText('Experience check earned')).not.toBeInTheDocument()
   })
 
+  it('marks a hidden card with "Keeper only" and "(hidden roll)" on every row (RR-UX-18, RR-A11Y-14)', () => {
+    mockUseRollRequest.mockReturnValue({
+      data: { ...request, visibility: 'KeeperOnly', requestedRolls: [rolledRoll()] },
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    })
+    render(<RollRequestCard campaignId="c1" rollRequestId="r1" requestedByDisplayName="Eleanor Hart" />)
+
+    const article = screen.getByRole('article', { name: 'Spot Hidden roll' })
+    expect(within(article).getByText('Keeper only')).toBeInTheDocument()
+    expect(within(article).getByText('Rolled by Ana Duarte (hidden roll)')).toBeInTheDocument()
+  })
+
+  it('shows no Keeper-only marks on a Public card (RR-UX-18)', () => {
+    loaded()
+
+    expect(screen.queryByText('Keeper only')).not.toBeInTheDocument()
+    expect(screen.queryByText(/\(hidden roll\)/)).not.toBeInTheDocument()
+  })
+
   it('shows no check line for a rolled Luck row (RR-UX-11)', () => {
     mockUseRollRequest.mockReturnValue({
       data: {

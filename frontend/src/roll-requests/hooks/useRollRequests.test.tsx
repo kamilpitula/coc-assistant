@@ -67,6 +67,7 @@ describe('roll request queries and mutations', () => {
     await act(async () => {
       await result.current.mutateAsync({
         target: created.target,
+        visibility: 'Public',
         difficulty: 'Regular',
         bonusDice: 0,
         penaltyDice: 0,

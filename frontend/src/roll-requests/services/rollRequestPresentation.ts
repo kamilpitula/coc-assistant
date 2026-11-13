@@ -1,5 +1,5 @@
 import { skillDisplayName } from '@/campaign-play/services/skillValidation'
-import type { PercentileOutcome, RollRequestTarget } from '@/roll-requests/types/RollRequest'
+import type { PercentileOutcome, RollRequest, RollRequestTarget } from '@/roll-requests/types/RollRequest'
 
 /** The dice line of a row (specs/roll-requests/ux.md section 11). */
 export function describeDice(bonusDice: number, penaltyDice: number): string {
@@ -59,4 +59,23 @@ export function joinInvestigatorNames(names: string[]): string {
   }
 
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
+/**
+ * The hidden-roll status line from the 201 response (specs/roll-requests/ux.md section 3.1, RR-UX-18): "{target}
+ * hidden roll: {name} rolled {result}: {outcome}; ...". Investigators appear in the request's row order, and an
+ * unnamed Investigator is "Unnamed Investigator".
+ */
+export function hiddenRollStatus(request: RollRequest): string {
+  const parts = request.requestedRolls.map((roll) => {
+    const record = roll.rolls[0]
+    const result = record?.result
+    const outcome =
+      record?.percentile === null || record?.percentile === undefined
+        ? `${result}`
+        : `${result}: ${describeOutcome(record.percentile.successLevel, record.percentile.isSuccess, roll.difficulty)}`
+    return `${roll.investigatorName ?? 'Unnamed Investigator'} rolled ${outcome}`
+  })
+
+  return `${rollTargetName(request.target)} hidden roll: ${parts.join('; ')}.`
 }

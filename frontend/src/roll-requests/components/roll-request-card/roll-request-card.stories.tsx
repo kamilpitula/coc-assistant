@@ -42,12 +42,12 @@ const rolled = {
   ],
 } as const
 
-function requestWith(rolls: readonly unknown[]): RollRequest {
+function requestWith(rolls: readonly unknown[], visibility: RollRequest['visibility'] = 'Public'): RollRequest {
   return {
     id: 'r1',
     target: { kind: 'Skill', skill: 'Spot Hidden', specialization: null, characteristic: null },
     message: 'Something moves upstairs.',
-    visibility: 'Public',
+    visibility,
     difficulty: 'Regular',
     bonusDice: 0,
     penaltyDice: 0,
@@ -109,6 +109,10 @@ export const PenaltyDieWithTwoTens: Story = {
         },
       ]),
     ),
+}
+
+export const Hidden: Story = {
+  render: () => hosted(requestWith([{ ...rolled, rolls: [{ ...rolled.rolls[0], rolledBy: 'The Keeper' }] }], 'KeeperOnly')),
 }
 
 export const Loading: Story = { render: () => hosted(undefined) }
