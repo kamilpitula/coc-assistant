@@ -1,6 +1,6 @@
 ---
 id: PBI-DICE-005
-status: todo
+status: done
 blocked_by: [PBI-DICE-001, PBI-DICE-002]
 ---
 
@@ -28,12 +28,12 @@ Read: [roll-requests spec](../../../specs/roll-requests/spec.md); [dice spec](..
 - Live updates use the closed topic set; no new hub methods.
 
 ## Verification
-- [ ] The UX specification and the design record are recorded and linked.
-- [ ] The resolver has unit tests for every Success Level, Difficulty, and Bonus and Penalty Dice, named after their rule sections.
-- [ ] The Keeper creates a Public Roll Request; targeted Players see it in the panel, the badge, and an announcement without reloading.
-- [ ] The Player or the Keeper rolls it once; a second roll returns 409; the card shows every face, the target values, and the Success Level to every connected Campaign Member without reloading.
-- [ ] Removing a `RollRequest` Wall Entry returns 409.
-- [ ] Unit tests cover the use cases, authorization, and projections; Storybook covers the panel and card; Playwright E2E covers the roll-requests scenarios "Keeper requests a skill roll from two Investigators", "A Player rolls a Requested Roll", "The Keeper rolls for an absent Player", "Per-Investigator Difficulty and Penalty Die", "A skill the Investigator lacks uses its catalog base value", "A Player cannot roll for another Investigator", "A Requested Roll is rolled only once", "A successful skill roll earns an experience check", "A success with a Bonus Die earns no experience check", "A Roll Request needs an Active Scene", "Only Investigators present can be targeted", "A Roll Request card cannot be removed", and "Players cannot create Roll Requests".
+- [x] The UX specification and the design record are recorded and linked. (specs/roll-requests/ux.md, docs/dice/issues/05-request-a-roll-in-the-active-scene.design.md, ADR 0032, ADR 0033)
+- [x] The resolver has unit tests for every Success Level, Difficulty, and Bonus and Penalty Dice, named after their rule sections. (GameRules PercentileRollingTests, ExperienceCheckTests)
+- [x] The Keeper creates a Public Roll Request; targeted Players see it in the panel, the badge, and an announcement without reloading. (E2E "Keeper requests a skill roll from two Investigators", 13/13 green)
+- [x] The Player or the Keeper rolls it once; a second roll returns 409; the card shows every face, the target values, and the Success Level to every connected Campaign Member without reloading. (E2E roll/once/check/card scenarios, 13/13 green)
+- [x] Removing a `RollRequest` Wall Entry returns 409. (E2E "A Roll Request card cannot be removed", WallEntryServiceTests)
+- [x] Unit tests cover the use cases, authorization, and projections; Storybook covers the panel and card; Playwright E2E covers the roll-requests scenarios "Keeper requests a skill roll from two Investigators", "A Player rolls a Requested Roll", "The Keeper rolls for an absent Player", "Per-Investigator Difficulty and Penalty Die", "A skill the Investigator lacks uses its catalog base value", "A Player cannot roll for another Investigator", "A Requested Roll is rolled only once", "A successful skill roll earns an experience check", "A success with a Bonus Die earns no experience check", "A Roll Request needs an Active Scene", "Only Investigators present can be targeted", "A Roll Request card cannot be removed", and "Players cannot create Roll Requests". (13/13 green; the exact "server rolls 25" dice mapping stays unit-test-only, see Follow-ups)
 
 ## Refinement Protocol
 A change to Roll Requests updates the roll-requests spec and ux.md, the campaign-play Wall Entry contract when the card changes, the design record, and tests together.
@@ -41,3 +41,7 @@ A change to Roll Requests updates the roll-requests spec and ux.md, the campaign
 ## Follow-ups
 - Cancelling waiting rolls on Finish Scene and on removing an Investigator present, and the Finish-dialog count, are deferred (design record, Human decisions Q4) -> PBI-DICE-007
 - UX prototype kept as evidence on the local, never-merged branch `prototype/dice-005-roll-requests` (`specs/roll-requests/prototype/roll-requests-prototype.html`); verdict in [ux.md section 12](../../../specs/roll-requests/ux.md#12-prototype-validation).
+- The exact "server rolls 25" dice mapping (faces to outcome) is covered by the resolver unit tests only; the running app's server dice are random per ADR 0030, so E2E asserts card outcomes through the result oracle instead.
+- Known unrelated integration-test issues, left untouched: 6 AzureBlobHandoutFileStoreTests need Azurite, 1 flaky RevealApiTests give-wins-the-race test passes in isolation.
+- E2E sign-in is flaky under load (MSAL redirect stalls, Docker Desktop stalls against coc-mock-oauth2); consider hardening the `signIn` fixture's completion check so a redirect back without a completed login fails fast with a clear cause.
+- Accepted deviations from the decision record: ScenarioPreparation tests use a local `ScriptedRoller` instead of the shared `ScriptedDiceRoller`; the form disables (rather than hides) Difficulty and dice for Luck with an explanatory hint (ux.md RR-UX-3); the card shows the requester name from the Wall Entry author; the E2E `requestRollViaUi` waits up to 15 s locally for the request status (slow first writes); the Keeper list and mine reads carry `createdAt` (design record Revisions, 2026-11-12).
