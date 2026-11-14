@@ -1,6 +1,6 @@
 namespace CocAssistant.ScenePlay.Application;
 
-/// <summary>A played Scene as the Keeper sees it (specs/scene-play/spec.md, Scene History): every Reveal newest first.</summary>
+/// <summary>A played Scene as the Keeper sees it (specs/scene-play/spec.md, Scene History): every Reveal newest first, and every Roll Request newest first.</summary>
 public sealed record KeeperHistorySceneView(
     Guid SceneId,
     Guid ScenarioId,
@@ -9,11 +9,12 @@ public sealed record KeeperHistorySceneView(
     DateTimeOffset? StartedAt,
     DateTimeOffset? FinishedAt,
     IReadOnlyList<InvestigatorPresentView> InvestigatorsPresent,
-    IReadOnlyList<KeeperRevealView> Reveals);
+    IReadOnlyList<KeeperRevealView> Reveals,
+    IReadOnlyList<RollRequestView> RollRequests);
 
 /// <summary>
-/// A played Scene as a Player sees it: its own Reveals only, newest first. It carries no Scenario id, no present list, no
-/// recipients, and no subject ids (specs/scene-play/spec.md, Scene History).
+/// A played Scene as a Player sees it: its own Reveals and the Public Roll Requests, each newest first. It carries no Scenario id, no
+/// present list, no recipients, and no subject ids (specs/scene-play/spec.md, Scene History).
 /// </summary>
 public sealed record PlayerHistorySceneView(
     Guid SceneId,
@@ -21,7 +22,8 @@ public sealed record PlayerHistorySceneView(
     string Title,
     DateTimeOffset? StartedAt,
     DateTimeOffset? FinishedAt,
-    IReadOnlyList<PlayerRevealView> Reveals);
+    IReadOnlyList<PlayerRevealView> Reveals,
+    IReadOnlyList<RollRequestView> RollRequests);
 
 /// <summary>How reading the Scene History ended, by who asked and what they may see.</summary>
 public abstract record SceneHistoryRead;

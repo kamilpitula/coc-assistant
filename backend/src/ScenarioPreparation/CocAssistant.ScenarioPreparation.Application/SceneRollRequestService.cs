@@ -113,6 +113,13 @@ public class SceneRollRequestService
             .ToList();
     }
 
+    /// <summary>The Campaign's Roll Requests, oldest first; an empty list when the Campaign has none.</summary>
+    public async Task<IReadOnlyList<RollRequestView>> ListForCampaignAsync(Guid campaignId, CancellationToken cancellationToken)
+    {
+        var requests = await _requests.ListForCampaignAsync(campaignId, cancellationToken);
+        return requests.Select(ToView).ToList();
+    }
+
     /// <summary>
     /// Rolls the Investigator's Requested Roll with the server's dice. Only a roll of the Active Scene can roll; a lost
     /// race reports the roll as already waited on, never retried (ADR 0032).

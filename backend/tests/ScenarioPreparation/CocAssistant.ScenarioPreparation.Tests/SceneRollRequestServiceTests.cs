@@ -101,6 +101,9 @@ public class SceneRollRequestServiceTests : IDisposable
         public Task<IReadOnlyList<RollRequest>> ListTrackedForSceneAsync(Guid campaignId, Guid sceneId, CancellationToken cancellationToken) =>
             inner.ListTrackedForSceneAsync(campaignId, sceneId, cancellationToken);
 
+        public Task<IReadOnlyList<RollRequest>> ListForCampaignAsync(Guid campaignId, CancellationToken cancellationToken) =>
+            inner.ListForCampaignAsync(campaignId, cancellationToken);
+
         public Task SaveChangesAsync(CancellationToken cancellationToken) =>
             throw new RollRequestConcurrencyException(new InvalidOperationException("Lost the race."));
     }
@@ -242,6 +245,24 @@ public class SceneRollRequestServiceTests : IDisposable
         var listed = await Service(context).ListForActiveSceneAsync(_builder.CampaignId, CancellationToken.None);
 
         Assert.Equal([first.Request!.Id, second.Request!.Id], listed.Select(request => request.Id));
+    }
+
+    [Fact]
+    public async Task Given_requests_in_two_campaigns_When_listing_for_the_campaign_Then_only_that_campaigns_requests_come_oldest_first_with_rolls()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var first = await CreateAsync(sceneId);
+        _builder.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        var second = await CreateAsync(sceneId, [Input(Lucy, 70)]);
+        var (_, otherSceneId) = await ActiveSceneAsync(campaignId: _builder.OtherCampaignOfSameKeeperId);
+        await CreateAsync(otherSceneId, campaignId: _builder.OtherCampaignOfSameKeeperId);
+
+        using var context = _builder.Fixture.CreateContext();
+        var listed = await Service(context).ListForCampaignAsync(_builder.CampaignId, CancellationToken.None);
+
+        Assert.Equal([first.Request!.Id, second.Request!.Id], listed.Select(request => request.Id));
+        Assert.Equal(Harvey, Assert.Single(listed[0].RequestedRolls).InvestigatorId);
+        Assert.Equal(70, Assert.Single(listed[1].RequestedRolls).TargetValue);
     }
 
     [Fact]

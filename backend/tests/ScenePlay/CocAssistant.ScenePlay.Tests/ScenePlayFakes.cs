@@ -333,8 +333,13 @@ public sealed class RecordingRollRequestSignals : IRollRequestSignals
 
 public sealed class FakeAccountNames : IAccountNames
 {
+    public List<string> Calls { get; } = [];
+
     public Dictionary<Guid, string> Names { get; } = [];
 
-    public Task<IReadOnlyDictionary<Guid, string>> GetDisplayNamesAsync(IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlyDictionary<Guid, string>>(accountIds.Where(Names.ContainsKey).ToDictionary(id => id, id => Names[id]));
+    public Task<IReadOnlyDictionary<Guid, string>> GetDisplayNamesAsync(IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(GetDisplayNamesAsync));
+        return Task.FromResult<IReadOnlyDictionary<Guid, string>>(accountIds.Where(Names.ContainsKey).ToDictionary(id => id, id => Names[id]));
+    }
 }

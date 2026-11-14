@@ -127,7 +127,7 @@ public interface ISceneWallEntries
     Task AddRollRequestAsync(Guid campaignId, Guid keeperAccountId, Guid rollRequestId, RollRequestVisibility visibility, CancellationToken cancellationToken);
 }
 
-/// <summary>A played Scene as the provider returns it: the fields history shows, the ids of the Investigators present, and its Reveals.</summary>
+/// <summary>A played Scene as the provider returns it: the fields history shows, the ids of the Investigators present, its Reveals, and its Roll Requests.</summary>
 public sealed record PlayedScene(
     Guid SceneId,
     Guid ScenarioId,
@@ -136,7 +136,8 @@ public sealed record PlayedScene(
     DateTimeOffset? StartedAt,
     DateTimeOffset? FinishedAt,
     IReadOnlyList<Guid> InvestigatorsPresent,
-    IReadOnlyList<SceneRevealRecord> Reveals);
+    IReadOnlyList<SceneRevealRecord> Reveals,
+    IReadOnlyList<RollRequestRecord> RollRequests);
 
 /// <summary>
 /// Consumer-owned query port onto played Scenes (PBI-SPL-004 D1). It performs no authorization: <see cref="SceneHistoryService"/>

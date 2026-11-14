@@ -164,6 +164,20 @@ public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactor
         var itemId = (await item.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
         var link = await client.SendAsync(BuildRequest(HttpMethod.Post, $"{scenes}/{activeSceneId}/item-links", KeeperOid, new { itemId }));
         link.EnsureSuccessStatusCode();
+        // A KeeperOnly Roll Request with a secret message on the Active Scene: a Player's Scene History read must not
+        // carry it, which the no-secret assertion below covers through the existing GET scene-history row.
+        var rollRequest = await client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/active-scene/roll-requests", KeeperOid,
+            new
+            {
+                target = new { kind = "Luck" },
+                message = PreparedScenarioSeed.SecretPrefix + " the keeper whispers",
+                visibility = "KeeperOnly",
+                difficulty = "Regular",
+                bonusDice = 0,
+                penaltyDice = 0,
+                investigators = new[] { new { investigatorId } },
+            }));
+        rollRequest.EnsureSuccessStatusCode();
         return new Seeded(campaignId, prepared.SceneId, revealId, investigatorId, itemId);
     }
 

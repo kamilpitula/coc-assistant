@@ -42,7 +42,8 @@ public class SceneHistoryController : ScenePlayControllerBase
             view.StartedAt,
             view.FinishedAt,
             view.InvestigatorsPresent.Select(investigator => new InvestigatorPresentResponse(investigator.Id, investigator.Name)).ToList(),
-            view.Reveals.Select(RevealMapping.ToResponse).ToList());
+            view.Reveals.Select(RevealMapping.ToResponse).ToList(),
+            view.RollRequests.Select(RollRequestMapping.ToResponse).ToList());
 
     private static PlayerHistorySceneResponse ToResponse(PlayerHistorySceneView view) =>
         new(
@@ -51,5 +52,6 @@ public class SceneHistoryController : ScenePlayControllerBase
             view.Title,
             view.StartedAt,
             view.FinishedAt,
-            view.Reveals.Select(RevealMapping.ToResponse).ToList());
+            view.Reveals.Select(RevealMapping.ToResponse).ToList(),
+            view.RollRequests.Select(RollRequestMapping.ToResponse).ToList());
 }
