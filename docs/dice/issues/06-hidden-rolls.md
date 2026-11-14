@@ -1,6 +1,6 @@
 ---
 id: PBI-DICE-006
-status: todo
+status: done
 blocked_by: [PBI-DICE-005]
 ---
 
@@ -23,9 +23,9 @@ Let the Keeper make a Keeper-only Roll Request that the server rolls at once, so
 Read: [roll-requests spec](../../../specs/roll-requests/spec.md), Hidden roll, Visibility of results, and Live updates; [campaign-play spec](../../../specs/campaign-play/spec.md), Wall Entry visibility.
 
 ## Verification
-- [ ] A Keeper-only Roll Request is Rolled at creation with the Keeper as roller.
-- [ ] No Player receives the card, its results, a panel entry, a badge, or a live signal for it.
-- [ ] Unit tests cover the use case and the publication audience; Playwright E2E covers the roll-requests scenarios "A hidden roll is rolled at once and stays Keeper-only" and "A Player cannot read a hidden Roll Request".
+- [x] A Keeper-only Roll Request is Rolled at creation with the Keeper as roller.
+- [x] No Player receives the card, its results, a panel entry, a badge, or a live signal for it.
+- [x] Unit tests cover the use case and the publication audience; Playwright E2E covers the roll-requests scenarios "A hidden roll is rolled at once and stays Keeper-only" and "A Player cannot read a hidden Roll Request".
 
 ## Refinement Protocol
 A change to hidden rolls updates the roll-requests spec and ux.md and tests together.
