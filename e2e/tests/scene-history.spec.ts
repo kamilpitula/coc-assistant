@@ -1,5 +1,6 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type APIRequestContext, type Page } from '@playwright/test'
 
+import { API_ORIGIN } from '../fixtures/investigators'
 import { campaignNav } from '../fixtures/overview'
 import { PREPARED } from '../fixtures/prepared-scenario'
 import {
@@ -14,6 +15,7 @@ import {
   startSceneViaApi,
   type Table,
 } from '../fixtures/scene-play'
+import { requestRollViaApi, rollRequestCard } from '../fixtures/roll-requests'
 
 /**
  * Traces to specs/scene-play/spec.md Scenario "Players see the Scene History filtered to their Clues" (spec.md 192-196)
@@ -165,4 +167,133 @@ test.describe('Scene History', () => {
       await closeTable(table)
     }
   })
+
+  test('A Public Roll Request appears in the Scene History for a Player and the Keeper', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'HistoryPublicRoll')
+    const { campaignId } = table.prepared
+
+    try {
+      await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
+      await revealHandoutViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneHandoutIds[FRONT_DOOR], [table.harveyId])
+      const requestId = await requestRollViaApi(page.request, table.keeperBearer, campaignId, {
+        target: 'Spot Hidden',
+        investigatorIds: [table.lucyId],
+      })
+
+      const harveyHistory = table.harvey.page.waitForResponse(
+        (response) => response.url().endsWith('/scene-history') && response.request().method() === 'GET',
+      )
+      await table.harvey.page.goto(sceneHistoryPath(campaignId))
+      await harveyHistory
+      await page.goto(sceneHistoryPath(campaignId))
+
+      await test.step("SPL-UX-74: Harvey sees Lucy's Public roll with the new Player description", async () => {
+        await expect(
+          table.harvey.page.getByText(
+            `Every Scene played in this Campaign, what reached ${HARVEY}, and the Public rolls, newest first.`,
+          ),
+        ).toBeVisible()
+        const scene = table.harvey.page.getByRole('region', { name: PREPARED.firstSceneTitle })
+        await expect(scene.getByRole('heading', { level: 3, name: 'Spot Hidden roll' })).toBeVisible()
+        await expect(scene).toContainText(LUCY)
+      })
+
+      await test.step('SPL-UX-73: the Keeper sees the newer card above the Reveal', async () => {
+        const scene = page.getByRole('region', { name: PREPARED.firstSceneTitle })
+        await expect(scene.getByRole('heading', { level: 3, name: 'Spot Hidden roll' })).toBeVisible()
+        expect(await scene.getByRole('heading', { level: 3 }).allTextContents()).toEqual(['Spot Hidden roll', FRONT_DOOR])
+      })
+
+      await test.step("SPL-UX-77: the rolled result arrives on Harvey's page without reloading", async () => {
+        await rollRequestedRollViaApi(page.request, table.keeperBearer, campaignId, requestId, table.lucyId)
+
+        const card = rollRequestCard(table.harvey.page, 'Spot Hidden')
+        await expect(card.getByText(/Rolled by /)).toBeVisible()
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('A Keeper-only roll appears only for the Keeper', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'HistoryHiddenRoll')
+    const { campaignId } = table.prepared
+
+    try {
+      await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
+      const requestId = await requestRollViaApi(page.request, table.keeperBearer, campaignId, {
+        target: 'Psychology',
+        investigatorIds: [table.harveyId],
+        visibility: 'KeeperOnly',
+      })
+      await page.goto(sceneHistoryPath(campaignId))
+
+      await test.step('SPL-UX-74: the Keeper sees the hidden roll with its badge', async () => {
+        const card = rollRequestCard(page, 'Psychology')
+        await expect(card).toBeVisible()
+        await expect(card.getByText('Keeper only')).toBeVisible()
+      })
+
+      await test.step("RR-UX-19: the Player sees no card and no Keeper-only data in the history's response", async () => {
+        const historyResponse = table.harvey.page.waitForResponse(
+          (response) => response.url().endsWith('/scene-history') && response.request().method() === 'GET',
+        )
+        await table.harvey.page.goto(sceneHistoryPath(campaignId))
+        const body = await (await historyResponse).text()
+        expect(body).not.toContain(requestId)
+        expect(body).not.toContain('KeeperOnly')
+
+        await expect(rollRequestCard(table.harvey.page, 'Psychology')).toHaveCount(0)
+        const scene = table.harvey.page.getByRole('region', { name: PREPARED.firstSceneTitle })
+        await expect(scene).toContainText(`Nothing from this Scene reached ${HARVEY}.`)
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('Cancelled rolls are hidden in the Scene History', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'HistoryCancelled')
+    const { campaignId } = table.prepared
+
+    try {
+      await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
+      await requestRollViaApi(page.request, table.keeperBearer, campaignId, { target: 'Spot Hidden', investigatorIds: [table.harveyId] })
+      await table.harvey.page.goto(sceneHistoryPath(campaignId))
+      const scene = table.harvey.page.getByRole('region', { name: PREPARED.firstSceneTitle })
+      await expect(scene.getByRole('heading', { level: 3, name: 'Spot Hidden roll' })).toBeVisible()
+
+      await test.step("SPL-UX-75: finishing cancels the Waiting roll and its emptied card leaves Harvey's history", async () => {
+        await finishActiveSceneViaApi(page.request, table.keeperBearer, campaignId)
+
+        await expect(scene.getByRole('heading', { level: 3, name: 'Spot Hidden roll' })).toHaveCount(0)
+        await expect(scene).toContainText(`Nothing from this Scene reached ${HARVEY}.`)
+      })
+
+      await test.step('SPL-UX-76: the Keeper sees the cancelled-only empty sentence', async () => {
+        await page.goto(sceneHistoryPath(campaignId))
+        const keeperScene = page.getByRole('region', { name: PREPARED.firstSceneTitle })
+
+        await expect(keeperScene).toContainText('Nothing was revealed or rolled in this Scene.')
+        await expect(keeperScene.getByRole('heading', { level: 3, name: 'Spot Hidden roll' })).toHaveCount(0)
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
 })
+
+/** Rolls the Investigator's Requested Roll through the API as the Keeper. */
+async function rollRequestedRollViaApi(
+  request: APIRequestContext,
+  keeperBearer: string,
+  campaignId: string,
+  rollRequestId: string,
+  investigatorId: string,
+): Promise<void> {
+  const response = await request.post(
+    `${API_ORIGIN}/api/campaigns/${campaignId}/roll-requests/${rollRequestId}/requested-rolls/${investigatorId}/roll`,
+    { headers: { Authorization: keeperBearer } },
+  )
+  expect(response.status(), 'roll the Requested Roll through the API').toBe(200)
+}
