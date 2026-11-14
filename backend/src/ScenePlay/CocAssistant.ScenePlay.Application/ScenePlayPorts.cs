@@ -46,8 +46,15 @@ public enum StartSceneOutcome
     Conflict,
 }
 
-/// <summary>The started Scene, and the Scene finished with it, when <see cref="StartSceneOutcome.Started"/>; otherwise null.</summary>
-public sealed record StartSceneResult(StartSceneOutcome Outcome, PlayableScene? Started, PlayableScene? Finished);
+/// <summary>A Requested Roll a Scene exit cancelled: its request, its Investigator, and the request's visibility for the live signal.</summary>
+public sealed record CancelledRequestedRoll(Guid RollRequestId, Guid InvestigatorId, RollRequestVisibility Visibility);
+
+/// <summary>The started Scene, and the Scene finished with it, when <see cref="StartSceneOutcome.Started"/>; otherwise null. The cancelled rolls are the finished Scene's Waiting Requested Rolls.</summary>
+public sealed record StartSceneResult(
+    StartSceneOutcome Outcome,
+    PlayableScene? Started,
+    PlayableScene? Finished,
+    IReadOnlyList<CancelledRequestedRoll> CancelledRolls);
 
 /// <summary>How finishing the Active Scene ended. NotFound is for a caller who is not the Keeper.</summary>
 public enum FinishSceneOutcome
@@ -58,8 +65,11 @@ public enum FinishSceneOutcome
     Conflict,
 }
 
-/// <summary>The finished Scene when <see cref="FinishSceneOutcome.Finished"/>, otherwise null.</summary>
-public sealed record FinishSceneResult(FinishSceneOutcome Outcome, PlayableScene? Finished);
+/// <summary>The finished Scene when <see cref="FinishSceneOutcome.Finished"/>, otherwise null. The cancelled rolls are its Waiting Requested Rolls.</summary>
+public sealed record FinishSceneResult(
+    FinishSceneOutcome Outcome,
+    PlayableScene? Finished,
+    IReadOnlyList<CancelledRequestedRoll> CancelledRolls);
 
 /// <summary>How changing the Investigators present ended. NotFound is for a caller who is not the Keeper.</summary>
 public enum ChangePresentOutcome
@@ -73,8 +83,11 @@ public enum ChangePresentOutcome
     Conflict,
 }
 
-/// <summary>The Active Scene when <see cref="ChangePresentOutcome.Replaced"/>, otherwise null.</summary>
-public sealed record ChangePresentResult(ChangePresentOutcome Outcome, PlayableScene? Scene);
+/// <summary>The Active Scene when <see cref="ChangePresentOutcome.Replaced"/>, otherwise null. The cancelled rolls are the Waiting Requested Rolls of the Investigators no longer present.</summary>
+public sealed record ChangePresentResult(
+    ChangePresentOutcome Outcome,
+    PlayableScene? Scene,
+    IReadOnlyList<CancelledRequestedRoll> CancelledRolls);
 
 /// <summary>
 /// Consumer-owned command port onto the Scene aggregate (ADR 0024). It performs no authorization: <see cref="ActiveSceneService"/>

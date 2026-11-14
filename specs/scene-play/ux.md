@@ -62,6 +62,7 @@ Choose the Investigators taking part in this Scene. (hint)
   - Otherwise, the link is "Back to the Scene".
 - **Active Scene notice:** the bordered region with its `h2` is shown only while another Scene is Active. It comes before the fieldset in DOM and visual order.
   - It holds one checkbox, "Finish {Active title} first". The checkbox is never pre-checked.
+  - It shows a hint with the number of waiting rolls that finishing will cancel (PBI-DICE-007, section 24.3).
   - The page never finishes a Scene without this explicit choice.
 - **Investigators present:**
   - **Markup:** a `fieldset` with the `legend` "Investigators present". The hint is connected with `aria-describedby`.
@@ -120,7 +121,7 @@ Investigators present                            (h2)  [Change]
     - Every Approved Investigator is listed, and the present ones are pre-checked.
     - The buttons are "Save" ("Saving..." while busy, disabled) and "Cancel".
     - Focus moves to the first checkbox.
-  - **Save success:** the view returns, the status says "Investigators present saved.", and focus moves to "Change".
+  - **Save success:** the view returns, the status says "Investigators present saved.", and focus moves to "Change". When the save cancelled waiting rolls, the status adds their count (PBI-DICE-007, section 24.2).
   - **Cancel:** discards without confirmation; focus moves to "Change".
   - **Errors:**
     - **Empty selection:** "Choose at least one Investigator present." with focus on the first checkbox.
@@ -129,7 +130,7 @@ Investigators present                            (h2)  [Change]
     - **Any other failure:** "We couldn't save who is present. Try again."
     - Every message is an `Alert` with `role=alert`.
 - **Finish (`finish-scene-dialog`, `AlertDialog`):** opened from "Finish Scene", an outline button with destructive text.
-  - **Content:** the title is "Finish {title}?" and the description is "A Finished Scene can't be started again. Players will see that it has finished."
+  - **Content:** the title is "Finish {title}?" and the description is "A Finished Scene can't be started again. Players will see that it has finished." The description adds the count of waiting rolls that will be cancelled (PBI-DICE-007, section 24.1).
   - **Buttons:** "Cancel" and "Finish Scene". While busy the confirm button reads "Finishing...", and both buttons are disabled.
   - **Success:** the dialog closes and the page shows the no-Active-Scene state (section 4.3) with the status "{title} finished.". Focus moves to the `h1`.
   - **409 (already finished elsewhere):** the dialog closes, the page refetches, and the status says "This Scene was already finished.". Focus moves to the `h1`.
@@ -234,6 +235,8 @@ Not present:  The Corbitt House is in progress. You aren't taking part in it.
 | Load errors | We couldn't load this Scene. / We couldn't load the Active Scene. |
 | Announcements | {title} started. / {title} finished. / You're now taking part in {title}. / You're no longer taking part in {title}. |
 | Wall Entries | Scene started: {title} / Scene finished: {title} |
+| Waiting rolls to cancel (PBI-DICE-007) | 1 waiting roll will be cancelled. / {n} waiting rolls will be cancelled. / Any waiting rolls will be cancelled. |
+| Present report (PBI-DICE-007) | Investigators present saved. 1 waiting roll cancelled. / Investigators present saved. {n} waiting rolls cancelled. |
 
 Never use "current scene", "live scene", "open scene", "closed scene", "party", "participants", or "scene members" (root CONTEXT.md).
 
@@ -1042,3 +1045,54 @@ Stories cover:
 
 - **Research gap:** how long Campaigns grow. If Scene History becomes hard to scan, Option B's index is the documented fallback.
 - **Research gap:** whether Players want the Investigators present of past Scenes; adding them changes the Player projection and needs the spec's Regression Guardrails first.
+
+## 24. Waiting rolls cancelled by Scene changes (PBI-DICE-007)
+
+Behavior: [roll-requests spec](../roll-requests/spec.md), Lifecycle with the Scene. Selection and the other cancel UI: [roll-requests ux](../roll-requests/ux.md), Human decisions of 2026-11-14 and section 17. Design: [PBI-DICE-007 design record](../../docs/dice/issues/07-cancel-waiting-rolls.design.md).
+
+**The count {n}:**
+- It is the number of Waiting Requested Rolls the change will cancel, taken from the Keeper's Active Scene roll requests, which are already loaded on every Campaign page.
+- It can lag by one live update. The server always cancels exactly the rolls that are Waiting when the change commits.
+
+### 24.1 Finish dialog (section 3)
+
+```
+Finish The Corbitt House?
+A Finished Scene can't be started again. Players will see that it has finished.
+2 waiting rolls will be cancelled.
+                                        [Cancel] [Finish Scene]
+```
+
+- **Sentence:** inside `AlertDialogDescription`, after the existing text, so it is read when the dialog opens.
+  - n = 1: "1 waiting roll will be cancelled."
+  - n > 1: "{n} waiting rolls will be cancelled."
+  - n = 0: no sentence. The dialog is as in section 3.
+  - While the count is unknown (loading or error): "Any waiting rolls will be cancelled."
+- **Live count:** it updates while the dialog is open without moving focus.
+- **Unchanged:** every other part of the dialog, its buttons, and its outcomes. The success status stays "{title} finished.".
+
+### 24.2 Saving the Investigators present (section 3)
+
+- **No warning before saving** (human decision, 2026-11-14).
+- **On success, the status:**
+  - n = 1: "Investigators present saved. 1 waiting roll cancelled."
+  - n > 1: "Investigators present saved. {n} waiting rolls cancelled."
+  - n = 0: "Investigators present saved."
+  - Here n is the number of Waiting rolls of Investigators who were present and are unchecked, counted when "Save" is activated.
+- **Focus and errors:** as in section 3.
+
+### 24.3 Start page with "Finish {title} first" (section 2)
+
+- **Hint:** when n is 1 or more, a muted hint under the checkbox:
+  - "1 waiting roll will be cancelled."
+  - "{n} waiting rolls will be cancelled."
+- **Markup:** linked to the checkbox with `aria-describedby`, together with any error.
+- **When it is hidden:** at n = 0, while the count is unknown, and when no other Scene is Active.
+- **Starting with the checkbox checked** cancels the finished Scene's Waiting rolls.
+
+### 24.4 Acceptance criteria
+
+- **SPL-UX-70** With n waiting rolls in the Active Scene, the finish dialog shows "{n} waiting rolls will be cancelled." ("1 waiting roll ..." for one, nothing for none). Confirming finishes the Scene and shows each of those rolls as "Cancelled" on its card.
+- **SPL-UX-71** Unchecking an Investigator with Waiting rolls and saving shows "Investigators present saved. {n} waiting roll(s) cancelled.", and only that Investigator's rolls become "Cancelled". There is no warning before saving.
+- **SPL-UX-72** On the start page, while another Scene with waiting rolls is Active, the hint "{n} waiting roll(s) will be cancelled." shows under "Finish {title} first". Starting with it checked shows the finished Scene's rolls as "Cancelled".
+- **SPL-A11Y-27** The finish-dialog sentence is part of the dialog's accessible description. The start-page hint is linked to its checkbox with `aria-describedby`. Count updates never move focus (1.3.1, 4.1.2, 2.4.3).

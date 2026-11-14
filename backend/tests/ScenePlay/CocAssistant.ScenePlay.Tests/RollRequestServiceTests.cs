@@ -422,6 +422,7 @@ public class RollRequestServiceTests
     [InlineData(RequestedRollWriteOutcome.InvestigatorNotRequested, RollRequestedRollOutcome.NotFound)]
     [InlineData(RequestedRollWriteOutcome.SceneNotActive, RollRequestedRollOutcome.SceneNotActive)]
     [InlineData(RequestedRollWriteOutcome.NotWaiting, RollRequestedRollOutcome.NotWaiting)]
+    [InlineData(RequestedRollWriteOutcome.AlreadyCancelled, RollRequestedRollOutcome.AlreadyCancelled)]
     public async Task Given_a_refused_roll_When_rolling_Then_the_outcome_is_returned_and_no_signal_is_made(
         RequestedRollWriteOutcome providerOutcome, RollRequestedRollOutcome expected)
     {
@@ -432,6 +433,79 @@ public class RollRequestServiceTests
 
         Assert.Equal((expected, null), (result.Outcome, result.Roll));
         Assert.Empty(_signals.Publications);
+    }
+
+    [Theory]
+    [InlineData("player")]
+    [InlineData("stranger")]
+    public async Task Given_a_Player_or_a_non_member_When_cancelling_Then_it_is_NotFound_and_the_provider_is_untouched(string caller)
+    {
+        var accountId = caller == "player" ? HarveyPlayerId : StrangerId;
+
+        var result = await Service.CancelAsync(CampaignId, accountId, RequestId, Harvey, CancellationToken.None);
+
+        Assert.Equal(CancelRequestedRollOutcome.NotFound, result.Outcome);
+        Assert.Null(result.Roll);
+        Assert.DoesNotContain(nameof(FakeRollRequests.CancelAsync), _requests.Calls);
+        Assert.Empty(_signals.Publications);
+    }
+
+    [Fact]
+    public async Task Given_a_missing_request_When_cancelling_Then_it_is_NotFound_and_the_provider_is_untouched()
+    {
+        _requests.Found = null;
+
+        var result = await Service.CancelAsync(CampaignId, KeeperId, RequestId, Harvey, CancellationToken.None);
+
+        Assert.Equal(CancelRequestedRollOutcome.NotFound, result.Outcome);
+        Assert.Null(result.Roll);
+        Assert.DoesNotContain(nameof(FakeRollRequests.CancelAsync), _requests.Calls);
+        Assert.Empty(_signals.Publications);
+    }
+
+    [Fact]
+    public async Task Given_a_Waiting_roll_When_the_Keeper_cancels_Then_it_cancels_and_only_the_Investigators_Player_is_signalled()
+    {
+        _requests.Found = StoredRequest();
+        _requests.CancelResult = new RequestedRollWriteResult(RequestedRollWriteOutcome.Cancelled, CancelledHarvey());
+
+        var result = await Service.CancelAsync(CampaignId, KeeperId, RequestId, Harvey, CancellationToken.None);
+
+        Assert.Equal(CancelRequestedRollOutcome.Cancelled, result.Outcome);
+        Assert.Equal(("Harvey Walters", RequestedRollStatus.Cancelled), (result.Roll!.InvestigatorName, result.Roll.Status));
+        Assert.Empty(result.Roll.Rolls);
+        Assert.Equal([HarveyPlayerId], Assert.Single(_signals.Publications).PlayerAccountIds);
+    }
+
+    [Theory]
+    [InlineData(RequestedRollWriteOutcome.NotFound, CancelRequestedRollOutcome.NotFound)]
+    [InlineData(RequestedRollWriteOutcome.InvestigatorNotRequested, CancelRequestedRollOutcome.NotFound)]
+    [InlineData(RequestedRollWriteOutcome.SceneNotActive, CancelRequestedRollOutcome.SceneNotActive)]
+    [InlineData(RequestedRollWriteOutcome.NotWaiting, CancelRequestedRollOutcome.NotWaiting)]
+    [InlineData(RequestedRollWriteOutcome.AlreadyCancelled, CancelRequestedRollOutcome.AlreadyCancelled)]
+    public async Task Given_a_refused_cancel_When_cancelling_Then_the_outcome_is_returned_and_no_signal_is_made(
+        RequestedRollWriteOutcome providerOutcome, CancelRequestedRollOutcome expected)
+    {
+        _requests.Found = StoredRequest();
+        _requests.CancelResult = new RequestedRollWriteResult(providerOutcome, null);
+
+        var result = await Service.CancelAsync(CampaignId, KeeperId, RequestId, Harvey, CancellationToken.None);
+
+        Assert.Equal((expected, null), (result.Outcome, result.Roll));
+        Assert.Empty(_signals.Publications);
+    }
+
+    [Fact]
+    public async Task Given_a_failing_signal_When_cancelling_Then_the_cancel_still_succeeds_and_the_failure_is_logged()
+    {
+        _requests.Found = StoredRequest();
+        _requests.CancelResult = new RequestedRollWriteResult(RequestedRollWriteOutcome.Cancelled, CancelledHarvey());
+        _signals.Fail = true;
+
+        var result = await Service.CancelAsync(CampaignId, KeeperId, RequestId, Harvey, CancellationToken.None);
+
+        Assert.Equal(CancelRequestedRollOutcome.Cancelled, result.Outcome);
+        Assert.Equal([LogLevel.Warning], _logger.Levels);
     }
 
     [Fact]
@@ -447,9 +521,22 @@ public class RollRequestServiceTests
                     RequestedRollWriteOutcome.Rolled => RollRequestedRollOutcome.Rolled,
                     RequestedRollWriteOutcome.SceneNotActive => RollRequestedRollOutcome.SceneNotActive,
                     RequestedRollWriteOutcome.NotWaiting => RollRequestedRollOutcome.NotWaiting,
+                    RequestedRollWriteOutcome.AlreadyCancelled => RollRequestedRollOutcome.AlreadyCancelled,
                     _ => RollRequestedRollOutcome.NotFound,
                 },
                 Enum.GetValues<RollRequestedRollOutcome>()));
+        Assert.All(
+            Enum.GetValues<RequestedRollWriteOutcome>(),
+            outcome => Assert.Contains(
+                outcome switch
+                {
+                    RequestedRollWriteOutcome.Cancelled => CancelRequestedRollOutcome.Cancelled,
+                    RequestedRollWriteOutcome.SceneNotActive => CancelRequestedRollOutcome.SceneNotActive,
+                    RequestedRollWriteOutcome.NotWaiting => CancelRequestedRollOutcome.NotWaiting,
+                    RequestedRollWriteOutcome.AlreadyCancelled => CancelRequestedRollOutcome.AlreadyCancelled,
+                    _ => CancelRequestedRollOutcome.NotFound,
+                },
+                Enum.GetValues<CancelRequestedRollOutcome>()));
     }
 
     private static RequestedRollRecord RolledHarvey(Guid rollerAccountId) =>
@@ -476,6 +563,19 @@ public class RollRequestServiceTests
 
     private static RequestedRollRecord RolledLucy() =>
         RolledHarvey(KeeperId) with { InvestigatorId = Lucy, TargetValue = 40 };
+
+    private static RequestedRollRecord CancelledHarvey() =>
+        new(
+            RequestId,
+            Harvey,
+            60,
+            false,
+            false,
+            RollRequestDifficulty.Regular,
+            0,
+            0,
+            RequestedRollStatus.Cancelled,
+            []);
 
     private static RollRequestRecord StoredRequest() =>
         new(

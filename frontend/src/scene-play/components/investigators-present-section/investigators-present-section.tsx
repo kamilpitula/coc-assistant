@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { useCampaignMembers } from '@/campaign-play/hooks/useCampaignMembers'
+import { useActiveSceneRollRequests } from '@/roll-requests/hooks/useRollRequests'
+import { countWaitingRolls } from '@/roll-requests/services/waitingRollCount'
 import { InvestigatorsPresentFieldset } from '@/scene-play/components/investigators-present-fieldset/investigators-present-fieldset'
 import { useChangeInvestigatorsPresent } from '@/scene-play/hooks/useActiveScene'
 import { presentRefusalFor } from '@/scene-play/services/presentRefusal'
@@ -14,8 +16,8 @@ import { Button } from '@/shared/components/ui/button'
 interface InvestigatorsPresentSectionProps {
   campaignId: string
   scene: KeeperActiveScene
-  /** Called after a successful save, so the page can say "Investigators present saved.". */
-  onSaved: () => void
+  /** Called after a successful save with the number of waiting rolls it cancelled, so the page can report it (SPL-UX-71). */
+  onSaved: (cancelledCount: number) => void
   /** Called when the Keeper leaves a change that found the Scene finished, so the page can refetch. */
   onFinishedMeanwhile: () => void
 }
@@ -23,6 +25,7 @@ interface InvestigatorsPresentSectionProps {
 /** The Keeper's Investigators present: a list with "Change", which swaps in the start page's fieldset (specs/scene-play/ux.md section 3). */
 export function InvestigatorsPresentSection({ campaignId, scene, onSaved, onFinishedMeanwhile }: InvestigatorsPresentSectionProps) {
   const members = useCampaignMembers(campaignId)
+  const waitingRolls = useActiveSceneRollRequests(campaignId)
   const { open: openPanel } = useSidePanel()
   const change = useChangeInvestigatorsPresent(campaignId)
   const approved = approvedInvestigatorsFrom(members.data)
@@ -66,11 +69,16 @@ export function InvestigatorsPresentSection({ campaignId, scene, onSaved, onFini
       return
     }
 
+    // Counted from the cache when Save is activated: the Waiting rolls of Investigators who were present and are
+    // now unchecked (specs/scene-play/ux.md section 24.2).
+    const removed = scene.investigatorsPresent.map((investigator) => investigator.id).filter((id) => !selection.includes(id))
+    const cancelledCount = countWaitingRolls(waitingRolls.data, removed) ?? 0
+
     change.mutate(
       approved.filter((investigator) => selection.includes(investigator.id)).map((investigator) => investigator.id),
       {
         onSuccess: () => {
-          onSaved()
+          onSaved(cancelledCount)
           close(true)
         },
       },

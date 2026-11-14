@@ -29,7 +29,7 @@ public class RevealProjectionTests
         _approved.Investigators.Add(new ApprovedInvestigatorRef(Lucy, LucyPlayerId, "Lucy Ward"));
     }
 
-    private ActiveSceneService Service => new(_roles, _scenes, _approved, new RecordingSceneWallEntries(), new RecordingActiveSceneSignals(), new RecordingLogger<ActiveSceneService>());
+    private ActiveSceneService Service => new(_roles, _scenes, _approved, new RecordingSceneWallEntries(), new RecordingActiveSceneSignals(), new RecordingRollRequestSignals(), new RecordingLogger<ActiveSceneService>());
 
     private static SceneRevealRecord Record(string title, int minute, params Guid[] recipients) =>
         new(Guid.NewGuid(), RevealSubjectKind.Handout, Guid.NewGuid(), Now.AddMinutes(minute), title, "Map", null, new RevealedFileDetails("cellar.png", "image/png", 68), "A cellar plan", recipients);

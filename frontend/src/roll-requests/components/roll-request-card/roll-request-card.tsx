@@ -107,6 +107,10 @@ function RequestedRollRow({ roll, hidden }: { roll: RequestedRoll; hidden: boole
 }
 
 function RollStatus({ roll, result }: { roll: RequestedRoll; result: CompletedRoll | undefined }) {
+  if (roll.status === 'Cancelled') {
+    return <span className="text-muted-foreground">Cancelled</span>
+  }
+
   if (roll.status === 'Waiting' || !result?.percentile) {
     if (roll.status === 'Waiting') {
       return <span className="text-warning">Waiting</span>

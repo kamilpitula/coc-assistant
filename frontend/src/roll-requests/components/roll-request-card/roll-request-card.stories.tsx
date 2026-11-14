@@ -115,6 +115,8 @@ export const Hidden: Story = {
   render: () => hosted(requestWith([{ ...rolled, rolls: [{ ...rolled.rolls[0], rolledBy: 'The Keeper' }] }], 'KeeperOnly')),
 }
 
+export const Cancelled: Story = { render: () => hosted(requestWith([{ ...waiting, status: 'Cancelled' }])) }
+
 export const Loading: Story = { render: () => hosted(undefined) }
 
 export const LoadError: Story = { render: () => hosted(undefined, true) }

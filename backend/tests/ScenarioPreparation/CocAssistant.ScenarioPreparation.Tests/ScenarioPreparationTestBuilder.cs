@@ -50,8 +50,11 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
     public static LinkedSceneGuard CreateLinkedSceneGuard(ScenarioPreparationDbContext context, ISceneRepository? scenes = null) =>
         new(scenes ?? new EfSceneRepository(context));
 
-    public SceneLifecycleService CreateLifecycleService(ScenarioPreparationDbContext context, ISceneRepository? scenes = null) =>
-        new(scenes ?? new EfSceneRepository(context), new EfScenarioRepository(context), TimeProvider);
+    public SceneLifecycleService CreateLifecycleService(
+        ScenarioPreparationDbContext context,
+        ISceneRepository? scenes = null,
+        ISceneRollRequestRepository? requests = null) =>
+        new(scenes ?? new EfSceneRepository(context), new EfScenarioRepository(context), requests ?? new EfSceneRollRequestRepository(context), TimeProvider);
 
     public NonPlayerEntityLinkService CreateLinkService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
         new(Keepers, repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), TimeProvider);

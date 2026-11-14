@@ -6,8 +6,10 @@ import type { RollRequestTarget } from '@/roll-requests/types/RollRequest'
 
 import {
   AlreadyRolledError,
+  RequestedRollCancelledError,
   RequestedRollGoneError,
   RollRequestRefusedError,
+  cancelRequestedRoll,
   getActiveSceneRollRequests,
   getMyRequestedRolls,
   getRollRequest,
@@ -220,9 +222,50 @@ describe('rollRequestedRoll', () => {
     await expect(rollRequestedRoll('token', 'c1', 'r1', 'i1')).rejects.toBeInstanceOf(NoActiveSceneError)
   })
 
+  it('throws RequestedRollCancelledError when the roll was already cancelled (409)', async () => {
+    stubFetch(() => jsonResponse(409, { title: 'This roll was cancelled.' }))
+
+    await expect(rollRequestedRoll('token', 'c1', 'r1', 'i1')).rejects.toBeInstanceOf(RequestedRollCancelledError)
+  })
+
   it('throws RequestedRollGoneError when the roll is gone or not visible (404)', async () => {
     stubFetch(() => jsonResponse(404, {}))
 
     await expect(rollRequestedRoll('token', 'c1', 'r1', 'i1')).rejects.toBeInstanceOf(RequestedRollGoneError)
+  })
+})
+
+describe('cancelRequestedRoll', () => {
+  const cancelled = { ...requestedRoll, status: 'Cancelled' }
+
+  it('posts the cancel and returns the cancelled Requested Roll', async () => {
+    const fetchMock = stubFetch(() => jsonResponse(200, cancelled))
+
+    expect(await cancelRequestedRoll('token', 'c1', 'r1', 'i1')).toEqual(cancelled)
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/campaigns/c1/roll-requests/r1/requested-rolls/i1/cancel')
+  })
+
+  it('throws RequestedRollCancelledError when the roll was already cancelled (409)', async () => {
+    stubFetch(() => jsonResponse(409, { title: 'This roll was cancelled.' }))
+
+    await expect(cancelRequestedRoll('token', 'c1', 'r1', 'i1')).rejects.toBeInstanceOf(RequestedRollCancelledError)
+  })
+
+  it('throws AlreadyRolledError when the roll was already made (409)', async () => {
+    stubFetch(() => jsonResponse(409, { title: 'Another change won the race. Fetch again and try again.' }))
+
+    await expect(cancelRequestedRoll('token', 'c1', 'r1', 'i1')).rejects.toBeInstanceOf(AlreadyRolledError)
+  })
+
+  it('throws NoActiveSceneError when the Scene is no longer Active (409)', async () => {
+    stubFetch(() => jsonResponse(409, { title: 'No Scene is Active.' }))
+
+    await expect(cancelRequestedRoll('token', 'c1', 'r1', 'i1')).rejects.toBeInstanceOf(NoActiveSceneError)
+  })
+
+  it('throws RequestedRollGoneError when the roll is gone or not visible (404)', async () => {
+    stubFetch(() => jsonResponse(404, {}))
+
+    await expect(cancelRequestedRoll('token', 'c1', 'r1', 'i1')).rejects.toBeInstanceOf(RequestedRollGoneError)
   })
 })

@@ -136,7 +136,7 @@ public class RollRequest
 
     /// <summary>
     /// Rolls the Investigator's Requested Roll. An Investigator without a Requested Roll and an already Rolled one are
-    /// refused and change nothing.
+    /// refused and change nothing; a cancelled one is refused as already cancelled.
     /// </summary>
     public RequestedRollResult RollInvestigatorRoll(IDiceRoller roller, Guid investigatorId, Guid rollerAccountId, DateTimeOffset now)
     {
@@ -146,10 +146,44 @@ public class RollRequest
             return new RequestedRollResult(RequestedRollOutcome.InvestigatorNotRequested, null);
         }
 
-        return roll.Roll(roller, rollerAccountId, now) == RequestedRollOutcome.Rolled
-            ? new RequestedRollResult(RequestedRollOutcome.Rolled, roll)
-            : new RequestedRollResult(RequestedRollOutcome.NotWaiting, null);
+        return roll.Roll(roller, rollerAccountId, now) switch
+        {
+            RequestedRollOutcome.Rolled => new RequestedRollResult(RequestedRollOutcome.Rolled, roll),
+            RequestedRollOutcome.AlreadyCancelled => new RequestedRollResult(RequestedRollOutcome.AlreadyCancelled, null),
+            _ => new RequestedRollResult(RequestedRollOutcome.NotWaiting, null),
+        };
     }
+
+    /// <summary>
+    /// Cancels the Investigator's Requested Roll (specs/roll-requests/spec.md, cancel contract): a Waiting roll moves to
+    /// Cancelled. An Investigator without a Requested Roll, an already Rolled one, and an already Cancelled one are
+    /// refused and change nothing.
+    /// </summary>
+    public RequestedRollResult CancelInvestigatorRoll(Guid investigatorId)
+    {
+        var roll = _requestedRolls.FirstOrDefault(candidate => candidate.InvestigatorId == investigatorId);
+        if (roll is null)
+        {
+            return new RequestedRollResult(RequestedRollOutcome.InvestigatorNotRequested, null);
+        }
+
+        return roll.Cancel() switch
+        {
+            RequestedRollOutcome.Cancelled => new RequestedRollResult(RequestedRollOutcome.Cancelled, roll),
+            RequestedRollOutcome.AlreadyCancelled => new RequestedRollResult(RequestedRollOutcome.AlreadyCancelled, null),
+            _ => new RequestedRollResult(RequestedRollOutcome.NotWaiting, null),
+        };
+    }
+
+    /// <summary>
+    /// Closes the Waiting Requested Rolls a Scene exit affects (specs/roll-requests/spec.md, Lifecycle with the Scene):
+    /// every Waiting roll whose Investigator matches moves to Cancelled. Returns the closed Investigator ids in request order.
+    /// </summary>
+    public IReadOnlyList<Guid> CloseRollsForSceneExit(Func<Guid, bool> isAffected) =>
+        _requestedRolls
+            .Where(roll => isAffected(roll.InvestigatorId) && roll.CloseForSceneExit())
+            .Select(roll => roll.InvestigatorId)
+            .ToList();
 
     private static bool IsTarget(RollTarget target) =>
         target.Kind switch

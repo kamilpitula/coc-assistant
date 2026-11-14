@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { WallEntryTime } from '@/campaign-play/components/wall-entry-time/wall-entry-time'
-import { useActiveSceneRollRequests, useRollRequestedRoll } from '@/roll-requests/hooks/useRollRequests'
-import { AlreadyRolledError } from '@/roll-requests/services/rollRequestApi'
+import { useActiveSceneRollRequests, useCancelRequestedRoll, useRollRequestedRoll } from '@/roll-requests/hooks/useRollRequests'
+import { AlreadyRolledError, RequestedRollCancelledError } from '@/roll-requests/services/rollRequestApi'
 import { describeDice, describeOutcome, rollTargetName } from '@/roll-requests/services/rollRequestPresentation'
 import type { RequestedRoll, RollRequest } from '@/roll-requests/types/RollRequest'
 import { Badge } from '@/shared/components/ui/badge'
@@ -44,16 +44,34 @@ function successMessage(row: WaitingRow, result: RequestedRoll): string {
 }
 
 /**
- * The Keeper's Waiting rolls (specs/roll-requests/ux.md section 4): every Waiting Requested Roll of the Active
- * Scene's requests, oldest first, each with a "Roll for {name}" button that the Keeper uses to roll for the Player.
+ * The refused refetch for both actions (specs/roll-requests/ux.md sections 4 and 17.1): a 409 names the refusal and the
+ * row leaves; anything else returns null and the row keeps an inline error. A cancel that finds an already-cancelled
+ * roll says so; a roll that loses its race to a cancel says the roll was cancelled.
+ */
+function refusalStatusFor(error: unknown, row: WaitingRow, action: 'roll' | 'cancel'): string | null {
+  const label = `${displayName(row)}'s ${rollTargetName(row.request.target)} roll`
+  if (error instanceof AlreadyRolledError) {
+    return `${label} was already made.`
+  }
+  if (error instanceof RequestedRollCancelledError) {
+    return action === 'cancel' ? `${label} was already cancelled.` : `${label} was cancelled.`
+  }
+  return null
+}
+
+/**
+ * The Keeper's Waiting rolls (specs/roll-requests/ux.md sections 4 and 17.1): every Waiting Requested Roll of the
+ * Active Scene's requests, oldest first, each with a "Roll for {name}" button that the Keeper uses to roll for the
+ * Player, and a "Cancel" button that cancels the roll.
  */
 export function WaitingRolls({ campaignId }: WaitingRollsProps) {
   const requests = useActiveSceneRollRequests(campaignId)
   const rollMutation = useRollRequestedRoll(campaignId)
+  const cancelMutation = useCancelRequestedRoll(campaignId)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const buttonRefs = useRef(new Map<string, HTMLButtonElement>())
-  const [rollingKey, setRollingKey] = useState<string | null>(null)
-  const [failedKey, setFailedKey] = useState<string | null>(null)
+  const [busy, setBusy] = useState<{ key: string; action: 'roll' | 'cancel' } | null>(null)
+  const [failed, setFailed] = useState<{ key: string; action: 'roll' | 'cancel' } | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const pendingFocus = useRef<{ keys: string[]; rolledKey: string } | null>(null)
 
@@ -109,25 +127,50 @@ export function WaitingRolls({ campaignId }: WaitingRollsProps) {
     )
   }
 
+  function leaveRow(row: WaitingRow, message: string) {
+    setStatus(message)
+    pendingFocus.current = { keys: rows.map((candidate) => candidate.key), rolledKey: row.key }
+    setBusy(null)
+  }
+
+  function failRow(row: WaitingRow, action: 'roll' | 'cancel') {
+    setFailed({ key: row.key, action })
+    setBusy(null)
+  }
+
   function roll(row: WaitingRow) {
-    setFailedKey(null)
-    setRollingKey(row.key)
+    setFailed(null)
+    setBusy({ key: row.key, action: 'roll' })
     rollMutation.mutate(
       { rollRequestId: row.request.id, investigatorId: row.roll.investigatorId },
       {
-        onSuccess: (result) => {
-          setStatus(successMessage(row, result))
-          pendingFocus.current = { keys: rows.map((candidate) => candidate.key), rolledKey: row.key }
-          setRollingKey(null)
-        },
+        onSuccess: (result) => leaveRow(row, successMessage(row, result)),
         onError: (error) => {
-          if (error instanceof AlreadyRolledError) {
-            setStatus(`${displayName(row)}'s ${rollTargetName(row.request.target)} roll was already made.`)
-            pendingFocus.current = { keys: rows.map((candidate) => candidate.key), rolledKey: row.key }
+          const refusal = refusalStatusFor(error, row, 'roll')
+          if (refusal) {
+            leaveRow(row, refusal)
           } else {
-            setFailedKey(row.key)
+            failRow(row, 'roll')
           }
-          setRollingKey(null)
+        },
+      },
+    )
+  }
+
+  function cancel(row: WaitingRow) {
+    setFailed(null)
+    setBusy({ key: row.key, action: 'cancel' })
+    cancelMutation.mutate(
+      { rollRequestId: row.request.id, investigatorId: row.roll.investigatorId },
+      {
+        onSuccess: () => leaveRow(row, `${displayName(row)}'s ${rollTargetName(row.request.target)} roll was cancelled.`),
+        onError: (error) => {
+          const refusal = refusalStatusFor(error, row, 'cancel')
+          if (refusal) {
+            leaveRow(row, refusal)
+          } else {
+            failRow(row, 'cancel')
+          }
         },
       },
     )
@@ -144,22 +187,27 @@ export function WaitingRolls({ campaignId }: WaitingRollsProps) {
         <p className="text-sm text-muted-foreground">No rolls waiting.</p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {rows.map((row) => (
-            <WaitingRowItem
-              key={row.key}
-              row={row}
-              rolling={rollingKey === row.key}
-              failed={failedKey === row.key}
-              registerButton={(element) => {
-                if (element) {
-                  buttonRefs.current.set(row.key, element)
-                } else {
-                  buttonRefs.current.delete(row.key)
-                }
-              }}
-              onRoll={() => roll(row)}
-            />
-          ))}
+          {rows.map((row) => {
+            const rowBusy = busy?.key === row.key ? busy.action : null
+            return (
+              <WaitingRowItem
+                key={row.key}
+                row={row}
+                busy={rowBusy !== null}
+                cancelling={rowBusy === 'cancel'}
+                failed={failed?.key === row.key ? failed.action : null}
+                registerButton={(element) => {
+                  if (element) {
+                    buttonRefs.current.set(row.key, element)
+                  } else {
+                    buttonRefs.current.delete(row.key)
+                  }
+                }}
+                onRoll={() => roll(row)}
+                onCancel={() => cancel(row)}
+              />
+            )
+          })}
         </ul>
       )}
     </section>
@@ -168,16 +216,20 @@ export function WaitingRolls({ campaignId }: WaitingRollsProps) {
 
 function WaitingRowItem({
   row,
-  rolling,
+  busy,
+  cancelling,
   failed,
   registerButton,
   onRoll,
+  onCancel,
 }: {
   row: WaitingRow
-  rolling: boolean
-  failed: boolean
+  busy: boolean
+  cancelling: boolean
+  failed: 'roll' | 'cancel' | null
   registerButton: (element: HTMLButtonElement | null) => void
   onRoll: () => void
+  onCancel: () => void
 }) {
   const targetName = rollTargetName(row.request.target)
   const name = displayName(row)
@@ -190,17 +242,20 @@ function WaitingRowItem({
         </span>
         <span className="ml-auto flex flex-wrap items-center gap-2 text-sm">
           <WallEntryTime createdAt={row.request.createdAt} />
-          <Button ref={registerButton} type="button" variant="secondary" className="min-h-11" disabled={rolling} onClick={onRoll} aria-label={`Roll ${targetName} for ${name}`}>
-            {rolling ? 'Rolling...' : `Roll for ${name}`}
+          <Button ref={registerButton} type="button" variant="secondary" className="min-h-11" disabled={busy} onClick={onRoll} aria-label={`Roll ${targetName} for ${name}`}>
+            {busy && !cancelling ? 'Rolling...' : `Roll for ${name}`}
+          </Button>
+          <Button type="button" variant="ghost" className="min-h-11" disabled={busy} onClick={onCancel} aria-label={`Cancel ${targetName} roll for ${name}`}>
+            {cancelling ? 'Cancelling...' : 'Cancel'}
           </Button>
         </span>
       </div>
       {row.request.message !== null && row.request.message !== '' && (
         <p className="line-clamp-1 break-words text-sm text-muted-foreground">{row.request.message}</p>
       )}
-      {failed && (
+      {failed !== null && (
         <p role="alert" className="text-sm text-destructive">
-          We couldn&apos;t roll that. Try again.
+          {failed === 'roll' ? "We couldn't roll that. Try again." : "We couldn't cancel that. Try again."}
         </p>
       )}
     </li>

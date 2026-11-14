@@ -13,6 +13,7 @@ public class ActiveSceneService
     private readonly IApprovedInvestigators _approved;
     private readonly ISceneWallEntries _wall;
     private readonly IActiveSceneSignals _signals;
+    private readonly IRollRequestSignals _rollRequests;
     private readonly ILogger<ActiveSceneService> _logger;
 
     public ActiveSceneService(
@@ -21,6 +22,7 @@ public class ActiveSceneService
         IApprovedInvestigators approved,
         ISceneWallEntries wall,
         IActiveSceneSignals signals,
+        IRollRequestSignals rollRequests,
         ILogger<ActiveSceneService> logger)
     {
         _roles = roles;
@@ -28,6 +30,7 @@ public class ActiveSceneService
         _approved = approved;
         _wall = wall;
         _signals = signals;
+        _rollRequests = rollRequests;
         _logger = logger;
     }
 
@@ -61,10 +64,11 @@ public class ActiveSceneService
 
         await TryAddWallEntryAsync(campaignId, callerAccountId, $"Scene started: {result.Started!.Title}", cancellationToken);
         await TrySignalAsync(campaignId, cancellationToken);
+        await TrySignalCancelledRollsAsync(campaignId, result.CancelledRolls, approved, cancellationToken);
         return new StartSceneViewResult(StartSceneOutcome.Started, ActiveSceneProjection.ForKeeper(result.Started, approved));
     }
 
-    /// <summary>Finishes the Active Scene.</summary>
+    /// <summary>Finishes the Active Scene, telling the cancelled rolls' owners through the roll-request topics.</summary>
     public async Task<FinishSceneOutcome> FinishAsync(Guid campaignId, Guid callerAccountId, CancellationToken cancellationToken)
     {
         if (!await IsKeeperAsync(campaignId, callerAccountId, cancellationToken))
@@ -80,6 +84,7 @@ public class ActiveSceneService
 
         await TryAddWallEntryAsync(campaignId, callerAccountId, $"Scene finished: {result.Finished!.Title}", cancellationToken);
         await TrySignalAsync(campaignId, cancellationToken);
+        await TrySignalCancelledRollsAsync(campaignId, result.CancelledRolls, await _approved.ListAsync(campaignId, cancellationToken), cancellationToken);
         return FinishSceneOutcome.Finished;
     }
 
@@ -104,6 +109,7 @@ public class ActiveSceneService
         }
 
         await TrySignalAsync(campaignId, cancellationToken);
+        await TrySignalCancelledRollsAsync(campaignId, result.CancelledRolls, approved, cancellationToken);
         return new ChangePresentViewResult(ChangePresentOutcome.Replaced, ActiveSceneProjection.ForKeeper(result.Scene!, approved));
     }
 
@@ -152,6 +158,33 @@ public class ActiveSceneService
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             _logger.LogWarning(exception, "The activeScene signal for Campaign {CampaignId} could not be published.", campaignId);
+        }
+    }
+
+    /// <summary>
+    /// Tells the cancelled rolls' owners through the roll-request topics (specs/roll-requests/spec.md, Live updates):
+    /// one publication per visibility, best-effort like the other signals. Nothing is sent when nothing was cancelled.
+    /// </summary>
+    private async Task TrySignalCancelledRollsAsync(
+        Guid campaignId,
+        IReadOnlyList<CancelledRequestedRoll> cancelled,
+        IReadOnlyList<ApprovedInvestigatorRef> approved,
+        CancellationToken cancellationToken)
+    {
+        foreach (var group in cancelled.GroupBy(roll => roll.Visibility))
+        {
+            try
+            {
+                await _rollRequests.RollRequestChangedAsync(
+                    campaignId,
+                    group.Key,
+                    InvestigatorAccounts.PlayerAccountsOf(approved, group.Select(roll => roll.InvestigatorId)),
+                    cancellationToken);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                _logger.LogWarning(exception, "The roll request signal for Campaign {CampaignId} could not be published.", campaignId);
+            }
         }
     }
 }

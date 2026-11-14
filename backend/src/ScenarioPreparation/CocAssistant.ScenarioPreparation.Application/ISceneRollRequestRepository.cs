@@ -18,6 +18,12 @@ public interface ISceneRollRequestRepository
     Task<IReadOnlyList<RollRequest>> ListForSceneAsync(Guid campaignId, Guid sceneId, CancellationToken cancellationToken);
 
     /// <summary>
+    /// The Scene's Roll Requests with their Requested Rolls, oldest first (CreatedAt, then Id), change-tracked for a
+    /// write that shares the Scene's save (ADR 0032). It carries no status filter.
+    /// </summary>
+    Task<IReadOnlyList<RollRequest>> ListTrackedForSceneAsync(Guid campaignId, Guid sceneId, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Saves the changes. Throws <see cref="RollRequestConcurrencyException"/> when a Requested Roll's version changed
     /// since it was read.
     /// </summary>

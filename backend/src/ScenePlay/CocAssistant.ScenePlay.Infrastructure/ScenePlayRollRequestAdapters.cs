@@ -66,6 +66,12 @@ public sealed class ScenarioPreparationRollRequests : IRollRequests
         return new RequestedRollWriteResult(ScenarioPreparationPlayableScenes.Map<RequestedRollWriteOutcome>(result.Outcome), result.Roll is null ? null : ToRecord(result.Roll));
     }
 
+    public async Task<RequestedRollWriteResult> CancelAsync(Guid campaignId, Guid requestId, Guid investigatorId, CancellationToken cancellationToken)
+    {
+        var result = await _requests.CancelAsync(campaignId, requestId, investigatorId, cancellationToken);
+        return new RequestedRollWriteResult(ScenarioPreparationPlayableScenes.Map<RequestedRollWriteOutcome>(result.Outcome), result.Roll is null ? null : ToRecord(result.Roll));
+    }
+
     internal static RollRequestRecord ToRecord(CocAssistant.ScenarioPreparation.Application.RollRequestView request) =>
         new RollRequestRecord(
                 request.Id,

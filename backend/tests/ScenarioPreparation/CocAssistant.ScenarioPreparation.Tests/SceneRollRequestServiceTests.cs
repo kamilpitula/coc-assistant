@@ -74,6 +74,13 @@ public class SceneRollRequestServiceTests : IDisposable
             campaignId ?? _builder.CampaignId, requestId, investigator, Roller, CancellationToken.None);
     }
 
+    private async Task<RequestedRollWriteResult> CancelAsync(Guid requestId, Guid investigator, Guid? campaignId = null)
+    {
+        using var context = _builder.Fixture.CreateContext();
+        return await Service(context).CancelAsync(
+            campaignId ?? _builder.CampaignId, requestId, investigator, CancellationToken.None);
+    }
+
     private async Task<int> StoredRequestCountAsync()
     {
         using var context = _builder.Fixture.CreateContext();
@@ -90,6 +97,9 @@ public class SceneRollRequestServiceTests : IDisposable
 
         public Task<IReadOnlyList<RollRequest>> ListForSceneAsync(Guid campaignId, Guid sceneId, CancellationToken cancellationToken) =>
             inner.ListForSceneAsync(campaignId, sceneId, cancellationToken);
+
+        public Task<IReadOnlyList<RollRequest>> ListTrackedForSceneAsync(Guid campaignId, Guid sceneId, CancellationToken cancellationToken) =>
+            inner.ListTrackedForSceneAsync(campaignId, sceneId, cancellationToken);
 
         public Task SaveChangesAsync(CancellationToken cancellationToken) =>
             throw new RollRequestConcurrencyException(new InvalidOperationException("Lost the race."));
@@ -290,7 +300,7 @@ public class SceneRollRequestServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Given_a_finished_scene_When_rolling_Then_it_is_refused_and_the_roll_stays_waiting()
+    public async Task Given_a_finished_scene_When_rolling_Then_the_scene_check_wins_and_the_roll_is_cancelled_by_the_finish()
     {
         var (_, sceneId) = await ActiveSceneAsync();
         var created = await CreateAsync(sceneId);
@@ -305,7 +315,7 @@ public class SceneRollRequestServiceTests : IDisposable
         Assert.Null(result.Roll);
         using var stored = _builder.Fixture.CreateContext();
         var storedRequest = await Service(stored).FindAsync(_builder.CampaignId, created.Request.Id, CancellationToken.None);
-        Assert.Equal(RequestedRollStatus.Waiting, storedRequest!.RequestedRolls.Single().Status);
+        Assert.Equal(RequestedRollStatus.Cancelled, storedRequest!.RequestedRolls.Single().Status);
     }
 
     [Fact]
@@ -343,6 +353,101 @@ public class SceneRollRequestServiceTests : IDisposable
         var service = Service(context, requests: new ConflictingRequests(new EfSceneRollRequestRepository(context)));
 
         var result = await service.RollAsync(_builder.CampaignId, created.Request!.Id, Harvey, Roller, CancellationToken.None);
+
+        Assert.Equal(RequestedRollWriteOutcome.NotWaiting, result.Outcome);
+        Assert.Null(result.Roll);
+    }
+
+    [Fact]
+    public async Task Given_a_waiting_roll_When_cancelling_Then_it_is_cancelled()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+
+        var result = await CancelAsync(created.Request!.Id, Harvey);
+
+        Assert.Equal(RequestedRollWriteOutcome.Cancelled, result.Outcome);
+        Assert.Equal(RequestedRollStatus.Cancelled, result.Roll!.Status);
+        Assert.Empty(result.Roll.RollRecords);
+    }
+
+    [Fact]
+    public async Task Given_an_unknown_request_or_investigator_When_cancelling_Then_it_is_not_found_or_not_requested()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+
+        Assert.Equal(RequestedRollWriteOutcome.NotFound, (await CancelAsync(Guid.NewGuid(), Harvey)).Outcome);
+        var result = await CancelAsync(created.Request!.Id, Guid.NewGuid());
+
+        Assert.Equal(RequestedRollWriteOutcome.InvestigatorNotRequested, result.Outcome);
+        Assert.Null(result.Roll);
+    }
+
+    [Fact]
+    public async Task Given_a_finished_scene_When_cancelling_Then_the_scene_check_wins_and_the_roll_stays_waiting()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        using (var context = _builder.Fixture.CreateContext())
+        {
+            Assert.Equal(SceneFinishOutcome.Finished, (await _builder.CreateLifecycleService(context).FinishActiveAsync(_builder.CampaignId, CancellationToken.None)).Outcome);
+        }
+
+        var result = await CancelAsync(created.Request!.Id, Harvey);
+
+        Assert.Equal(RequestedRollWriteOutcome.SceneNotActive, result.Outcome);
+        Assert.Null(result.Roll);
+    }
+
+    [Fact]
+    public async Task Given_a_rolled_roll_When_cancelling_Then_it_is_not_waiting()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(created.Request!.Id, Harvey)).Outcome);
+
+        var result = await CancelAsync(created.Request!.Id, Harvey);
+
+        Assert.Equal(RequestedRollWriteOutcome.NotWaiting, result.Outcome);
+        Assert.Null(result.Roll);
+    }
+
+    [Fact]
+    public async Task Given_a_cancelled_roll_When_cancelling_Then_it_is_already_cancelled()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        Assert.Equal(RequestedRollWriteOutcome.Cancelled, (await CancelAsync(created.Request!.Id, Harvey)).Outcome);
+
+        var result = await CancelAsync(created.Request!.Id, Harvey);
+
+        Assert.Equal(RequestedRollWriteOutcome.AlreadyCancelled, result.Outcome);
+        Assert.Null(result.Roll);
+    }
+
+    [Fact]
+    public async Task Given_a_cancelled_roll_When_rolling_Then_it_is_already_cancelled_and_adds_no_roll_record()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        Assert.Equal(RequestedRollWriteOutcome.Cancelled, (await CancelAsync(created.Request!.Id, Harvey)).Outcome);
+
+        var result = await RollAsync(created.Request!.Id, Harvey);
+
+        Assert.Equal(RequestedRollWriteOutcome.AlreadyCancelled, result.Outcome);
+        Assert.Null(result.Roll);
+    }
+
+    [Fact]
+    public async Task Given_a_lost_save_race_When_cancelling_Then_it_is_not_waiting()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        using var context = _builder.Fixture.CreateContext();
+        var service = Service(context, requests: new ConflictingRequests(new EfSceneRollRequestRepository(context)));
+
+        var result = await service.CancelAsync(_builder.CampaignId, created.Request!.Id, Harvey, CancellationToken.None);
 
         Assert.Equal(RequestedRollWriteOutcome.NotWaiting, result.Outcome);
         Assert.Null(result.Roll);

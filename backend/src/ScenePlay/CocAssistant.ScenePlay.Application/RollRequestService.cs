@@ -179,7 +179,44 @@ public class RollRequestService
             RequestedRollWriteOutcome.Rolled => await RolledAsync(campaignId, owner, result.Roll!, request!.Visibility, approved, cancellationToken),
             RequestedRollWriteOutcome.SceneNotActive => new RollRequestedRollResult(RollRequestedRollOutcome.SceneNotActive, null),
             RequestedRollWriteOutcome.NotWaiting => new RollRequestedRollResult(RollRequestedRollOutcome.NotWaiting, null),
+            RequestedRollWriteOutcome.AlreadyCancelled => new RollRequestedRollResult(RollRequestedRollOutcome.AlreadyCancelled, null),
             _ => new RollRequestedRollResult(RollRequestedRollOutcome.NotFound, null),
+        };
+    }
+
+    /// <summary>
+    /// Cancels the Investigator's Waiting Requested Roll; only the Keeper may cancel. The checks run in this order: the
+    /// Keeper, the request, then the roll.
+    /// </summary>
+    public async Task<CancelRequestedRollResult> CancelAsync(
+        Guid campaignId,
+        Guid callerAccountId,
+        Guid requestId,
+        Guid investigatorId,
+        CancellationToken cancellationToken)
+    {
+        if (await _roles.RoleOfAsync(campaignId, callerAccountId, cancellationToken) != CampaignMemberRole.Keeper)
+        {
+            return new CancelRequestedRollResult(CancelRequestedRollOutcome.NotFound, null);
+        }
+
+        var request = await _requests.FindAsync(campaignId, requestId, cancellationToken);
+        if (request is null)
+        {
+            return new CancelRequestedRollResult(CancelRequestedRollOutcome.NotFound, null);
+        }
+
+        var approved = await _approved.ListAsync(campaignId, cancellationToken);
+        var owner = approved.FirstOrDefault(investigator => investigator.InvestigatorId == investigatorId);
+        var result = await _requests.CancelAsync(campaignId, requestId, investigatorId, cancellationToken);
+        return result.Outcome switch
+        {
+            RequestedRollWriteOutcome.Cancelled => await CancelledAsync(campaignId, owner, result.Roll!, request.Visibility, approved, cancellationToken),
+            RequestedRollWriteOutcome.SceneNotActive => new CancelRequestedRollResult(CancelRequestedRollOutcome.SceneNotActive, null),
+            RequestedRollWriteOutcome.InvestigatorNotRequested => new CancelRequestedRollResult(CancelRequestedRollOutcome.NotFound, null),
+            RequestedRollWriteOutcome.NotWaiting => new CancelRequestedRollResult(CancelRequestedRollOutcome.NotWaiting, null),
+            RequestedRollWriteOutcome.AlreadyCancelled => new CancelRequestedRollResult(CancelRequestedRollOutcome.AlreadyCancelled, null),
+            _ => new CancelRequestedRollResult(CancelRequestedRollOutcome.NotFound, null),
         };
     }
 
@@ -225,6 +262,22 @@ public class RollRequestService
             RollRequestProjection.ForRoll(roll, owner?.Name ?? approved.FirstOrDefault(candidate => candidate.InvestigatorId == roll.InvestigatorId)?.Name, names));
     }
 
+    private async Task<CancelRequestedRollResult> CancelledAsync(
+        Guid campaignId,
+        ApprovedInvestigatorRef? owner,
+        RequestedRollRecord roll,
+        RollRequestVisibility visibility,
+        IReadOnlyList<ApprovedInvestigatorRef> approved,
+        CancellationToken cancellationToken)
+    {
+        var affected = owner is null ? [] : (IReadOnlyCollection<Guid>)[owner.PlayerAccountId];
+        await TrySignalAsync(campaignId, visibility, affected, cancellationToken);
+        var names = await RollerNamesAsync([roll], cancellationToken);
+        return new CancelRequestedRollResult(
+            CancelRequestedRollOutcome.Cancelled,
+            RollRequestProjection.ForRoll(roll, owner?.Name ?? approved.FirstOrDefault(candidate => candidate.InvestigatorId == roll.InvestigatorId)?.Name, names));
+    }
+
     private async Task<RollRequestView> ProjectAsync(
         RollRequestRecord request,
         IReadOnlyList<ApprovedInvestigatorRef> approved,
@@ -249,11 +302,7 @@ public class RollRequestService
     private static List<Guid> AffectedAccounts(
         IReadOnlyList<ApprovedInvestigatorRef> approved,
         IReadOnlyList<RequestedRollCreateInput> investigators) =>
-        approved
-            .Where(investigator => investigators.Any(input => input.InvestigatorId == investigator.InvestigatorId))
-            .Select(investigator => investigator.PlayerAccountId)
-            .Distinct()
-            .ToList();
+        InvestigatorAccounts.PlayerAccountsOf(approved, investigators.Select(investigator => investigator.InvestigatorId)).ToList();
 
     private static IReadOnlyList<RequestedRollValueInput> ValueInputs(
         IReadOnlyList<RequestedRollCreateInput> investigators,

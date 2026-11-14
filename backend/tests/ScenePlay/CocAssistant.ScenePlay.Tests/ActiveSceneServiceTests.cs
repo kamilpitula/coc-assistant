@@ -15,6 +15,7 @@ public class ActiveSceneServiceTests
     private static readonly Guid Lucy = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
     private static readonly Guid SceneId = Guid.Parse("dddddddd-0000-0000-0000-000000000001");
     private static readonly Guid ScenarioId = Guid.Parse("eeeeeeee-0000-0000-0000-000000000001");
+    private static readonly Guid RequestId = Guid.Parse("ffffffff-0000-0000-0000-000000000001");
 
     private readonly FakeCampaignRoles _roles = new FakeCampaignRoles()
         .With(CampaignId, KeeperId, CampaignMemberRole.Keeper)
@@ -25,6 +26,7 @@ public class ActiveSceneServiceTests
     private readonly FakeApprovedInvestigators _approved = new();
     private readonly RecordingSceneWallEntries _wall = new();
     private readonly RecordingActiveSceneSignals _signals = new();
+    private readonly RecordingRollRequestSignals _rollRequests = new();
     private readonly RecordingLogger<ActiveSceneService> _logger = new();
 
     public ActiveSceneServiceTests()
@@ -33,13 +35,13 @@ public class ActiveSceneServiceTests
         _approved.Investigators.Add(new ApprovedInvestigatorRef(Lucy, LucyPlayerId, "Lucy Ward"));
     }
 
-    private ActiveSceneService Service => new(_roles, _scenes, _approved, _wall, _signals, _logger);
+    private ActiveSceneService Service => new(_roles, _scenes, _approved, _wall, _signals, _rollRequests, _logger);
 
     private static PlayableScene Scene(string title, params Guid[] present) =>
         new(SceneId, ScenarioId, "The Haunting", title, "Arkham", new DateTimeOffset(2026, 10, 28, 19, 40, 0, TimeSpan.Zero), present, []);
 
     private void ArrangeStart(PlayableScene started, PlayableScene? finished = null) =>
-        _scenes.StartResult = new StartSceneResult(StartSceneOutcome.Started, started, finished);
+        _scenes.StartResult = new StartSceneResult(StartSceneOutcome.Started, started, finished, []);
 
     [Fact]
     public async Task Given_the_Keeper_When_starting_a_Scene_Then_it_returns_the_Keeper_view_with_names_and_the_Wall_and_signal_follow()
@@ -78,7 +80,7 @@ public class ActiveSceneServiceTests
     [InlineData(StartSceneOutcome.Conflict)]
     public async Task Given_a_refused_start_When_starting_Then_the_outcome_is_returned_and_no_Wall_Entry_or_signal_is_made(StartSceneOutcome outcome)
     {
-        _scenes.StartResult = new StartSceneResult(outcome, null, null);
+        _scenes.StartResult = new StartSceneResult(outcome, null, null, []);
 
         var result = await Service.StartAsync(CampaignId, KeeperId, SceneId, [Harvey], false, CancellationToken.None);
 
@@ -93,7 +95,7 @@ public class ActiveSceneServiceTests
     public async Task Given_a_Player_or_a_non_member_When_writing_Then_it_is_not_found_before_any_port_is_touched(string caller)
     {
         var accountId = caller == "player" ? HarveyPlayerId : StrangerId;
-        _scenes.StartResult = new StartSceneResult(StartSceneOutcome.Started, Scene("X", Harvey), null);
+        _scenes.StartResult = new StartSceneResult(StartSceneOutcome.Started, Scene("X", Harvey), null, []);
 
         var start = await Service.StartAsync(CampaignId, accountId, SceneId, [Harvey], true, CancellationToken.None);
         var finish = await Service.FinishAsync(CampaignId, accountId, CancellationToken.None);
@@ -123,7 +125,7 @@ public class ActiveSceneServiceTests
     [Fact]
     public async Task Given_an_Active_Scene_When_finishing_Then_the_Wall_Entry_and_signal_follow()
     {
-        _scenes.FinishResult = new FinishSceneResult(FinishSceneOutcome.Finished, Scene("Meeting Knott", Harvey));
+        _scenes.FinishResult = new FinishSceneResult(FinishSceneOutcome.Finished, Scene("Meeting Knott", Harvey), []);
 
         var outcome = await Service.FinishAsync(CampaignId, KeeperId, CancellationToken.None);
 
@@ -137,7 +139,7 @@ public class ActiveSceneServiceTests
     [InlineData(FinishSceneOutcome.Conflict)]
     public async Task Given_a_refused_finish_When_finishing_Then_the_outcome_is_returned_and_nothing_is_written_or_signalled(FinishSceneOutcome refusal)
     {
-        _scenes.FinishResult = new FinishSceneResult(refusal, null);
+        _scenes.FinishResult = new FinishSceneResult(refusal, null, []);
 
         Assert.Equal(refusal, await Service.FinishAsync(CampaignId, KeeperId, CancellationToken.None));
         Assert.Empty(_wall.Texts);
@@ -147,7 +149,7 @@ public class ActiveSceneServiceTests
     [Fact]
     public async Task Given_an_Active_Scene_When_changing_who_is_present_Then_the_new_view_is_returned_and_only_the_signal_follows()
     {
-        _scenes.ChangeResult = new ChangePresentResult(ChangePresentOutcome.Replaced, Scene("The Corbitt House", Lucy));
+        _scenes.ChangeResult = new ChangePresentResult(ChangePresentOutcome.Replaced, Scene("The Corbitt House", Lucy), []);
 
         var result = await Service.ChangePresentAsync(CampaignId, KeeperId, [Lucy], CancellationToken.None);
 
@@ -165,12 +167,82 @@ public class ActiveSceneServiceTests
     [InlineData(ChangePresentOutcome.Conflict)]
     public async Task Given_a_refused_change_When_changing_who_is_present_Then_the_outcome_is_returned_and_nothing_is_signalled(ChangePresentOutcome refusal)
     {
-        _scenes.ChangeResult = new ChangePresentResult(refusal, null);
+        _scenes.ChangeResult = new ChangePresentResult(refusal, null, []);
 
         var result = await Service.ChangePresentAsync(CampaignId, KeeperId, [Lucy], CancellationToken.None);
 
         Assert.Equal((refusal, null), (result.Outcome, result.Scene));
         Assert.Equal(0, _signals.Count);
+    }
+
+    [Fact]
+    public async Task Given_cancelled_rolls_When_finishing_Then_each_visibility_is_signalled_to_its_Players()
+    {
+        _scenes.FinishResult = new FinishSceneResult(
+            FinishSceneOutcome.Finished,
+            Scene("Meeting Knott", Harvey),
+            [new CancelledRequestedRoll(RequestId, Harvey, RollRequestVisibility.Public), new CancelledRequestedRoll(RequestId, Lucy, RollRequestVisibility.KeeperOnly)]);
+
+        var outcome = await Service.FinishAsync(CampaignId, KeeperId, CancellationToken.None);
+
+        Assert.Equal(FinishSceneOutcome.Finished, outcome);
+        Assert.Equal(1, _signals.Count);
+        Assert.Equal(2, _rollRequests.Publications.Count);
+        var publication = _rollRequests.Publications.Single(publication => publication.Visibility == RollRequestVisibility.Public);
+        Assert.Equal([HarveyPlayerId], publication.PlayerAccountIds);
+        publication = _rollRequests.Publications.Single(publication => publication.Visibility == RollRequestVisibility.KeeperOnly);
+        Assert.Equal([LucyPlayerId], publication.PlayerAccountIds);
+    }
+
+    [Fact]
+    public async Task Given_no_cancelled_roll_When_finishing_Then_no_roll_request_signal_is_made()
+    {
+        _scenes.FinishResult = new FinishSceneResult(FinishSceneOutcome.Finished, Scene("Meeting Knott", Harvey), []);
+
+        await Service.FinishAsync(CampaignId, KeeperId, CancellationToken.None);
+
+        Assert.Equal(1, _signals.Count);
+        Assert.Empty(_rollRequests.Publications);
+    }
+
+    [Fact]
+    public async Task Given_a_failing_roll_request_signal_When_finishing_Then_the_finish_still_succeeds_and_the_failure_is_logged()
+    {
+        _scenes.FinishResult = new FinishSceneResult(
+            FinishSceneOutcome.Finished, Scene("Meeting Knott", Harvey), [new CancelledRequestedRoll(RequestId, Harvey, RollRequestVisibility.Public)]);
+        _rollRequests.Fail = true;
+
+        var outcome = await Service.FinishAsync(CampaignId, KeeperId, CancellationToken.None);
+
+        Assert.Equal(FinishSceneOutcome.Finished, outcome);
+        Assert.Equal([LogLevel.Warning], _logger.Levels);
+    }
+
+    [Fact]
+    public async Task Given_cancelled_rolls_When_starting_with_a_finish_Then_their_Players_are_signalled()
+    {
+        ArrangeStart(Scene("The Corbitt House", Harvey), Scene("Meeting Knott", Harvey, Lucy));
+        _scenes.StartResult = _scenes.StartResult with
+        {
+            CancelledRolls = [new CancelledRequestedRoll(RequestId, Lucy, RollRequestVisibility.Public)],
+        };
+
+        await Service.StartAsync(CampaignId, KeeperId, SceneId, [Harvey], true, CancellationToken.None);
+
+        Assert.Equal([LucyPlayerId], Assert.Single(_rollRequests.Publications).PlayerAccountIds);
+    }
+
+    [Fact]
+    public async Task Given_cancelled_rolls_When_changing_who_is_present_Then_their_Players_are_signalled()
+    {
+        _scenes.ChangeResult = new ChangePresentResult(
+            ChangePresentOutcome.Replaced,
+            Scene("The Corbitt House", Lucy),
+            [new CancelledRequestedRoll(RequestId, Lucy, RollRequestVisibility.Public)]);
+
+        await Service.ChangePresentAsync(CampaignId, KeeperId, [Lucy], CancellationToken.None);
+
+        Assert.Equal([LucyPlayerId], Assert.Single(_rollRequests.Publications).PlayerAccountIds);
     }
 
     [Fact]

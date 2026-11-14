@@ -27,7 +27,7 @@ export interface CompletedRoll {
   earnsExperienceCheck: boolean | null
 }
 
-export const REQUESTED_ROLL_STATUSES = ['Waiting', 'Rolled'] as const
+export const REQUESTED_ROLL_STATUSES = ['Waiting', 'Rolled', 'Cancelled'] as const
 
 export type RequestedRollStatus = (typeof REQUESTED_ROLL_STATUSES)[number]
 

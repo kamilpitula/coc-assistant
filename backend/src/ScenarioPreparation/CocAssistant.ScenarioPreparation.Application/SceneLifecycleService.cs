@@ -10,12 +10,18 @@ public class SceneLifecycleService
 {
     private readonly ISceneRepository _scenes;
     private readonly IScenarioRepository _scenarios;
+    private readonly ISceneRollRequestRepository _requests;
     private readonly TimeProvider _timeProvider;
 
-    public SceneLifecycleService(ISceneRepository scenes, IScenarioRepository scenarios, TimeProvider timeProvider)
+    public SceneLifecycleService(
+        ISceneRepository scenes,
+        IScenarioRepository scenarios,
+        ISceneRollRequestRepository requests,
+        TimeProvider timeProvider)
     {
         _scenes = scenes;
         _scenarios = scenarios;
+        _requests = requests;
         _timeProvider = timeProvider;
     }
 
@@ -82,31 +88,36 @@ public class SceneLifecycleService
         }
 
         var now = _timeProvider.GetUtcNow();
-        if (!await TryWriteStartAsync(scene, active, now, presentInvestigatorIds, approvedInvestigatorIds, cancellationToken))
+        var (saved, cancelled) = await TryWriteStartAsync(campaignId, scene, active, now, presentInvestigatorIds, approvedInvestigatorIds, cancellationToken);
+        if (!saved)
         {
             return Refused(SceneStartOutcome.Conflict);
         }
 
         var finished = active is null ? null : await ToViewAsync(active, cancellationToken);
-        return new SceneStartResult(SceneStartOutcome.Started, await ToViewAsync(scene, cancellationToken), finished);
+        return new SceneStartResult(SceneStartOutcome.Started, await ToViewAsync(scene, cancellationToken), finished, cancelled);
     }
 
-    /// <summary>Finishes the Campaign's Active Scene.</summary>
+    /// <summary>Finishes the Campaign's Active Scene, cancelling its Waiting Requested Rolls in the same save.</summary>
     public async Task<SceneFinishResult> FinishActiveAsync(Guid campaignId, CancellationToken cancellationToken)
     {
         var active = await _scenes.FindActiveAsync(campaignId, cancellationToken);
         if (active is null)
         {
-            return new SceneFinishResult(SceneFinishOutcome.NoActiveScene, null);
+            return new SceneFinishResult(SceneFinishOutcome.NoActiveScene, null, []);
         }
 
         active.Finish(_timeProvider.GetUtcNow());
+        var cancelled = await CloseSceneRollsAsync(campaignId, active.Id, _ => true, cancellationToken);
         return await TrySaveAsync(cancellationToken)
-            ? new SceneFinishResult(SceneFinishOutcome.Finished, await ToViewAsync(active, cancellationToken))
-            : new SceneFinishResult(SceneFinishOutcome.Conflict, null);
+            ? new SceneFinishResult(SceneFinishOutcome.Finished, await ToViewAsync(active, cancellationToken), cancelled)
+            : new SceneFinishResult(SceneFinishOutcome.Conflict, null, []);
     }
 
-    /// <summary>Replaces the Investigators present of the Active Scene under the start rules.</summary>
+    /// <summary>
+    /// Replaces the Investigators present of the Active Scene under the start rules, cancelling the Waiting Requested
+    /// Rolls of the Investigators no longer present in the same save.
+    /// </summary>
     public async Task<InvestigatorsPresentResult> ReplaceInvestigatorsPresentAsync(
         Guid campaignId,
         IReadOnlyCollection<Guid> presentInvestigatorIds,
@@ -116,22 +127,25 @@ public class SceneLifecycleService
         var active = await _scenes.FindActiveAsync(campaignId, cancellationToken);
         if (active is null)
         {
-            return new InvestigatorsPresentResult(InvestigatorsPresentOutcome.NoActiveScene, null);
+            return new InvestigatorsPresentResult(InvestigatorsPresentOutcome.NoActiveScene, null, []);
         }
 
         var outcome = active.ReplaceInvestigatorsPresent(presentInvestigatorIds, approvedInvestigatorIds);
         if (outcome != SceneTransitionOutcome.Transitioned)
         {
-            return new InvestigatorsPresentResult(ToPresentOutcome(outcome), null);
+            return new InvestigatorsPresentResult(ToPresentOutcome(outcome), null, []);
         }
 
+        var cancelled = await CloseSceneRollsAsync(campaignId, active.Id, investigatorId => !presentInvestigatorIds.Contains(investigatorId), cancellationToken);
         return await TrySaveAsync(cancellationToken)
-            ? new InvestigatorsPresentResult(InvestigatorsPresentOutcome.Replaced, await ToViewAsync(active, cancellationToken))
-            : new InvestigatorsPresentResult(InvestigatorsPresentOutcome.Conflict, null);
+            ? new InvestigatorsPresentResult(InvestigatorsPresentOutcome.Replaced, await ToViewAsync(active, cancellationToken), cancelled)
+            : new InvestigatorsPresentResult(InvestigatorsPresentOutcome.Conflict, null, []);
     }
 
-    // A plain start is one save; finish-then-start is one transaction with two ordered saves (ADR 0025).
-    private Task<bool> TryWriteStartAsync(
+    // A plain start is one save; finish-then-start is one transaction with two ordered saves (ADR 0025). The finished
+    // Scene's Waiting rolls close after every refusal check, so a refused start cancels nothing.
+    private async Task<(bool Saved, IReadOnlyList<CancelledRequestedRoll> Cancelled)> TryWriteStartAsync(
+        Guid campaignId,
         Scene scene,
         Scene? active,
         DateTimeOffset now,
@@ -142,11 +156,30 @@ public class SceneLifecycleService
         if (active is null)
         {
             scene.Start(now, presentInvestigatorIds, approvedInvestigatorIds);
-            return TrySaveAsync(() => _scenes.SaveChangesAsync(cancellationToken));
+            return (await TrySaveAsync(() => _scenes.SaveChangesAsync(cancellationToken)), []);
         }
 
         active.Finish(now);
-        return TrySaveAsync(() => _scenes.SaveFinishThenStartAsync(() => scene.Start(now, presentInvestigatorIds, approvedInvestigatorIds), cancellationToken));
+        var cancelled = await CloseSceneRollsAsync(campaignId, active.Id, _ => true, cancellationToken);
+        return (await TrySaveAsync(() => _scenes.SaveFinishThenStartAsync(() => scene.Start(now, presentInvestigatorIds, approvedInvestigatorIds), cancellationToken)), cancelled);
+    }
+
+    /// <summary>Closes the affected Waiting Requested Rolls of the Scene; the caller writes them with the Scene.</summary>
+    private async Task<IReadOnlyList<CancelledRequestedRoll>> CloseSceneRollsAsync(
+        Guid campaignId,
+        Guid sceneId,
+        Func<Guid, bool> isAffected,
+        CancellationToken cancellationToken)
+    {
+        var requests = await _requests.ListTrackedForSceneAsync(campaignId, sceneId, cancellationToken);
+        var cancelled = new List<CancelledRequestedRoll>();
+        foreach (var request in requests)
+        {
+            cancelled.AddRange(request.CloseRollsForSceneExit(isAffected)
+                .Select(investigatorId => new CancelledRequestedRoll(request.Id, investigatorId, request.Visibility)));
+        }
+
+        return cancelled;
     }
 
     private Task<bool> TrySaveAsync(CancellationToken cancellationToken) => TrySaveAsync(() => _scenes.SaveChangesAsync(cancellationToken));
@@ -183,7 +216,7 @@ public class SceneLifecycleService
             scene.InvestigatorsPresent,
             scene.Reveals.Select(RevealViews.ToView).ToList());
 
-    private static SceneStartResult Refused(SceneStartOutcome outcome) => new(outcome, null, null);
+    private static SceneStartResult Refused(SceneStartOutcome outcome) => new(outcome, null, null, []);
 
     private static SceneStartOutcome ToStartOutcome(SceneTransitionOutcome outcome) => outcome switch
     {

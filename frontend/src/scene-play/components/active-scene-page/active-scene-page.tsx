@@ -18,6 +18,7 @@ import { useGiveItemFlow } from '@/scene-play/hooks/useGiveItemFlow'
 import { usePlayerRevealAnnouncement } from '@/scene-play/hooks/usePlayerRevealAnnouncement'
 import { useRevealFlow, type RevealTarget } from '@/scene-play/hooks/useRevealFlow'
 import { useTakeBackItemFlow } from '@/scene-play/hooks/useTakeBackItemFlow'
+import { cancelledRollsReport } from '@/roll-requests/services/waitingRollCount'
 import { useScene } from '@/scenario-preparation/hooks/useScenes'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import { activeSceneSubTabOf, type ActiveSceneSubTab } from '@/scene-play/services/activeSceneSubTab'
@@ -109,7 +110,8 @@ export function ActiveScenePage({ campaignId }: ActiveScenePageProps) {
             setMessage('This Scene was already finished.')
             void active.refetch()
           }}
-          onPresentSaved={() => setMessage('Investigators present saved.')}
+          onPresentSaved={(cancelledCount) =>
+            setMessage(cancelledCount === 0 ? 'Investigators present saved.' : cancelledRollsReport(cancelledCount))}
           onWallEntryAdded={() => setMessage(WALL_ENTRY_ADDED_MESSAGE)}
           onFinishedMeanwhile={() => void active.refetch()}
           onRollRequested={(message) => setMessage(message)}
@@ -238,7 +240,7 @@ interface ActiveSceneBodyProps {
   takeBackFlow: ReturnType<typeof useTakeBackItemFlow>
   onFinished: (title: string) => void
   onAlreadyFinished: () => void
-  onPresentSaved: () => void
+  onPresentSaved: (cancelledCount: number) => void
   onWallEntryAdded: () => void
   onFinishedMeanwhile: () => void
   onRollRequested: (message: string) => void
@@ -282,7 +284,7 @@ interface KeeperSubTabsProps {
   takeBackFlow: ReturnType<typeof useTakeBackItemFlow>
   onFinished: (title: string) => void
   onAlreadyFinished: () => void
-  onPresentSaved: () => void
+  onPresentSaved: (cancelledCount: number) => void
   onWallEntryAdded: () => void
   onFinishedMeanwhile: () => void
   onRollRequested: (message: string) => void
