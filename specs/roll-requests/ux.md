@@ -16,6 +16,14 @@ Human decisions (2026-11-13, PBI-DICE-006), chosen from a clickable prototype (s
 - The hidden-roll status shows the results inline. It leaves out "Experience check earned", which the card shows.
 - No game rule covers hidden rolls; the authority is [spec.md](spec.md), Hidden roll, and the root CONTEXT.md glossary ("Hidden roll").
 
+Human decisions (2026-11-14, PBI-DICE-007), section 17:
+- **Option A (an immediate "Cancel" in each "Waiting rolls" row)**. Option B (a confirmation dialog) and Option C (an inline two-step confirm in the row) were rejected at the gate:
+  - Option B adds a dialog to an action that a re-request undoes, which is heavier than the irreversible "Roll for", which has no confirmation.
+  - Option C is a new in-row state pattern with no precedent, and its focus handling is harder.
+- Removing an Investigator present saves first and then reports how many waiting rolls were cancelled. There is no warning before saving.
+- Starting another Scene with "Finish {title} first" also cancels the finished Scene's waiting rolls. The start page shows the count (scene-play ux section 24).
+- The Player side is silent: a cancelled roll just leaves the panel and the badge.
+
 Behavior and rules: [specs/roll-requests/spec.md](spec.md). This document covers presentation only. Rules are cited, never restated: [skill rolls](../../docs/game-rules/coc7_skill_rolls_rules.md) sections 2 to 5 and 7, [project_ruleset.md](../../docs/game-rules/project_ruleset.md) sections 4.2, 4.7, 4.8, and 4.9, and [character rules section 16.1](../../docs/game-rules/coc7_character_creation_and_development_rules.md#161-skill-experience-tick-during-play).
 
 ## 1. Information architecture
@@ -142,6 +150,7 @@ Keeper only: the app rolls this now and only you see the results.   (only in Kee
   - On click it is disabled and reads "Rolling...". On success the row leaves the list, the status paragraph says "{name} rolled {result} for {target}: {outcome}." (outcome copy in section 5), and focus moves to the next row's button, then the previous one, then the `h2` (`tabIndex=-1`).
   - On 409 (already rolled, for example by the Player): the row leaves the list, and the status says "{name}'s {target} roll was already made." with the same focus rule.
   - On a network error: the button returns and an inline `Alert` under the row says "We couldn't roll that. Try again.".
+- Second action (PBI-DICE-007): a ghost `Button` "Cancel" after "Roll for {name}" (section 17.1).
 - **Empty:** "No rolls waiting." (muted). The section stays.
 - **Live:** rows come and go in place without announcement and never move focus, except as described above when the focused row leaves.
 
@@ -168,6 +177,7 @@ Keeper only: the app rolls this now and only you see the results.   (only in Kee
   - Line 1: the Investigator's name (bold), and at the end the status:
     - Waiting: "Waiting" in warning colour, as text.
     - Rolled: a check icon (`aria-hidden`) and "{result}: {outcome}" for a success, or a cross icon and the same text for a failure.
+    - Cancelled (PBI-DICE-007): "Cancelled" in muted text, with no icon (section 17.2).
   - Line 2 (muted): "{Difficulty} . {dice} . target {regular} / {hard} / {extreme}" ([skill rolls section 2](../../docs/game-rules/coc7_skill_rolls_rules.md#2-target-values)). When the Investigator lacks the skill it adds " (base value)" ([character rules section 6.1](../../docs/game-rules/coc7_character_creation_and_development_rules.md#61-standard-1920s-investigator-sheet-skill-base-values)). Luck rows read "Regular . no Bonus or Penalty Dice . target ..." like any other row.
   - Rolled only, line 3: the faces. With one tens die: "Tens {tens}, units {units} = {result}". With more: "Tens {t1} and {t2}, units {units} - kept {result}" ([skill rolls section 5](../../docs/game-rules/coc7_skill_rolls_rules.md#5-bonus-and-penalty-dice)). Tens print as two digits ("00", "20").
   - Rolled only, line 4: "Rolled by {display name}". It names the Keeper when the Keeper rolled.
@@ -186,7 +196,7 @@ Defined here so that later PBIs add data and controls only:
 
 | State (PBI) | Row status text | Extra row line | Card header |
 |---|---|---|---|
-| Cancelled (DICE-007) | "Cancelled" (muted) | none | - |
+| Cancelled (DICE-007, built: section 17.2) | "Cancelled" (muted) | none | - |
 | Push asked (DICE-009) | "Push asked" (warning) | "Push justification: "{text}"" | - |
 | Pushed (DICE-009) | "Pushed - waiting for the pushed roll" (warning) | the first result's lines stay above | - |
 | Pushed roll rolled (DICE-009) | as Rolled | the first result, then "Pushed roll:" with the second result's lines | - |
@@ -214,7 +224,7 @@ The Corbitt House                                     (h1)
 +---------------------------------------------------------------+
 ```
 
-- **Where:** in both Player views of the Active Scene ([scene-play ux](../scene-play/ux.md) sections 4.1 and 4.2, 21.9), directly after the `h1` (and after Location when present), before "Investigators present". A Player whose Investigator was removed from the Investigators present still sees their Waiting rolls here until PBI-DICE-007 cancels them.
+- **Where:** in both Player views of the Active Scene ([scene-play ux](../scene-play/ux.md) sections 4.1 and 4.2, 21.9), directly after the `h1` (and after Location when present), before "Investigators present". Removing an Investigator from the Investigators present cancels their Waiting rolls, so they leave the panel (section 17.3).
 - **Shown when:** the Player's `GET .../investigators/mine/requested-rolls` returns at least one roll, or a result from this tab is still in its status line. Otherwise it is not rendered: no empty box and no placeholder.
 - **Structure:** a `section` labelled by its `h2` "Rolls waiting for you", with a count `Badge` that is part of the heading's accessible name ("Rolls waiting for you, 1"). The panel is drawn with a warning-colour border and tinted background, and the heading text carries the meaning. Under it is an `ul` of rolls, oldest first. Each `li` has "{target} . {Difficulty} . {dice}", the message in quotes when present, and a primary `Button` "Roll {target}". When two rows share a target, the accessible name adds the time: "Roll Listen, requested 19:21". The result notice lives in its own `section` labelled by its `h3` "Your last roll", separated from the queue by spacing and a divider, so it never reads as another row.
 - **Rolling:** the button is disabled and reads "Rolling..." (no optimistic result). On success the row leaves the list, and the panel's status line (`p`, `role="status"`, `tabIndex=-1`) says "You rolled {result}: {outcome}." plus " Experience check earned." when earned. Focus moves to that line. The line stays until the next roll or until the page is left.
@@ -253,11 +263,14 @@ Overview   Active Scene (Live) (2)   Scene History   Wall   Settings
 - [navigation ux](../navigation/ux.md) NAV-UX-3: the tab may also carry the count of section 7.
 - [campaign-overview ux](../campaign-overview/ux.md) CO-A11Y-7: Roll Request announcements to the targeted Player use the assertive region of section 8. Every other live change stays polite.
 
-## 10. Deferred to PBI-DICE-007
+## 10. Cancelling (PBI-DICE-007)
 
-- Cancelling a Waiting roll, and the automatic cancellation on Finish Scene or on removing an Investigator present.
-- The Finish dialog's count of rolls that will be cancelled. The Finish dialog of [scene-play ux](../scene-play/ux.md) section 3 is unchanged in DICE-005.
-- Until then, a Waiting roll of a Finished Scene keeps "Waiting" on its card and is not shown in any list, panel, or badge (all of them read only the Active Scene).
+Specified in section 17:
+- the Keeper's "Cancel" and the Cancelled card row;
+- the silent removal for Players;
+- the automatic cancellation on Finish Scene, on starting another Scene with "Finish {title} first", and on removing an Investigator present.
+
+The finish-dialog count, the present-save report, and the start-page hint are in [scene-play ux](../scene-play/ux.md) section 24.
 
 ## 11. Content
 
@@ -292,6 +305,10 @@ Overview   Active Scene (Live) (2)   Scene History   Wall   Settings
 | Hidden submit | "Roll now" / "Roll now for {n}" / "Rolling..." |
 | Hidden status | "{target} hidden roll: {name} rolled {result}: {outcome}; ..." |
 | Hidden card | badge "Keeper only"; roller "Rolled by {Keeper} (hidden roll)" |
+| Keeper cancel (DICE-007) | "Cancel" / "Cancelling..."; accessible name "Cancel {target} roll for {name}" |
+| Cancel statuses (DICE-007) | "{name}'s {target} roll was cancelled." / "{name}'s {target} roll was already made." / "{name}'s {target} roll was already cancelled." |
+| Cancel error (DICE-007) | "We couldn't cancel that. Try again." |
+| Cancelled row (DICE-007) | "Cancelled" |
 
 ## 12. Prototype validation
 
@@ -351,6 +368,10 @@ Overview   Active Scene (Live) (2)   Scene History   Wall   Settings
 - **RR-UX-17** (PBI-DICE-006) After any request, or after an error, the visibility choice stays as chosen. After leaving Run and coming back, or after a reload, it is "Public".
 - **RR-UX-18** (PBI-DICE-006) A hidden roll shows "{target} hidden roll: {name} rolled {result}: {outcome}; ..." in the status paragraph, adds one card whose rows are all rolled, with "Keeper only" in the header and "Rolled by {Keeper} (hidden roll)" on each row, and adds nothing to "Waiting rolls" or the tab badge.
 - **RR-UX-19** (PBI-DICE-006) A Player on any Campaign page receives nothing for a hidden roll: no card on the Wall or in the preview, no panel row, no badge, and no assertive or polite announcement.
+- **RR-UX-20** (PBI-DICE-007) Each "Waiting rolls" row shows "Cancel". Activating it removes the row, says "{name}'s {target} roll was cancelled.", and moves focus as for "Roll for". When the server refuses, the status reads "... was already made." or "... was already cancelled." and the row leaves. A network error shows "We couldn't cancel that. Try again." under the row.
+- **RR-UX-21** (PBI-DICE-007) A cancelled roll's card row shows "Cancelled" and its target line, with no result lines, for every member who can see the card, without reloading.
+- **RR-UX-22** (PBI-DICE-007) A cancelled roll leaves the Player's "Rolls waiting for you" panel and both tab badges without reloading and without any announcement or message to the Player.
+- **RR-UX-23** (PBI-DICE-007) Finishing the Scene, starting another Scene with "Finish {title} first", or removing an Investigator present cancels the affected Waiting rolls, and their card rows show "Cancelled". Each of these journeys shows the count as in [scene-play ux](../scene-play/ux.md) section 24.
 
 ## 15. Accessibility acceptance criteria (WCAG 2.2 AA)
 
@@ -368,9 +389,58 @@ Overview   Active Scene (Live) (2)   Scene History   Wall   Settings
 - **RR-A11Y-12** (PBI-DICE-006) The submit's accessible name changes with the mode, and the mode line is linked to the submit by `aria-describedby` (2.4.6, 4.1.2).
 - **RR-A11Y-13** (PBI-DICE-006) The inline-results status is read once through the polite `role=status`. At 320px and 200% zoom it wraps without horizontal scrolling (4.1.3, 1.4.10).
 - **RR-A11Y-14** (PBI-DICE-006) "Keeper only" and "(hidden roll)" are conveyed by text; colour and icons are extra cues only (1.4.1).
+- **RR-A11Y-15** (PBI-DICE-007) "Cancel" has the accessible name "Cancel {target} roll for {name}", which starts with its visible label. It is at least 44px high and follows "Roll for {name}" in focus order (2.5.3, 2.5.8, 2.4.3).
+- **RR-A11Y-16** (PBI-DICE-007) "Cancelled" is conveyed by text, not colour alone (1.4.1). When a live removal takes away the row that holds focus, focus moves to the panel's `h2`, or to the page `h1` when the panel unmounts. It never lands on `body` (2.4.3).
 
 ## 16. Open decisions and research gaps
 
 - **Research gap:** whether merged assertive announcements are too interruptive in a busy scene. Validate with a screen-reader user at the table.
-- **Open (DICE-007/009):** the Keeper's actions for Cancel and push rulings live in "Waiting rolls" (section 5.1). Each PBI confirms its copy.
+- **Open (DICE-009):** the Keeper's push rulings live in "Waiting rolls" (section 5.1), and PBI-DICE-009 confirms their copy. The copy for Cancel is confirmed in section 17.
+- **Research gap (DICE-007):** whether Keepers cancel by mistake when "Cancel" sits next to "Roll for". A mistaken cancel costs a re-request. If it happens, revisit the rejected confirm options (Human decisions, 2026-11-14).
 - **Research gap (DICE-006):** whether Keepers who leave the form on "Keeper only" send an unintended hidden roll. The opposite mistake, a Public roll meant to be hidden, is the one the mode line and the "Roll now" label guard against (section 3.1). Check with early Keepers.
+
+## 17. Cancelling waiting rolls (PBI-DICE-007)
+
+Behavior: [spec.md](spec.md), Lifecycle with the Scene and the cancel contract. Design: [PBI-DICE-007 design record](../../docs/dice/issues/07-cancel-waiting-rolls.design.md).
+
+### 17.1 "Cancel" in "Waiting rolls" (Keeper)
+
+```
+Waiting rolls  [2]                                          (h2)
+Lucy Ward . Spot Hidden . Hard . 1 Penalty Die   19:14  [Roll for Lucy Ward] [Cancel]
+```
+
+- **Control:** a ghost `Button` "Cancel", placed after "Roll for {name}", `min-h-11`.
+  - Accessible name: "Cancel {target} roll for {name}".
+  - No confirmation: a mistaken cancel costs only a re-request.
+- **In flight:** the button reads "Cancelling...". Both of the row's buttons are disabled while either a roll or a cancel of that row is in flight.
+- **Success** (confirmed, not optimistic): the row leaves the list, and the section's `role=status` paragraph says "{name}'s {target} roll was cancelled.". Focus moves as after "Roll for" (section 4): the next row's "Roll for" button, else the previous one, else the `h2`.
+- **409, the roll was already made:** the status says "{name}'s {target} roll was already made.". The row leaves, and focus moves as on success.
+- **409, the roll was already cancelled** (for example from another tab): the status says "{name}'s {target} roll was already cancelled.". The row leaves, and focus moves as on success.
+- **409 (no Active Scene), network error, or 5xx:** the buttons return, and an inline `Alert` under the row says "We couldn't cancel that. Try again.". A Scene that ended moves the page through the live `activeScene` signal, as for "Roll for".
+- **"Roll for" on a roll that was cancelled meanwhile:** the status says "{name}'s {target} roll was cancelled.". The row leaves, and focus moves as on success.
+
+### 17.2 Cancelled row on the card
+
+- **Row:** the status at the end of line 1 is "Cancelled" in muted text, with no icon.
+  - Line 2 (Difficulty, dice, and target values) stays.
+  - There are no faces, no "Rolled by", and no experience line.
+- **Who sees it:** every member who can see the card, without reloading, through the `rollRequests` signal. A cancelled roll is never removed from its card.
+
+### 17.3 Player side (silent)
+
+- A cancelled roll leaves "Rolls waiting for you" and the tab badge through the `myRequestedRolls` signal. There is no status line, no assertive or polite announcement, and no message.
+- **"Roll {target}" on a roll that was cancelled meanwhile:** the row leaves without a message, as for a 404 (section 6).
+- **Focus:**
+  - When the removed row's button had focus, focus moves to the panel's `h2` "Rolls waiting for you" (`tabIndex=-1`).
+  - If the panel unmounts because it is empty, focus moves to the page `h1`.
+
+### 17.4 Automatic cancellation
+
+- **What cancels:**
+  - Finishing the Active Scene cancels all of its Waiting rolls.
+  - Starting another Scene with "Finish {title} first" cancels all of the finished Scene's Waiting rolls.
+  - Saving the Investigators present cancels the Waiting rolls of every Investigator who is no longer present.
+- **What the user sees:**
+  - The cancelled rows show "Cancelled" on their cards (section 17.2), and they leave "Waiting rolls", the panels, and the badges.
+  - The Keeper's counts and messages are in [scene-play ux](../scene-play/ux.md) section 24.

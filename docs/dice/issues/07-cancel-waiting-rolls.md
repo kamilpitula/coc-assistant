@@ -32,3 +32,5 @@ Read: [roll-requests spec](../../../specs/roll-requests/spec.md), Lifecycle with
 A change to cancellation updates the roll-requests and scene-play specs, the roll-requests ux.md, and tests together.
 
 ## Follow-ups
+- Distinct conflict copy for a finish, start, or present change that lost a race to a concurrent roll while the Scene is still Active. Today it says "This Scene was already finished." ([design record](07-cancel-waiting-rolls.design.md), Invariants, R1).
+- Guard Roll Request creation against a concurrent finish, so that no Waiting roll is left on a Finished Scene ([design record](07-cancel-waiting-rolls.design.md), Invariants, R2).
