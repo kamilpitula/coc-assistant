@@ -89,13 +89,18 @@ const playerHistory: PlayerSceneHistory = {
 }
 
 const refetch = vi.fn()
+const membersRefetch = vi.fn()
 
 function membersLoaded() {
-  mockUseCampaignMembers.mockReturnValue({ data: [keeper], isPending: false, isError: false })
+  mockUseCampaignMembers.mockReturnValue({ data: [keeper], isPending: false, isError: false, refetch: membersRefetch })
 }
 
 function membersPending() {
-  mockUseCampaignMembers.mockReturnValue({ data: undefined, isPending: true, isError: false })
+  mockUseCampaignMembers.mockReturnValue({ data: undefined, isPending: true, isError: false, refetch: membersRefetch })
+}
+
+function membersFailed() {
+  mockUseCampaignMembers.mockReturnValue({ data: undefined, isPending: false, isError: true, refetch: membersRefetch })
 }
 
 function loading() {
@@ -222,11 +227,25 @@ describe('SceneHistoryPage', () => {
 
   it('announces the load failure as an alert and retries on "Try again" (SPL-UX-69, SPL-A11Y-25)', async () => {
     failed()
+    membersLoaded()
 
     render(<SceneHistoryPage campaignId="c1" />)
 
     expect(screen.getByRole('alert')).toHaveTextContent("We couldn't load the Scene History.")
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(refetch).toHaveBeenCalled()
+  })
+
+  it('announces the failure and retries both reads when the Campaign members fail to load', async () => {
+    mockUseSceneHistory.mockReturnValue({ data: keeperHistory, isError: false, refetch })
+    membersFailed()
+
+    render(<SceneHistoryPage campaignId="c1" />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent("We couldn't load the Scene History.")
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(refetch).toHaveBeenCalled()
+    expect(membersRefetch).toHaveBeenCalled()
   })
 })

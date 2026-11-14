@@ -22,8 +22,15 @@ export function SceneHistoryPage({ campaignId }: SceneHistoryPageProps) {
   const history = useSceneHistory(campaignId)
   const members = useCampaignMembers(campaignId)
 
-  if (history.isError) {
-    return <LoadFailed onRetry={() => void history.refetch()} />
+  if (history.isError || members.isError) {
+    return (
+      <LoadFailed
+        onRetry={() => {
+          void history.refetch()
+          void members.refetch()
+        }}
+      />
+    )
   }
 
   return (

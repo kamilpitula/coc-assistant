@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { createElement, useId } from 'react'
+import { createElement, useId, type ReactNode } from 'react'
 
 import { RollRequestCardView } from '@/roll-requests/components/roll-request-card/roll-request-card'
 import type { RollRequest } from '@/roll-requests/types/RollRequest'
@@ -108,21 +108,15 @@ function KeeperItems({
   scene: KeeperHistoryScene
   requestedByDisplayName: string
 }) {
-  const items = historyItems(scene.reveals, visibleRequests(scene.rollRequests))
-  if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground">Nothing was revealed or rolled in this Scene.</p>
-  }
-
   return (
-    <>
-      {items.map((item) =>
-        item.kind === 'reveal' ? (
-          <RevealDisclosure key={item.id} campaignId={campaignId} reveal={item.reveal} metaLine={<KeeperMetaLine reveal={item.reveal} />} />
-        ) : (
-          <RollRequestCardView key={item.id} request={item.request} requestedByDisplayName={requestedByDisplayName} />
-        ),
-      )}
-    </>
+    <HistoryItems
+      campaignId={campaignId}
+      reveals={scene.reveals}
+      rollRequests={scene.rollRequests}
+      requestedByDisplayName={requestedByDisplayName}
+      renderMetaLine={(reveal) => <KeeperMetaLine reveal={reveal} />}
+      empty={<p className="text-sm text-muted-foreground">Nothing was revealed or rolled in this Scene.</p>}
+    />
   )
 }
 
@@ -138,16 +132,51 @@ function PlayerItems({
   investigatorName: string | null
   requestedByDisplayName: string
 }) {
-  const items = historyItems(scene.reveals, visibleRequests(scene.rollRequests))
+  return (
+    <HistoryItems
+      campaignId={campaignId}
+      reveals={scene.reveals}
+      rollRequests={scene.rollRequests}
+      requestedByDisplayName={requestedByDisplayName}
+      renderMetaLine={(reveal) => <PlayerMetaLine reveal={reveal} />}
+      empty={
+        investigatorName ? (
+          <p className="text-sm text-muted-foreground">Nothing from this Scene reached {investigatorName}.</p>
+        ) : null
+      }
+    />
+  )
+}
+
+/**
+ * One history list, newest first (SPL-UX-73), parameterized by the Reveal meta line and the empty sentence. Cancelled
+ * rows are hidden, and a card whose rows are all Cancelled is not listed.
+ */
+function HistoryItems<TReveal extends PlayerReveal>({
+  campaignId,
+  reveals,
+  rollRequests,
+  requestedByDisplayName,
+  renderMetaLine,
+  empty,
+}: {
+  campaignId: string
+  reveals: readonly TReveal[]
+  rollRequests: RollRequest[]
+  requestedByDisplayName: string
+  renderMetaLine: (reveal: TReveal) => ReactNode
+  empty: ReactNode
+}) {
+  const items = historyItems(reveals, visibleRequests(rollRequests))
   if (items.length === 0) {
-    return investigatorName ? <p className="text-sm text-muted-foreground">Nothing from this Scene reached {investigatorName}.</p> : null
+    return <>{empty}</>
   }
 
   return (
     <>
       {items.map((item) =>
         item.kind === 'reveal' ? (
-          <RevealDisclosure key={item.id} campaignId={campaignId} reveal={item.reveal} metaLine={<PlayerMetaLine reveal={item.reveal} />} />
+          <RevealDisclosure key={item.id} campaignId={campaignId} reveal={item.reveal} metaLine={renderMetaLine(item.reveal)} />
         ) : (
           <RollRequestCardView key={item.id} request={item.request} requestedByDisplayName={requestedByDisplayName} />
         ),
