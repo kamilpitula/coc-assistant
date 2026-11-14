@@ -15,9 +15,10 @@ import {
   startSceneViaApi,
   type Table,
 } from '../fixtures/scene-play'
-import { openWall } from '../fixtures/wall'
+import { openWall, wallPreview } from '../fixtures/wall'
 import {
   expectedOutcome,
+  requestRollForm,
   requestRollViaUi,
   rollForViaUi,
   rollFromPanel,
@@ -30,9 +31,10 @@ import {
  * Traces to specs/roll-requests/spec.md Scenarios "Requesting a roll in the Active Scene" and to
  * specs/roll-requests/ux.md: the Keeper's request form (RR-UX-1 to RR-UX-6), "Waiting rolls" (RR-UX-7),
  * the Player's panel (RR-UX-8, RR-UX-9, RR-A11Y-4), the Wall card (RR-UX-10, RR-UX-11), the tab badge (RR-UX-12),
- * the assertive announcement (RR-UX-13), the no-other-Investigator guard (RR-UX-14), and the Wall amendments
- * (WL-UX-7, WL-UX-9). Exceptions, covered by the unit tests: "server rolls 25" (the exact dice mapping of
- * faces to outcome) and the hidden, cancel, and push scenarios of later PBIs (spec DICE-006, 007, 009).
+ * the assertive announcement (RR-UX-13), the no-other-Investigator guard (RR-UX-14), the hidden roll form, card,
+ * and invisibility (RR-UX-15 to RR-UX-19, RR-A11Y-11 to RR-A11Y-14), and the Wall amendments (WL-UX-7, WL-UX-9).
+ * Exceptions, covered by the unit tests: "server rolls 25" (the exact dice mapping of faces to outcome) and the
+ * cancel and push scenarios of later PBIs (spec DICE-007, 009).
  */
 test.describe('Roll Requests', () => {
   // Each journey signs in a Keeper and joins Players in isolated contexts before it checks anything, which takes longer than the default.
@@ -97,6 +99,90 @@ test.describe('Roll Requests', () => {
         await expect(card).toContainText(`target ${targetsLine(rolled.targetValue)}`)
         await expect(card).toContainText(expectedOutcome(rolled.result, rolled.targetValue, 'Regular'))
         await expect(card).toContainText(`Rolled by ${rolled.rolledBy}`)
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('A hidden roll is rolled at once and stays Keeper-only', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'Hidden')
+    try {
+      const campaignId = table.prepared.campaignId
+      await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
+      await table.harvey.page.goto(`/campaigns/${campaignId}/active-scene`)
+      await expect(waitingRollsPanel(table.harvey.page)).toHaveCount(0)
+      await page.goto(activeScenePath(campaignId))
+
+      await test.step('RR-UX-18: Keeper only rolls now and the status names the inline result', async () => {
+        await requestRollViaUi(page, { target: 'Psychology', investigators: [HARVEY], visibility: 'KeeperOnly' })
+        await expect(pageStatus(page)).toHaveText(/^Psychology hidden roll: Harvey Walters rolled \d+: .+\.$/)
+      })
+
+      await test.step('RR-UX-17: the choice stays Keeper only after the request', async () => {
+        await expect(requestRollForm(page).getByRole('radio', { name: 'Keeper only (hidden roll)' })).toBeChecked()
+      })
+
+      await test.step('RR-UX-18: the card is marked Keeper only with a hidden-roller suffix', async () => {
+        await openWall(page, campaignId)
+        const card = rollRequestCard(page, 'Psychology')
+        await expect(card.getByText('Keeper only', { exact: true })).toBeVisible()
+        await expect(card.getByText(/Rolled by .+ \(hidden roll\)/)).toBeVisible()
+        await expect(card.getByText('Waiting', { exact: true })).toHaveCount(0)
+      })
+
+      await test.step('RR-UX-18, RR-UX-12: nothing waits and the tab badge shows no count', async () => {
+        await page.goto(activeScenePath(campaignId))
+        await expect(waitingRolls(page).getByText('No rolls waiting.')).toBeVisible()
+        await expect(campaignNav(page).getByRole('link', { name: 'Active Scene, live', exact: true })).toBeVisible()
+      })
+
+      await test.step('RR-UX-17: the choice is Public after leaving Run and coming back', async () => {
+        await openWall(page, campaignId)
+        await page.goto(activeScenePath(campaignId))
+        await expect(requestRollForm(page).getByRole('radio', { name: 'Public' })).toBeChecked()
+      })
+
+      await test.step('RR-UX-19, RR-UX-12, RR-UX-13: the Player receives no panel, badge, card, or announcement', async () => {
+        await expect(waitingRollsPanel(table.harvey.page)).toHaveCount(0)
+        await expect(campaignNav(table.harvey.page).getByRole('link', { name: 'Active Scene, live', exact: true })).toBeVisible()
+        await expect(table.harvey.page.locator('div[aria-live="assertive"]')).toHaveText('')
+        await openWall(table.harvey.page, campaignId)
+        await expect(rollRequestCard(table.harvey.page, 'Psychology')).toHaveCount(0)
+        await table.harvey.page.goto(`/campaigns/${campaignId}`)
+        await expect(wallPreview(table.harvey.page)).not.toContainText('Psychology')
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('A Player cannot read a hidden Roll Request', async ({ page, browser, request }) => {
+    const table = await setUpTable(page, browser, 'HiddenUnreadable')
+    try {
+      const campaignId = table.prepared.campaignId
+      await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
+      const harveyBearer = await openAndCaptureBearer(table.harvey.page, `/campaigns/${campaignId}/active-scene`)
+      const created = await createRollRequest(request, table.keeperBearer, campaignId, {
+        target: { kind: 'Skill', skill: 'Psychology', specialization: null, characteristic: null },
+        visibility: 'KeeperOnly',
+        investigators: [{ investigatorId: table.harveyId }],
+      })
+      expect(created.status()).toBe(201)
+      const requestId = ((await created.json()) as { id: string }).id
+
+      await test.step('Reading the request by id answers 404', async () => {
+        const response = await request.get(`${API_ORIGIN}/api/campaigns/${campaignId}/roll-requests/${requestId}`, {
+          headers: { Authorization: harveyBearer },
+        })
+        expect(response.status()).toBe(404)
+      })
+
+      await test.step('Rolling the request answers 404', async () => {
+        const response = await request.post(rollUrl(campaignId, requestId, table.harveyId), {
+          headers: { Authorization: harveyBearer },
+        })
+        expect(response.status()).toBe(404)
       })
     } finally {
       await closeTable(table)

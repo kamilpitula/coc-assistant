@@ -84,7 +84,7 @@ public class RollRequestService
 
         var result = await _requests.CreateAsync(
             campaignId, target, message, visibility, difficulty, bonusDice, penaltyDice,
-            ValueInputs(investigators, values.Values), cancellationToken);
+            ValueInputs(investigators, values.Values), callerAccountId, cancellationToken);
         if (result.Outcome != RollRequestWriteOutcome.Created)
         {
             return new CreateRollRequestResult(Enum.Parse<CreateRollRequestOutcome>(result.Outcome.ToString()), null);
@@ -105,7 +105,7 @@ public class RollRequestService
         }
 
         var request = await _requests.FindAsync(campaignId, requestId, cancellationToken);
-        if (request is null || (request.Visibility != RollRequestVisibility.Public && role != CampaignMemberRole.Keeper))
+        if (request is null || !IsVisibleTo(request, role.Value))
         {
             return null;
         }
@@ -143,11 +143,15 @@ public class RollRequestService
         }
 
         var waiting = await _requests.ListWaitingForInvestigatorAsync(campaignId, mine.InvestigatorId, cancellationToken);
-        var names = await RollerNamesAsync(waiting.Select(item => item.Roll), cancellationToken);
-        return new WaitingRollsResult(mine.Name, waiting.Select(item => RollRequestProjection.ForWaiting(item, approved, names)).ToList());
+        var visible = waiting.Where(item => item.Visibility == RollRequestVisibility.Public).ToList();
+        var names = await RollerNamesAsync(visible.Select(item => item.Roll), cancellationToken);
+        return new WaitingRollsResult(mine.Name, visible.Select(item => RollRequestProjection.ForWaiting(item, approved, names)).ToList());
     }
 
-    /// <summary>Rolls the Investigator's Requested Roll; a Player may roll only their own Investigator's.</summary>
+    /// <summary>
+    /// Rolls the Investigator's Requested Roll; a Player may roll only their own Investigator's, and only when they may
+    /// see the request. The checks run in this order: the role, the request's visibility, the ownership, then the roll.
+    /// </summary>
     public async Task<RollRequestedRollResult> RollAsync(
         Guid campaignId,
         Guid callerAccountId,
@@ -161,32 +165,60 @@ public class RollRequestService
             return new RollRequestedRollResult(RollRequestedRollOutcome.NotFound, null);
         }
 
+        var request = await _requests.FindAsync(campaignId, requestId, cancellationToken);
         var approved = await _approved.ListAsync(campaignId, cancellationToken);
-        var owner = approved.FirstOrDefault(investigator => investigator.InvestigatorId == investigatorId);
-        if (role != CampaignMemberRole.Keeper && (owner is null || owner.PlayerAccountId != callerAccountId))
+        if (!MayRoll(request, role.Value, approved, callerAccountId, investigatorId))
         {
             return new RollRequestedRollResult(RollRequestedRollOutcome.NotFound, null);
         }
 
+        var owner = approved.FirstOrDefault(investigator => investigator.InvestigatorId == investigatorId);
         var result = await _requests.RollAsync(campaignId, requestId, investigatorId, callerAccountId, cancellationToken);
         return result.Outcome switch
         {
-            RequestedRollWriteOutcome.Rolled => await RolledAsync(campaignId, owner, result.Roll!, approved, cancellationToken),
+            RequestedRollWriteOutcome.Rolled => await RolledAsync(campaignId, owner, result.Roll!, request!.Visibility, approved, cancellationToken),
             RequestedRollWriteOutcome.SceneNotActive => new RollRequestedRollResult(RollRequestedRollOutcome.SceneNotActive, null),
             RequestedRollWriteOutcome.NotWaiting => new RollRequestedRollResult(RollRequestedRollOutcome.NotWaiting, null),
             _ => new RollRequestedRollResult(RollRequestedRollOutcome.NotFound, null),
         };
     }
 
+    /// <summary>Whether the caller may roll: the request exists, the caller may see it, and a Player rolls only their own Investigator's.</summary>
+    private static bool MayRoll(
+        RollRequestRecord? request,
+        CampaignMemberRole role,
+        IReadOnlyList<ApprovedInvestigatorRef> approved,
+        Guid callerAccountId,
+        Guid investigatorId)
+    {
+        if (request is null || !IsVisibleTo(request, role))
+        {
+            return false;
+        }
+
+        if (role == CampaignMemberRole.Keeper)
+        {
+            return true;
+        }
+
+        var owner = approved.FirstOrDefault(investigator => investigator.InvestigatorId == investigatorId);
+        return owner is not null && owner.PlayerAccountId == callerAccountId;
+    }
+
+    /// <summary>Whether the role may see the request: everyone sees a Public one, only the Keeper sees any other.</summary>
+    private static bool IsVisibleTo(RollRequestRecord request, CampaignMemberRole role) =>
+        request.Visibility == RollRequestVisibility.Public || role == CampaignMemberRole.Keeper;
+
     private async Task<RollRequestedRollResult> RolledAsync(
         Guid campaignId,
         ApprovedInvestigatorRef? owner,
         RequestedRollRecord roll,
+        RollRequestVisibility visibility,
         IReadOnlyList<ApprovedInvestigatorRef> approved,
         CancellationToken cancellationToken)
     {
         var affected = owner is null ? [] : (IReadOnlyCollection<Guid>)[owner.PlayerAccountId];
-        await TrySignalAsync(campaignId, RollRequestVisibility.Public, affected, cancellationToken);
+        await TrySignalAsync(campaignId, visibility, affected, cancellationToken);
         var names = await RollerNamesAsync([roll], cancellationToken);
         return new RollRequestedRollResult(
             RollRequestedRollOutcome.Rolled,
@@ -247,11 +279,6 @@ public class RollRequestService
         if (difficulty == RollRequestDifficulty.Unknown || investigators.Any(investigator => investigator.Difficulty == RollRequestDifficulty.Unknown))
         {
             return new CreateRollRequestResult(CreateRollRequestOutcome.InvalidDifficulty, null);
-        }
-
-        if (visibility == RollRequestVisibility.KeeperOnly)
-        {
-            return new CreateRollRequestResult(CreateRollRequestOutcome.KeeperOnlyNotAvailable, null);
         }
 
         if (visibility == RollRequestVisibility.Unknown)

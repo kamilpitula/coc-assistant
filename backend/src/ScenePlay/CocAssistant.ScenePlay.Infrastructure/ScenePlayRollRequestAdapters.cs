@@ -25,7 +25,13 @@ public sealed class ScenarioPreparationRollRequests : IRollRequests
 
     public async Task<IReadOnlyList<WaitingRequestedRollRecord>> ListWaitingForInvestigatorAsync(Guid campaignId, Guid investigatorId, CancellationToken cancellationToken) =>
         (await _requests.ListWaitingForInvestigatorAsync(campaignId, investigatorId, cancellationToken))
-            .Select(waiting => new WaitingRequestedRollRecord(waiting.RollRequestId, ToInput(waiting.Target), waiting.Message, waiting.CreatedAt, ToRecord(waiting.Roll)))
+            .Select(waiting => new WaitingRequestedRollRecord(
+                waiting.RollRequestId,
+                ToInput(waiting.Target),
+                waiting.Message,
+                ScenarioPreparationPlayableScenes.Map<RollRequestVisibility>(waiting.Visibility),
+                waiting.CreatedAt,
+                ToRecord(waiting.Roll)))
             .ToList();
 
     public async Task<RollRequestWriteResult> CreateAsync(
@@ -37,6 +43,7 @@ public sealed class ScenarioPreparationRollRequests : IRollRequests
         int bonusDice,
         int penaltyDice,
         IReadOnlyList<RequestedRollValueInput> investigators,
+        Guid keeperAccountId,
         CancellationToken cancellationToken)
     {
         var result = await _requests.CreateAsync(
@@ -48,6 +55,7 @@ public sealed class ScenarioPreparationRollRequests : IRollRequests
             bonusDice,
             penaltyDice,
             investigators.Select(ToProviderInput).ToList(),
+            keeperAccountId,
             cancellationToken);
         return new RollRequestWriteResult(ScenarioPreparationPlayableScenes.Map<RollRequestWriteOutcome>(result.Outcome), result.Request is null ? null : ToRecord(result.Request));
     }

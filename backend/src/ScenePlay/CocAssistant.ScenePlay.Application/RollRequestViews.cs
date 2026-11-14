@@ -71,7 +71,6 @@ public enum CreateRollRequestOutcome
     InvalidTarget,
     InvalidDifficulty,
     InvalidVisibility,
-    KeeperOnlyNotAvailable,
     UnknownTarget,
     SpecializationRequired,
     SpecializationNotAllowed,

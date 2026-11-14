@@ -83,10 +83,12 @@ export interface RequestedRollCreateInput {  investigatorId: string
   penaltyDice?: number
 }
 
-/** Requests rolls of the Active Scene; visibility is always Public in PBI-DICE-005. */
+/** Requests rolls of the Active Scene; a KeeperOnly request is rolled at creation and reaches only the Keeper. */
 export interface CreateRollRequestInput {
   target: RollRequestTarget
   message?: string
+  /** Public, or KeeperOnly for a hidden roll (specs/roll-requests/ux.md section 3.1). */
+  visibility: 'Public' | 'KeeperOnly'
   difficulty: 'Regular' | 'Hard' | 'Extreme'
   bonusDice: number
   penaltyDice: number

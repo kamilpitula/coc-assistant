@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { CircleAlert } from 'lucide-react'
+import { CircleAlert, EyeOff } from 'lucide-react'
 import { useId, useRef, useState, type FormEvent, type Ref } from 'react'
 
 import { useSkillCatalog } from '@/campaign-play/hooks/useRuleData'
@@ -7,14 +7,16 @@ import { familyOf, skillNames } from '@/campaign-play/services/skillBases'
 import { CHARACTERISTIC_CODES } from '@/campaign-play/types/CharacterSheet'
 import type { SkillCatalog } from '@/campaign-play/types/RuleData'
 import { useRequestRoll } from '@/roll-requests/hooks/useRollRequests'
-import { describeDice, joinInvestigatorNames, rollTargetName } from '@/roll-requests/services/rollRequestPresentation'
+import { describeDice, hiddenRollStatus, joinInvestigatorNames, rollTargetName } from '@/roll-requests/services/rollRequestPresentation'
 import { NoActiveSceneError, activeSceneQueryKeys } from '@/scene-play/services/activeSceneApi'
 import { RollRequestRefusedError } from '@/roll-requests/services/rollRequestApi'
 import {
   ROLL_REQUEST_MESSAGE_MAX_LENGTH,
   type CreateRollRequestInput,
+  type RollRequest,
   type RollRequestTarget,
 } from '@/roll-requests/types/RollRequest'
+import { VisibilityChoice, type VisibilityChoiceValue } from '@/shared/components/visibility-choice/visibility-choice'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { Button } from '@/shared/components/ui/button'
 import { Checkbox } from '@/shared/components/ui/checkbox'
@@ -112,6 +114,7 @@ function selectionOf(key: string, specialization: string | null, catalog: SkillC
 function buildInput(
   target: RollRequestTarget,
   message: string,
+  visibility: VisibilityChoiceValue,
   defaults: DiceChoice,
   isLuck: boolean,
   checkedIds: string[],
@@ -120,9 +123,23 @@ function buildInput(
   return {
     target,
     ...(message === '' ? {} : { message }),
+    visibility,
     ...(isLuck ? DEFAULT_DICE : defaults),
     investigators: checkedIds.map((id) => ({ investigatorId: id, ...(isLuck ? {} : (changes[id] ?? {})) })),
   }
+}
+
+/** The submit copy names the mode: "Request roll" for a Public request, "Roll now" for a hidden one (specs/roll-requests/ux.md section 3.1). */
+function submitLabel(pending: boolean, hidden: boolean, checkedCount: number): string {
+  if (pending) {
+    return hidden ? 'Rolling...' : 'Requesting...'
+  }
+
+  if (!hidden) {
+    return checkedCount > 1 ? `Request roll from ${checkedCount}` : 'Request roll'
+  }
+
+  return checkedCount > 1 ? `Roll now for ${checkedCount}` : 'Roll now'
 }
 
 function statusMessage(input: CreateRollRequestInput, names: string[]): string {
@@ -152,6 +169,8 @@ export function RollRequestForm({ campaignId, investigators, onRequested, onNoAc
   const [targetKey, setTargetKey] = useState<string | null>(null)
   const [specialization, setSpecialization] = useState('')
   const [message, setMessage] = useState('')
+  // The visibility stays as last chosen across requests and errors; it returns to Public only when the form unmounts.
+  const [visibility, setVisibility] = useState<VisibilityChoiceValue>('Public')
   const [defaults, setDefaults] = useState<DiceChoice>(DEFAULT_DICE)
   const [checked, setChecked] = useState<string[]>([])
   const [changes, setChanges] = useState<Record<string, DiceChoice>>({})
@@ -179,15 +198,15 @@ export function RollRequestForm({ campaignId, investigators, onRequested, onNoAc
     }
 
     setFailure(null)
-    const input = buildInput(selection.target, message, defaults, selection.isLuck, checkedPresent, changes)
+    const input = buildInput(selection.target, message, visibility, defaults, selection.isLuck, checkedPresent, changes)
     request.mutate(input, {
-      onSuccess: () => {
+      onSuccess: (created: RollRequest) => {
         setMessage('')
         setChecked([])
         setChanges({})
         setOpenFor(null)
         setDefaults(DEFAULT_DICE)
-        onRequested(statusMessage(input, checkedNames(investigators, checkedPresent)))
+        onRequested(visibility === 'KeeperOnly' ? hiddenRollStatus(created) : statusMessage(input, checkedNames(investigators, checkedPresent)))
         targetTriggerRef.current?.focus()
       },
       onError: (error) => {
@@ -249,8 +268,18 @@ export function RollRequestForm({ campaignId, investigators, onRequested, onNoAc
           setOpenFor(null)
         }}
       />
+      <VisibilityChoice
+        legend="Who can see this roll?"
+        publicLabel="Public"
+        publicDescription="Players roll it themselves and everyone sees the result."
+        keeperOnlyLabel="Keeper only (hidden roll)"
+        keeperOnlyDescription="The app rolls it now. Only you see it."
+        value={visibility}
+        onChange={setVisibility}
+      />
       <SubmitSection
         checkedCount={checkedPresent.length}
+        hidden={visibility === 'KeeperOnly'}
         hintId={hintId}
         failure={failure}
         pending={request.isPending}
@@ -686,22 +715,33 @@ function RowDifficulty({ value, onChange }: { value: DiceChoice; onChange: (choi
 
 function SubmitSection({
   checkedCount,
+  hidden,
   hintId,
   failure,
   pending,
   disabled,
 }: {
   checkedCount: number
+  hidden: boolean
   hintId: string
   failure: string | null
   pending: boolean
   disabled: boolean
 }) {
+  const modeLineId = useId()
+  const describedBy = [checkedCount === 0 ? hintId : null, hidden ? modeLineId : null].filter((id) => id !== null).join(' ')
+
   return (
     <>
       {checkedCount === 0 && (
         <p id={hintId} className="text-sm text-muted-foreground">
           Choose at least one Investigator.
+        </p>
+      )}
+      {hidden && (
+        <p id={modeLineId} className="text-sm">
+          <EyeOff aria-hidden="true" className="mr-1 inline size-4" />
+          Keeper only: the app rolls this now and only you see the results.
         </p>
       )}
       {failure !== null && (
@@ -710,8 +750,8 @@ function SubmitSection({
           <AlertDescription>{failure}</AlertDescription>
         </Alert>
       )}
-      <Button type="submit" disabled={disabled} aria-describedby={checkedCount === 0 ? hintId : undefined}>
-        {pending ? 'Requesting...' : checkedCount > 1 ? `Request roll from ${checkedCount}` : 'Request roll'}
+      <Button type="submit" disabled={disabled} aria-describedby={describedBy === '' ? undefined : describedBy}>
+        {submitLabel(pending, hidden, checkedCount)}
       </Button>
     </>
   )

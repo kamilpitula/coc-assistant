@@ -36,7 +36,9 @@ public class RollRequestPersistenceTests : IDisposable
             0,
             investigators.Select(investigator => new RequestedRollInput(investigator, 60, false, true)).ToList(),
             investigators,
-            now ?? Now);
+            now ?? Now,
+            new ScriptedRoller(),
+            Roller);
         Assert.Equal(RollRequestCreationOutcome.Created, creation.Outcome);
         return creation.Request!;
     }
@@ -85,6 +87,41 @@ public class RollRequestPersistenceTests : IDisposable
         Assert.Equal([20, 5], record.Faces);
         Assert.Equal(new PercentileRoll(60, 60, 30, 12, Difficulty.Regular, 0, 0, 5, [20], 20, 25, SuccessLevel.Hard, true), record.Percentile);
         Assert.True(record.EarnsExperienceCheck);
+    }
+
+    [Fact]
+    public async Task Given_a_KeeperOnly_request_When_saved_and_read_back_Then_its_rolled_rolls_and_records_round_trip()
+    {
+        var (_, sceneId) = await SceneAsync();
+        var creation = RollRequest.Create(
+            _builder.CampaignId,
+            sceneId,
+            new RollTarget(RollTargetKind.Skill, skill: "Spot Hidden"),
+            "Something moves upstairs.",
+            RollRequestVisibility.KeeperOnly,
+            Difficulty.Regular,
+            0,
+            0,
+            [new RequestedRollInput(Harvey, 60, false, true)],
+            [Harvey],
+            Now,
+            new ScriptedRoller(2, 5),
+            Roller);
+        Assert.Equal(RollRequestCreationOutcome.Created, creation.Outcome);
+        using (var context = _builder.Fixture.CreateContext())
+        {
+            new EfSceneRollRequestRepository(context).Add(creation.Request!);
+            await context.SaveChangesAsync();
+        }
+
+        using var storedContext = _builder.Fixture.CreateContext();
+        var stored = (await new EfSceneRollRequestRepository(storedContext).FindAsync(_builder.CampaignId, creation.Request!.Id, CancellationToken.None))!;
+
+        Assert.Equal(RollRequestVisibility.KeeperOnly, stored.Visibility);
+        var roll = Assert.Single(stored.RequestedRolls);
+        Assert.Equal(RequestedRollStatus.Rolled, roll.Status);
+        var record = Assert.Single(roll.RollRecords);
+        Assert.Equal((25, Roller, Now), (record.Result, record.RolledByAccountId, record.RolledAt));
     }
 
     [Fact]

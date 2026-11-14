@@ -147,7 +147,6 @@ public class RollRequestsController : ScenePlayControllerBase
             CreateRollRequestOutcome.MessageTooLong => Invalid(RollRequestProblems.MessageKey, RollRequestProblems.MessageTooLongMessage),
             CreateRollRequestOutcome.InvalidDifficulty => Invalid(RollRequestProblems.DifficultyKey, RollRequestProblems.UnknownDifficultyMessage),
             CreateRollRequestOutcome.InvalidVisibility => Invalid(RollRequestProblems.VisibilityKey, RollRequestProblems.UnknownVisibilityMessage),
-            CreateRollRequestOutcome.KeeperOnlyNotAvailable => Invalid(RollRequestProblems.VisibilityKey, RollRequestProblems.KeeperOnlyNotAvailableMessage),
             _ => NotFound(),
         };
 

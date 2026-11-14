@@ -100,11 +100,27 @@ public class RollRequestServiceTests
     }
 
     [Fact]
-    public async Task Given_a_KeeperOnly_request_When_creating_Then_it_is_refused_and_nothing_is_stored()
+    public async Task Given_a_KeeperOnly_request_When_creating_Then_it_succeeds_with_the_Keeper_account_and_a_KeeperOnly_Wall_Entry_and_signal()
     {
+        _requests.CreateResult = new RollRequestWriteResult(RollRequestWriteOutcome.Created, StoredRequest() with { Visibility = RollRequestVisibility.KeeperOnly });
+
         var result = await CreateAsync(visibility: RollRequestVisibility.KeeperOnly);
 
-        Assert.Equal(CreateRollRequestOutcome.KeeperOnlyNotAvailable, result.Outcome);
+        Assert.Equal(CreateRollRequestOutcome.Created, result.Outcome);
+        Assert.Equal(RollRequestVisibility.KeeperOnly, result.Request!.Visibility);
+        Assert.Equal(KeeperId, _requests.LastKeeperAccountId);
+        Assert.Equal([RequestId], _wall.RollRequests);
+        var publication = Assert.Single(_signals.Publications);
+        Assert.Equal(RollRequestVisibility.KeeperOnly, publication.Visibility);
+        Assert.Equal([HarveyPlayerId, LucyPlayerId], publication.PlayerAccountIds.OrderBy(id => id));
+    }
+
+    [Fact]
+    public async Task Given_an_unknown_visibility_When_creating_Then_it_is_InvalidVisibility_and_the_provider_is_untouched()
+    {
+        var result = await CreateAsync(visibility: RollRequestVisibility.Unknown);
+
+        Assert.Equal(CreateRollRequestOutcome.InvalidVisibility, result.Outcome);
         Assert.Null(result.Request);
         Assert.Empty(_requests.Calls);
         Assert.Empty(_wall.RollRequests);
@@ -274,7 +290,7 @@ public class RollRequestServiceTests
     public async Task Given_Waiting_rolls_When_a_Player_reads_mine_Then_each_comes_with_its_requests_target_and_message()
     {
         var stored = StoredRequest();
-        _requests.WaitingForInvestigator.Add(new WaitingRequestedRollRecord(RequestId, stored.Target, stored.Message, stored.CreatedAt, stored.RequestedRolls[0]));
+        _requests.WaitingForInvestigator.Add(new WaitingRequestedRollRecord(RequestId, stored.Target, stored.Message, RollRequestVisibility.Public, stored.CreatedAt, stored.RequestedRolls[0]));
 
         var mine = (await Service.ListMineAsync(CampaignId, HarveyPlayerId, CancellationToken.None))!;
 
@@ -297,6 +313,7 @@ public class RollRequestServiceTests
     [Fact]
     public async Task Given_their_own_Waiting_roll_When_a_Player_rolls_Then_it_rolls_and_only_their_account_is_signalled()
     {
+        _requests.Found = StoredRequest();
         _requests.RollResult = new RequestedRollWriteResult(RequestedRollWriteOutcome.Rolled, RolledHarvey(HarveyPlayerId));
         _names.Names[HarveyPlayerId] = "Account harvey";
         _names.Names[KeeperId] = "Account keeper";
@@ -310,18 +327,87 @@ public class RollRequestServiceTests
     }
 
     [Fact]
-    public async Task Given_anothers_roll_When_a_Player_rolls_Then_it_is_NotFound_and_the_provider_is_untouched()
+    public async Task Given_a_KeeperOnly_request_When_a_Player_rolls_their_own_Then_it_is_NotFound_and_the_provider_roll_is_not_called()
     {
+        _requests.Found = StoredRequest() with { Visibility = RollRequestVisibility.KeeperOnly };
+
+        var result = await Service.RollAsync(CampaignId, HarveyPlayerId, RequestId, Harvey, CancellationToken.None);
+
+        Assert.Equal(RollRequestedRollOutcome.NotFound, result.Outcome);
+        Assert.Null(result.Roll);
+        Assert.DoesNotContain(nameof(FakeRollRequests.RollAsync), _requests.Calls);
+        Assert.Empty(_signals.Publications);
+    }
+
+    [Fact]
+    public async Task Given_a_missing_request_When_rolling_Then_it_is_NotFound_and_the_provider_roll_is_not_called()
+    {
+        _requests.Found = null;
+
+        var result = await Service.RollAsync(CampaignId, KeeperId, RequestId, Harvey, CancellationToken.None);
+
+        Assert.Equal(RollRequestedRollOutcome.NotFound, result.Outcome);
+        Assert.Null(result.Roll);
+        Assert.DoesNotContain(nameof(FakeRollRequests.RollAsync), _requests.Calls);
+        Assert.Empty(_signals.Publications);
+    }
+
+    [Fact]
+    public async Task Given_a_KeeperOnly_request_When_the_Keeper_rolls_Then_it_reaches_the_provider()
+    {
+        _requests.Found = StoredRequest() with { Visibility = RollRequestVisibility.KeeperOnly };
+        _requests.RollResult = new RequestedRollWriteResult(RequestedRollWriteOutcome.NotWaiting, null);
+
+        var result = await Service.RollAsync(CampaignId, KeeperId, RequestId, Harvey, CancellationToken.None);
+
+        Assert.Equal(RollRequestedRollOutcome.NotWaiting, result.Outcome);
+        Assert.Contains(nameof(FakeRollRequests.RollAsync), _requests.Calls);
+        Assert.Empty(_signals.Publications);
+    }
+
+    [Theory]
+    [InlineData(RollRequestVisibility.Public)]
+    [InlineData(RollRequestVisibility.KeeperOnly)]
+    public async Task Given_a_request_When_the_Keeper_rolls_Then_the_signal_uses_the_request_visibility(RollRequestVisibility visibility)
+    {
+        _requests.Found = StoredRequest() with { Visibility = visibility };
+        _requests.RollResult = new RequestedRollWriteResult(RequestedRollWriteOutcome.Rolled, RolledHarvey(KeeperId));
+
+        var result = await Service.RollAsync(CampaignId, KeeperId, RequestId, Lucy, CancellationToken.None);
+
+        Assert.Equal(RollRequestedRollOutcome.Rolled, result.Outcome);
+        Assert.Equal(visibility, Assert.Single(_signals.Publications).Visibility);
+    }
+
+    [Fact]
+    public async Task Given_a_KeeperOnly_wait_When_a_Player_reads_mine_Then_it_is_left_out()
+    {
+        var stored = StoredRequest();
+        _requests.WaitingForInvestigator.Add(new WaitingRequestedRollRecord(
+            RequestId, stored.Target, stored.Message, RollRequestVisibility.KeeperOnly, stored.CreatedAt, stored.RequestedRolls[0]));
+
+        var mine = (await Service.ListMineAsync(CampaignId, HarveyPlayerId, CancellationToken.None))!;
+
+        Assert.Equal("Harvey Walters", mine.InvestigatorName);
+        Assert.Empty(mine.Rolls);
+    }
+
+    [Fact]
+    public async Task Given_anothers_roll_When_a_Player_rolls_Then_it_is_NotFound_and_the_provider_roll_is_not_called()
+    {
+        _requests.Found = StoredRequest();
+
         var result = await Service.RollAsync(CampaignId, HarveyPlayerId, RequestId, Lucy, CancellationToken.None);
 
         Assert.Equal(RollRequestedRollOutcome.NotFound, result.Outcome);
-        Assert.Empty(_requests.Calls);
+        Assert.DoesNotContain(nameof(FakeRollRequests.RollAsync), _requests.Calls);
         Assert.Empty(_signals.Publications);
     }
 
     [Fact]
     public async Task Given_any_Waiting_roll_When_the_Keeper_rolls_Then_it_rolls_and_the_Investigators_Player_is_signalled()
     {
+        _requests.Found = StoredRequest();
         _requests.RollResult = new RequestedRollWriteResult(RequestedRollWriteOutcome.Rolled, RolledLucy());
 
         var result = await Service.RollAsync(CampaignId, KeeperId, RequestId, Lucy, CancellationToken.None);
@@ -339,6 +425,7 @@ public class RollRequestServiceTests
     public async Task Given_a_refused_roll_When_rolling_Then_the_outcome_is_returned_and_no_signal_is_made(
         RequestedRollWriteOutcome providerOutcome, RollRequestedRollOutcome expected)
     {
+        _requests.Found = StoredRequest();
         _requests.RollResult = new RequestedRollWriteResult(providerOutcome, null);
 
         var result = await Service.RollAsync(CampaignId, KeeperId, RequestId, Harvey, CancellationToken.None);

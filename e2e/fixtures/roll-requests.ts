@@ -20,6 +20,7 @@ export interface RequestRollOptions {
   target: string
   investigators: Array<string | InvestigatorRollChoice>
   message?: string
+  visibility?: 'Public' | 'KeeperOnly'
   difficulty?: RollDifficulty
   bonusDice?: number
   penaltyDice?: number
@@ -117,14 +118,22 @@ export async function requestRollViaUi(page: Page, options: RequestRollOptions):
       await form.getByRole('button', { name: `Done changing Difficulty and dice for ${name}` }).click()
     }
   }
-  await form.getByRole('button', { name: /^Request roll/ }).click()
+  const hidden = options.visibility === 'KeeperOnly'
+  if (hidden) {
+    await form.getByRole('radio', { name: 'Keeper only (hidden roll)' }).check()
+  }
+  await form.getByRole('button', { name: hidden ? /^Roll now/ : /^Request roll/ }).click()
   const names = options.investigators.map((investigator) => (typeof investigator === 'string' ? investigator : investigator.name))
   // Local 15s budget, not the 5s default: the first create after a fresh server start can stall on LocalDB first
   // writes while the button already reads "Requesting...". A refusal still fails loudly: the form keeps the choices
   // and shows an inline Alert instead of the status line.
-  await expect(pageStatus(page)).toContainText(`${options.target} roll requested from ${joinNames(names)}.`, {
-    timeout: 15_000,
-  })
+  if (hidden) {
+    await expect(pageStatus(page)).toContainText(`${options.target} hidden roll: `, { timeout: 15_000 })
+  } else {
+    await expect(pageStatus(page)).toContainText(`${options.target} roll requested from ${joinNames(names)}.`, {
+      timeout: 15_000,
+    })
+  }
 }
 
 /** "Harvey Walters", "Harvey Walters and Lucy Ward", "Harvey Walters, Lucy Ward and Cy Holloway" (ux.md section 11). */

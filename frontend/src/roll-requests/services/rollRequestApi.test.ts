@@ -69,12 +69,13 @@ describe('rollRequestQueryKeys', () => {
 })
 
 describe('requestRoll', () => {
-  it('posts the target, message, defaults, and investigators, and returns the created request', async () => {
+  it.each(['Public', 'KeeperOnly'] as const)('posts the visibility %s with the target and investigators', async (visibility) => {
     const fetchMock = stubFetch(() => jsonResponse(201, rollRequest))
 
     const created = await requestRoll('token', 'c1', {
       target,
       message: 'Something moves upstairs.',
+      visibility,
       difficulty: 'Regular',
       bonusDice: 0,
       penaltyDice: 0,
@@ -86,6 +87,7 @@ describe('requestRoll', () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toEqual({
       target,
       message: 'Something moves upstairs.',
+      visibility,
       difficulty: 'Regular',
       bonusDice: 0,
       penaltyDice: 0,
@@ -97,7 +99,7 @@ describe('requestRoll', () => {
     stubFetch(() => jsonResponse(409, { title: 'No Scene is Active.' }))
 
     await expect(
-      requestRoll('token', 'c1', { target, difficulty: 'Regular', bonusDice: 0, penaltyDice: 0, investigators: [] }),
+      requestRoll('token', 'c1', { target, visibility: 'Public', difficulty: 'Regular', bonusDice: 0, penaltyDice: 0, investigators: [] }),
     ).rejects.toBeInstanceOf(NoActiveSceneError)
   })
 
@@ -108,6 +110,7 @@ describe('requestRoll', () => {
 
     const refusal = await requestRoll('token', 'c1', {
       target,
+      visibility: 'Public',
       difficulty: 'Regular',
       bonusDice: 0,
       penaltyDice: 0,
@@ -122,7 +125,7 @@ describe('requestRoll', () => {
     stubFetch(() => jsonResponse(201, { ...rollRequest, createdByAccountId: 'a1' }))
 
     await expect(
-      requestRoll('token', 'c1', { target, difficulty: 'Regular', bonusDice: 0, penaltyDice: 0, investigators: [] }),
+      requestRoll('token', 'c1', { target, visibility: 'Public', difficulty: 'Regular', bonusDice: 0, penaltyDice: 0, investigators: [] }),
     ).rejects.toThrow()
   })
 })

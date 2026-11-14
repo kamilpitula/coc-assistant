@@ -49,18 +49,21 @@ public class SceneRollRequestServiceTests : IDisposable
         IReadOnlyList<RequestedRollInput>? investigators = null,
         RollTarget? target = null,
         Guid? campaignId = null,
-        ISceneRollRequestRepository? requests = null)
+        ISceneRollRequestRepository? requests = null,
+        RollRequestVisibility visibility = RollRequestVisibility.Public,
+        Guid? keeperAccountId = null)
     {
         using var context = _builder.Fixture.CreateContext();
         return await Service(context, requests: requests).CreateAsync(
             campaignId ?? _builder.CampaignId,
             target ?? SpotHidden,
             "Something moves upstairs.",
-            RollRequestVisibility.Public,
+            visibility,
             Difficulty.Regular,
             0,
             0,
             investigators ?? [Input(Harvey)],
+            keeperAccountId ?? Roller,
             CancellationToken.None);
     }
 
@@ -153,6 +156,7 @@ public class SceneRollRequestServiceTests : IDisposable
                 0,
                 0,
                 investigators,
+                Roller,
                 CancellationToken.None);
         }
 
@@ -162,12 +166,43 @@ public class SceneRollRequestServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Given_KeeperOnly_When_creating_Then_every_roll_is_rolled_after_one_save_with_the_Keeper_as_roller()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+
+        var result = await CreateAsync(sceneId, [Input(Harvey, 60)], visibility: RollRequestVisibility.KeeperOnly);
+
+        Assert.Equal(RollRequestWriteOutcome.Created, result.Outcome);
+        var request = result.Request!;
+        Assert.Equal(RollRequestVisibility.KeeperOnly, request.Visibility);
+        var roll = Assert.Single(request.RequestedRolls);
+        Assert.Equal(RequestedRollStatus.Rolled, roll.Status);
+        var record = Assert.Single(roll.RollRecords);
+        Assert.Equal(25, record.Result);
+        Assert.Equal(Roller, record.RolledByAccountId);
+        Assert.Equal(request.CreatedAt, record.RolledAt);
+        Assert.Equal(1, await StoredRequestCountAsync());
+    }
+
+    [Fact]
+    public async Task Given_a_request_When_listing_mine_Then_the_waiting_view_carries_the_request_visibility()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId, [Input(Harvey)]);
+
+        using var context = _builder.Fixture.CreateContext();
+        var waiting = Assert.Single(await Service(context).ListWaitingForInvestigatorAsync(_builder.CampaignId, Harvey, CancellationToken.None));
+
+        Assert.Equal(created.Request!.Visibility, waiting.Visibility);
+    }
+
+    [Fact]
     public async Task Given_a_lost_save_race_When_creating_Then_it_is_a_conflict()
     {
         var (_, sceneId) = await ActiveSceneAsync();
         using var context = _builder.Fixture.CreateContext();
         var result = await Service(context, requests: new ConflictingRequests(new EfSceneRollRequestRepository(context))).CreateAsync(
-            _builder.CampaignId, SpotHidden, null, RollRequestVisibility.Public, Difficulty.Regular, 0, 0, [Input(Harvey)], CancellationToken.None);
+            _builder.CampaignId, SpotHidden, null, RollRequestVisibility.Public, Difficulty.Regular, 0, 0, [Input(Harvey)], Roller, CancellationToken.None);
 
         Assert.Equal(RollRequestWriteOutcome.Conflict, result.Outcome);
     }

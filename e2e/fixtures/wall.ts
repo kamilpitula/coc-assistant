@@ -32,7 +32,12 @@ export async function openWall(page: Page, campaignId: string): Promise<void> {
 export async function addWallEntryViaUi(page: Page, text: string, visibility: 'Public' | 'Keeper only' = 'Public'): Promise<void> {
   await wallComposer(page).fill(text)
   if (visibility === 'Keeper only') {
-    await page.getByRole('radio', { name: 'Keeper only' }).check()
+    // Scoped to the composer's own radiogroup with an exact name: the Roll Request form on Run has its own
+    // "Keeper only (hidden roll)" radio, which a page-level substring locator would also match.
+    await page
+      .getByRole('radiogroup', { name: 'Who can read this?' })
+      .getByRole('radio', { name: 'Keeper only', exact: true })
+      .check()
   }
   await wallPost(page).click()
   await expect(wallEntry(page, text)).toBeVisible()

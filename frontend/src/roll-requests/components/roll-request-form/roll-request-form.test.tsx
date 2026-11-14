@@ -50,8 +50,8 @@ function setup(props: Partial<React.ComponentProps<typeof RollRequestForm>> = {}
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   const onRequested = vi.fn()
   const onNoActiveScene = vi.fn()
-  render(<RollRequestForm campaignId="c1" investigators={investigators} onRequested={onRequested} onNoActiveScene={onNoActiveScene} {...props} />, { wrapper })
-  return { onRequested, onNoActiveScene }
+  const { unmount } = render(<RollRequestForm campaignId="c1" investigators={investigators} onRequested={onRequested} onNoActiveScene={onNoActiveScene} {...props} />, { wrapper })
+  return { onRequested, onNoActiveScene, unmount }
 }
 
 async function chooseTarget(name: string) {
@@ -164,6 +164,7 @@ describe('RollRequestForm', () => {
       {
         target: { kind: 'Skill', skill: 'Language', specialization: 'Latin', characteristic: null },
         message: 'Something moves upstairs.',
+        visibility: 'Public',
         difficulty: 'Regular',
         bonusDice: 0,
         penaltyDice: 0,
@@ -214,5 +215,110 @@ describe('RollRequestForm', () => {
 
     expect(screen.getByText('Messages can be at most 2000 characters.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Request roll' })).toBeDisabled()
+  })
+
+  // specs/roll-requests/ux.md section 3.1: the visibility choice (RR-UX-15 to RR-UX-17, RR-A11Y-11, RR-A11Y-12).
+  it('offers "Who can see this roll?" defaulting to Public (RR-UX-15, RR-A11Y-11)', () => {
+    setup()
+
+    const group = screen.getByRole('radiogroup', { name: 'Who can see this roll?' })
+    expect(group).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Public' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Keeper only (hidden roll)' })).not.toBeChecked()
+    expect(screen.getByText('Players roll it themselves and everyone sees the result.')).toBeInTheDocument()
+    expect(screen.getByText('The app rolls it now. Only you see it.')).toBeInTheDocument()
+    expect(screen.queryByText(/Keeper only: the app rolls this now/)).not.toBeInTheDocument()
+  })
+
+  it('names the submit for the mode and links the mode line to it (RR-UX-16, RR-A11Y-12)', async () => {
+    setup()
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Keeper only (hidden roll)' }))
+
+    const modeLine = screen.getByText('Keeper only: the app rolls this now and only you see the results.')
+    expect(modeLine).toBeInTheDocument()
+    const submit = screen.getByRole('button', { name: 'Roll now' })
+    expect(submit).toHaveAttribute('aria-describedby', expect.stringContaining(modeLine.id))
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Harvey Walters' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Lucy Ward' }))
+    expect(screen.getByRole('button', { name: 'Roll now for 2' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Public' }))
+    expect(screen.queryByText(/Keeper only: the app rolls this now/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Request roll from 2' })).toBeInTheDocument()
+  })
+
+  it('sends the chosen visibility and keeps it after a hidden request, announcing the response inline (RR-UX-17, RR-UX-18)', async () => {
+    const created = {
+      id: 'r1',
+      target: { kind: 'Skill', skill: 'Spot Hidden', specialization: null, characteristic: null },
+      message: null,
+      visibility: 'KeeperOnly',
+      difficulty: 'Regular',
+      bonusDice: 0,
+      penaltyDice: 0,
+      createdAt: '2026-11-13T19:40:00Z',
+      requestedRolls: [
+        {
+          investigatorId: 'i1',
+          investigatorName: 'Harvey Walters',
+          targetValue: 60,
+          usesBaseValue: false,
+          canEarnExperienceCheck: false,
+          difficulty: 'Regular',
+          bonusDice: 0,
+          penaltyDice: 0,
+          status: 'Rolled',
+          rolls: [
+            {
+              dice: '1D100',
+              result: 34,
+              faces: [30, 4],
+              rolledBy: 'The Keeper',
+              rolledAt: '2026-11-13T19:45:00Z',
+              percentile: { unitsFace: 4, tensFaces: [30], keptTens: 30, result: 34, successLevel: 'Regular', isSuccess: true },
+              earnsExperienceCheck: false,
+            },
+          ],
+        },
+      ],
+    }
+    mockMutate.mockImplementation((_input: unknown, options: { onSuccess: (created: unknown) => void }) => options.onSuccess(created))
+    const { onRequested } = setup()
+
+    await chooseTarget('Spot Hidden')
+    await userEvent.click(screen.getByRole('radio', { name: 'Keeper only (hidden roll)' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Harvey Walters' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Roll now' }))
+
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ visibility: 'KeeperOnly', investigators: [{ investigatorId: 'i1' }] }),
+      expect.anything(),
+    )
+    expect(onRequested).toHaveBeenCalledWith('Spot Hidden hidden roll: Harvey Walters rolled 34: Regular success.')
+    expect(screen.getByRole('radio', { name: 'Keeper only (hidden roll)' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Harvey Walters' })).not.toBeChecked()
+    expect(screen.getByRole('button', { name: 'Roll now' })).toBeDisabled()
+  })
+
+  it('keeps the chosen visibility after a 400 and returns to Public on remount (RR-UX-17)', async () => {
+    mockMutate.mockImplementation((_input: unknown, options: { onError: (error: Error) => void }) =>
+      options.onError(new RollRequestRefusedError('an Investigator is no longer present.')),
+    )
+    const { unmount } = setup()
+
+    await chooseTarget('Spot Hidden')
+    await userEvent.click(screen.getByRole('radio', { name: 'Keeper only (hidden roll)' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Harvey Walters' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Roll now' }))
+
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Keeper only (hidden roll)' })).toBeChecked()
+
+    unmount()
+    setup()
+
+    expect(screen.getByRole('radio', { name: 'Public' })).toBeChecked()
   })
 })

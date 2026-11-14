@@ -83,3 +83,12 @@ export const Luck: Story = {
     await userEvent.click(canvas.getByRole('option', { name: 'Luck' }))
   },
 }
+
+export const KeeperOnly: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('radio', { name: 'Keeper only (hidden roll)' }))
+    await userEvent.click(canvas.getByRole('checkbox', { name: 'Harvey Walters' }))
+    await userEvent.click(canvas.getByRole('checkbox', { name: 'Lucy Ward' }))
+  },
+}

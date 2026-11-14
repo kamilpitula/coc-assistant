@@ -5,6 +5,7 @@ import { WallEntryTime } from '@/campaign-play/components/wall-entry-time/wall-e
 import { useRollRequest } from '@/roll-requests/hooks/useRollRequests'
 import { describeDice, describeFaces, describeOutcome, describeTargets, rollTargetName } from '@/roll-requests/services/rollRequestPresentation'
 import type { CompletedRoll, RequestedRoll, RollRequest } from '@/roll-requests/types/RollRequest'
+import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 
@@ -47,12 +48,14 @@ export function RollRequestCard({ campaignId, rollRequestId, requestedByDisplayN
     )
   }
 
+  const hidden = request.data.visibility === 'KeeperOnly'
+
   return (
     <article aria-labelledby={headingId} className="flex flex-col gap-2">
       <CardHeader request={request.data} headingId={headingId} requestedByDisplayName={requestedByDisplayName} />
       <ul className="flex flex-col gap-2">
         {request.data.requestedRolls.map((roll) => (
-          <RequestedRollRow key={roll.investigatorId} roll={roll} />
+          <RequestedRollRow key={roll.investigatorId} roll={roll} hidden={hidden} />
         ))}
       </ul>
     </article>
@@ -71,6 +74,7 @@ function CardHeader({ request, headingId, requestedByDisplayName }: { request: R
         <span className="ml-auto flex flex-wrap items-center gap-2 text-sm">
           <WallEntryTime createdAt={request.createdAt} />
           <span className="font-medium break-words">{requestedByDisplayName}</span>
+          {request.visibility === 'KeeperOnly' && <Badge variant="outline">Keeper only</Badge>}
         </span>
       </div>
       {request.message !== null && request.message !== '' && (
@@ -80,7 +84,7 @@ function CardHeader({ request, headingId, requestedByDisplayName }: { request: R
   )
 }
 
-function RequestedRollRow({ roll }: { roll: RequestedRoll }) {
+function RequestedRollRow({ roll, hidden }: { roll: RequestedRoll; hidden: boolean }) {
   const result = roll.rolls[0]
 
   return (
@@ -96,7 +100,7 @@ function RequestedRollRow({ roll }: { roll: RequestedRoll }) {
         {roll.usesBaseValue && ' (base value)'}
       </p>
       {result?.percentile && <p className="text-sm">{describeFaces(result.percentile)}</p>}
-      {result?.rolledBy && <p className="text-sm">Rolled by {result.rolledBy}</p>}
+      {result?.rolledBy && <p className="text-sm">Rolled by {result.rolledBy}{hidden ? ' (hidden roll)' : ''}</p>}
       {result?.earnsExperienceCheck === true && <p className="text-sm text-success">Experience check earned</p>}
     </li>
   )

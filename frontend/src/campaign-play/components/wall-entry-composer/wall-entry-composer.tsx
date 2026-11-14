@@ -7,10 +7,10 @@ import {
   type NewWallEntry,
   type WallEntryVisibility,
 } from '@/campaign-play/types/WallEntry'
+import { VisibilityChoice } from '@/shared/components/visibility-choice/visibility-choice'
 import { Button } from '@/shared/components/ui/button'
 import { Card } from '@/shared/components/ui/card'
 import { Label } from '@/shared/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group'
 import { Textarea } from '@/shared/components/ui/textarea'
 
 /** The id of the text box, so the Wall can return focus to it. */
@@ -78,7 +78,15 @@ export function WallEntryComposer({ viewerRole, pending, failed, onSubmit, rows 
           onKeyDown={handleKeyDown}
         />
         {isKeeper ? (
-          <VisibilityChoice value={visibility} onChange={setVisibility} />
+          <VisibilityChoice
+            legend="Who can read this?"
+            publicLabel="Public"
+            publicDescription="Players can read this."
+            keeperOnlyLabel="Keeper only"
+            keeperOnlyDescription="Only you can read this."
+            value={visibility}
+            onChange={setVisibility}
+          />
         ) : (
           <p className="text-sm text-muted-foreground">Everyone in this Campaign can read this.</p>
         )}
@@ -109,50 +117,3 @@ function hintFor(length: number, tooLong: boolean): string {
   return length === 0 ? 'Write something to post.' : `${length} / ${WALL_ENTRY_TEXT_MAX_LENGTH}`
 }
 
-interface VisibilityChoiceProps {
-  value: WallEntryVisibility
-  onChange: (value: WallEntryVisibility) => void
-}
-
-/** The Keeper's "Who can read this?" choice; Public is the default. */
-function VisibilityChoice({ value, onChange }: VisibilityChoiceProps) {
-  const publicId = useId()
-  const keeperOnlyId = useId()
-
-  return (
-    <div className="flex flex-col gap-2">
-      <p id={`${publicId}-legend`} className="text-sm font-medium">
-        Who can read this?
-      </p>
-      <RadioGroup
-        aria-labelledby={`${publicId}-legend`}
-        value={value}
-        onValueChange={(next) => onChange(next as WallEntryVisibility)}
-      >
-        <VisibilityOption id={publicId} value="Public" label="Public" description="Players can read this." />
-        <VisibilityOption id={keeperOnlyId} value="KeeperOnly" label="Keeper only" description="Only you can read this." />
-      </RadioGroup>
-    </div>
-  )
-}
-
-interface VisibilityOptionProps {
-  id: string
-  value: WallEntryVisibility
-  label: string
-  description: string
-}
-
-function VisibilityOption({ id, value, label, description }: VisibilityOptionProps) {
-  return (
-    <div className="flex items-start gap-2">
-      <RadioGroupItem id={id} value={value} aria-describedby={`${id}-description`} className="mt-1" />
-      <div className="flex flex-col">
-        <Label htmlFor={id}>{label}</Label>
-        <span id={`${id}-description`} className="text-sm text-muted-foreground">
-          {description}
-        </span>
-      </div>
-    </div>
-  )
-}
