@@ -24,6 +24,14 @@ Human decisions (2026-11-14, PBI-DICE-007), section 17:
 - Starting another Scene with "Finish {title} first" also cancels the finished Scene's waiting rolls. The start page shows the count (scene-play ux section 24).
 - The Player side is silent: a cancelled roll just leaves the panel and the badge.
 
+Human decisions (2026-11-14, PBI-DICE-008), section 18, chosen from a clickable prototype (section 12.2):
+- **Option A (Roll Request cards mixed into each Scene's list in the Scene History)**. Option B (an h3 "Rolls" group of open cards below the Reveals) and Option C (closed rows with a one-line summary and "Show") were rejected at the gate:
+  - Option B separates rolls from the Reveals they happened near.
+  - Option C adds a second presentation of a Roll Request beside the card, and its summary copy would have to follow every later state (PBI-DICE-009).
+- A Player sees every Public Roll Request of a Scene, whether or not it involves their Investigator. A Player without an Approved Investigator sees them too.
+- Cancelled Requested Rolls are hidden in the Scene History, for the Keeper and for Players. A Roll Request whose rows are all Cancelled is not listed there. The Wall and the Wall preview keep showing "Cancelled" rows.
+- The order is newest first, consistent with the other items of the Scene History: Reveals by their Revealed time and Roll Requests by their request time in one list. On equal times the Reveal comes first.
+
 Behavior and rules: [specs/roll-requests/spec.md](spec.md). This document covers presentation only. Rules are cited, never restated: [skill rolls](../../docs/game-rules/coc7_skill_rolls_rules.md) sections 2 to 5 and 7, [project_ruleset.md](../../docs/game-rules/project_ruleset.md) sections 4.2, 4.7, 4.8, and 4.9, and [character rules section 16.1](../../docs/game-rules/coc7_character_creation_and_development_rules.md#161-skill-experience-tick-during-play).
 
 ## 1. Information architecture
@@ -32,6 +40,7 @@ Behavior and rules: [specs/roll-requests/spec.md](spec.md). This document covers
 /campaigns/$campaignId/active-scene   Run (Keeper): "Request a roll" and "Waiting rolls" in the left column
 /campaigns/$campaignId/active-scene   Player view: "Rolls waiting for you" first after the h1
 /campaigns/$campaignId/wall           Wall page: Roll Request cards in the entry list
+/campaigns/$campaignId/scene-history  Scene History: Roll Request cards inside each Scene (scene-play ux section 23.11)
 Every Campaign page                   Campaign tab "Active Scene" with the waiting count badge; the assertive region
 ```
 
@@ -171,7 +180,7 @@ Keeper only: the app rolls this now and only you see the results.   (only in Kee
 +-----------------------------------------------------------------------+
 ```
 
-- **Where:** the entry for a `RollRequest` Wall Entry on the Wall page list ([campaign-wall ux](../campaign-wall/ux.md) section 2) and in `wall-preview` (section 7 there, and the Run Wall of scene-play ux section 21.8). It is the same component in both places and is never clamped.
+- **Where:** the entry for a `RollRequest` Wall Entry on the Wall page list ([campaign-wall ux](../campaign-wall/ux.md) section 2) and in `wall-preview` (section 7 there, and the Run Wall of scene-play ux section 21.8). It is the same component in both places and is never clamped. A third host is the Scene History ([scene-play ux](../scene-play/ux.md) section 23.11): the same card, with its data delivered by the history read instead of a read by id. There, Cancelled rows are not rendered, and a card with no rows left is not rendered (section 18).
 - **Structure:** an `article` labelled by its `h3` "{target} roll" (for example "Spot Hidden roll", "Language (Latin) roll", "DEX roll", "Luck roll"). The header line has the `time` and the Keeper's display name. The message, when present, is plain text (`whitespace-pre-line`, `break-words`). The rows are a `ul`, one `li` per Requested Roll in the request's order. The card has a strong left border to set it apart from text entries; this is not the only cue, because the heading says "roll".
 - **Row content:**
   - Line 1: the Investigator's name (bold), and at the end the status:
@@ -261,6 +270,7 @@ Overview   Active Scene (Live) (2)   Scene History   Wall   Settings
   - Section 7: a `RollRequest` entry in the preview is the card of section 5, not clamped.
 - [scene-play ux](../scene-play/ux.md) section 21.3: the "Future play tools" slot holds sections 3 and 4. SPL-UX-50 becomes "Keeper notes, Request a roll, Waiting rolls, Investigators present, Wall".
 - [navigation ux](../navigation/ux.md) NAV-UX-3: the tab may also carry the count of section 7.
+- [scene-play ux](../scene-play/ux.md) section 23 (PBI-DICE-008): sections 23.2, 23.3, 23.5, and 23.6, and SPL-UX-63, SPL-UX-64, and SPL-UX-68, as amended in section 23.11.
 - [campaign-overview ux](../campaign-overview/ux.md) CO-A11Y-7: Roll Request announcements to the targeted Player use the assertive region of section 8. Every other live change stays polite.
 
 ## 10. Cancelling (PBI-DICE-007)
@@ -309,6 +319,7 @@ The finish-dialog count, the present-save report, and the start-page hint are in
 | Cancel statuses (DICE-007) | "{name}'s {target} roll was cancelled." / "{name}'s {target} roll was already made." / "{name}'s {target} roll was already cancelled." |
 | Cancel error (DICE-007) | "We couldn't cancel that. Try again." |
 | Cancelled row (DICE-007) | "Cancelled" |
+| Scene History empty Scene, Keeper (DICE-008) | "Nothing was revealed or rolled in this Scene." |
 
 ## 12. Prototype validation
 
@@ -334,6 +345,15 @@ The finish-dialog count, the present-save report, and the start-page hint are in
   2. The prototype left out the per-Investigator changes and six characteristics; section 3 is unchanged.
   3. The prototype's status had no experience-check text; this specification matches it.
 
+### 12.2 Prototype validation (PBI-DICE-008)
+
+- **Question:** how should a Scene's Roll Requests sit inside the Scene History (a mixed list, a "Rolls" group, or closed summary rows), which Public rolls a Player sees, whether Cancelled rows show, and in which order?
+- **Branch:** UI (prototype skill, UI.md). A single self-contained HTML file with `?variant=A|B|C`, plus switches for the viewer (Keeper, Player with an Investigator, Player without one), the Player scope, Cancelled rows, the order, a busy Scene of 15 rolls, and the width (1280 or 320). A live step moves a Waiting roll through Rolled and Cancelled, and a debug strip lists the Roll Requests each viewer's response would carry.
+- **Throwaway branch:** `prototype/dice-008-roll-requests-in-scene-history` (local, never merged), commit `0eb9472`, file `specs/roll-requests/prototype/roll-requests-in-scene-history-prototype.html`. Open it in a browser with `?variant=A`, `B`, or `C`.
+- **Verdict:** Option A; a Player sees all Public rolls; Cancelled rows are hidden; the order is consistent with the other items of the Scene History (newest first).
+- **Date and deciding human:** 2026-11-14, the project owner, relayed by the Orchestrator.
+- **Deviations of this specification from the prototype:** none.
+
 ## 13. Component mapping
 
 | Element | Component | Notes |
@@ -341,7 +361,7 @@ The finish-dialog count, the present-save report, and the start-page hint are in
 | Request form | new `roll-request-form` (roll-requests slice) | shadcn `Select`, `RadioGroup`, `Checkbox`, `Textarea`, `Input`, `Button`, `Alert`; the per-Investigator changes are an inline `role="group"` toggled by a button with `aria-expanded` |
 | Visibility choice (DICE-006) | new shared `visibility-choice` (`src/shared/components/visibility-choice/`), extracted from `wall-entry-composer` | `RadioGroup`; used by the Wall composer and `roll-request-form` |
 | Waiting rolls | new `waiting-rolls` (roll-requests slice) | `Card`, `Badge`, `Button` |
-| Card | new `roll-request-card` (roll-requests slice) | hosted by `wall-entry-list` and `wall-preview` (the ADR 0028 host-adapts pattern); an outline `Badge` "Keeper only" for a hidden roll (section 5.2) |
+| Card | new `roll-request-card` (roll-requests slice) | hosted by `wall-entry-list` and `wall-preview` (the ADR 0028 host-adapts pattern); an outline `Badge` "Keeper only" for a hidden roll (section 5.2). PBI-DICE-008: the markup becomes `RollRequestCardView` (renders from data), which `RollRequestCard` (loads by id) and `scene-history-scene` both render ([ADR 0035](../../docs/adr/0035-scene-history-embeds-play-records-within-visibility.md)) |
 | Player panel | new `waiting-rolls-panel` (roll-requests slice) | hosted by `active-scene-player-view` |
 | Tab badge | `campaign-header` (`CampaignNavLink` gains a count) | `Badge` |
 | Assertive region | `campaign-layout` | the reducer of `wallEntryAnnouncementThrottle`, generalized |
@@ -369,9 +389,9 @@ The finish-dialog count, the present-save report, and the start-page hint are in
 - **RR-UX-18** (PBI-DICE-006) A hidden roll shows "{target} hidden roll: {name} rolled {result}: {outcome}; ..." in the status paragraph, adds one card whose rows are all rolled, with "Keeper only" in the header and "Rolled by {Keeper} (hidden roll)" on each row, and adds nothing to "Waiting rolls" or the tab badge.
 - **RR-UX-19** (PBI-DICE-006) A Player on any Campaign page receives nothing for a hidden roll: no card on the Wall or in the preview, no panel row, no badge, and no assertive or polite announcement.
 - **RR-UX-20** (PBI-DICE-007) Each "Waiting rolls" row shows "Cancel". Activating it removes the row, says "{name}'s {target} roll was cancelled.", and moves focus as for "Roll for". When the server refuses, the status reads "... was already made." or "... was already cancelled." and the row leaves. A network error shows "We couldn't cancel that. Try again." under the row.
-- **RR-UX-21** (PBI-DICE-007) A cancelled roll's card row shows "Cancelled" and its target line, with no result lines, for every member who can see the card, without reloading.
+- **RR-UX-21** (PBI-DICE-007) On the Wall and in the Wall preview, a cancelled roll's card row shows "Cancelled" and its target line, with no result lines, for every member who can see the card, without reloading. (Scoped by PBI-DICE-008: the Scene History hides it, RR-UX-24.)
 - **RR-UX-22** (PBI-DICE-007) A cancelled roll leaves the Player's "Rolls waiting for you" panel and both tab badges without reloading and without any announcement or message to the Player.
-- **RR-UX-23** (PBI-DICE-007) Finishing the Scene, starting another Scene with "Finish {title} first", or removing an Investigator present cancels the affected Waiting rolls, and their card rows show "Cancelled". Each of these journeys shows the count as in [scene-play ux](../scene-play/ux.md) section 24.
+- **RR-UX-23** (PBI-DICE-007) Finishing the Scene, starting another Scene with "Finish {title} first", or removing an Investigator present cancels the affected Waiting rolls, and their card rows on the Wall and in the Wall preview show "Cancelled". Each of these journeys shows the count as in [scene-play ux](../scene-play/ux.md) section 24.
 
 ## 15. Accessibility acceptance criteria (WCAG 2.2 AA)
 
@@ -425,7 +445,7 @@ Lucy Ward . Spot Hidden . Hard . 1 Penalty Die   19:14  [Roll for Lucy Ward] [Ca
 - **Row:** the status at the end of line 1 is "Cancelled" in muted text, with no icon.
   - Line 2 (Difficulty, dice, and target values) stays.
   - There are no faces, no "Rolled by", and no experience line.
-- **Who sees it:** every member who can see the card, without reloading, through the `rollRequests` signal. A cancelled roll is never removed from its card.
+- **Who sees it:** every member who can see the card, without reloading, through the `rollRequests` signal. A cancelled roll is never removed from its card on the Wall and in the Wall preview. The Scene History hides it (section 18).
 
 ### 17.3 Player side (silent)
 
@@ -444,3 +464,14 @@ Lucy Ward . Spot Hidden . Hard . 1 Penalty Die   19:14  [Roll for Lucy Ward] [Ca
 - **What the user sees:**
   - The cancelled rows show "Cancelled" on their cards (section 17.2), and they leave "Waiting rolls", the panels, and the badges.
   - The Keeper's counts and messages are in [scene-play ux](../scene-play/ux.md) section 24.
+
+## 18. Roll Requests in the Scene History (PBI-DICE-008)
+
+Behavior: [spec.md](spec.md), Scene History. Presentation: [scene-play ux](../scene-play/ux.md) section 23.11. Design: [PBI-DICE-008 design record](../../docs/dice/issues/08-roll-requests-in-the-scene-history.design.md).
+
+- **The card:** the card of section 5 (5.2 for "Keeper only"), with no actions. Its data comes with the Scene History read, so in the history it has no loading, error, or "Try again" state of its own.
+- **Rows:** Waiting and Rolled rows render as in section 5. Waiting rows appear only in the Active Scene, because finishing a Scene cancels them (section 17.4).
+- **Cancelled:** a Cancelled row is not rendered in the Scene History, and a card whose rows are all Cancelled is not rendered. The Wall and the Wall preview are unchanged (section 17.2, RR-UX-21).
+- **Who sees which cards:** the Keeper sees every card. A Player sees every Public card of the Scene, including ones that don't involve their Investigator. A Keeper-only card leaves no trace for a Player (as section 5.2 and RR-UX-19).
+- **RR-UX-24** (PBI-DICE-008) In the Scene History, a Roll Request card shows its Waiting and Rolled rows exactly as in sections 5 and 5.2, never shows a Cancelled row, and is absent when every row is Cancelled.
+- **RR-A11Y-17** (PBI-DICE-008) In the Scene History the card stays an `article` labelled by its h3, at the same heading level as a Reveal (1.3.1).

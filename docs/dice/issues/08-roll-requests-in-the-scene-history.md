@@ -30,3 +30,4 @@ Read: [roll-requests spec](../../../specs/roll-requests/spec.md), Scene History;
 A change here updates the roll-requests and scene-play specs, the scene-play ux.md Scene History section, and tests together.
 
 ## Follow-ups
+- Prototype: `prototype/dice-008-roll-requests-in-scene-history` (`0eb9472`, local, never merged); verdict in [specs/roll-requests/ux.md](../../../specs/roll-requests/ux.md) section 12.2. Design: [08-roll-requests-in-the-scene-history.design.md](08-roll-requests-in-the-scene-history.design.md).
