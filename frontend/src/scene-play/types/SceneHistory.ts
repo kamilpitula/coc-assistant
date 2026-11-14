@@ -1,3 +1,5 @@
+import type { RollRequest } from '@/roll-requests/types/RollRequest'
+
 import type { KeeperReveal, PlayerReveal } from './Reveal'
 
 /** An Investigator who was present when a Scene finished, or is present now for the Active Scene. The name may be missing. */
@@ -6,7 +8,7 @@ export interface HistoryInvestigatorPresent {
   name: string | null
 }
 
-/** A played Scene as the Keeper sees it: every Reveal with its recipients, and the Investigators present. */
+/** A played Scene as the Keeper sees it: every Reveal with its recipients, the Investigators present, and every Roll Request. */
 export interface KeeperHistoryScene {
   sceneId: string
   scenarioId: string
@@ -19,6 +21,8 @@ export interface KeeperHistoryScene {
   investigatorsPresent: HistoryInvestigatorPresent[]
   /** Newest first. */
   reveals: KeeperReveal[]
+  /** Newest first. */
+  rollRequests: RollRequest[]
 }
 
 /** The Campaign's played Scenes as the Keeper sees them, newest started first. */
@@ -27,7 +31,7 @@ export interface KeeperSceneHistory {
   scenes: KeeperHistoryScene[]
 }
 
-/** A played Scene as a Player sees it: the Scenario title with only the Reveals that reached their Investigator. */
+/** A played Scene as a Player sees it: the Scenario title with only the Reveals that reached their Investigator and the Public Roll Requests. */
 export interface PlayerHistoryScene {
   sceneId: string
   scenarioTitle: string
@@ -38,6 +42,8 @@ export interface PlayerHistoryScene {
   finishedAt: string | null
   /** Only the Reveals that reached the caller's Investigator, newest first. */
   reveals: PlayerReveal[]
+  /** Only Public Roll Requests, newest first. */
+  rollRequests: RollRequest[]
 }
 
 /** The Campaign's played Scenes as a Player sees them, newest started first, with their Investigator's name. */

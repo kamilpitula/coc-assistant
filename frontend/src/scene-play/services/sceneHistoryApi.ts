@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
+import { rollRequestSchema } from '@/roll-requests/services/rollRequestApi'
 import { keeperRevealSchema, playerRevealSchema } from '@/scene-play/services/revealSchemas'
 import type { KeeperSceneHistory, PlayerSceneHistory, SceneHistory } from '@/scene-play/types/SceneHistory'
 
@@ -15,6 +16,7 @@ const keeperHistorySceneSchema = z.strictObject({
   finishedAt: z.string().nullable(),
   investigatorsPresent: z.array(z.strictObject({ id: z.string(), name: z.string().nullable() })),
   reveals: z.array(keeperRevealSchema),
+  rollRequests: z.array(rollRequestSchema),
 })
 
 const playerHistorySceneSchema = z.strictObject({
@@ -24,6 +26,8 @@ const playerHistorySceneSchema = z.strictObject({
   startedAt: z.string(),
   finishedAt: z.string().nullable(),
   reveals: z.array(playerRevealSchema),
+  // Pinned to Public: a Keeper-only item fails the parse, so the page shows its error state rather than the item.
+  rollRequests: z.array(rollRequestSchema.extend({ visibility: z.literal('Public') })),
 })
 
 // The Player shape always carries an Investigator name, so it tells the two apart.

@@ -20,6 +20,37 @@ const keeperReveal = {
   recipients: [{ id: 'i1', name: 'Harvey Walters' }],
 }
 
+const publicRollRequest = {
+  id: 'q1',
+  target: { kind: 'Skill', skill: 'Spot Hidden', specialization: null, characteristic: null },
+  message: 'Something moves upstairs.',
+  visibility: 'Public',
+  difficulty: 'Regular',
+  bonusDice: 0,
+  penaltyDice: 0,
+  createdAt: '2026-11-07T19:14:00Z',
+  requestedRolls: [
+    {
+      investigatorId: 'i1',
+      investigatorName: 'Harvey Walters',
+      targetValue: 60,
+      usesBaseValue: false,
+      canEarnExperienceCheck: true,
+      difficulty: 'Regular',
+      bonusDice: 0,
+      penaltyDice: 0,
+      status: 'Waiting',
+      rolls: [],
+    },
+  ],
+}
+
+const keeperOnlyRollRequest = {
+  ...publicRollRequest,
+  id: 'q2',
+  visibility: 'KeeperOnly',
+}
+
 const keeperScene = {
   sceneId: 's2',
   scenarioId: 'p1',
@@ -29,6 +60,7 @@ const keeperScene = {
   finishedAt: null,
   investigatorsPresent: [{ id: 'i1', name: 'Harvey Walters' }],
   reveals: [keeperReveal],
+  rollRequests: [keeperOnlyRollRequest, publicRollRequest],
 }
 
 const playerScene = {
@@ -49,6 +81,7 @@ const playerScene = {
       imageDescription: null,
     },
   ],
+  rollRequests: [publicRollRequest],
 }
 
 describe('scene history API', () => {
@@ -78,6 +111,34 @@ describe('scene history API', () => {
     const history = await getSceneHistory('token', 'c1')
 
     expect(history).toEqual({ kind: 'player', investigatorName: 'Harvey Walters', scenes: [playerScene] })
+  })
+
+  it('parses each Scene with its Reveals and its Roll Requests, newest first', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { scenes: [keeperScene] }))
+
+    const history = await getSceneHistory('token', 'c1')
+
+    expect(history).toEqual({ kind: 'keeper', scenes: [keeperScene] })
+    expect(history.kind === 'keeper' && history.scenes[0].rollRequests.map((request) => request.id)).toEqual(['q2', 'q1'])
+  })
+
+  it('rejects a Player Scene carrying a Keeper-only Roll Request (RR-UX-19)', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { investigatorName: 'Harvey Walters', scenes: [{ ...playerScene, rollRequests: [keeperOnlyRollRequest] }] }),
+    )
+
+    await expect(getSceneHistory('token', 'c1')).rejects.toThrow()
+  })
+
+  it('rejects a Player Roll Request with a field the contract does not name (strict)', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        investigatorName: 'Harvey Walters',
+        scenes: [{ ...playerScene, rollRequests: [{ ...publicRollRequest, rollerAccountId: 'a1' }] }],
+      }),
+    )
+
+    await expect(getSceneHistory('token', 'c1')).rejects.toThrow()
   })
 
   it('rejects a Keeper Scene that carries no present list, and a Player Scene that does', async () => {

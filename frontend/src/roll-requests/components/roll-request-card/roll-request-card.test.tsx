@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { RequestedRoll, RollRequest } from '@/roll-requests/types/RollRequest'
 
-import { RollRequestCard } from './roll-request-card'
+import { RollRequestCard, RollRequestCardView } from './roll-request-card'
 
 // specs/roll-requests/ux.md section 5; RR-UX-10, RR-UX-11, RR-A11Y-6, RR-A11Y-7.
 const { mockUseRollRequest } = vi.hoisted(() => ({ mockUseRollRequest: vi.fn() }))
@@ -216,5 +216,18 @@ describe('RollRequestCard', () => {
     const { container } = render(<RollRequestCard campaignId="c1" rollRequestId="r1" requestedByDisplayName="Eleanor Hart" />)
 
     expect(container).toBeEmptyDOMElement()
+  })
+})
+
+describe('RollRequestCardView', () => {
+  it('renders the same card from data, with no loading of its own (RR-UX-24, RR-A11Y-17)', () => {
+    render(<RollRequestCardView request={request} requestedByDisplayName="Eleanor Hart" />)
+
+    const article = screen.getByRole('article', { name: 'Spot Hidden roll' })
+    expect(within(article).getByRole('heading', { level: 3, name: 'Spot Hidden roll' })).toBeInTheDocument()
+    expect(within(article).getByText('Eleanor Hart')).toBeInTheDocument()
+    expect(within(article).getByText('Something moves upstairs.')).toBeInTheDocument()
+    expect(within(article).getByText('25: Hard success')).toBeInTheDocument()
+    expect(within(article).getByText('Waiting')).toBeInTheDocument()
   })
 })

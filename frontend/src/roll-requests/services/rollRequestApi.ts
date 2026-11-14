@@ -51,7 +51,7 @@ const requestedRollSchema = z.strictObject({
   rolls: z.array(completedRollSchema),
 })
 
-const rollRequestSchema = z.strictObject({
+export const rollRequestSchema = z.strictObject({
   id: z.string(),
   target: targetSchema,
   message: z.string().nullable(),

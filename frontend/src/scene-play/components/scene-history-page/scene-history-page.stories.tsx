@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
-import { STORY_CAMPAIGN_ID } from '@/campaign-play/test-support/rosterFixtures'
+import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
+import { STORY_CAMPAIGN_ID, keeperRosterAllApproved } from '@/campaign-play/test-support/rosterFixtures'
 import { sceneHistoryQueryKeys } from '@/scene-play/services/sceneHistoryApi'
 import { keeperReveal, mapReveal, readAloudReveal, textReveal } from '@/scene-play/test-support/revealFixtures'
 import type { KeeperSceneHistory, PlayerSceneHistory } from '@/scene-play/types/SceneHistory'
@@ -24,6 +25,7 @@ const keeperHistory: KeeperSceneHistory = {
         { id: 'i-lucy', name: 'Lucy Ward' },
       ],
       reveals: [keeperReveal(readAloudReveal, 'h-front-door', ['Harvey Walters', 'Lucy Ward'])],
+      rollRequests: [],
     },
     {
       sceneId: 'story-finished',
@@ -34,6 +36,7 @@ const keeperHistory: KeeperSceneHistory = {
       finishedAt: '2026-10-31T21:00:00Z',
       investigatorsPresent: [{ id: 'i-harvey', name: 'Harvey Walters' }],
       reveals: [keeperReveal(textReveal, 'h-letter', ['Harvey Walters']), keeperReveal(mapReveal, 'h-cellar', ['Harvey Walters'])],
+      rollRequests: [],
     },
   ],
 }
@@ -49,6 +52,7 @@ const playerHistory: PlayerSceneHistory = {
       startedAt: '2026-11-07T19:05:00Z',
       finishedAt: null,
       reveals: [readAloudReveal],
+      rollRequests: [],
     },
     {
       sceneId: 'story-finished',
@@ -57,6 +61,7 @@ const playerHistory: PlayerSceneHistory = {
       startedAt: '2026-10-31T19:10:00Z',
       finishedAt: '2026-10-31T21:00:00Z',
       reveals: [],
+      rollRequests: [],
     },
   ],
 }
@@ -74,6 +79,7 @@ function PageStory({ role = 'player', tokens = 'granted' }: PageStoryArgs) {
           if (tokens !== 'granted') {
             return
           }
+          client.setQueryData(campaignQueryKeys.members(STORY_CAMPAIGN_ID), keeperRosterAllApproved)
           if (role === 'keeper') {
             client.setQueryData(sceneHistoryQueryKeys.detail(STORY_CAMPAIGN_ID), keeperHistory)
           } else if (role === 'player') {
