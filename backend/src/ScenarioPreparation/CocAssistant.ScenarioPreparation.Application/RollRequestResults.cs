@@ -22,11 +22,13 @@ public sealed record RollRequestWriteResult(RollRequestWriteOutcome Outcome, Rol
 public enum RequestedRollWriteOutcome
 {
     Rolled,
+    Cancelled,
     NotFound,
     SceneNotActive,
     InvestigatorNotRequested,
     NotWaiting,
+    AlreadyCancelled,
 }
 
-/// <summary>The Requested Roll when <see cref="RequestedRollWriteOutcome.Rolled"/>, otherwise null.</summary>
+/// <summary>The Requested Roll when <see cref="RequestedRollWriteOutcome.Rolled"/> or <see cref="RequestedRollWriteOutcome.Cancelled"/>, otherwise null.</summary>
 public sealed record RequestedRollWriteResult(RequestedRollWriteOutcome Outcome, RequestedRollView? Roll);

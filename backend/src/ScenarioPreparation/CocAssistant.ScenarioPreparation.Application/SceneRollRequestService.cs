@@ -147,6 +147,39 @@ public class SceneRollRequestService
             : new RequestedRollWriteResult(RequestedRollWriteOutcome.NotWaiting, null);
     }
 
+    /// <summary>
+    /// Cancels the Investigator's Waiting Requested Roll. Only a roll of the Active Scene can cancel; a lost
+    /// race reports the roll as already waited on, never retried (ADR 0032).
+    /// </summary>
+    public async Task<RequestedRollWriteResult> CancelAsync(
+        Guid campaignId,
+        Guid requestId,
+        Guid investigatorId,
+        CancellationToken cancellationToken)
+    {
+        var request = await _requests.FindAsync(campaignId, requestId, cancellationToken);
+        if (request is null)
+        {
+            return new RequestedRollWriteResult(RequestedRollWriteOutcome.NotFound, null);
+        }
+
+        var active = await _scenes.FindActiveAsync(campaignId, cancellationToken);
+        if (active is null || active.Id != request.SceneId)
+        {
+            return new RequestedRollWriteResult(RequestedRollWriteOutcome.SceneNotActive, null);
+        }
+
+        var result = request.CancelInvestigatorRoll(investigatorId);
+        if (result.Outcome != RequestedRollOutcome.Cancelled)
+        {
+            return new RequestedRollWriteResult(ToCancelOutcome(result.Outcome), null);
+        }
+
+        return await TrySaveAsync(cancellationToken)
+            ? new RequestedRollWriteResult(RequestedRollWriteOutcome.Cancelled, ToView(result.Roll!))
+            : new RequestedRollWriteResult(RequestedRollWriteOutcome.NotWaiting, null);
+    }
+
     private async Task<bool> TrySaveAsync(CancellationToken cancellationToken)
     {
         try
@@ -204,6 +237,14 @@ public class SceneRollRequestService
     private static RequestedRollWriteOutcome ToRollOutcome(RequestedRollOutcome outcome) => outcome switch
     {
         RequestedRollOutcome.InvestigatorNotRequested => RequestedRollWriteOutcome.InvestigatorNotRequested,
+        RequestedRollOutcome.AlreadyCancelled => RequestedRollWriteOutcome.AlreadyCancelled,
+        _ => RequestedRollWriteOutcome.NotWaiting,
+    };
+
+    private static RequestedRollWriteOutcome ToCancelOutcome(RequestedRollOutcome outcome) => outcome switch
+    {
+        RequestedRollOutcome.InvestigatorNotRequested => RequestedRollWriteOutcome.InvestigatorNotRequested,
+        RequestedRollOutcome.AlreadyCancelled => RequestedRollWriteOutcome.AlreadyCancelled,
         _ => RequestedRollWriteOutcome.NotWaiting,
     };
 }

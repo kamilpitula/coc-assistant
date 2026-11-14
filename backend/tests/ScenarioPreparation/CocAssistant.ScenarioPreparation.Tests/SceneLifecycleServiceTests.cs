@@ -52,7 +52,7 @@ public class SceneLifecycleServiceTests : IDisposable
         using var context = _builder.Fixture.CreateContext();
         var service = scenarios is null
             ? _builder.CreateLifecycleService(context)
-            : new SceneLifecycleService(new EfSceneRepository(context), scenarios, _builder.TimeProvider);
+            : new SceneLifecycleService(new EfSceneRepository(context), scenarios, new EfSceneRollRequestRepository(context), _builder.TimeProvider);
         return await service.ListPlayedAsync(campaignId ?? _builder.CampaignId, CancellationToken.None);
     }
 
@@ -513,5 +513,167 @@ public class SceneLifecycleServiceTests : IDisposable
 
         using var check = _builder.Fixture.CreateContext();
         Assert.Equal(2, await check.Set<InvestigatorPresence>().CountAsync());
+    }
+
+    private static readonly RollTarget SpotHidden = new(RollTargetKind.Skill, skill: "Spot Hidden");
+    private static readonly Guid Roller = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
+
+    private async Task<Guid> RequestRollsAsync(params Guid[] investigators)
+    {
+        using var context = _builder.Fixture.CreateContext();
+        var result = await new SceneRollRequestService(
+            new EfSceneRepository(context),
+            new EfSceneRollRequestRepository(context),
+            new ScriptedRoller(2, 5),
+            _builder.TimeProvider).CreateAsync(
+                _builder.CampaignId,
+                SpotHidden,
+                null,
+                RollRequestVisibility.Public,
+                Difficulty.Regular,
+                0,
+                0,
+                investigators.Select(investigator => new RequestedRollInput(investigator, 60, false, true)).ToList(),
+                Roller,
+                CancellationToken.None);
+        Assert.Equal(RollRequestWriteOutcome.Created, result.Outcome);
+        return result.Request!.Id;
+    }
+
+    private async Task<IReadOnlyList<RequestedRoll>> StoredRollsAsync(Guid requestId)
+    {
+        using var context = _builder.Fixture.CreateContext();
+        var request = (await new EfSceneRollRequestRepository(context).FindAsync(_builder.CampaignId, requestId, CancellationToken.None))!;
+        return request.RequestedRolls;
+    }
+
+    [Fact]
+    public async Task Given_waiting_rolls_When_finishing_Then_every_waiting_roll_is_cancelled_in_the_same_save()
+    {
+        var (_, meetingKnott, _) = await TwoScenesAsync();
+        await StartAsync(meetingKnott, [Harvey, Lucy]);
+        var requestId = await RequestRollsAsync(Harvey, Lucy);
+
+        var finish = await FinishAsync();
+
+        Assert.Equal(SceneFinishOutcome.Finished, finish.Outcome);
+        Assert.Equal(
+            [(requestId, Harvey, RollRequestVisibility.Public), (requestId, Lucy, RollRequestVisibility.Public)],
+            finish.CancelledRolls.Select(cancelled => (cancelled.RollRequestId, cancelled.InvestigatorId, cancelled.Visibility)));
+        Assert.All(await StoredRollsAsync(requestId), roll => Assert.Equal(RequestedRollStatus.Cancelled, roll.Status));
+    }
+
+    [Fact]
+    public async Task Given_a_rolled_and_a_waiting_roll_When_finishing_Then_only_the_waiting_roll_is_cancelled()
+    {
+        var (_, meetingKnott, _) = await TwoScenesAsync();
+        await StartAsync(meetingKnott, [Harvey, Lucy]);
+        var requestId = await RequestRollsAsync(Harvey, Lucy);
+        using (var context = _builder.Fixture.CreateContext())
+        {
+            var rolled = await new SceneRollRequestService(
+                new EfSceneRepository(context),
+                new EfSceneRollRequestRepository(context),
+                new ScriptedRoller(2, 5),
+                _builder.TimeProvider).RollAsync(_builder.CampaignId, requestId, Harvey, Roller, CancellationToken.None);
+            Assert.Equal(RequestedRollWriteOutcome.Rolled, rolled.Outcome);
+        }
+
+        var finish = await FinishAsync();
+
+        Assert.Equal(SceneFinishOutcome.Finished, finish.Outcome);
+        Assert.Equal([(requestId, Lucy)], finish.CancelledRolls.Select(cancelled => (cancelled.RollRequestId, cancelled.InvestigatorId)));
+        var stored = await StoredRollsAsync(requestId);
+        Assert.Equal(RequestedRollStatus.Rolled, stored.Single(roll => roll.InvestigatorId == Harvey).Status);
+        Assert.Equal(RequestedRollStatus.Cancelled, stored.Single(roll => roll.InvestigatorId == Lucy).Status);
+    }
+
+    [Fact]
+    public async Task Given_waiting_rolls_When_replacing_present_Then_only_the_removed_investigators_rolls_cancel()
+    {
+        var (_, meetingKnott, _) = await TwoScenesAsync();
+        await StartAsync(meetingKnott, [Harvey, Lucy]);
+        var requestId = await RequestRollsAsync(Harvey, Lucy);
+
+        var replaced = await ReplaceAsync(Harvey);
+
+        Assert.Equal(InvestigatorsPresentOutcome.Replaced, replaced.Outcome);
+        Assert.Equal([(requestId, Lucy)], replaced.CancelledRolls.Select(cancelled => (cancelled.RollRequestId, cancelled.InvestigatorId)));
+        var stored = await StoredRollsAsync(requestId);
+        Assert.Equal(RequestedRollStatus.Waiting, stored.Single(roll => roll.InvestigatorId == Harvey).Status);
+        Assert.Equal(RequestedRollStatus.Cancelled, stored.Single(roll => roll.InvestigatorId == Lucy).Status);
+    }
+
+    [Fact]
+    public async Task Given_a_refused_present_change_When_replacing_Then_nothing_is_cancelled()
+    {
+        var (_, meetingKnott, _) = await TwoScenesAsync();
+        await StartAsync(meetingKnott, [Harvey, Lucy]);
+        var requestId = await RequestRollsAsync(Harvey, Lucy);
+
+        var replaced = await ReplaceAsync();
+
+        Assert.Equal(InvestigatorsPresentOutcome.NoInvestigatorPresent, replaced.Outcome);
+        Assert.Empty(replaced.CancelledRolls);
+        Assert.All(await StoredRollsAsync(requestId), roll => Assert.Equal(RequestedRollStatus.Waiting, roll.Status));
+    }
+
+    [Fact]
+    public async Task Given_a_waiting_roll_When_starting_with_finish_Then_the_old_scenes_roll_is_cancelled()
+    {
+        var (_, meetingKnott, corbittHouse) = await TwoScenesAsync();
+        await StartAsync(meetingKnott, [Harvey, Lucy]);
+        var requestId = await RequestRollsAsync(Harvey, Lucy);
+
+        var start = await StartAsync(corbittHouse, [Harvey], finishActiveScene: true);
+
+        Assert.Equal(SceneStartOutcome.Started, start.Outcome);
+        Assert.Equal(
+            [(requestId, Harvey, RollRequestVisibility.Public), (requestId, Lucy, RollRequestVisibility.Public)],
+            start.CancelledRolls.Select(cancelled => (cancelled.RollRequestId, cancelled.InvestigatorId, cancelled.Visibility)));
+        Assert.All(await StoredRollsAsync(requestId), roll => Assert.Equal(RequestedRollStatus.Cancelled, roll.Status));
+    }
+
+    [Fact]
+    public async Task Given_a_refused_start_When_starting_Then_nothing_is_cancelled()
+    {
+        var (_, meetingKnott, corbittHouse) = await TwoScenesAsync();
+        await StartAsync(meetingKnott, [Harvey, Lucy]);
+        var requestId = await RequestRollsAsync(Harvey, Lucy);
+
+        var start = await StartAsync(corbittHouse, [Harvey]);
+
+        Assert.Equal(SceneStartOutcome.ActiveSceneExists, start.Outcome);
+        Assert.Empty(start.CancelledRolls);
+        Assert.All(await StoredRollsAsync(requestId), roll => Assert.Equal(RequestedRollStatus.Waiting, roll.Status));
+    }
+
+    [Fact]
+    public async Task Given_a_roll_committed_after_the_finish_read_When_finishing_Then_it_conflicts_and_the_scene_stays_active()
+    {
+        var (_, meetingKnott, _) = await TwoScenesAsync();
+        await StartAsync(meetingKnott, [Harvey]);
+        var requestId = await RequestRollsAsync(Harvey);
+
+        using var stale = _builder.Fixture.CreateContext();
+        var tracked = await new EfSceneRollRequestRepository(stale).ListTrackedForSceneAsync(_builder.CampaignId, meetingKnott, CancellationToken.None);
+        Assert.Single(tracked);
+        using (var winner = _builder.Fixture.CreateContext())
+        {
+            var rolled = await new SceneRollRequestService(
+                new EfSceneRepository(winner),
+                new EfSceneRollRequestRepository(winner),
+                new ScriptedRoller(2, 5),
+                _builder.TimeProvider).RollAsync(_builder.CampaignId, requestId, Harvey, Roller, CancellationToken.None);
+            Assert.Equal(RequestedRollWriteOutcome.Rolled, rolled.Outcome);
+        }
+
+        var finish = await _builder.CreateLifecycleService(stale).FinishActiveAsync(_builder.CampaignId, CancellationToken.None);
+
+        Assert.Equal(SceneFinishOutcome.Conflict, finish.Outcome);
+        Assert.Empty(finish.CancelledRolls);
+        using var check = _builder.Fixture.CreateContext();
+        Assert.Equal(SceneStatus.Active, (await new EfSceneRepository(check).FindActiveAsync(_builder.CampaignId, CancellationToken.None))!.Status);
+        Assert.Equal(RequestedRollStatus.Rolled, (await StoredRollsAsync(requestId)).Single().Status);
     }
 }
