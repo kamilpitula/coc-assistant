@@ -98,6 +98,20 @@ public class RollRequestsController : ScenePlayControllerBase
         return result.Roll is not null ? Ok(RollRequestMapping.ToResponse(result.Roll)) : RollFailure(result.Outcome);
     }
 
+    /// <summary>Cancels the Investigator's Waiting Requested Roll and returns it. The Keeper only.</summary>
+    [HttpPost("roll-requests/{rollRequestId:guid}/requested-rolls/{investigatorId:guid}/cancel")]
+    public async Task<ActionResult<RequestedRollResponse>> Cancel(Guid campaignId, Guid rollRequestId, Guid investigatorId, CancellationToken cancellationToken)
+    {
+        var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
+        if (accountId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _requests.CancelAsync(campaignId, accountId.Value, rollRequestId, investigatorId, cancellationToken);
+        return result.Roll is not null ? Ok(RollRequestMapping.ToResponse(result.Roll)) : CancelFailure(result.Outcome);
+    }
+
     private static RollRequestTargetInput ToInput(RollRequestTargetRequest? target) =>
         target is null
             ? new RollRequestTargetInput(RollRequestTargetKind.Unknown, null, null, null)
@@ -157,6 +171,20 @@ public class RollRequestsController : ScenePlayControllerBase
                 Problem(statusCode: StatusCodes.Status409Conflict, title: ActiveSceneProblems.NoActiveSceneTitle),
             RollRequestedRollOutcome.NotWaiting =>
                 Problem(statusCode: StatusCodes.Status409Conflict, title: ItemHolderProblems.ConflictTitle),
+            RollRequestedRollOutcome.AlreadyCancelled =>
+                Problem(statusCode: StatusCodes.Status409Conflict, title: RollRequestProblems.CancelledTitle),
+            _ => NotFound(),
+        };
+
+    private ActionResult CancelFailure(CancelRequestedRollOutcome outcome) =>
+        outcome switch
+        {
+            CancelRequestedRollOutcome.SceneNotActive =>
+                Problem(statusCode: StatusCodes.Status409Conflict, title: ActiveSceneProblems.NoActiveSceneTitle),
+            CancelRequestedRollOutcome.NotWaiting =>
+                Problem(statusCode: StatusCodes.Status409Conflict, title: ItemHolderProblems.ConflictTitle),
+            CancelRequestedRollOutcome.AlreadyCancelled =>
+                Problem(statusCode: StatusCodes.Status409Conflict, title: RollRequestProblems.CancelledTitle),
             _ => NotFound(),
         };
 

@@ -47,6 +47,7 @@ public enum RequestedRollStatus
 {
     Waiting,
     Rolled,
+    Cancelled,
 }
 
 /// <summary>How well a percentile roll went, worst to best (docs/game-rules/coc7_skill_rolls_rules.md section 4.1).</summary>
@@ -172,13 +173,15 @@ public sealed record RollRequestWriteResult(RollRequestWriteOutcome Outcome, Rol
 public enum RequestedRollWriteOutcome
 {
     Rolled,
+    Cancelled,
     NotFound,
     SceneNotActive,
     InvestigatorNotRequested,
     NotWaiting,
+    AlreadyCancelled,
 }
 
-/// <summary>The Requested Roll when <see cref="RequestedRollWriteOutcome.Rolled"/>, otherwise null.</summary>
+/// <summary>The Requested Roll when <see cref="RequestedRollWriteOutcome.Rolled"/> or <see cref="RequestedRollWriteOutcome.Cancelled"/>, otherwise null.</summary>
 public sealed record RequestedRollWriteResult(RequestedRollWriteOutcome Outcome, RequestedRollRecord? Roll);
 
 /// <summary>
@@ -215,6 +218,13 @@ public interface IRollRequests
         Guid requestId,
         Guid investigatorId,
         Guid rollerAccountId,
+        CancellationToken cancellationToken);
+
+    /// <summary>Cancels the Investigator's Waiting Requested Roll.</summary>
+    Task<RequestedRollWriteResult> CancelAsync(
+        Guid campaignId,
+        Guid requestId,
+        Guid investigatorId,
         CancellationToken cancellationToken);
 }
 

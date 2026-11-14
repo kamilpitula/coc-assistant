@@ -25,13 +25,13 @@ public sealed class ScenarioPreparationPlayableScenes : IPlayableScenes
         CancellationToken cancellationToken)
     {
         var result = await _lifecycle.StartAsync(campaignId, sceneId, presentInvestigatorIds, approvedInvestigatorIds, finishActiveScene, cancellationToken);
-        return new StartSceneResult(Map<StartSceneOutcome>(result.Outcome), ToScene(result.Started), ToScene(result.Finished));
+        return new StartSceneResult(Map<StartSceneOutcome>(result.Outcome), ToScene(result.Started), ToScene(result.Finished), ToCancelled(result.CancelledRolls));
     }
 
     public async Task<FinishSceneResult> FinishActiveAsync(Guid campaignId, CancellationToken cancellationToken)
     {
         var result = await _lifecycle.FinishActiveAsync(campaignId, cancellationToken);
-        return new FinishSceneResult(Map<FinishSceneOutcome>(result.Outcome), ToScene(result.Finished));
+        return new FinishSceneResult(Map<FinishSceneOutcome>(result.Outcome), ToScene(result.Finished), ToCancelled(result.CancelledRolls));
     }
 
     public async Task<ChangePresentResult> ReplaceInvestigatorsPresentAsync(
@@ -41,11 +41,14 @@ public sealed class ScenarioPreparationPlayableScenes : IPlayableScenes
         CancellationToken cancellationToken)
     {
         var result = await _lifecycle.ReplaceInvestigatorsPresentAsync(campaignId, presentInvestigatorIds, approvedInvestigatorIds, cancellationToken);
-        return new ChangePresentResult(Map<ChangePresentOutcome>(result.Outcome), ToScene(result.Scene));
+        return new ChangePresentResult(Map<ChangePresentOutcome>(result.Outcome), ToScene(result.Scene), ToCancelled(result.CancelledRolls));
     }
 
     internal static TOutcome Map<TOutcome>(Enum outcome)
         where TOutcome : struct, Enum => Enum.Parse<TOutcome>(outcome.ToString());
+
+    private static IReadOnlyList<CancelledRequestedRoll> ToCancelled(IReadOnlyList<CocAssistant.ScenarioPreparation.Application.CancelledRequestedRoll> cancelled) =>
+        cancelled.Select(roll => new CancelledRequestedRoll(roll.RollRequestId, roll.InvestigatorId, Map<RollRequestVisibility>(roll.Visibility))).ToList();
 
     private static PlayableScene? ToScene(CocAssistant.ScenarioPreparation.Application.PlayableSceneView? view) =>
         view is null

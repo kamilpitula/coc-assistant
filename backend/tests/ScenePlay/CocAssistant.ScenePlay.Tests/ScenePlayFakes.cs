@@ -30,11 +30,11 @@ public sealed class FakePlayableScenes : IPlayableScenes
 
     public PlayableScene? Active { get; set; }
 
-    public StartSceneResult StartResult { get; set; } = new(StartSceneOutcome.SceneNotFound, null, null);
+    public StartSceneResult StartResult { get; set; } = new(StartSceneOutcome.SceneNotFound, null, null, []);
 
-    public FinishSceneResult FinishResult { get; set; } = new(FinishSceneOutcome.NoActiveScene, null);
+    public FinishSceneResult FinishResult { get; set; } = new(FinishSceneOutcome.NoActiveScene, null, []);
 
-    public ChangePresentResult ChangeResult { get; set; } = new(ChangePresentOutcome.NoActiveScene, null);
+    public ChangePresentResult ChangeResult { get; set; } = new(ChangePresentOutcome.NoActiveScene, null, []);
 
     public IReadOnlyCollection<Guid>? LastApproved { get; private set; }
 
@@ -236,6 +236,8 @@ public sealed class FakeRollRequests : IRollRequests
 
     public RequestedRollWriteResult RollResult { get; set; } = new(RequestedRollWriteOutcome.NotFound, null);
 
+    public RequestedRollWriteResult CancelResult { get; set; } = new(RequestedRollWriteOutcome.NotFound, null);
+
     public IReadOnlyList<RequestedRollValueInput>? LastInvestigators { get; private set; }
 
     public Guid LastKeeperAccountId { get; private set; }
@@ -280,6 +282,12 @@ public sealed class FakeRollRequests : IRollRequests
     {
         Calls.Add(nameof(RollAsync));
         return Task.FromResult(RollResult);
+    }
+
+    public Task<RequestedRollWriteResult> CancelAsync(Guid campaignId, Guid requestId, Guid investigatorId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(CancelAsync));
+        return Task.FromResult(CancelResult);
     }
 }
 

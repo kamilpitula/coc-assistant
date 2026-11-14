@@ -94,7 +94,22 @@ public enum RollRequestedRollOutcome
     NotFound,
     SceneNotActive,
     NotWaiting,
+    AlreadyCancelled,
 }
 
 /// <summary>The Requested Roll when <see cref="RollRequestedRollOutcome.Rolled"/>, otherwise null.</summary>
 public sealed record RollRequestedRollResult(RollRequestedRollOutcome Outcome, RequestedRollView? Roll);
+
+/// <summary>How cancelling a Requested Roll ended. NotFound covers a caller who is not the Keeper and a missing request.</summary>
+public enum CancelRequestedRollOutcome
+{
+    Cancelled,
+    NotFound,
+    SceneNotActive,
+    InvestigatorNotRequested,
+    NotWaiting,
+    AlreadyCancelled,
+}
+
+/// <summary>The Requested Roll when <see cref="CancelRequestedRollOutcome.Cancelled"/>, otherwise null.</summary>
+public sealed record CancelRequestedRollResult(CancelRequestedRollOutcome Outcome, RequestedRollView? Roll);
