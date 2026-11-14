@@ -15,8 +15,8 @@ export interface ActiveSceneTabContextValue {
   onGive: (request: GiveItemRequest, context: GiveItemContext) => void
   /** Opens the layout-level take-back dialog for the Item, with the focus context (22.4). */
   onTakeBack: (request: TakeBackItemRequest, context: TakeBackItemContext) => void
-  /** The Investigators present were saved, so the page says "Investigators present saved.". */
-  onPresentSaved: () => void
+  /** The Investigators present were saved with the number of waiting rolls it cancelled (24.2). */
+  onPresentSaved: (cancelledCount: number) => void
   /** A Wall Entry was added from Run, so the page says "Wall Entry added.". */
   onWallEntryAdded: () => void
   /** A present change found the Scene finished, so the page refetches. */

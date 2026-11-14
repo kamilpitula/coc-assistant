@@ -10,14 +10,15 @@ import { navigateSpy, routerState } from '@/shared/test-support/routerMock'
 
 import { StartScenePage } from './start-scene-page'
 
-// specs/scene-play/ux.md section 2; SPL-UX-2, 4, 5, 6, 7, 8, 17, 18; SPL-A11Y-2, SPL-A11Y-3.
-const { mockUseCampaign, mockUseScene, mockUseScenario, mockUseMembers, mockUseActive, mockUseStart, startMutate, refetch } = vi.hoisted(() => ({
+// specs/scene-play/ux.md section 2; SPL-UX-2, 4, 5, 6, 7, 8, 17, 18, 72; SPL-A11Y-2, SPL-A11Y-3, SPL-A11Y-27.
+const { mockUseCampaign, mockUseScene, mockUseScenario, mockUseMembers, mockUseActive, mockUseStart, mockUseWaitingRolls, startMutate, refetch } = vi.hoisted(() => ({
   mockUseCampaign: vi.fn(),
   mockUseScene: vi.fn(),
   mockUseScenario: vi.fn(),
   mockUseMembers: vi.fn(),
   mockUseActive: vi.fn(),
   mockUseStart: vi.fn(),
+  mockUseWaitingRolls: vi.fn(),
   startMutate: vi.fn(),
   refetch: vi.fn(),
 }))
@@ -28,6 +29,7 @@ vi.mock('@/campaign-play/hooks/useCampaignMembers', () => ({ useCampaignMembers:
 vi.mock('@/scenario-preparation/hooks/useScenes', () => ({ useScene: mockUseScene }))
 vi.mock('@/scenario-preparation/hooks/useScenarios', () => ({ useScenario: mockUseScenario }))
 vi.mock('@/scene-play/hooks/useActiveScene', () => ({ useActiveScene: mockUseActive, useStartScene: mockUseStart }))
+vi.mock('@/roll-requests/hooks/useRollRequests', () => ({ useActiveSceneRollRequests: mockUseWaitingRolls }))
 
 const prepared: Scene = {
   id: 'a1',
@@ -56,6 +58,29 @@ const activeOther: KeeperActiveScene = {
 const query = (data: unknown, overrides: Record<string, unknown> = {}) => ({ data, isError: false, refetch, ...overrides })
 const starting = (overrides: Record<string, unknown> = {}) => ({ mutate: startMutate, isPending: false, error: null, ...overrides })
 
+const waitingRequest = (investigatorIds: string[]) => ({
+  id: 'r1',
+  target: { kind: 'Skill', skill: 'Spot Hidden', specialization: null, characteristic: null },
+  message: null,
+  visibility: 'Public',
+  difficulty: 'Regular',
+  bonusDice: 0,
+  penaltyDice: 0,
+  createdAt: '2026-11-14T19:21:00Z',
+  requestedRolls: investigatorIds.map((investigatorId) => ({
+    investigatorId,
+    investigatorName: 'An Investigator',
+    targetValue: 60,
+    usesBaseValue: false,
+    canEarnExperienceCheck: true,
+    difficulty: 'Regular',
+    bonusDice: 0,
+    penaltyDice: 0,
+    status: 'Waiting',
+    rolls: [],
+  })),
+})
+
 const renderPage = () => render(<StartScenePage campaignId="c1" scenarioId="s1" sceneId="a1" />)
 
 describe('StartScenePage', () => {
@@ -68,6 +93,7 @@ describe('StartScenePage', () => {
     mockUseMembers.mockReturnValue(query(keeperRosterAllApproved))
     mockUseActive.mockReturnValue(query(null))
     mockUseStart.mockReturnValue(starting())
+    mockUseWaitingRolls.mockReturnValue(query([]))
   })
 
   it('lists every Approved Investigator, all checked when no Scene is Active, under the title and Scenario', () => {
@@ -137,6 +163,24 @@ describe('StartScenePage', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Start Scene' }))
 
       expect(startMutate).toHaveBeenCalledWith({ presentInvestigatorIds: ['i-c'], finishActiveScene: true }, expect.any(Object))
+    })
+
+    it('hints how many waiting rolls finishing will cancel, linked to the checkbox (SPL-UX-72, SPL-A11Y-27)', () => {
+      mockUseWaitingRolls.mockReturnValue(query([waitingRequest(['i-c', 'i-a'])]))
+      renderPage()
+
+      const checkbox = screen.getByRole('checkbox', { name: 'Finish Meeting Knott first' })
+      expect(checkbox).toHaveAccessibleDescription('2 waiting rolls will be cancelled.')
+      expect(screen.getByText('2 waiting rolls will be cancelled.')).toBeInTheDocument()
+    })
+
+    it('hides the hint when no waiting roll would be cancelled or the count is unknown (SPL-UX-72)', () => {
+      const { rerender } = renderPage()
+      expect(screen.queryByText(/waiting roll/)).not.toBeInTheDocument()
+
+      mockUseWaitingRolls.mockReturnValue({ data: undefined, isError: false, refetch })
+      rerender(<StartScenePage campaignId="c1" scenarioId="s1" sceneId="a1" />)
+      expect(screen.queryByText(/waiting roll/)).not.toBeInTheDocument()
     })
   })
 

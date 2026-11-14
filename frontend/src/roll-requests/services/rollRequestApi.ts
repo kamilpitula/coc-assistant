@@ -47,7 +47,7 @@ const requestedRollSchema = z.strictObject({
   difficulty: z.enum(['Regular', 'Hard', 'Extreme']),
   bonusDice: z.number().int(),
   penaltyDice: z.number().int(),
-  status: z.enum(['Waiting', 'Rolled']),
+  status: z.enum(['Waiting', 'Rolled', 'Cancelled']),
   rolls: z.array(completedRollSchema),
 })
 
@@ -100,6 +100,14 @@ export class AlreadyRolledError extends Error {
   }
 }
 
+/** The API answered 409 with "This roll was cancelled.": the roll was already cancelled (specs/roll-requests/spec.md, cancel contract). */
+export class RequestedRollCancelledError extends Error {
+  constructor() {
+    super('The roll was cancelled')
+    this.name = 'RequestedRollCancelledError'
+  }
+}
+
 /** The roll's Roll Request is gone or no longer visible (404): the row leaves the panel without a message. */
 export class RequestedRollGoneError extends Error {
   constructor() {
@@ -109,6 +117,7 @@ export class RequestedRollGoneError extends Error {
 }
 
 const NO_ACTIVE_SCENE_TITLE = 'No Scene is Active.'
+const CANCELLED_TITLE = 'This roll was cancelled.'
 
 async function problemTitle(response: Response): Promise<string | null> {
   const problem: unknown = await response.json().catch(() => null)
@@ -199,7 +208,7 @@ export async function getMyRequestedRolls(accessToken: string, campaignId: strin
 
 /**
  * Calls POST .../roll-requests/{id}/requested-rolls/{investigatorId}/roll: rolls the Requested Roll with the server's
- * dice and returns it. 409 means the roll was already made, unless the Scene is no longer Active.
+ * dice and returns it. 409 means the roll was already made, or already cancelled, unless the Scene is no longer Active.
  */
 export async function rollRequestedRoll(
   accessToken: string,
@@ -216,10 +225,46 @@ export async function rollRequestedRoll(
     throw new RequestedRollGoneError()
   }
   if (response.status === 409) {
-    throw ((await problemTitle(response)) === NO_ACTIVE_SCENE_TITLE ? new NoActiveSceneError() : new AlreadyRolledError())
+    const title = await problemTitle(response)
+    if (title === NO_ACTIVE_SCENE_TITLE) {
+      throw new NoActiveSceneError()
+    }
+    throw title === CANCELLED_TITLE ? new RequestedRollCancelledError() : new AlreadyRolledError()
   }
   if (!response.ok) {
     throw new Error(`Failed to roll (${response.status})`)
+  }
+
+  return requestedRollSchema.parse(await response.json())
+}
+
+/**
+ * Calls POST .../roll-requests/{id}/requested-rolls/{investigatorId}/cancel (Keeper only): cancels the Waiting
+ * Requested Roll and returns it (specs/roll-requests/ux.md section 17.1).
+ */
+export async function cancelRequestedRoll(
+  accessToken: string,
+  campaignId: string,
+  rollRequestId: string,
+  investigatorId: string,
+): Promise<RequestedRoll> {
+  const response = await apiFetch(`/api/campaigns/${campaignId}/roll-requests/${rollRequestId}/requested-rolls/${investigatorId}/cancel`, {
+    method: 'POST',
+    headers: authHeaders(accessToken),
+  })
+
+  if (response.status === 404) {
+    throw new RequestedRollGoneError()
+  }
+  if (response.status === 409) {
+    const title = await problemTitle(response)
+    if (title === NO_ACTIVE_SCENE_TITLE) {
+      throw new NoActiveSceneError()
+    }
+    throw title === CANCELLED_TITLE ? new RequestedRollCancelledError() : new AlreadyRolledError()
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to cancel (${response.status})`)
   }
 
   return requestedRollSchema.parse(await response.json())

@@ -9,9 +9,10 @@ import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 import { InvestigatorsPresentSection } from './investigators-present-section'
 
 // specs/scene-play/ux.md section 3 (Investigators present); SPL-UX-10, SPL-UX-18, SPL-A11Y-3.
-const { mockUseMembers, mockUseChange, changeMutate, changeReset, openPanel } = vi.hoisted(() => ({
+const { mockUseMembers, mockUseChange, mockUseWaitingRolls, changeMutate, changeReset, openPanel } = vi.hoisted(() => ({
   mockUseMembers: vi.fn(),
   mockUseChange: vi.fn(),
+  mockUseWaitingRolls: vi.fn(),
   changeMutate: vi.fn(),
   changeReset: vi.fn(),
   openPanel: vi.fn(),
@@ -20,6 +21,7 @@ const { mockUseMembers, mockUseChange, changeMutate, changeReset, openPanel } = 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/campaign-play/hooks/useCampaignMembers', () => ({ useCampaignMembers: mockUseMembers }))
 vi.mock('@/scene-play/hooks/useActiveScene', () => ({ useChangeInvestigatorsPresent: mockUseChange }))
+vi.mock('@/roll-requests/hooks/useRollRequests', () => ({ useActiveSceneRollRequests: mockUseWaitingRolls }))
 vi.mock('@/shared/hooks/useSidePanel', () => ({ useSidePanel: () => ({ panel: null, open: openPanel, close: vi.fn() }) }))
 
 const scene: KeeperActiveScene = {
@@ -46,6 +48,7 @@ describe('InvestigatorsPresentSection', () => {
     vi.clearAllMocks()
     mockUseMembers.mockReturnValue({ data: keeperRosterAllApproved })
     mockUseChange.mockReturnValue(changing())
+    mockUseWaitingRolls.mockReturnValue({ data: [] })
   })
 
   it('opens each present Investigator\'s Clues panel from a "Clues" button with the button as the focus trigger (SPL-UX-33, G1)', async () => {
@@ -147,5 +150,35 @@ describe('InvestigatorsPresentSection', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Change' }))
 
     expect(screen.getByRole('button', { name: 'Saving...' })).toBeDisabled()
+  })
+
+  it('reports how many waiting rolls the save cancelled for the unchecked present Investigators (SPL-UX-71)', async () => {
+    mockUseWaitingRolls.mockReturnValue({
+      data: [
+        {
+          id: 'r1',
+          target: { kind: 'Skill', skill: 'Spot Hidden', specialization: null, characteristic: null },
+          message: null,
+          visibility: 'Public',
+          difficulty: 'Regular',
+          bonusDice: 0,
+          penaltyDice: 0,
+          createdAt: '2026-11-14T19:21:00Z',
+          requestedRolls: [
+            { investigatorId: 'i-a', investigatorName: 'Dr. Ames', targetValue: 60, usesBaseValue: false, canEarnExperienceCheck: true, difficulty: 'Regular', bonusDice: 0, penaltyDice: 0, status: 'Waiting', rolls: [] },
+            { investigatorId: 'i-c', investigatorName: 'Mae Doyle', targetValue: 40, usesBaseValue: false, canEarnExperienceCheck: true, difficulty: 'Regular', bonusDice: 0, penaltyDice: 0, status: 'Waiting', rolls: [] },
+          ],
+        },
+      ],
+    })
+    renderSection()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Change' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: /Dr. Ames/ }))
+    await userEvent.click(screen.getByRole('checkbox', { name: /Mae Doyle/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    changeMutate.mock.calls[0][1].onSuccess()
+    expect(onSaved).toHaveBeenCalledWith(1)
   })
 })

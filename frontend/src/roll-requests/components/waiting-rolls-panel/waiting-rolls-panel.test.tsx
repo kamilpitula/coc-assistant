@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { NoActiveSceneError } from '@/scene-play/services/activeSceneApi'
 import { formatWallEntryTime } from '@/campaign-play/services/wallEntryTime'
-import { AlreadyRolledError, RequestedRollGoneError } from '@/roll-requests/services/rollRequestApi'
+import { AlreadyRolledError, RequestedRollCancelledError, RequestedRollGoneError } from '@/roll-requests/services/rollRequestApi'
 import type { RequestedRoll, WaitingRequestedRoll, WaitingRolls } from '@/roll-requests/types/RollRequest'
 
 import { WaitingRollsPanel } from './waiting-rolls-panel'
@@ -242,5 +242,53 @@ describe('WaitingRollsPanel', () => {
     const { container } = setup(null)
 
     expect(container).toBeEmptyDOMElement()
+  })
+
+  it('leaves the panel silently and moves focus to its heading when the roll was cancelled (RR-UX-22, RR-A11Y-16)', async () => {
+    const both = { ...mine, rolls: [mineRoll(), mineRoll({ rollRequestId: 'r2' })] }
+    const { rerenderWith } = setup(both)
+    const getCallbacks = captureRoll()
+
+    await userEvent.click(screen.getAllByRole('button', { name: /Roll Listen/ })[0])
+    await act(async () => {
+      getCallbacks().onError(new RequestedRollCancelledError())
+    })
+    rerenderWith({ ...mine, rolls: [mineRoll({ rollRequestId: 'r2' })] })
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    expect(screen.getByRole('heading', { level: 2, name: 'Rolls waiting for you, 1' })).toHaveFocus()
+  })
+
+  it('moves focus to the page h1 when the last row is cancelled (RR-A11Y-16)', async () => {
+    mockUseMyRequestedRolls.mockReturnValue({ data: mine, isPending: false, isError: false, refetch: vi.fn() })
+    mockMutate.mockReset()
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    const view = render(
+      <main>
+        <h1 tabIndex={-1}>The Corbitt House</h1>
+        <QueryClientProvider client={queryClient}>
+          <WaitingRollsPanel campaignId="c1" />
+        </QueryClientProvider>
+      </main>,
+    )
+    const getCallbacks = captureRoll()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Roll Listen' }))
+    await act(async () => {
+      getCallbacks().onError(new RequestedRollCancelledError())
+    })
+    mockUseMyRequestedRolls.mockReturnValue({ data: { ...mine, rolls: [] }, isPending: false, isError: false, refetch: vi.fn() })
+    view.rerender(
+      <main>
+        <h1 tabIndex={-1}>The Corbitt House</h1>
+        <QueryClientProvider client={queryClient}>
+          <WaitingRollsPanel campaignId="c1" />
+        </QueryClientProvider>
+      </main>,
+    )
+
+    expect(screen.queryByRole('heading', { name: /Rolls waiting for you/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'The Corbitt House' })).toHaveFocus()
   })
 })

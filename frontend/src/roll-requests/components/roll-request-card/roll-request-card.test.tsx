@@ -104,6 +104,23 @@ describe('RollRequestCard', () => {
     expect(within(row).queryByText('Experience check earned')).not.toBeInTheDocument()
   })
 
+  it('shows a Cancelled row with targets and no result lines (RR-UX-21)', () => {
+    mockUseRollRequest.mockReturnValue({
+      data: { ...request, requestedRolls: [{ ...waitingRoll(), status: 'Cancelled' }] },
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    })
+    render(<RollRequestCard campaignId="c1" rollRequestId="r1" requestedByDisplayName="Eleanor Hart" />)
+
+    const article = screen.getByRole('article', { name: 'Spot Hidden roll' })
+    const row = within(article).getByText('Lucy Ward').closest('li') as HTMLElement
+    expect(within(row).getByText('Cancelled')).toBeInTheDocument()
+    expect(within(row).getByText('Hard . 1 Penalty Die . target 45 / 22 / 9 (base value)')).toBeInTheDocument()
+    expect(within(row).queryByText(/Rolled by/)).not.toBeInTheDocument()
+    expect(within(row).queryByText('Experience check earned')).not.toBeInTheDocument()
+  })
+
   it('reads two tens dice with the kept result, and never shows Remove (RR-UX-10)', () => {
     mockUseRollRequest.mockReturnValue({
       data: { ...request, requestedRolls: [rolledRoll({ rolls: [{ ...rolledRoll().rolls[0], percentile: { ...rolledRoll().rolls[0].percentile!, tensFaces: [80, 20], keptTens: 20 } }] })] },

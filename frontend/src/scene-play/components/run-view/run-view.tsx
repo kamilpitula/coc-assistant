@@ -12,8 +12,8 @@ import { Card } from '@/shared/components/ui/card'
 interface RunViewProps {
   campaignId: string
   scene: KeeperActiveScene
-  /** Called after the Investigators present are saved, so the page can say "Investigators present saved.". */
-  onPresentSaved: () => void
+  /** Called after the Investigators present are saved with the number of waiting rolls it cancelled. */
+  onPresentSaved: (cancelledCount: number) => void
   /** Called after a Wall Entry is added from Run, so the page can say "Wall Entry added.". */
   onWallEntryAdded: () => void
   /** A roll was requested, so the page says "{target} roll requested from {names}.". */

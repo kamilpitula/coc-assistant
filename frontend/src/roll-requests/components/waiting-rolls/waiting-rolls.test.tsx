@@ -4,17 +4,18 @@ import userEvent from '@testing-library/user-event'
 import { act, type ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
-import { AlreadyRolledError } from '@/roll-requests/services/rollRequestApi'
+import { AlreadyRolledError, RequestedRollCancelledError } from '@/roll-requests/services/rollRequestApi'
 import type { RequestedRoll, RollRequest } from '@/roll-requests/types/RollRequest'
 
 import { WaitingRolls } from './waiting-rolls'
 
-// specs/roll-requests/ux.md section 4; RR-UX-7.
-const { mockUseActiveSceneRollRequests, mockMutate } = vi.hoisted(() => ({ mockUseActiveSceneRollRequests: vi.fn(), mockMutate: vi.fn() }))
+// specs/roll-requests/ux.md sections 4 and 17.1; RR-UX-7, RR-UX-20, RR-A11Y-15.
+const { mockUseActiveSceneRollRequests, mockMutate, mockCancelMutate } = vi.hoisted(() => ({ mockUseActiveSceneRollRequests: vi.fn(), mockMutate: vi.fn(), mockCancelMutate: vi.fn() }))
 
 vi.mock('@/roll-requests/hooks/useRollRequests', () => ({
   useActiveSceneRollRequests: mockUseActiveSceneRollRequests,
   useRollRequestedRoll: () => ({ mutate: mockMutate, isPending: false }),
+  useCancelRequestedRoll: () => ({ mutate: mockCancelMutate, isPending: false }),
 }))
 
 interface RollCallbacks {
@@ -78,6 +79,7 @@ const rolledHarvey: RequestedRoll = {
 function setup(data: RollRequest[] | null | undefined = requests) {
   mockUseActiveSceneRollRequests.mockReturnValue({ data, isPending: data === undefined, isError: false, refetch: vi.fn() })
   mockMutate.mockReset()
+  mockCancelMutate.mockReset()
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   const view = render(<WaitingRolls campaignId="c1" />, { wrapper })
@@ -95,6 +97,19 @@ function captureRoll() {
   return () => {
     if (!callbacks) {
       throw new Error('expected the roll to be requested')
+    }
+    return callbacks
+  }
+}
+
+function captureCancel() {
+  let callbacks: { onSuccess: () => void; onError: (error: Error) => void } | undefined
+  mockCancelMutate.mockImplementation((_input: unknown, options: { onSuccess: () => void; onError: (error: Error) => void }) => {
+    callbacks = options
+  })
+  return () => {
+    if (!callbacks) {
+      throw new Error('expected the cancel to be requested')
     }
     return callbacks
   }
@@ -164,5 +179,76 @@ describe('WaitingRolls', () => {
     setup([])
 
     expect(screen.getByText('No rolls waiting.')).toBeInTheDocument()
+  })
+
+  it('cancels on "Cancel": the row leaves, the status names the cancelled roll, and focus moves on (RR-UX-20, RR-A11Y-15)', async () => {
+    const { rerenderWith } = setup()
+    const getCallbacks = captureCancel()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel Spot Hidden roll for Harvey Walters' }))
+    expect(screen.getByRole('button', { name: 'Cancel Spot Hidden roll for Harvey Walters' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Cancel Spot Hidden roll for Harvey Walters' })).toHaveTextContent('Cancelling...')
+    expect(screen.getByRole('button', { name: 'Roll Spot Hidden for Harvey Walters' })).toBeDisabled()
+
+    await act(async () => {
+      getCallbacks().onSuccess()
+    })
+    rerenderWith([requests[1]])
+    expect(screen.getByRole('status')).toHaveTextContent("Harvey Walters's Spot Hidden roll was cancelled.")
+    expect(screen.getByRole('button', { name: 'Roll Listen for Lucy Ward' })).toHaveFocus()
+    expect(screen.queryByText(/Harvey Walters \. Spot Hidden/)).not.toBeInTheDocument()
+  })
+
+  it('says the roll was already cancelled on a 409 and moves focus on (RR-UX-20)', async () => {
+    const { rerenderWith } = setup()
+    const getCallbacks = captureCancel()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel Spot Hidden roll for Harvey Walters' }))
+    await act(async () => {
+      getCallbacks().onError(new RequestedRollCancelledError())
+    })
+    rerenderWith([requests[1]])
+
+    expect(screen.getByRole('status')).toHaveTextContent("Harvey Walters's Spot Hidden roll was already cancelled.")
+    expect(screen.getByRole('button', { name: 'Roll Listen for Lucy Ward' })).toHaveFocus()
+  })
+
+  it('says the roll was already made when a cancel loses the race (RR-UX-20)', async () => {
+    const { rerenderWith } = setup()
+    const getCallbacks = captureCancel()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel Spot Hidden roll for Harvey Walters' }))
+    await act(async () => {
+      getCallbacks().onError(new AlreadyRolledError())
+    })
+    rerenderWith([requests[1]])
+
+    expect(screen.getByRole('status')).toHaveTextContent("Harvey Walters's Spot Hidden roll was already made.")
+  })
+
+  it('keeps the row with an inline error when the cancel fails (RR-UX-20)', async () => {
+    setup()
+    const getCallbacks = captureCancel()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel Spot Hidden roll for Harvey Walters' }))
+    await act(async () => {
+      getCallbacks().onError(new Error('offline'))
+    })
+
+    expect(screen.getByRole('alert')).toHaveTextContent("We couldn't cancel that. Try again.")
+    expect(screen.getByRole('button', { name: 'Cancel Spot Hidden roll for Harvey Walters' })).toBeEnabled()
+  })
+
+  it('says the roll was cancelled when "Roll for" loses the race to a cancel (RR-UX-20)', async () => {
+    const { rerenderWith } = setup()
+    const getCallbacks = captureRoll()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Roll Spot Hidden for Harvey Walters' }))
+    await act(async () => {
+      getCallbacks().onError(new RequestedRollCancelledError())
+    })
+    rerenderWith([requests[1]])
+
+    expect(screen.getByRole('status')).toHaveTextContent("Harvey Walters's Spot Hidden roll was cancelled.")
   })
 })

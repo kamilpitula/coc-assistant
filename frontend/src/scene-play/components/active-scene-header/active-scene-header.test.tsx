@@ -7,11 +7,12 @@ import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 
 import { ActiveSceneHeader } from './active-scene-header'
 
-// specs/scene-play/ux.md section 21.2; SPL-UX-47, SPL-A11Y-16.
-const { mockUseFinish, finishMutate, finishReset } = vi.hoisted(() => ({ mockUseFinish: vi.fn(), finishMutate: vi.fn(), finishReset: vi.fn() }))
+// specs/scene-play/ux.md sections 21.2 and 24.1; SPL-UX-47, SPL-UX-70, SPL-A11Y-16, SPL-A11Y-27.
+const { mockUseFinish, mockUseWaitingRolls, finishMutate, finishReset } = vi.hoisted(() => ({ mockUseFinish: vi.fn(), mockUseWaitingRolls: vi.fn(), finishMutate: vi.fn(), finishReset: vi.fn() }))
 
 vi.mock('@tanstack/react-router', async () => (await import('@/shared/test-support/routerMock')).routerMock)
 vi.mock('@/scene-play/hooks/useActiveScene', () => ({ useFinishActiveScene: mockUseFinish }))
+vi.mock('@/roll-requests/hooks/useRollRequests', () => ({ useActiveSceneRollRequests: mockUseWaitingRolls }))
 
 const scene: KeeperActiveScene = {
   kind: 'keeper',
@@ -45,6 +46,7 @@ describe('ActiveSceneHeader', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseFinish.mockReturnValue(finishing())
+    mockUseWaitingRolls.mockReturnValue({ data: [] })
   })
 
   it('shows the title, Active status, and start time on one heading, with "Finish Scene" beside it (SPL-UX-47)', () => {
@@ -129,5 +131,31 @@ describe('ActiveSceneHeader', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent("We couldn't finish the Scene. Try again.")
     expect(screen.getByRole('button', { name: 'Finishing...' })).toBeDisabled()
+  })
+
+  it('passes the live waiting count to the finish dialog (SPL-UX-70)', async () => {
+    mockUseWaitingRolls.mockReturnValue({
+      data: [
+        {
+          id: 'r1',
+          target: { kind: 'Skill', skill: 'Spot Hidden', specialization: null, characteristic: null },
+          message: null,
+          visibility: 'Public',
+          difficulty: 'Regular',
+          bonusDice: 0,
+          penaltyDice: 0,
+          createdAt: '2026-11-14T19:21:00Z',
+          requestedRolls: [
+            { investigatorId: 'i1', investigatorName: 'Harvey Walters', targetValue: 60, usesBaseValue: false, canEarnExperienceCheck: true, difficulty: 'Regular', bonusDice: 0, penaltyDice: 0, status: 'Waiting', rolls: [] },
+            { investigatorId: 'i2', investigatorName: 'Lucy Ward', targetValue: 45, usesBaseValue: false, canEarnExperienceCheck: true, difficulty: 'Regular', bonusDice: 0, penaltyDice: 0, status: 'Rolled', rolls: [] },
+          ],
+        },
+      ],
+    })
+    renderHeader()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Finish Scene' }))
+
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(/1 waiting roll will be cancelled\./)
   })
 })
