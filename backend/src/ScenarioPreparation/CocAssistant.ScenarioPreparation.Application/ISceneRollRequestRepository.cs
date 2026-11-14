@@ -24,6 +24,11 @@ public interface ISceneRollRequestRepository
     Task<IReadOnlyList<RollRequest>> ListTrackedForSceneAsync(Guid campaignId, Guid sceneId, CancellationToken cancellationToken);
 
     /// <summary>
+    /// The Campaign's Roll Requests with their Requested Rolls, oldest first (CreatedAt, then Id), read-only.
+    /// </summary>
+    Task<IReadOnlyList<RollRequest>> ListForCampaignAsync(Guid campaignId, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Saves the changes. Throws <see cref="RollRequestConcurrencyException"/> when a Requested Roll's version changed
     /// since it was read.
     /// </summary>

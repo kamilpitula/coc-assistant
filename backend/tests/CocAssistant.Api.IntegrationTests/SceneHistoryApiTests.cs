@@ -74,6 +74,15 @@ public class SceneHistoryApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
     private static async Task<JsonElement> JsonAsync(HttpResponseMessage response) =>
         JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
 
+    private static Task<HttpResponseMessage> CreateRollRequestAsync(Table table, object body) =>
+        table.Client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{table.CampaignId}/active-scene/roll-requests", table.KeeperOid, body));
+
+    private static Task<HttpResponseMessage> CancelRollAsync(Table table, Guid requestId, Guid investigatorId) =>
+        table.Client.SendAsync(BuildRequest(HttpMethod.Post, $"/api/campaigns/{table.CampaignId}/roll-requests/{requestId}/requested-rolls/{investigatorId}/cancel", table.KeeperOid));
+
+    private static JsonElement CorbittScene(JsonElement history, string oid) =>
+        history.GetProperty("scenes").EnumerateArray().Single(scene => scene.GetProperty("title").GetString() == "The Corbitt House");
+
     private static Task<Guid> AddTextHandoutAsync(Table table, Guid sceneId, string title) =>
         CreateAsync(table.Client, $"/api/campaigns/{table.CampaignId}/scenarios/{table.HauntingId}/scenes/{sceneId}/handouts", table.KeeperOid, new { kind = "ReadAloud", visibility = "PlayerFacing", title, content = PreparedScenarioSeed.Json(PreparedScenarioSeed.RichText("The door creaks open")) });
 
@@ -164,6 +173,81 @@ public class SceneHistoryApiTests : IClassFixture<IdentityApiFactory>, IAsyncLif
         var scenes = history.GetProperty("scenes").EnumerateArray().ToList();
         Assert.Equal(["The Strange High House", "The Corbitt House"], scenes.Select(scene => scene.GetProperty("title").GetString()).ToList());
         Assert.All(scenes, scene => Assert.Empty(scene.GetProperty("reveals").EnumerateArray()));
+    }
+
+    [Fact]
+    public async Task Given_a_Public_and_a_KeeperOnly_request_When_reading_history_Then_the_Keeper_sees_both_and_the_Player_only_the_Public_one()
+    {
+        var table = await TableAsync("6");
+        Assert.Equal(HttpStatusCode.OK, (await StartAsync(table, table.CorbittHouse, [table.HarveyId, table.LucyId])).StatusCode);
+        var secret = PreparedScenarioSeed.SecretPrefix + " the cellar whispers";
+        var publicId = (await JsonAsync(await CreateRollRequestAsync(table, new
+        {
+            target = new { kind = "Luck" },
+            message = "Something moves upstairs.",
+            visibility = "Public",
+            difficulty = "Regular",
+            bonusDice = 0,
+            penaltyDice = 0,
+            investigators = new[] { new { investigatorId = table.HarveyId } },
+        }))).GetProperty("id").GetGuid();
+        var hiddenId = (await JsonAsync(await CreateRollRequestAsync(table, new
+        {
+            target = new { kind = "Luck" },
+            message = secret,
+            visibility = "KeeperOnly",
+            difficulty = "Regular",
+            bonusDice = 0,
+            penaltyDice = 0,
+            investigators = new[] { new { investigatorId = table.HarveyId } },
+        }))).GetProperty("id").GetGuid();
+        Assert.Equal(HttpStatusCode.NoContent, (await FinishAsync(table)).StatusCode);
+
+        var keeper = CorbittScene(await JsonAsync(await GetHistoryAsync(table, table.KeeperOid)), table.KeeperOid);
+        var keeperRequests = keeper.GetProperty("rollRequests").EnumerateArray().ToList();
+        Assert.Equal(2, keeperRequests.Count);
+        Assert.Contains(keeperRequests, request => request.GetProperty("id").GetGuid() == publicId && request.GetProperty("visibility").GetString() == "Public");
+        var hidden = Assert.Single(keeperRequests, request => request.GetProperty("id").GetGuid() == hiddenId);
+        Assert.Equal("KeeperOnly", hidden.GetProperty("visibility").GetString());
+        Assert.Equal(secret, hidden.GetProperty("message").GetString());
+
+        var playerResponse = await GetHistoryAsync(table, table.HarveyOid);
+        var player = CorbittScene(await JsonAsync(playerResponse), table.HarveyOid);
+        var playerRequests = player.GetProperty("rollRequests").EnumerateArray().ToList();
+        var single = Assert.Single(playerRequests);
+        Assert.Equal(publicId, single.GetProperty("id").GetGuid());
+        Assert.Equal("Public", single.GetProperty("visibility").GetString());
+        Assert.Equal("Something moves upstairs.", single.GetProperty("message").GetString());
+        var body = await playerResponse.Content.ReadAsStringAsync();
+        Assert.DoesNotContain(hiddenId.ToString(), body, StringComparison.Ordinal);
+        Assert.DoesNotContain(secret, body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Given_a_cancelled_roll_When_reading_history_Then_the_Cancelled_row_is_present_for_both_roles()
+    {
+        var table = await TableAsync("7");
+        Assert.Equal(HttpStatusCode.OK, (await StartAsync(table, table.CorbittHouse, [table.HarveyId, table.LucyId])).StatusCode);
+        var requestId = (await JsonAsync(await CreateRollRequestAsync(table, new
+        {
+            target = new { kind = "Luck" },
+            visibility = "Public",
+            difficulty = "Regular",
+            bonusDice = 0,
+            penaltyDice = 0,
+            investigators = new[] { new { investigatorId = table.HarveyId } },
+        }))).GetProperty("id").GetGuid();
+        Assert.Equal(HttpStatusCode.OK, (await CancelRollAsync(table, requestId, table.HarveyId)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await FinishAsync(table)).StatusCode);
+
+        foreach (var oid in new[] { table.KeeperOid, table.HarveyOid })
+        {
+            var scene = CorbittScene(await JsonAsync(await GetHistoryAsync(table, oid)), oid);
+            var request = Assert.Single(scene.GetProperty("rollRequests").EnumerateArray());
+            Assert.Equal(requestId, request.GetProperty("id").GetGuid());
+            var roll = Assert.Single(request.GetProperty("requestedRolls").EnumerateArray());
+            Assert.Equal("Cancelled", roll.GetProperty("status").GetString());
+        }
     }
 
     [Fact]

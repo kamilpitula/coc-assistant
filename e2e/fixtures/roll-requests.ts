@@ -1,5 +1,6 @@
-import { expect, type Locator, type Page } from '@playwright/test'
+import { expect, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 
+import { API_ORIGIN } from './investigators'
 import { pageStatus } from './scene-play'
 
 /**
@@ -134,6 +135,40 @@ export async function requestRollViaUi(page: Page, options: RequestRollOptions):
       timeout: 15_000,
     })
   }
+}
+
+export interface RequestRollViaApiOptions {
+  /** "Luck" or a skill name; the request is Regular with no dice. */
+  target: string
+  investigatorIds: string[]
+  message?: string
+  visibility?: 'Public' | 'KeeperOnly'
+}
+
+/**
+ * Requests a roll through the API as the Keeper (specs/roll-requests/spec.md, API Contracts) and returns the Roll
+ * Request id.
+ */
+export async function requestRollViaApi(
+  request: APIRequestContext,
+  keeperBearer: string,
+  campaignId: string,
+  options: RequestRollViaApiOptions,
+): Promise<string> {
+  const response = await request.post(`${API_ORIGIN}/api/campaigns/${campaignId}/active-scene/roll-requests`, {
+    headers: { Authorization: keeperBearer },
+    data: {
+      target: options.target === 'Luck' ? { kind: 'Luck' } : { kind: 'Skill', skill: options.target },
+      message: options.message ?? null,
+      visibility: options.visibility ?? 'Public',
+      difficulty: 'Regular',
+      bonusDice: 0,
+      penaltyDice: 0,
+      investigators: options.investigatorIds.map((investigatorId) => ({ investigatorId })),
+    },
+  })
+  expect(response.status(), 'request the roll through the API').toBe(201)
+  return ((await response.json()) as { id: string }).id
 }
 
 /** "Harvey Walters", "Harvey Walters and Lucy Ward", "Harvey Walters, Lucy Ward and Cy Holloway" (ux.md section 11). */

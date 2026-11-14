@@ -105,7 +105,7 @@ public class RollRequestService
         }
 
         var request = await _requests.FindAsync(campaignId, requestId, cancellationToken);
-        if (request is null || !IsVisibleTo(request, role.Value))
+        if (request is null || !RollRequestVisibilityRule.IsVisibleTo(request, role.Value))
         {
             return null;
         }
@@ -123,7 +123,7 @@ public class RollRequestService
 
         var requests = await _requests.ListForActiveSceneAsync(campaignId, cancellationToken);
         var approved = await _approved.ListAsync(campaignId, cancellationToken);
-        var names = await RollerNamesAsync(requests.SelectMany(request => request.RequestedRolls), cancellationToken);
+        var names = await RollerNames.ResolveAsync(_names, requests.SelectMany(request => request.RequestedRolls), cancellationToken);
         return requests.Select(request => RollRequestProjection.ForView(request, approved, names)).ToList();
     }
 
@@ -144,7 +144,7 @@ public class RollRequestService
 
         var waiting = await _requests.ListWaitingForInvestigatorAsync(campaignId, mine.InvestigatorId, cancellationToken);
         var visible = waiting.Where(item => item.Visibility == RollRequestVisibility.Public).ToList();
-        var names = await RollerNamesAsync(visible.Select(item => item.Roll), cancellationToken);
+        var names = await RollerNames.ResolveAsync(_names, visible.Select(item => item.Roll), cancellationToken);
         return new WaitingRollsResult(mine.Name, visible.Select(item => RollRequestProjection.ForWaiting(item, approved, names)).ToList());
     }
 
@@ -228,7 +228,7 @@ public class RollRequestService
         Guid callerAccountId,
         Guid investigatorId)
     {
-        if (request is null || !IsVisibleTo(request, role))
+        if (request is null || !RollRequestVisibilityRule.IsVisibleTo(request, role))
         {
             return false;
         }
@@ -242,10 +242,6 @@ public class RollRequestService
         return owner is not null && owner.PlayerAccountId == callerAccountId;
     }
 
-    /// <summary>Whether the role may see the request: everyone sees a Public one, only the Keeper sees any other.</summary>
-    private static bool IsVisibleTo(RollRequestRecord request, CampaignMemberRole role) =>
-        request.Visibility == RollRequestVisibility.Public || role == CampaignMemberRole.Keeper;
-
     private async Task<RollRequestedRollResult> RolledAsync(
         Guid campaignId,
         ApprovedInvestigatorRef? owner,
@@ -256,7 +252,7 @@ public class RollRequestService
     {
         var affected = owner is null ? [] : (IReadOnlyCollection<Guid>)[owner.PlayerAccountId];
         await TrySignalAsync(campaignId, visibility, affected, cancellationToken);
-        var names = await RollerNamesAsync([roll], cancellationToken);
+        var names = await RollerNames.ResolveAsync(_names, [roll], cancellationToken);
         return new RollRequestedRollResult(
             RollRequestedRollOutcome.Rolled,
             RollRequestProjection.ForRoll(roll, owner?.Name ?? approved.FirstOrDefault(candidate => candidate.InvestigatorId == roll.InvestigatorId)?.Name, names));
@@ -272,7 +268,7 @@ public class RollRequestService
     {
         var affected = owner is null ? [] : (IReadOnlyCollection<Guid>)[owner.PlayerAccountId];
         await TrySignalAsync(campaignId, visibility, affected, cancellationToken);
-        var names = await RollerNamesAsync([roll], cancellationToken);
+        var names = await RollerNames.ResolveAsync(_names, [roll], cancellationToken);
         return new CancelRequestedRollResult(
             CancelRequestedRollOutcome.Cancelled,
             RollRequestProjection.ForRoll(roll, owner?.Name ?? approved.FirstOrDefault(candidate => candidate.InvestigatorId == roll.InvestigatorId)?.Name, names));
@@ -282,22 +278,7 @@ public class RollRequestService
         RollRequestRecord request,
         IReadOnlyList<ApprovedInvestigatorRef> approved,
         CancellationToken cancellationToken) =>
-        RollRequestProjection.ForView(request, approved, await RollerNamesAsync(request.RequestedRolls, cancellationToken));
-
-    private async Task<IReadOnlyDictionary<Guid, string>> RollerNamesAsync(
-        IEnumerable<RequestedRollRecord> rolls,
-        CancellationToken cancellationToken)
-    {
-        var ids = rolls
-            .SelectMany(roll => roll.RollRecords)
-            .Select(record => record.RolledByAccountId)
-            .OfType<Guid>()
-            .Distinct()
-            .ToList();
-        return ids.Count == 0
-            ? new Dictionary<Guid, string>()
-            : await _names.GetDisplayNamesAsync(ids, cancellationToken);
-    }
+        RollRequestProjection.ForView(request, approved, await RollerNames.ResolveAsync(_names, request.RequestedRolls, cancellationToken));
 
     private static List<Guid> AffectedAccounts(
         IReadOnlyList<ApprovedInvestigatorRef> approved,

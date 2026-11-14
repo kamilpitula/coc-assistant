@@ -39,8 +39,9 @@ const queryKeysByTopic: Record<string, (campaignId: string) => QueryKey[]> = {
   // An Item given to the caller's Investigator reaches only its holder (PBI-SPL-003 D6).
   myItems: (campaignId) => [heldItemsQueryKeys.mine(campaignId)],
   // A Roll Request change reaches every member watching the Active Scene, and the targeted Players' own lists
-  // directly (PBI-DICE-005 D2, single-option live publication).
-  rollRequests: (campaignId) => [rollRequestQueryKeys.all(campaignId)],
+  // directly (PBI-DICE-005 D2, single-option live publication). It also refetches an open Scene History, within the
+  // audience rollRequests already has, so a Player is never signalled for a Keeper-only change (PBI-DICE-008 D4).
+  rollRequests: (campaignId) => [rollRequestQueryKeys.all(campaignId), sceneHistoryQueryKeys.detail(campaignId)],
   myRequestedRolls: (campaignId) => [rollRequestQueryKeys.mine(campaignId)],
 }
 

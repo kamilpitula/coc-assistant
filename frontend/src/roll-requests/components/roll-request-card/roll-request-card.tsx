@@ -17,12 +17,37 @@ interface RollRequestCardProps {
 }
 
 /**
+ * A Roll Request's card rendered from data (specs/roll-requests/ux.md section 18): the article of section 5, with no
+ * loading of its own. The history renders this view; the Wall renders RollRequestCard, which loads by id.
+ */
+export function RollRequestCardView({
+  request,
+  requestedByDisplayName,
+}: {
+  request: RollRequest
+  requestedByDisplayName: string
+}) {
+  const headingId = useId()
+  const hidden = request.visibility === 'KeeperOnly'
+
+  return (
+    <article aria-labelledby={headingId} className="flex flex-col gap-2">
+      <CardHeader request={request} headingId={headingId} requestedByDisplayName={requestedByDisplayName} />
+      <ul className="flex flex-col gap-2">
+        {request.requestedRolls.map((roll) => (
+          <RequestedRollRow key={roll.investigatorId} roll={roll} hidden={hidden} />
+        ))}
+      </ul>
+    </article>
+  )
+}
+
+/**
  * A Roll Request's card (specs/roll-requests/ux.md section 5): the same component on the Wall page and in the preview,
  * never clamped and with no actions. The card reads the Roll Request itself; the Wall Entry carries only its id.
  */
 export function RollRequestCard({ campaignId, rollRequestId, requestedByDisplayName }: RollRequestCardProps) {
   const request = useRollRequest(campaignId, rollRequestId)
-  const headingId = useId()
 
   if (request.data === null) {
     return null
@@ -48,18 +73,7 @@ export function RollRequestCard({ campaignId, rollRequestId, requestedByDisplayN
     )
   }
 
-  const hidden = request.data.visibility === 'KeeperOnly'
-
-  return (
-    <article aria-labelledby={headingId} className="flex flex-col gap-2">
-      <CardHeader request={request.data} headingId={headingId} requestedByDisplayName={requestedByDisplayName} />
-      <ul className="flex flex-col gap-2">
-        {request.data.requestedRolls.map((roll) => (
-          <RequestedRollRow key={roll.investigatorId} roll={roll} hidden={hidden} />
-        ))}
-      </ul>
-    </article>
-  )
+  return <RollRequestCardView request={request.data} requestedByDisplayName={requestedByDisplayName} />
 }
 
 function CardHeader({ request, headingId, requestedByDisplayName }: { request: RollRequest; headingId: string; requestedByDisplayName: string }) {

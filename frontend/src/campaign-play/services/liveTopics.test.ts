@@ -69,8 +69,11 @@ describe('queryKeysForTopics', () => {
     expect(queryKeysForTopics('c1', ['myItems'])).toEqual([heldItemsQueryKeys.mine('c1')])
   })
 
-  it('refetches every Roll Request query for the rollRequests topic (RR-UX-7, RR-UX-10)', () => {
-    expect(queryKeysForTopics('c1', ['rollRequests'])).toEqual([rollRequestQueryKeys.all('c1')])
+  it('refetches every Roll Request query and the Scene History for the rollRequests topic (RR-UX-7, RR-UX-10, SPL-UX-77)', () => {
+    expect(queryKeysForTopics('c1', ['rollRequests'])).toEqual([
+      rollRequestQueryKeys.all('c1'),
+      sceneHistoryQueryKeys.detail('c1'),
+    ])
   })
 
   it('refetches only the own waiting rolls for the myRequestedRolls topic (RR-UX-8)', () => {

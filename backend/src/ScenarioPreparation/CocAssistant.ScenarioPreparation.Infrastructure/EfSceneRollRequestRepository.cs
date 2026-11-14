@@ -34,6 +34,15 @@ public class EfSceneRollRequestRepository : ISceneRollRequestRepository
             .ThenBy(request => request.Id)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<RollRequest>> ListForCampaignAsync(Guid campaignId, CancellationToken cancellationToken) =>
+        await _dbContext.Set<RollRequest>()
+            .AsNoTracking()
+            .Include(RequestedRollsNavigation)
+            .Where(request => request.CampaignId == campaignId)
+            .OrderBy(request => request.CreatedAt)
+            .ThenBy(request => request.Id)
+            .ToListAsync(cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken) =>
         RollRequestSaveChanges.SaveAsync(_dbContext, cancellationToken);
 

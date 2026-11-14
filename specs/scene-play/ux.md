@@ -921,6 +921,8 @@ Human decisions at the PBI-SPL-004 UX gate (2026-11-07):
 
 Design record: [docs/scene-play/issues/04-scene-history.design.md](../../docs/scene-play/issues/04-scene-history.design.md).
 
+Amended by section 23.11 (PBI-DICE-008): each Scene also lists its Roll Requests, mixed with its Reveals in one newest-first list. Where 23.2 to 23.7 differ from 23.11, 23.11 wins.
+
 ### 23.1 Information architecture
 
 ```
@@ -1045,6 +1047,76 @@ Stories cover:
 
 - **Research gap:** how long Campaigns grow. If Scene History becomes hard to scan, Option B's index is the documented fallback.
 - **Research gap:** whether Players want the Investigators present of past Scenes; adding them changes the Player projection and needs the spec's Regression Guardrails first.
+
+### 23.11 Roll Requests in the Scene History (PBI-DICE-008)
+
+Selected direction: **Option A (Roll Request cards mixed into each Scene's list)**, chosen 2026-11-14 from a clickable prototype. The alternatives, the human decisions, and the prototype validation are in [roll-requests ux](../roll-requests/ux.md) (header and section 12.2). Behavior: [roll-requests spec](../roll-requests/spec.md), Scene History. Design record: [docs/dice/issues/08-roll-requests-in-the-scene-history.design.md](../../docs/dice/issues/08-roll-requests-in-the-scene-history.design.md).
+
+This section amends 23.2 to 23.6 and SPL-UX-63, SPL-UX-64, and SPL-UX-68. Where it differs from them, it wins.
+
+```
+Return to the Corbitt House                                    (h2)
+Scenario: The Haunting . Started 7 Nov 2026, 19:05 . [Active] Open Active Scene
+Investigators present: Harvey Walters and Lucy Ward            (Keeper only)
+  Listen roll                     19:52 . Eleanor Hart          (h3, card)
+    Lucy Ward                                   Waiting
+  A cold hand                                                    (h3, Reveal)  [Show]
+  Library Use roll                19:40 . Eleanor Hart          (h3, card)
+  Psychology roll        19:31 . Eleanor Hart [Keeper only]     (h3, card; Keeper only)
+  The cellar door                                                (h3, Reveal)  [Hide]
+  Spot Hidden roll                19:14 . Eleanor Hart          (h3, card)
+```
+
+- **One list per Scene (amends 23.2, "Reveals"):**
+  - A Scene's Reveals and Roll Requests appear together, newest first: Reveals by their Revealed time and Roll Requests by their request time.
+  - On equal times the Reveal comes first, then items are ordered by id.
+  - The Reveal item is unchanged: closed until "Show", with the Keeper's " . to {names}".
+- **Roll Request item:**
+  - It is the card of [roll-requests ux](../roll-requests/ux.md) section 5 (5.2 for the "Keeper only" badge): an `article` labelled by its h3 "{target} roll", with the request time, the Keeper's display name, the message, and one row per Requested Roll. It has no actions.
+  - Cancelled rows are not rendered. A card with no rows left is not rendered.
+  - Waiting rows show only in the Active Scene, because finishing a Scene cancels them.
+- **Who sees which Roll Requests:**
+  - Keeper: every Roll Request of the Scene, Keeper-only ones with their badge.
+  - Player, with or without an Approved Investigator: every Public Roll Request of the Scene, including ones that don't involve their Investigator.
+  - A Keeper-only Roll Request leaves no trace for a Player: no card, gap, count, or placeholder, and it does not change the empty sentence.
+- **Empty Scene (replaces the 23.2 sentences):**
+  - Keeper, when the Scene has nothing to list: "Nothing was revealed or rolled in this Scene." A Scene whose only rolls were all cancelled reads the same.
+  - Player with an Approved Investigator, when the Scene has nothing to list: "Nothing from this Scene reached {name}."
+  - Player without one: no sentence (unchanged).
+- **Description (amends 23.2):** for a Player with an Approved Investigator, "Every Scene played in this Campaign, what reached {name}, and the Public rolls, newest first." The Keeper's description and the note for a Player without an Approved Investigator ("...so no Reveals are shown.") are unchanged.
+- **Loading and error:** the page states of 23.2 are unchanged. Cards arrive with the page, so the history has no per-card Skeleton, error, or "Try again". The page shows its Skeleton until the Campaign members (for the Keeper's display name) have loaded too.
+- **Live (amends 23.3):**
+  - The page also refetches silently on `rollRequests`.
+  - A new Roll Request appears at the top of its Scene's list. Results replace rows in place. A cancelled row disappears, and so does its card when no rows are left.
+  - Nothing is announced and focus never moves. A Reveal that was open stays open.
+  - A Player receives no signal for a Keeper-only Roll Request, so their page does not refetch for one.
+- **Headings (23.4 unchanged):** Scene h2; Reveal and card h3; revealed rich text from h4.
+- **Content (amends 23.5):** Keeper empty: "Nothing was revealed or rolled in this Scene."; Player description as above. Never use "timeline", "log", or "play order".
+- **Component mapping (amends 23.6):**
+
+| Element | Component |
+|---|---|
+| Combined list and empty sentences | `scene-history-scene` |
+| Card | `RollRequestCardView` from `roll-request-card` (roll-requests slice), hosted as ADR 0028 hosts adapt |
+| Keeper's display name | `useCampaignMembers` (the member with role Keeper) |
+| Merge and Cancelled hiding | pure helpers in scene-play (`historyItems`, `withoutCancelledRolls`) |
+| Live | `rollRequests` in `campaign-play/services/liveTopics.ts` also refetches the Scene History |
+
+Stories add: a Scene with mixed items for the Keeper and for a Player; a card with a hidden Cancelled row; a Cancelled-only Scene; a Player seeing another Investigator's Public roll.
+
+**Amended acceptance criteria:**
+- **SPL-UX-63** The Keeper sees every Reveal and every Roll Request of every listed Scene, Reveals with "to {names}", and each Scene's "Investigators present: {names}".
+- **SPL-UX-64** A Player sees, per Scene, only the Reveals that reached their Investigator and every Public Roll Request, with no "to {names}" and no Investigators present. A Scene with nothing to list shows "Nothing from this Scene reached {name}.". A Player-facing Handout that was never revealed is absent.
+- **SPL-UX-68** When the Keeper starts or finishes a Scene, a connected member's Scene History updates without reloading. A new Reveal appears only for the Keeper and the Players whose Investigators it reached. A new Roll Request or result appears for the Keeper and, when Public, for every Player. Nothing is announced, and an open Reveal stays open.
+
+**New acceptance criteria:**
+- **SPL-UX-73** Each listed Scene shows its Reveals and Roll Request cards in one list, newest first by Revealed time and request time; on equal times the Reveal comes first.
+- **SPL-UX-74** The Keeper sees every Roll Request, Keeper-only ones with the "Keeper only" badge. A Player sees every Public Roll Request of the Scene, including ones that don't involve their Investigator, and never a Keeper-only one.
+- **SPL-UX-75** A Cancelled Requested Roll is not shown in the Scene History, and a Roll Request whose rows are all Cancelled is not listed.
+- **SPL-UX-76** A Scene with nothing to list shows "Nothing was revealed or rolled in this Scene." to the Keeper and "Nothing from this Scene reached {name}." to a Player with an Approved Investigator.
+- **SPL-UX-77** During the Active Scene, a new Public Roll Request, its results, and its cancelled rows appear and update in a connected member's Scene History without reloading and without announcements.
+- **SPL-A11Y-28** In the combined list each Reveal and each card is an `article` labelled by an h3, in visual order. Results, "Waiting", and "Keeper only" are text, never colour alone. A live update never moves focus (1.3.1, 1.4.1, 2.4.3, 4.1.3).
+- **SPL-A11Y-29** At 320px and 200% zoom the cards in the Scene History reflow without horizontal scrolling (1.4.10).
 
 ## 24. Waiting rolls cancelled by Scene changes (PBI-DICE-007)
 
