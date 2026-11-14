@@ -244,4 +244,93 @@ public class RollRequestTests
         Assert.Equal(25, record.Result);
         Assert.Equal(Now, record.RolledAt);
     }
+
+    [Fact]
+    public void Given_a_waiting_roll_When_cancelling_Then_it_is_cancelled_and_bumps_the_version()
+    {
+        var request = Create().Request!;
+
+        var outcome = request.CancelInvestigatorRoll(Harvey);
+
+        Assert.Equal(RequestedRollOutcome.Cancelled, outcome.Outcome);
+        Assert.Equal(RequestedRollStatus.Cancelled, outcome.Roll!.Status);
+        Assert.Equal(1, outcome.Roll.Version);
+        Assert.Empty(outcome.Roll.RollRecords);
+    }
+
+    [Fact]
+    public void Given_a_rolled_roll_When_cancelling_Then_it_is_refused_and_changes_nothing()
+    {
+        var request = Create().Request!;
+        var rolled = request.RollInvestigatorRoll(new ScriptedRoller(2, 5), Harvey, Roller, Now);
+
+        var outcome = request.CancelInvestigatorRoll(Harvey);
+
+        Assert.Equal(RequestedRollOutcome.NotWaiting, outcome.Outcome);
+        Assert.Null(outcome.Roll);
+        Assert.Equal(RequestedRollStatus.Rolled, rolled.Roll!.Status);
+        Assert.Equal(1, rolled.Roll.Version);
+        Assert.Single(rolled.Roll.RollRecords);
+    }
+
+    [Fact]
+    public void Given_a_cancelled_roll_When_cancelling_Then_it_is_refused_as_already_cancelled()
+    {
+        var request = Create().Request!;
+        request.CancelInvestigatorRoll(Harvey);
+
+        var outcome = request.CancelInvestigatorRoll(Harvey);
+
+        Assert.Equal(RequestedRollOutcome.AlreadyCancelled, outcome.Outcome);
+        Assert.Null(outcome.Roll);
+    }
+
+    [Fact]
+    public void Given_a_cancelled_roll_When_rolling_Then_it_is_refused_as_already_cancelled_and_adds_no_roll_record()
+    {
+        var request = Create().Request!;
+        var cancelled = request.CancelInvestigatorRoll(Harvey);
+
+        var outcome = request.RollInvestigatorRoll(new ScriptedRoller(2, 5), Harvey, Roller, Now);
+
+        Assert.Equal(RequestedRollOutcome.AlreadyCancelled, outcome.Outcome);
+        Assert.Null(outcome.Roll);
+        Assert.Equal(RequestedRollStatus.Cancelled, cancelled.Roll!.Status);
+        Assert.Empty(cancelled.Roll.RollRecords);
+    }
+
+    [Fact]
+    public void Given_an_unknown_investigator_When_cancelling_Then_it_is_refused()
+    {
+        var request = Create().Request!;
+
+        var outcome = request.CancelInvestigatorRoll(Guid.NewGuid());
+
+        Assert.Equal(RequestedRollOutcome.InvestigatorNotRequested, outcome.Outcome);
+        Assert.Null(outcome.Roll);
+    }
+
+    [Fact]
+    public void Given_matching_and_other_rolls_When_closing_for_a_scene_exit_Then_only_the_matching_waiting_rolls_cancel()
+    {
+        var request = Create(investigators: [Input(Harvey), Input(Lucy)]).Request!;
+        request.RollInvestigatorRoll(new ScriptedRoller(2, 5), Lucy, Roller, Now);
+
+        var closed = request.CloseRollsForSceneExit(investigatorId => investigatorId == Harvey);
+
+        Assert.Equal([Harvey], closed);
+        Assert.Equal(RequestedRollStatus.Cancelled, request.RequestedRolls[0].Status);
+        Assert.Equal(RequestedRollStatus.Rolled, request.RequestedRolls[1].Status);
+    }
+
+    [Fact]
+    public void Given_no_matching_waiting_roll_When_closing_for_a_scene_exit_Then_nothing_changes()
+    {
+        var request = Create(investigators: [Input(Harvey)]).Request!;
+
+        var closed = request.CloseRollsForSceneExit(_ => false);
+
+        Assert.Empty(closed);
+        Assert.Equal(RequestedRollStatus.Waiting, request.RequestedRolls[0].Status);
+    }
 }

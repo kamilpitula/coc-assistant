@@ -29,8 +29,12 @@ public enum SceneStartOutcome
     Conflict,
 }
 
-/// <summary>The started Scene, and the Scene that was finished with it, when <see cref="SceneStartOutcome.Started"/>; otherwise null.</summary>
-public sealed record SceneStartResult(SceneStartOutcome Outcome, PlayableSceneView? Started, PlayableSceneView? Finished);
+/// <summary>The started Scene, and the Scene that was finished with it, when <see cref="SceneStartOutcome.Started"/>; otherwise null. The cancelled rolls are the finished Scene's Waiting Requested Rolls.</summary>
+public sealed record SceneStartResult(
+    SceneStartOutcome Outcome,
+    PlayableSceneView? Started,
+    PlayableSceneView? Finished,
+    IReadOnlyList<CancelledRequestedRoll> CancelledRolls);
 
 /// <summary>How finishing the Active Scene ended.</summary>
 public enum SceneFinishOutcome
@@ -40,8 +44,11 @@ public enum SceneFinishOutcome
     Conflict,
 }
 
-/// <summary>The finished Scene when <see cref="SceneFinishOutcome.Finished"/>, otherwise null.</summary>
-public sealed record SceneFinishResult(SceneFinishOutcome Outcome, PlayableSceneView? Finished);
+/// <summary>The finished Scene when <see cref="SceneFinishOutcome.Finished"/>, otherwise null. The cancelled rolls are its Waiting Requested Rolls.</summary>
+public sealed record SceneFinishResult(
+    SceneFinishOutcome Outcome,
+    PlayableSceneView? Finished,
+    IReadOnlyList<CancelledRequestedRoll> CancelledRolls);
 
 /// <summary>How changing the Investigators present ended.</summary>
 public enum InvestigatorsPresentOutcome
@@ -54,5 +61,11 @@ public enum InvestigatorsPresentOutcome
     Conflict,
 }
 
-/// <summary>The Active Scene when <see cref="InvestigatorsPresentOutcome.Replaced"/>, otherwise null.</summary>
-public sealed record InvestigatorsPresentResult(InvestigatorsPresentOutcome Outcome, PlayableSceneView? Scene);
+/// <summary>The Active Scene when <see cref="InvestigatorsPresentOutcome.Replaced"/>, otherwise null. The cancelled rolls are the Waiting Requested Rolls of the Investigators no longer present.</summary>
+public sealed record InvestigatorsPresentResult(
+    InvestigatorsPresentOutcome Outcome,
+    PlayableSceneView? Scene,
+    IReadOnlyList<CancelledRequestedRoll> CancelledRolls);
+
+/// <summary>A Requested Roll a Scene exit cancelled: its request, its Investigator, and the request's visibility for the live signal.</summary>
+public sealed record CancelledRequestedRoll(Guid RollRequestId, Guid InvestigatorId, RollRequestVisibility Visibility);

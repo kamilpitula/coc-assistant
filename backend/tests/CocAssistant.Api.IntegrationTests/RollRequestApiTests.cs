@@ -79,6 +79,12 @@ public class RollRequestApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
     private static Task<HttpResponseMessage> RollAsync(Table table, Guid requestId, Guid investigatorId, string? oid = null) =>
         table.Client.SendAsync(BuildRequest(HttpMethod.Post, CampaignUri(table, $"/roll-requests/{requestId}/requested-rolls/{investigatorId}/roll"), oid ?? table.KeeperOid));
 
+    private static Task<HttpResponseMessage> CancelAsync(Table table, Guid requestId, Guid investigatorId, string? oid = null) =>
+        table.Client.SendAsync(BuildRequest(HttpMethod.Post, CampaignUri(table, $"/roll-requests/{requestId}/requested-rolls/{investigatorId}/cancel"), oid ?? table.KeeperOid));
+
+    private static Task<HttpResponseMessage> ChangePresentAsync(Table table, Guid[] present) =>
+        table.Client.SendAsync(BuildRequest(HttpMethod.Put, CampaignUri(table, "/active-scene/present-investigators"), table.KeeperOid, new { presentInvestigatorIds = present }));
+
     private static object LuckRequest(params Guid[] investigatorIds) =>
         new
         {
@@ -383,6 +389,128 @@ public class RollRequestApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
         await FinishAsync(table);
 
         Assert.Equal(HttpStatusCode.Conflict, (await RollAsync(table, requestId, table.HarveyId)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_a_Waiting_roll_When_the_Keeper_cancels_Then_it_is_200_Cancelled_and_leaves_lists_and_badges()
+    {
+        var table = await TableAsync("cancel-1");
+        var requestId = (await JsonAsync(await CreateRollRequestAsync(table, SkillRequest(table.HarveyId)))).GetProperty("id").GetGuid();
+
+        var cancelled = await CancelAsync(table, requestId, table.HarveyId);
+
+        Assert.Equal(HttpStatusCode.OK, cancelled.StatusCode);
+        var roll = await JsonAsync(cancelled);
+        Assert.Equal(("Cancelled", 0), (roll.GetProperty("status").GetString(), roll.GetProperty("rolls").GetArrayLength()));
+        var cardRoll = Assert.Single((await JsonAsync(await GetRollRequestAsync(table, requestId))).GetProperty("requestedRolls").EnumerateArray());
+        Assert.Equal("Cancelled", cardRoll.GetProperty("status").GetString());
+        var keeperList = await JsonAsync(await ListActiveSceneRequestsAsync(table));
+        Assert.Equal("Cancelled", keeperList.EnumerateArray().Single().GetProperty("requestedRolls")[0].GetProperty("status").GetString());
+        var mine = await MineAsync(table, table.HarveyOid);
+        Assert.Equal(0, (await JsonAsync(mine)).GetProperty("rolls").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Given_a_Player_When_cancelling_Then_it_is_404_and_the_roll_is_still_Waiting()
+    {
+        var table = await TableAsync("cancel-2");
+        var requestId = (await JsonAsync(await CreateRollRequestAsync(table, SkillRequest(table.HarveyId)))).GetProperty("id").GetGuid();
+
+        Assert.Equal(HttpStatusCode.NotFound, (await CancelAsync(table, requestId, table.HarveyId, table.HarveyOid)).StatusCode);
+        var cardRoll = Assert.Single((await JsonAsync(await GetRollRequestAsync(table, requestId))).GetProperty("requestedRolls").EnumerateArray());
+        Assert.Equal("Waiting", cardRoll.GetProperty("status").GetString());
+    }
+
+    [Theory]
+    [InlineData("rolled", "Another change won the race. Fetch again and try again.")]
+    [InlineData("cancelled", "This roll was cancelled.")]
+    public async Task Given_a_roll_that_is_no_longer_Waiting_When_cancelling_Then_it_is_409_with_the_matching_title(string state, string title)
+    {
+        var table = await TableAsync($"cancel-3-{state}");
+        var requestId = (await JsonAsync(await CreateRollRequestAsync(table, SkillRequest(table.HarveyId)))).GetProperty("id").GetGuid();
+        if (state == "rolled")
+        {
+            Assert.Equal(HttpStatusCode.OK, (await RollAsync(table, requestId, table.HarveyId)).StatusCode);
+        }
+        else
+        {
+            Assert.Equal(HttpStatusCode.OK, (await CancelAsync(table, requestId, table.HarveyId)).StatusCode);
+        }
+
+        var again = await CancelAsync(table, requestId, table.HarveyId);
+
+        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+        Assert.Equal(title, (await JsonAsync(again)).GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public async Task Given_a_finished_Scene_When_cancelling_Then_the_Scene_check_wins_with_409()
+    {
+        var table = await TableAsync("cancel-4");
+        var requestId = (await JsonAsync(await CreateRollRequestAsync(table, SkillRequest(table.HarveyId)))).GetProperty("id").GetGuid();
+        await FinishAsync(table);
+
+        var cancelled = await CancelAsync(table, requestId, table.HarveyId);
+
+        Assert.Equal(HttpStatusCode.Conflict, cancelled.StatusCode);
+        Assert.Equal("No Scene is Active.", (await JsonAsync(cancelled)).GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public async Task Given_a_cancelled_roll_When_rolling_Then_it_is_409_with_the_cancelled_title()
+    {
+        var table = await TableAsync("cancel-5");
+        var requestId = (await JsonAsync(await CreateRollRequestAsync(table, SkillRequest(table.HarveyId)))).GetProperty("id").GetGuid();
+        Assert.Equal(HttpStatusCode.OK, (await CancelAsync(table, requestId, table.HarveyId)).StatusCode);
+
+        var rolled = await RollAsync(table, requestId, table.HarveyId);
+
+        Assert.Equal(HttpStatusCode.Conflict, rolled.StatusCode);
+        Assert.Equal("This roll was cancelled.", (await JsonAsync(rolled)).GetProperty("title").GetString());
+        var cardRoll = Assert.Single((await JsonAsync(await GetRollRequestAsync(table, requestId))).GetProperty("requestedRolls").EnumerateArray());
+        Assert.Equal(("Cancelled", 0), (cardRoll.GetProperty("status").GetString(), cardRoll.GetProperty("rolls").GetArrayLength()));
+    }
+
+    [Fact]
+    public async Task Given_a_finish_When_finishing_Then_both_rolls_are_Cancelled()
+    {
+        var table = await TableAsync("cancel-6");
+        var requestId = (await JsonAsync(await CreateRollRequestAsync(table, LuckRequest(table.HarveyId, table.LucyId)))).GetProperty("id").GetGuid();
+
+        Assert.Equal(HttpStatusCode.NoContent, (await FinishAsync(table)).StatusCode);
+
+        var card = await JsonAsync(await GetRollRequestAsync(table, requestId));
+        Assert.All(card.GetProperty("requestedRolls").EnumerateArray(), roll => Assert.Equal("Cancelled", roll.GetProperty("status").GetString()));
+    }
+
+    [Fact]
+    public async Task Given_a_present_change_When_removing_an_Investigator_Then_only_their_roll_is_Cancelled()
+    {
+        var table = await TableAsync("cancel-7");
+        var requestId = (await JsonAsync(await CreateRollRequestAsync(table, LuckRequest(table.HarveyId, table.LucyId)))).GetProperty("id").GetGuid();
+
+        Assert.Equal(HttpStatusCode.OK, (await ChangePresentAsync(table, [table.HarveyId])).StatusCode);
+
+        var card = await JsonAsync(await GetRollRequestAsync(table, requestId));
+        var rolls = card.GetProperty("requestedRolls").EnumerateArray().ToList();
+        Assert.Equal("Waiting", rolls.Single(roll => roll.GetProperty("investigatorId").GetGuid() == table.HarveyId).GetProperty("status").GetString());
+        Assert.Equal("Cancelled", rolls.Single(roll => roll.GetProperty("investigatorId").GetGuid() == table.LucyId).GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task Given_a_second_Scene_When_starting_with_finish_Then_the_old_Scenes_rolls_are_Cancelled()
+    {
+        var table = await TableAsync("cancel-8");
+        var requestId = (await JsonAsync(await CreateRollRequestAsync(table, LuckRequest(table.HarveyId, table.LucyId)))).GetProperty("id").GetGuid();
+        var secondScene = await CreateAsync(table.Client, $"/api/campaigns/{table.CampaignId}/scenarios/{table.ScenarioId}/scenes", table.KeeperOid, new { title = "Meeting Knott", location = "Arkham" });
+
+        var started = await table.Client.SendAsync(BuildRequest(
+            HttpMethod.Post, $"/api/campaigns/{table.CampaignId}/scenes/{secondScene}/start", table.KeeperOid,
+            new { presentInvestigatorIds = new[] { table.HarveyId }, finishActiveScene = true }));
+
+        Assert.Equal(HttpStatusCode.OK, started.StatusCode);
+        var card = await JsonAsync(await GetRollRequestAsync(table, requestId));
+        Assert.All(card.GetProperty("requestedRolls").EnumerateArray(), roll => Assert.Equal("Cancelled", roll.GetProperty("status").GetString()));
     }
 
     [Fact]

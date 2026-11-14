@@ -155,6 +155,11 @@ export async function rollForViaUi(page: Page, investigatorName: string, target:
   await waitingRolls(page).getByRole('button', { name: `Roll ${target} for ${investigatorName}` }).click()
 }
 
+/** Cancels a Waiting row for this Investigator from the Keeper's "Waiting rolls" (ux.md RR-UX-20). */
+export async function cancelRollViaUi(page: Page, investigatorName: string, target: string): Promise<void> {
+  await waitingRolls(page).getByRole('button', { name: `Cancel ${target} roll for ${investigatorName}` }).click()
+}
+
 /**
  * The expected outcome copy for a displayed result against the row's snapshot target value and Difficulty.
  * Follows docs/game-rules/coc7_skill_rolls_rules.md sections 4.2 (Critical and Fumble) and 4.3 (resolving a roll):

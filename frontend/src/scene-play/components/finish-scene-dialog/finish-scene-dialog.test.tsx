@@ -4,12 +4,13 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { FinishSceneDialog } from './finish-scene-dialog'
 
-// specs/scene-play/ux.md section 3 (Finish); SPL-UX-11, SPL-UX-18.
+// specs/scene-play/ux.md sections 3 and 24.1 (Finish); SPL-UX-11, SPL-UX-18, SPL-UX-70, SPL-A11Y-27.
 const props = {
   open: true,
   sceneTitle: 'The Corbitt House',
   pending: false,
   failed: false,
+  waitingRollCount: 0,
   onConfirm: vi.fn(),
   onCancel: vi.fn(),
   onCloseAutoFocus: vi.fn(),
@@ -22,6 +23,21 @@ describe('FinishSceneDialog', () => {
     expect(screen.getByRole('alertdialog', { name: 'Finish The Corbitt House?' })).toHaveAccessibleDescription(
       "A Finished Scene can't be started again. Players will see that it has finished.",
     )
+  })
+
+  it('names how many waiting rolls finishing will cancel (SPL-UX-70, SPL-A11Y-27)', () => {
+    const { rerender } = render(<FinishSceneDialog {...props} waitingRollCount={2} />)
+
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(/2 waiting rolls will be cancelled\./)
+
+    rerender(<FinishSceneDialog {...props} waitingRollCount={1} />)
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(/1 waiting roll will be cancelled\./)
+  })
+
+  it('warns in general while the count is unknown (SPL-UX-70)', () => {
+    render(<FinishSceneDialog {...props} waitingRollCount={undefined} />)
+
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(/Any waiting rolls will be cancelled\./)
   })
 
   it('confirms with Finish Scene and cancels with Cancel', async () => {

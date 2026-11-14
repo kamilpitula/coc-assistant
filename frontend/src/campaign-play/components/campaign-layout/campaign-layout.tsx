@@ -7,6 +7,7 @@ import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import { useActiveScene } from '@/scene-play/hooks/useActiveScene'
 import { useActiveSceneRollRequests, useMyRequestedRolls } from '@/roll-requests/hooks/useRollRequests'
 import { useRequestedRollAnnouncement } from '@/roll-requests/hooks/useRequestedRollAnnouncement'
+import { countWaitingRolls } from '@/roll-requests/services/waitingRollCount'
 import type { RollRequest } from '@/roll-requests/types/RollRequest'
 import { Header } from '@/shared/components/header/header'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
@@ -116,7 +117,7 @@ function waitingRollCount(
   }
 
   if (isKeeper === true) {
-    return keeperRequests?.flatMap((request) => request.requestedRolls).filter((roll) => roll.status === 'Waiting').length
+    return countWaitingRolls(keeperRequests)
   }
 
   return mineCount

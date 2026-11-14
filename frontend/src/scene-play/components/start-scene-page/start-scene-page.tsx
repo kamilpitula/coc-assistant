@@ -11,6 +11,8 @@ import { InvestigatorsPresentFieldset } from '@/scene-play/components/investigat
 import { useActiveScene, useStartScene } from '@/scene-play/hooks/useActiveScene'
 import { approvedInvestigatorsFrom, initialSelection, toggled } from '@/scene-play/services/presentSelection'
 import { refusalFor, validateStart, type StartErrors } from '@/scene-play/services/startSceneForm'
+import { useActiveSceneRollRequests } from '@/roll-requests/hooks/useRollRequests'
+import { countWaitingRolls, waitingRollsToCancelSentence } from '@/roll-requests/services/waitingRollCount'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import type { ApprovedInvestigator, KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 import { Alert } from '@/shared/components/ui/alert'
@@ -248,6 +250,7 @@ function StartSceneForm({ campaignId, scenarioId, sceneId, sceneTitle, approved,
     <form noValidate onSubmit={submit} className="flex flex-col gap-6">
       {notice && (
         <FinishFirstNotice
+          campaignId={campaignId}
           title={notice.title}
           checked={finishChecked}
           error={errors.finish}
@@ -293,6 +296,7 @@ function StartSceneForm({ campaignId, scenarioId, sceneId, sceneTitle, approved,
 }
 
 interface FinishFirstNoticeProps {
+  campaignId: string
   title: string
   checked: boolean
   error: string | undefined
@@ -300,8 +304,15 @@ interface FinishFirstNoticeProps {
   onChange: (checked: boolean) => void
 }
 
-function FinishFirstNotice({ title, checked, error, checkboxRef, onChange }: FinishFirstNoticeProps) {
+function FinishFirstNotice({ campaignId, title, checked, error, checkboxRef, onChange }: FinishFirstNoticeProps) {
   const errorId = 'finish-first-error'
+  const hintId = 'finish-first-waiting-hint'
+  // The start page hides the hint while the count is unknown; the server still cancels exactly the Waiting rolls
+  // (specs/scene-play/ux.md section 24.3).
+  const activeRequests = useActiveSceneRollRequests(campaignId)
+  const waitingCount = countWaitingRolls(activeRequests.data)
+  const hint = waitingCount === undefined || waitingCount === 0 ? null : waitingRollsToCancelSentence(waitingCount)
+  const describedBy = [error ? errorId : null, hint ? hintId : null].filter((id) => id !== null).join(' ') || undefined
 
   return (
     <section aria-labelledby="active-notice-heading" className="flex flex-col gap-2 rounded-lg border p-4">
@@ -317,12 +328,17 @@ function FinishFirstNotice({ title, checked, error, checkboxRef, onChange }: Fin
           checked={checked}
           onCheckedChange={(next) => onChange(next === true)}
           aria-invalid={error !== undefined}
-          aria-describedby={error ? errorId : undefined}
+          aria-describedby={describedBy}
         />
         <Label htmlFor="finish-first" className="font-normal leading-6 break-words">
           Finish {title} first
         </Label>
       </div>
+      {hint !== null && (
+        <p id={hintId} className="text-sm text-muted-foreground">
+          {hint}
+        </p>
+      )}
       {error && (
         <p id={errorId} className="text-sm text-destructive">
           {error}

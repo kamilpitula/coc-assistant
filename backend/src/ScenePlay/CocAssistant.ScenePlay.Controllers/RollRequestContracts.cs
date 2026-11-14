@@ -98,4 +98,5 @@ internal static class RollRequestProblems
     public const string MessageTooLongMessage = "The message is at most 2000 characters.";
     public const string UnknownDifficultyMessage = "Choose Regular, Hard, or Extreme difficulty.";
     public const string UnknownVisibilityMessage = "Choose Public or Keeper only visibility.";
+    public const string CancelledTitle = "This roll was cancelled.";
 }

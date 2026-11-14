@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import { useAccessToken } from '@/shared/hooks/useAccessToken'
 import {
+  cancelRequestedRoll,
   getActiveSceneRollRequests,
   getMyRequestedRolls,
   getRollRequest,
@@ -74,6 +75,21 @@ export function useRollRequestedRoll(campaignId: string) {
   return useMutation({
     mutationFn: async ({ rollRequestId, investigatorId }: { rollRequestId: string; investigatorId: string }) =>
       rollRequestedRoll(await getAccessToken(), campaignId, rollRequestId, investigatorId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: rollRequestQueryKeys.all(campaignId) }),
+  })
+}
+
+/**
+ * Cancels a Waiting Requested Roll (specs/roll-requests/ux.md section 17.1). The card shows the Cancelled row, so the
+ * same queries refetch as after a roll.
+ */
+export function useCancelRequestedRoll(campaignId: string) {
+  const getAccessToken = useAccessToken()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ rollRequestId, investigatorId }: { rollRequestId: string; investigatorId: string }) =>
+      cancelRequestedRoll(await getAccessToken(), campaignId, rollRequestId, investigatorId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: rollRequestQueryKeys.all(campaignId) }),
   })
 }

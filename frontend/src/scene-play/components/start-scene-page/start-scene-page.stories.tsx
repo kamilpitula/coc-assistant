@@ -3,6 +3,8 @@ import { userEvent, within } from 'storybook/test'
 
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import { keeperCampaign, keeperRosterAllApproved, keeperRosterWithoutPlayers, STORY_CAMPAIGN_ID } from '@/campaign-play/test-support/rosterFixtures'
+import { rollRequestQueryKeys } from '@/roll-requests/services/rollRequestApi'
+import type { RollRequest } from '@/roll-requests/types/RollRequest'
 import { scenarioQueryKeys } from '@/scenario-preparation/services/scenarioApi'
 import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
 import type { Scene } from '@/scenario-preparation/types/Scene'
@@ -47,9 +49,10 @@ interface StoryArgs {
   roster?: typeof keeperRosterAllApproved
   tokens?: 'pending' | 'failing' | 'granted'
   loading?: boolean
+  waitingRolls?: RollRequest[]
 }
 
-function PageStory({ scene = prepared, active = null, roster = keeperRosterAllApproved, tokens = 'pending', loading = false }: StoryArgs) {
+function PageStory({ scene = prepared, active = null, roster = keeperRosterAllApproved, tokens = 'pending', loading = false, waitingRolls = [] }: StoryArgs) {
   return (
     <StoryMsal tokens={tokens}>
       <StoryProviders
@@ -62,6 +65,7 @@ function PageStory({ scene = prepared, active = null, roster = keeperRosterAllAp
           client.setQueryData(scenarioQueryKeys.detail(STORY_CAMPAIGN_ID, SCENARIO_ID), { id: SCENARIO_ID, title: 'The Haunting', keeperNotes: '' })
           client.setQueryData(campaignQueryKeys.members(STORY_CAMPAIGN_ID), roster)
           client.setQueryData(activeSceneQueryKeys.detail(STORY_CAMPAIGN_ID), active)
+          client.setQueryData(rollRequestQueryKeys.activeScene(STORY_CAMPAIGN_ID), waitingRolls)
         }}
       >
         <StartScenePage campaignId={STORY_CAMPAIGN_ID} scenarioId={SCENARIO_ID} sceneId={SCENE_ID} />
@@ -81,6 +85,29 @@ type Story = StoryObj<typeof meta>
 export const Idle: Story = {}
 
 export const WithActiveScene: Story = { args: { active: otherActive } }
+
+/** Finishing the other Scene first would cancel its two waiting rolls (SPL-UX-72). */
+export const FinishFirstCancelsWaitingRolls: Story = {
+  args: {
+    active: otherActive,
+    waitingRolls: [
+      {
+        id: 'r1',
+        target: { kind: 'Skill', skill: 'Spot Hidden', specialization: null, characteristic: null },
+        message: null,
+        visibility: 'Public',
+        difficulty: 'Regular',
+        bonusDice: 0,
+        penaltyDice: 0,
+        createdAt: '2026-11-14T19:21:00Z',
+        requestedRolls: [
+          { investigatorId: 'i-c', investigatorName: 'Mae Doyle', targetValue: 40, usesBaseValue: false, canEarnExperienceCheck: true, difficulty: 'Regular', bonusDice: 0, penaltyDice: 0, status: 'Waiting', rolls: [] },
+          { investigatorId: 'i-a', investigatorName: 'Dr. Ames', targetValue: 60, usesBaseValue: false, canEarnExperienceCheck: true, difficulty: 'Regular', bonusDice: 0, penaltyDice: 0, status: 'Waiting', rolls: [] },
+        ],
+      },
+    ],
+  },
+}
 
 export const NoApprovedInvestigator: Story = { args: { roster: keeperRosterWithoutPlayers } }
 

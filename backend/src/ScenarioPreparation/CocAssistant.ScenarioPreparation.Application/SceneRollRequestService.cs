@@ -139,11 +139,44 @@ public class SceneRollRequestService
         var result = request.RollInvestigatorRoll(_diceRoller, investigatorId, rollerAccountId, _timeProvider.GetUtcNow());
         if (result.Outcome != RequestedRollOutcome.Rolled)
         {
-            return new RequestedRollWriteResult(ToRollOutcome(result.Outcome), null);
+            return new RequestedRollWriteResult(ToWriteOutcome(result.Outcome), null);
         }
 
         return await TrySaveAsync(cancellationToken)
             ? new RequestedRollWriteResult(RequestedRollWriteOutcome.Rolled, ToView(result.Roll!))
+            : new RequestedRollWriteResult(RequestedRollWriteOutcome.NotWaiting, null);
+    }
+
+    /// <summary>
+    /// Cancels the Investigator's Waiting Requested Roll. Only a roll of the Active Scene can cancel; a lost
+    /// race reports NotWaiting, never retried (ADR 0032).
+    /// </summary>
+    public async Task<RequestedRollWriteResult> CancelAsync(
+        Guid campaignId,
+        Guid requestId,
+        Guid investigatorId,
+        CancellationToken cancellationToken)
+    {
+        var request = await _requests.FindAsync(campaignId, requestId, cancellationToken);
+        if (request is null)
+        {
+            return new RequestedRollWriteResult(RequestedRollWriteOutcome.NotFound, null);
+        }
+
+        var active = await _scenes.FindActiveAsync(campaignId, cancellationToken);
+        if (active is null || active.Id != request.SceneId)
+        {
+            return new RequestedRollWriteResult(RequestedRollWriteOutcome.SceneNotActive, null);
+        }
+
+        var result = request.CancelInvestigatorRoll(investigatorId);
+        if (result.Outcome != RequestedRollOutcome.Cancelled)
+        {
+            return new RequestedRollWriteResult(ToWriteOutcome(result.Outcome), null);
+        }
+
+        return await TrySaveAsync(cancellationToken)
+            ? new RequestedRollWriteResult(RequestedRollWriteOutcome.Cancelled, ToView(result.Roll!))
             : new RequestedRollWriteResult(RequestedRollWriteOutcome.NotWaiting, null);
     }
 
@@ -201,9 +234,10 @@ public class SceneRollRequestService
         _ => RollRequestWriteOutcome.InvalidTarget,
     };
 
-    private static RequestedRollWriteOutcome ToRollOutcome(RequestedRollOutcome outcome) => outcome switch
+    private static RequestedRollWriteOutcome ToWriteOutcome(RequestedRollOutcome outcome) => outcome switch
     {
         RequestedRollOutcome.InvestigatorNotRequested => RequestedRollWriteOutcome.InvestigatorNotRequested,
+        RequestedRollOutcome.AlreadyCancelled => RequestedRollWriteOutcome.AlreadyCancelled,
         _ => RequestedRollWriteOutcome.NotWaiting,
     };
 }
