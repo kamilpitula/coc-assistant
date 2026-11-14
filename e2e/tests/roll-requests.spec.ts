@@ -11,12 +11,14 @@ import {
   HARVEY,
   LUCY,
   pageStatus,
+  presentFieldset,
   setUpTable,
   startSceneViaApi,
   type Table,
 } from '../fixtures/scene-play'
 import { openWall, wallPreview } from '../fixtures/wall'
 import {
+  cancelRollViaUi,
   expectedOutcome,
   requestRollForm,
   requestRollViaUi,
@@ -29,12 +31,15 @@ import {
 
 /**
  * Traces to specs/roll-requests/spec.md Scenarios "Requesting a roll in the Active Scene" and to
- * specs/roll-requests/ux.md: the Keeper's request form (RR-UX-1 to RR-UX-6), "Waiting rolls" (RR-UX-7),
- * the Player's panel (RR-UX-8, RR-UX-9, RR-A11Y-4), the Wall card (RR-UX-10, RR-UX-11), the tab badge (RR-UX-12),
- * the assertive announcement (RR-UX-13), the no-other-Investigator guard (RR-UX-14), the hidden roll form, card,
- * and invisibility (RR-UX-15 to RR-UX-19, RR-A11Y-11 to RR-A11Y-14), and the Wall amendments (WL-UX-7, WL-UX-9).
+ * specs/roll-requests/ux.md: the Keeper's request form (RR-UX-1 to RR-UX-6), "Waiting rolls" (RR-UX-7), the cancel
+ * control and Cancelled card (RR-UX-20 to RR-UX-22, RR-A11Y-15, RR-A11Y-16), the Player's panel (RR-UX-8, RR-UX-9,
+ * RR-A11Y-4), the Wall card (RR-UX-10, RR-UX-11), the tab badge (RR-UX-12), the assertive announcement (RR-UX-13),
+ * the no-other-Investigator guard (RR-UX-14), the hidden roll form, card, and invisibility (RR-UX-15 to RR-UX-19,
+ * RR-A11Y-11 to RR-A11Y-14), and the automatic cancellation on Scene changes (RR-UX-23 with SPL-UX-70 to SPL-UX-72
+ * and SPL-A11Y-27 from specs/scene-play/ux.md section 24), and the Wall amendments (WL-UX-7, WL-UX-9).
  * Exceptions, covered by the unit tests: "server rolls 25" (the exact dice mapping of faces to outcome) and the
- * cancel and push scenarios of later PBIs (spec DICE-007, 009).
+ * push scenarios of PBI-DICE-009. The 409 on cancelling a roll that is not Waiting cannot be reached through the UI
+ * without a race, so the API integration tests cover it.
  */
 test.describe('Roll Requests', () => {
   // Each journey signs in a Keeper and joins Players in isolated contexts before it checks anything, which takes longer than the default.
@@ -444,6 +449,117 @@ test.describe('Roll Requests', () => {
           investigators: [{ investigatorId: table.harveyId }],
         })
         expect(response.status()).toBe(404)
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('Keeper cancels a waiting roll', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'Cancel')
+    try {
+      const campaignId = table.prepared.campaignId
+      await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
+      await table.lucy.page.goto(`/campaigns/${campaignId}/active-scene`)
+      await page.goto(activeScenePath(campaignId))
+      await requestRollViaUi(page, { target: 'Spot Hidden', investigators: [LUCY] })
+      await expect(waitingRollsPanel(table.lucy.page).getByRole('button', { name: 'Roll Spot Hidden' })).toBeVisible()
+
+      await test.step('RR-UX-20: Cancel removes the row and names the cancelled roll', async () => {
+        await cancelRollViaUi(page, LUCY, 'Spot Hidden')
+        // Local 15s budget, not the 5s default: the cancel writes through the same LocalDB path as the first
+        // request, which can stall after a fresh server start.
+        await expect(waitingRolls(page).getByRole('status')).toHaveText("Lucy Ward's Spot Hidden roll was cancelled.", { timeout: 15_000 })
+        await expect(waitingRolls(page).getByText('No rolls waiting.')).toBeVisible()
+      })
+
+      await test.step('RR-UX-21: the card shows Lucy as Cancelled for the Keeper and for Lucy', async () => {
+        await openWall(page, campaignId)
+        await expect(rollRequestCard(page, 'Spot Hidden').getByText('Cancelled', { exact: true })).toBeVisible()
+        await openWall(table.lucy.page, campaignId)
+        await expect(rollRequestCard(table.lucy.page, 'Spot Hidden').getByText('Cancelled', { exact: true })).toBeVisible()
+      })
+
+      await test.step("RR-UX-22, RR-UX-12: Lucy's panel row and both badges drop without reloading", async () => {
+        await table.lucy.page.goto(`/campaigns/${campaignId}/active-scene`)
+        await expect(waitingRollsPanel(table.lucy.page)).toHaveCount(0)
+        await expect(campaignNav(table.lucy.page).getByRole('link', { name: 'Active Scene, live', exact: true })).toBeVisible()
+        await expect(campaignNav(page).getByRole('link', { name: 'Active Scene, live', exact: true })).toBeVisible()
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('Finishing the Scene cancels waiting rolls', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'FinishCancel')
+    try {
+      const campaignId = table.prepared.campaignId
+      await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
+      await page.goto(activeScenePath(campaignId))
+      await requestRollViaUi(page, { target: 'Listen', investigators: [HARVEY, LUCY] })
+
+      await test.step('SPL-UX-70: the finish dialog names the waiting rolls it will cancel', async () => {
+        await page.getByRole('button', { name: 'Finish Scene' }).click()
+        await expect(page.getByRole('alertdialog')).toContainText('2 waiting rolls will be cancelled.')
+        await page.getByRole('alertdialog').getByRole('button', { name: 'Finish Scene' }).click()
+        await expect(pageStatus(page)).toHaveText(`${PREPARED.firstSceneTitle} finished.`)
+      })
+
+      await test.step('SPL-UX-70: both card rows are Cancelled on the Wall', async () => {
+        await openWall(page, campaignId)
+        await expect(rollRequestCard(page, 'Listen').getByText('Cancelled', { exact: true })).toHaveCount(2)
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('Removing an Investigator present cancels their waiting rolls', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'PresentCancel')
+    try {
+      const campaignId = table.prepared.campaignId
+      await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
+      await page.goto(activeScenePath(campaignId))
+      await requestRollViaUi(page, { target: 'Spot Hidden', investigators: [HARVEY, LUCY] })
+
+      await test.step('SPL-UX-71: unchecking Lucy and saving reports 1 cancelled roll', async () => {
+        await page.getByRole('button', { name: 'Change' }).click()
+        await presentFieldset(page).getByRole('checkbox', { name: new RegExp(LUCY) }).uncheck()
+        await page.getByRole('button', { name: 'Save' }).click()
+        await expect(pageStatus(page)).toHaveText('Investigators present saved. 1 waiting roll cancelled.')
+      })
+
+      await test.step("SPL-UX-71: only Lucy's card row is Cancelled", async () => {
+        await openWall(page, campaignId)
+        const card = rollRequestCard(page, 'Spot Hidden')
+        await expect(card.getByText('Cancelled', { exact: true })).toHaveCount(1)
+        await expect(card.getByText('Waiting', { exact: true })).toHaveCount(1)
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('Starting another Scene cancels the finished Scene waiting rolls', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'StartCancel')
+    try {
+      const campaignId = table.prepared.campaignId
+      await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
+      await page.goto(activeScenePath(campaignId))
+      await requestRollViaUi(page, { target: 'Listen', investigators: [LUCY] })
+
+      await test.step('SPL-UX-72: the start page hints at the waiting rolls finishing will cancel', async () => {
+        await page.goto(`/campaigns/${campaignId}/scenarios/${table.prepared.scenarioId}/scenes/${table.meetingKnottId}/start`)
+        await expect(page.getByText('1 waiting roll will be cancelled.')).toBeVisible()
+        await page.getByRole('checkbox', { name: `Finish ${PREPARED.firstSceneTitle} first` }).check()
+        await page.getByRole('button', { name: 'Start Scene' }).click()
+        await expect(pageStatus(page)).toHaveText(`${PREPARED.secondSceneTitle} started.`)
+      })
+
+      await test.step("SPL-UX-72: the finished Scene's card row is Cancelled", async () => {
+        await openWall(page, campaignId)
+        await expect(rollRequestCard(page, 'Listen').getByText('Cancelled', { exact: true })).toHaveCount(1)
       })
     } finally {
       await closeTable(table)
