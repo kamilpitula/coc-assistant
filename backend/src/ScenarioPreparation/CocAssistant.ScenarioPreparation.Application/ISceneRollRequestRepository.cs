@@ -19,8 +19,7 @@ public interface ISceneRollRequestRepository
 
     /// <summary>
     /// The Scene's Roll Requests with their Requested Rolls, oldest first (CreatedAt, then Id), change-tracked for a
-    /// write that shares the Scene's save (ADR 0032). It carries no status filter, so a later PBI closes more states
-    /// through the same call.
+    /// write that shares the Scene's save (ADR 0032). It carries no status filter.
     /// </summary>
     Task<IReadOnlyList<RollRequest>> ListTrackedForSceneAsync(Guid campaignId, Guid sceneId, CancellationToken cancellationToken);
 

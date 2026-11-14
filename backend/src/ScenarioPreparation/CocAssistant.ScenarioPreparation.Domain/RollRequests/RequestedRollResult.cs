@@ -10,5 +10,5 @@ public enum RequestedRollOutcome
     AlreadyCancelled,
 }
 
-/// <summary>The roll outcome, with the roll only when it rolled.</summary>
+/// <summary>The roll outcome, with the roll only when it transitioned (Rolled or Cancelled).</summary>
 public sealed record RequestedRollResult(RequestedRollOutcome Outcome, RequestedRoll? Roll);

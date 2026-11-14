@@ -70,10 +70,8 @@ export function WaitingRolls({ campaignId }: WaitingRollsProps) {
   const cancelMutation = useCancelRequestedRoll(campaignId)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const buttonRefs = useRef(new Map<string, HTMLButtonElement>())
-  const [rollingKey, setRollingKey] = useState<string | null>(null)
-  const [cancellingKey, setCancellingKey] = useState<string | null>(null)
-  const [failedKey, setFailedKey] = useState<string | null>(null)
-  const [failedAction, setFailedAction] = useState<'roll' | 'cancel' | null>(null)
+  const [busy, setBusy] = useState<{ key: string; action: 'roll' | 'cancel' } | null>(null)
+  const [failed, setFailed] = useState<{ key: string; action: 'roll' | 'cancel' } | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const pendingFocus = useRef<{ keys: string[]; rolledKey: string } | null>(null)
 
@@ -132,20 +130,17 @@ export function WaitingRolls({ campaignId }: WaitingRollsProps) {
   function leaveRow(row: WaitingRow, message: string) {
     setStatus(message)
     pendingFocus.current = { keys: rows.map((candidate) => candidate.key), rolledKey: row.key }
-    setRollingKey(null)
-    setCancellingKey(null)
+    setBusy(null)
   }
 
   function failRow(row: WaitingRow, action: 'roll' | 'cancel') {
-    setFailedKey(row.key)
-    setFailedAction(action)
-    setRollingKey(null)
-    setCancellingKey(null)
+    setFailed({ key: row.key, action })
+    setBusy(null)
   }
 
   function roll(row: WaitingRow) {
-    setFailedKey(null)
-    setRollingKey(row.key)
+    setFailed(null)
+    setBusy({ key: row.key, action: 'roll' })
     rollMutation.mutate(
       { rollRequestId: row.request.id, investigatorId: row.roll.investigatorId },
       {
@@ -163,8 +158,8 @@ export function WaitingRolls({ campaignId }: WaitingRollsProps) {
   }
 
   function cancel(row: WaitingRow) {
-    setFailedKey(null)
-    setCancellingKey(row.key)
+    setFailed(null)
+    setBusy({ key: row.key, action: 'cancel' })
     cancelMutation.mutate(
       { rollRequestId: row.request.id, investigatorId: row.roll.investigatorId },
       {
@@ -192,24 +187,27 @@ export function WaitingRolls({ campaignId }: WaitingRollsProps) {
         <p className="text-sm text-muted-foreground">No rolls waiting.</p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {rows.map((row) => (
-            <WaitingRowItem
-              key={row.key}
-              row={row}
-              busy={rollingKey === row.key || cancellingKey === row.key}
-              cancelling={cancellingKey === row.key}
-              failed={failedKey === row.key ? failedAction : null}
-              registerButton={(element) => {
-                if (element) {
-                  buttonRefs.current.set(row.key, element)
-                } else {
-                  buttonRefs.current.delete(row.key)
-                }
-              }}
-              onRoll={() => roll(row)}
-              onCancel={() => cancel(row)}
-            />
-          ))}
+          {rows.map((row) => {
+            const rowBusy = busy?.key === row.key ? busy.action : null
+            return (
+              <WaitingRowItem
+                key={row.key}
+                row={row}
+                busy={rowBusy !== null}
+                cancelling={rowBusy === 'cancel'}
+                failed={failed?.key === row.key ? failed.action : null}
+                registerButton={(element) => {
+                  if (element) {
+                    buttonRefs.current.set(row.key, element)
+                  } else {
+                    buttonRefs.current.delete(row.key)
+                  }
+                }}
+                onRoll={() => roll(row)}
+                onCancel={() => cancel(row)}
+              />
+            )
+          })}
         </ul>
       )}
     </section>

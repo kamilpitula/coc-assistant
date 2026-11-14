@@ -554,6 +554,9 @@ test.describe('Roll Requests', () => {
         await expect(page.getByText('1 waiting roll will be cancelled.')).toBeVisible()
         await page.getByRole('checkbox', { name: `Finish ${PREPARED.firstSceneTitle} first` }).check()
         await page.getByRole('button', { name: 'Start Scene' }).click()
+        // Local 15s budget, not the 5s default: the start writes through the same LocalDB path as the first
+        // request, which can stall after a fresh server start. URL first, like the pre-existing start journey.
+        await expect(page).toHaveURL(`/campaigns/${campaignId}/active-scene`, { timeout: 15_000 })
         await expect(pageStatus(page)).toHaveText(`${PREPARED.secondSceneTitle} started.`)
       })
 

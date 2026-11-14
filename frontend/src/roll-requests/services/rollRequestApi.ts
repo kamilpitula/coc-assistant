@@ -221,21 +221,7 @@ export async function rollRequestedRoll(
     headers: authHeaders(accessToken),
   })
 
-  if (response.status === 404) {
-    throw new RequestedRollGoneError()
-  }
-  if (response.status === 409) {
-    const title = await problemTitle(response)
-    if (title === NO_ACTIVE_SCENE_TITLE) {
-      throw new NoActiveSceneError()
-    }
-    throw title === CANCELLED_TITLE ? new RequestedRollCancelledError() : new AlreadyRolledError()
-  }
-  if (!response.ok) {
-    throw new Error(`Failed to roll (${response.status})`)
-  }
-
-  return requestedRollSchema.parse(await response.json())
+  return parseRequestedRoll(response, 'roll')
 }
 
 /**
@@ -253,6 +239,11 @@ export async function cancelRequestedRoll(
     headers: authHeaders(accessToken),
   })
 
+  return parseRequestedRoll(response, 'cancel')
+}
+
+/** Reads a roll or cancel response: 404 leaves without a message, 409 names the refusal, anything else throws. */
+async function parseRequestedRoll(response: Response, verb: 'roll' | 'cancel'): Promise<RequestedRoll> {
   if (response.status === 404) {
     throw new RequestedRollGoneError()
   }
@@ -264,7 +255,7 @@ export async function cancelRequestedRoll(
     throw title === CANCELLED_TITLE ? new RequestedRollCancelledError() : new AlreadyRolledError()
   }
   if (!response.ok) {
-    throw new Error(`Failed to cancel (${response.status})`)
+    throw new Error(`Failed to ${verb} (${response.status})`)
   }
 
   return requestedRollSchema.parse(await response.json())
