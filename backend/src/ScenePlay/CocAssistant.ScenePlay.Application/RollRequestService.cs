@@ -221,7 +221,7 @@ public class RollRequestService
     }
 
     /// <summary>The caller's pushable Requested Rolls in the Active Scene; null when the caller is not a Player or has no Approved Investigator.</summary>
-    public async Task<WaitingRollsResult?> ListMinePushableAsync(Guid campaignId, Guid callerAccountId, CancellationToken cancellationToken)
+    public async Task<PushableRollsResult?> ListMinePushableAsync(Guid campaignId, Guid callerAccountId, CancellationToken cancellationToken)
     {
         if (await _roles.RoleOfAsync(campaignId, callerAccountId, cancellationToken) != CampaignMemberRole.Player)
         {
@@ -236,9 +236,8 @@ public class RollRequestService
         }
 
         var pushable = await _requests.ListPushableForInvestigatorAsync(campaignId, mine.InvestigatorId, cancellationToken);
-        var visible = pushable.Where(item => item.Visibility == RollRequestVisibility.Public).ToList();
-        var names = await RollerNames.ResolveAsync(_names, visible.Select(item => item.Roll), cancellationToken);
-        return new WaitingRollsResult(mine.Name, visible.Select(item => RollRequestProjection.ForWaiting(item, approved, names)).ToList());
+        var names = await RollerNames.ResolveAsync(_names, pushable.Select(item => item.Roll), cancellationToken);
+        return new PushableRollsResult(mine.Name, pushable.Select(item => RollRequestProjection.ForWaiting(item, approved, names)).ToList());
     }
 
     /// <summary>
@@ -432,15 +431,10 @@ public class RollRequestService
         RequestedRollRecord roll,
         RollRequestVisibility visibility,
         IReadOnlyList<ApprovedInvestigatorRef> approved,
-        CancellationToken cancellationToken)
-    {
-        var affected = owner is null ? [] : (IReadOnlyCollection<Guid>)[owner.PlayerAccountId];
-        await TrySignalAsync(campaignId, visibility, affected, cancellationToken);
-        var names = await RollerNames.ResolveAsync(_names, [roll], cancellationToken);
-        return new AskPushResult(
+        CancellationToken cancellationToken) =>
+        new(
             AskPushOutcome.Asked,
-            RollRequestProjection.ForRoll(roll, owner?.Name ?? approved.FirstOrDefault(candidate => candidate.InvestigatorId == roll.InvestigatorId)?.Name, names));
-    }
+            await SignalledRollAsync(campaignId, owner, roll, visibility, approved, cancellationToken));
 
     private async Task<ApprovePushResult> ApprovedAsync(
         Guid campaignId,
@@ -448,17 +442,24 @@ public class RollRequestService
         RequestedRollRecord roll,
         RollRequestVisibility visibility,
         IReadOnlyList<ApprovedInvestigatorRef> approved,
-        CancellationToken cancellationToken)
-    {
-        var affected = owner is null ? [] : (IReadOnlyCollection<Guid>)[owner.PlayerAccountId];
-        await TrySignalAsync(campaignId, visibility, affected, cancellationToken);
-        var names = await RollerNames.ResolveAsync(_names, [roll], cancellationToken);
-        return new ApprovePushResult(
+        CancellationToken cancellationToken) =>
+        new(
             ApprovePushOutcome.Approved,
-            RollRequestProjection.ForRoll(roll, owner?.Name ?? approved.FirstOrDefault(candidate => candidate.InvestigatorId == roll.InvestigatorId)?.Name, names));
-    }
+            await SignalledRollAsync(campaignId, owner, roll, visibility, approved, cancellationToken));
 
     private async Task<DeclinePushResult> DeclinedAsync(
+        Guid campaignId,
+        ApprovedInvestigatorRef? owner,
+        RequestedRollRecord roll,
+        RollRequestVisibility visibility,
+        IReadOnlyList<ApprovedInvestigatorRef> approved,
+        CancellationToken cancellationToken) =>
+        new(
+            DeclinePushOutcome.Declined,
+            await SignalledRollAsync(campaignId, owner, roll, visibility, approved, cancellationToken));
+
+    /// <summary>Signals the roll change to the owner's account and projects the roll with display names.</summary>
+    private async Task<RequestedRollView> SignalledRollAsync(
         Guid campaignId,
         ApprovedInvestigatorRef? owner,
         RequestedRollRecord roll,
@@ -469,9 +470,7 @@ public class RollRequestService
         var affected = owner is null ? [] : (IReadOnlyCollection<Guid>)[owner.PlayerAccountId];
         await TrySignalAsync(campaignId, visibility, affected, cancellationToken);
         var names = await RollerNames.ResolveAsync(_names, [roll], cancellationToken);
-        return new DeclinePushResult(
-            DeclinePushOutcome.Declined,
-            RollRequestProjection.ForRoll(roll, owner?.Name ?? approved.FirstOrDefault(candidate => candidate.InvestigatorId == roll.InvestigatorId)?.Name, names));
+        return RollRequestProjection.ForRoll(roll, owner?.Name ?? approved.FirstOrDefault(candidate => candidate.InvestigatorId == roll.InvestigatorId)?.Name, names);
     }
 
     private async Task<RollRequestView> ProjectAsync(

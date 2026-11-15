@@ -194,17 +194,15 @@ export async function askToPushViaUi(page: Page, target: string, justification: 
   await expect(panel.getByText('Push asked - waiting for the Keeper')).toBeVisible()
 }
 
-/** Approves the push from the Keeper's "Waiting rolls" with the dice and waits for the Pushed row (ux.md RR-UX-27). */
+/** Approves the push from the Keeper's "Waiting rolls" with the dice and waits for the Pushed row (ux.md RR-UX-27). Both dice are set explicitly: the selects preset to the Requested Roll's original dice, so leaving one untouched would approve the original dice, not 0. */
 export async function approvePushViaUi(page: Page, investigatorName: string, target: string, bonusDice: number, penaltyDice: number): Promise<void> {
   const list = waitingRolls(page)
   await list.getByRole('button', { name: `Approve push of ${target} for ${investigatorName}` }).click()
   const group = list.getByRole('group', { name: `Dice for ${investigatorName}'s pushed roll` })
   await group.getByRole('combobox', { name: 'Bonus Dice' }).click()
   await page.getByRole('option', { name: String(bonusDice), exact: true }).click()
-  if (penaltyDice !== 0) {
-    await group.getByRole('combobox', { name: 'Penalty Dice' }).click()
-    await page.getByRole('option', { name: String(penaltyDice), exact: true }).click()
-  }
+  await group.getByRole('combobox', { name: 'Penalty Dice' }).click()
+  await page.getByRole('option', { name: String(penaltyDice), exact: true }).click()
   await group.getByRole('button', { name: `Confirm approval of ${target} push for ${investigatorName}` }).click()
   await expect(list.getByRole('button', { name: `Roll pushed ${target} for ${investigatorName}` })).toBeVisible()
 }

@@ -67,6 +67,9 @@ public sealed record WaitingRequestedRollView(
 /// <summary>The caller's Waiting Requested Rolls in the Active Scene, oldest first, with their Investigator's name.</summary>
 public sealed record WaitingRollsResult(string InvestigatorName, IReadOnlyList<WaitingRequestedRollView> Rolls);
 
+/// <summary>The caller's pushable Requested Rolls in the Active Scene, oldest first, with their Investigator's name: failed rolls the caller can push now, plus PushAsked ones.</summary>
+public sealed record PushableRollsResult(string InvestigatorName, IReadOnlyList<WaitingRequestedRollView> Rolls);
+
 /// <summary>How creating a Roll Request ended. NotFound is for a caller who is not the Keeper; the other refusals are checked in this order: Active Scene, shape, values, provider.</summary>
 public enum CreateRollRequestOutcome
 {

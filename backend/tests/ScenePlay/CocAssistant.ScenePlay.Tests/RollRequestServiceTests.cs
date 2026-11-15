@@ -660,17 +660,15 @@ public class RollRequestServiceTests
     }
 
     [Fact]
-    public async Task Given_a_Player_When_listing_pushable_Then_only_Public_rolls_come()
+    public async Task Given_a_Player_When_listing_pushable_Then_the_provider_rows_come_through()
     {
+        // Public-only is the provider's contract, covered by the provider tests; the service passes its rows through.
         var pushable = new WaitingRequestedRollRecord(RequestId, SkillTarget(), "Something moves upstairs.", RollRequestVisibility.Public, new DateTimeOffset(2026, 11, 12, 19, 40, 0, TimeSpan.Zero), PushAskedHarvey());
-        var hidden = pushable with { Visibility = RollRequestVisibility.KeeperOnly };
-        _requests.PushableForInvestigator.Add(hidden);
         _requests.PushableForInvestigator.Add(pushable);
 
         var result = await Service.ListMinePushableAsync(CampaignId, HarveyPlayerId, CancellationToken.None);
 
-        var roll = Assert.Single(result!.Rolls);
-        Assert.Equal(RequestId, roll.RollRequestId);
+        Assert.Equal([RequestId], result!.Rolls.Select(roll => roll.RollRequestId));
         Assert.Equal("Harvey Walters", result.InvestigatorName);
     }
 

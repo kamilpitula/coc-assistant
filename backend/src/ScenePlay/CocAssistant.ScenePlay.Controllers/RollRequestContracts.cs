@@ -88,6 +88,9 @@ public record WaitingRequestedRollResponse(
 /// <summary>The caller's Waiting Requested Rolls in the Active Scene, oldest first.</summary>
 public record WaitingRollsResponse(string InvestigatorName, IReadOnlyList<WaitingRequestedRollResponse> Rolls);
 
+/// <summary>The caller's pushable Requested Rolls in the Active Scene, oldest first: the same shape as the Waiting read, named for what it carries.</summary>
+public record PushableRollsResponse(string InvestigatorName, IReadOnlyList<WaitingRequestedRollResponse> Rolls);
+
 /// <summary>The titles and field messages of the Roll Request problems (ADR 0018).</summary>
 internal static class RollRequestProblems
 {

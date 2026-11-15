@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import { rollRequestQueryKeys } from '@/roll-requests/services/rollRequestApi'
-import type { WaitingRequestedRoll, WaitingRolls } from '@/roll-requests/types/RollRequest'
+import type { PushableRolls, WaitingRequestedRoll, WaitingRolls } from '@/roll-requests/types/RollRequest'
 import { StoryMsal } from '@/shared/storybook/storyMsal'
 import { StoryProviders } from '@/shared/storybook/storyProviders'
 
@@ -33,7 +33,7 @@ function mineRoll(rollRequestId: string, skill: string, createdAt: string): Wait
   }
 }
 
-function PanelStory({ mine, pushable }: { mine: WaitingRolls; pushable?: WaitingRolls }) {
+function PanelStory({ mine, pushable }: { mine: WaitingRolls; pushable?: PushableRolls }) {
   return (
     <StoryMsal tokens="pending">
       <StoryProviders

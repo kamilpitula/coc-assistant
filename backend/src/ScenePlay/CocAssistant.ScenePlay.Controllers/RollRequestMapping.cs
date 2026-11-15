@@ -35,6 +35,9 @@ internal static class RollRequestMapping
     public static WaitingRollsResponse ToResponse(WaitingRollsResult result) =>
         new(result.InvestigatorName, result.Rolls.Select(ToResponse).ToList());
 
+    public static PushableRollsResponse ToResponse(PushableRollsResult result) =>
+        new(result.InvestigatorName, result.Rolls.Select(ToResponse).ToList());
+
     private static WaitingRequestedRollResponse ToResponse(WaitingRequestedRollView view) =>
         new(view.RollRequestId, ToResponse(view.Target), view.Message, view.CreatedAt, ToResponse(view.Roll));
 

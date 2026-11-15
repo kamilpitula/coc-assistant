@@ -5,6 +5,7 @@ import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { NoActiveSceneError } from '@/scene-play/services/activeSceneApi'
 import type {
   CreateRollRequestInput,
+  PushableRolls,
   RequestedRoll,
   RollRequest,
   WaitingRolls,
@@ -237,7 +238,7 @@ export async function getMyRequestedRolls(accessToken: string, campaignId: strin
 }
 
 /** Calls GET .../investigators/mine/pushable-rolls (Player only): the rolls the caller can push now, plus Push asked ones; null without an Approved Investigator (404). */
-export async function getMyPushableRolls(accessToken: string, campaignId: string): Promise<WaitingRolls | null> {
+export async function getMyPushableRolls(accessToken: string, campaignId: string): Promise<PushableRolls | null> {
   const response = await apiFetch(`/api/campaigns/${campaignId}/investigators/mine/pushable-rolls`, {
     headers: authHeaders(accessToken),
   })

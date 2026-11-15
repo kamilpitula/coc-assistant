@@ -84,6 +84,12 @@ export interface WaitingRolls {
   rolls: WaitingRequestedRoll[]
 }
 
+/** The caller's pushable Requested Rolls in the Active Scene, oldest first: the same shape as the Waiting read, named for what it carries. */
+export interface PushableRolls {
+  investigatorName: string | null
+  rolls: WaitingRequestedRoll[]
+}
+
 /** One Investigator's part of a create call: who rolls, with optional Difficulty and dice overriding the request's defaults. */
 export interface RequestedRollCreateInput {  investigatorId: string
   difficulty?: 'Regular' | 'Hard' | 'Extreme'

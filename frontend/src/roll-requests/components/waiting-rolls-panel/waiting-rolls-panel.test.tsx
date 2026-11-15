@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { NoActiveSceneError } from '@/scene-play/services/activeSceneApi'
 import { formatWallEntryTime } from '@/campaign-play/services/wallEntryTime'
 import { AlreadyRolledError, RequestedRollCancelledError, RequestedRollGoneError } from '@/roll-requests/services/rollRequestApi'
-import type { RequestedRoll, WaitingRequestedRoll, WaitingRolls } from '@/roll-requests/types/RollRequest'
+import type { PushableRolls, RequestedRoll, WaitingRequestedRoll, WaitingRolls } from '@/roll-requests/types/RollRequest'
 
 import { WaitingRollsPanel } from './waiting-rolls-panel'
 
@@ -79,7 +79,7 @@ function rolled(overrides: Partial<RequestedRoll> = {}): RequestedRoll {
   }
 }
 
-function setup(data: WaitingRolls | null | undefined = mine, pushable: WaitingRolls | null | undefined = { investigatorName: 'Harvey Walters', rolls: [] }) {
+function setup(data: WaitingRolls | null | undefined = mine, pushable: PushableRolls | null | undefined = { investigatorName: 'Harvey Walters', rolls: [] }) {
   mockUseMyRequestedRolls.mockReturnValue({ data, isPending: data === undefined, isError: false, refetch: vi.fn() })
   mockUseMyPushableRolls.mockReturnValue({ data: pushable, isPending: pushable === undefined, isError: false, refetch: vi.fn() })
   mockMutate.mockReset()
@@ -87,7 +87,7 @@ function setup(data: WaitingRolls | null | undefined = mine, pushable: WaitingRo
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   const view = render(<WaitingRollsPanel campaignId="c1" />, { wrapper })
-  return { ...view, rerenderWith: (next: WaitingRolls | null | undefined, nextPushable: WaitingRolls | null | undefined = { investigatorName: 'Harvey Walters', rolls: [] }) => {
+  return { ...view, rerenderWith: (next: WaitingRolls | null | undefined, nextPushable: PushableRolls | null | undefined = { investigatorName: 'Harvey Walters', rolls: [] }) => {
     mockUseMyRequestedRolls.mockReturnValue({ data: next, isPending: next === undefined, isError: false, refetch: vi.fn() })
     mockUseMyPushableRolls.mockReturnValue({ data: nextPushable, isPending: nextPushable === undefined, isError: false, refetch: vi.fn() })
     view.rerender(<WaitingRollsPanel campaignId="c1" />)
@@ -107,8 +107,25 @@ function captureRoll() {
   }
 }
 
-describe('WaitingRollsPanel', () => {
-  it('lists the rolls oldest first with target, dice, the quoted message, and one "Roll {target}" each (RR-UX-8)', () => {
+interface AskCallbacks {
+  onSuccess: (result: RequestedRoll) => void
+  onError: (error: Error) => void
+}
+
+function captureAsk() {
+  let callbacks: AskCallbacks | undefined
+  mockAskMutate.mockImplementation((_input: unknown, options: AskCallbacks) => {
+    callbacks = options
+  })
+  return () => {
+    if (!callbacks) {
+      throw new Error('expected the push to be asked')
+    }
+    return callbacks
+  }
+}
+
+describe('WaitingRollsPanel', () => {  it('lists the rolls oldest first with target, dice, the quoted message, and one "Roll {target}" each (RR-UX-8)', () => {
     setup()
 
     expect(screen.getByRole('heading', { level: 2, name: 'Rolls waiting for you, 1' })).toBeInTheDocument()
@@ -328,30 +345,12 @@ describe('WaitingRollsPanel', () => {
       }
     }
 
-    function pushableList(...rolls: WaitingRequestedRoll[]): WaitingRolls {
+function pushableList(...rolls: WaitingRequestedRoll[]): PushableRolls {
       return { investigatorName: 'Harvey Walters', rolls }
     }
 
     function pushableRow(rollRequestId: string, roll: RequestedRoll, skill = 'Listen'): WaitingRequestedRoll {
       return { ...mineRoll({ rollRequestId, roll, target: { kind: 'Skill', skill, specialization: null, characteristic: null } }) }
-    }
-
-    interface AskCallbacks {
-      onSuccess: (result: RequestedRoll) => void
-      onError: (error: Error) => void
-    }
-
-    function captureAsk() {
-      let callbacks: AskCallbacks | undefined
-      mockAskMutate.mockImplementation((_input: unknown, options: AskCallbacks) => {
-        callbacks = options
-      })
-      return () => {
-        if (!callbacks) {
-          throw new Error('expected the push to be asked')
-        }
-        return callbacks
-      }
     }
 
     it('lists failed pushable rolls under "Rolls you can push" and keeps the waiting count (RR-UX-25)', () => {
@@ -426,6 +425,26 @@ describe('WaitingRollsPanel', () => {
 
       expect(screen.getByRole('status')).toHaveTextContent('The Keeper declined your Listen push.')
       expect(screen.getByRole('textbox', { name: 'Tell the Keeper how Harvey Walters tries again.' })).toHaveFocus()
+    })
+
+    it('clears a stale ask status when the decline note arrives, leaving a single polite note (RR-UX-28)', async () => {
+      const { rerenderWith } = setup({ ...mine, rolls: [] }, pushableList(pushableRow('r1', failedRoll(), 'Spot Hidden')))
+      const getAsk = captureAsk()
+      await userEvent.click(screen.getByRole('button', { name: 'Push Spot Hidden roll' }))
+      await userEvent.type(screen.getByRole('textbox', { name: 'Tell the Keeper how Harvey Walters tries again.' }), 'Trying again.')
+      await userEvent.click(screen.getByRole('button', { name: 'Ask the Keeper' }))
+      await act(async () => {
+        getAsk().onSuccess(failedRoll({ status: 'PushAsked', pushJustification: 'Trying again.', canBePushed: false }))
+      })
+      expect(screen.getByRole('status')).toHaveTextContent('You asked the Keeper to push your Spot Hidden roll.')
+      rerenderWith(
+        { ...mine, rolls: [] },
+        pushableList(pushableRow('r1', failedRoll({ status: 'PushAsked', pushJustification: 'Trying again.', canBePushed: false }), 'Spot Hidden')),
+      )
+
+      rerenderWith({ ...mine, rolls: [] }, pushableList())
+
+      expect(screen.getByRole('status')).toHaveTextContent('The Keeper declined your Spot Hidden push.')
     })
 
     it('moves focus to the "Rolls you can push" heading when a live removal takes the focused row (RR-A11Y-19)', async () => {

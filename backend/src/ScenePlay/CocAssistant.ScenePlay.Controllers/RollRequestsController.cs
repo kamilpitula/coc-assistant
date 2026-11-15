@@ -114,7 +114,7 @@ public class RollRequestsController : ScenePlayControllerBase
 
     /// <summary>The calling Player's pushable Requested Rolls in the Active Scene. 404 for the Keeper and for a Player without an Approved Investigator.</summary>
     [HttpGet("investigators/mine/pushable-rolls")]
-    public async Task<ActionResult<WaitingRollsResponse>> GetMinePushable(Guid campaignId, CancellationToken cancellationToken)
+    public async Task<ActionResult<PushableRollsResponse>> GetMinePushable(Guid campaignId, CancellationToken cancellationToken)
     {
         var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
         if (accountId is null)

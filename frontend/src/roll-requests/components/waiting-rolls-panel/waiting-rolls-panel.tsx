@@ -119,7 +119,8 @@ export function WaitingRollsPanel({ campaignId }: WaitingRollsPanelProps) {
 
   // A PushAsked row that leaves without its Pushed roll was declined: by the Keeper, or by removing the Investigator
   // from the Investigators present (UX 19.1). An approval arrives as a Pushed row instead and is announced
-  // assertively; a late Pushed arrival clears a note it raced. Polite only, focus never moves (RR-A11Y-21).
+  // assertively; a late Pushed arrival clears a note it raced. Polite only, focus never moves (RR-A11Y-21). A new
+  // note replaces a stale status line, so the panel holds a single polite message (RR-UX-28).
   const previousPushable = useRef<Map<string, WaitingRequestedRoll> | null>(null)
   useEffect(() => {
     const previous = previousPushable.current
@@ -129,16 +130,18 @@ export function WaitingRollsPanel({ campaignId }: WaitingRollsPanelProps) {
       return
     }
     const pushedKeys = pushedRowKeys(rolls)
-    for (const declinedPush of findDeclinedPushes(previous, next, pushedKeys)) {
-      setDeclined((current) =>
-        current.some((note) => note.key === declinedPush.key) ? current : [...current, declinedPush],
-      )
+    const fresh = findDeclinedPushes(previous, next, pushedKeys).filter(
+      (declinedPush) => !declined.some((note) => note.key === declinedPush.key),
+    )
+    if (fresh.length > 0) {
+      setDeclined((current) => [...current, ...fresh])
+      setStatus(null)
     }
     setDeclined((current) => {
       const kept = current.filter((note) => !pushedKeys.has(note.key))
       return kept.length === current.length ? current : kept
     })
-  }, [pushable, rolls])
+  }, [pushable, rolls, declined])
 
   // A live removal that takes away the focused row never leaves focus on the body (RR-A11Y-16, RR-A11Y-19): a Waiting
   // row moves focus to the panel's h2, a pushable row moves to the "Rolls you can push" h3, else the panel's h2, or
