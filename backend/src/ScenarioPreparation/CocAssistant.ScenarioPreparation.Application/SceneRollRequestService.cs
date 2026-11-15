@@ -93,8 +93,8 @@ public class SceneRollRequestService
     }
 
     /// <summary>
-    /// The Investigator's Waiting Requested Rolls in the Active Scene, oldest first, each with its Roll Request's target,
-    /// message, and creation time; an empty list when no Scene is Active.
+    /// The Investigator's Waiting and Pushed Requested Rolls in the Active Scene, oldest first, each with its Roll
+    /// Request's target, message, and creation time; an empty list when no Scene is Active.
     /// </summary>
     public async Task<IReadOnlyList<WaitingRequestedRollView>> ListWaitingForInvestigatorAsync(
         Guid campaignId, Guid investigatorId, CancellationToken cancellationToken)
@@ -108,8 +108,33 @@ public class SceneRollRequestService
         var requests = await _requests.ListForSceneAsync(campaignId, active.Id, cancellationToken);
         return requests
             .SelectMany(request => request.RequestedRolls
-                .Where(roll => roll.InvestigatorId == investigatorId && roll.Status == RequestedRollStatus.Waiting)
-                .Select(roll => new WaitingRequestedRollView(request.Id, request.Target, request.Message, request.Visibility, request.CreatedAt, ToView(roll))))
+                .Where(roll => roll.InvestigatorId == investigatorId && roll.Status is RequestedRollStatus.Waiting or RequestedRollStatus.Pushed)
+                .Select(roll => new WaitingRequestedRollView(request.Id, request.Target, request.Message, request.Visibility, request.CreatedAt, ToView(roll, request))))
+            .ToList();
+    }
+
+    /// <summary>
+    /// The Investigator's pushable Requested Rolls in the Active Scene, oldest first: failed, not yet pushed Rolled rolls
+    /// of Public requests, plus PushAsked ones, each with its Roll Request's target, message, and creation time; an empty
+    /// list when no Scene is Active.
+    /// </summary>
+    public async Task<IReadOnlyList<WaitingRequestedRollView>> ListPushableForInvestigatorAsync(
+        Guid campaignId, Guid investigatorId, CancellationToken cancellationToken)
+    {
+        var active = await _scenes.FindActiveAsync(campaignId, cancellationToken);
+        if (active is null)
+        {
+            return [];
+        }
+
+        var requests = await _requests.ListForSceneAsync(campaignId, active.Id, cancellationToken);
+        return requests
+            .Where(request => request.Visibility == RollRequestVisibility.Public)
+            .SelectMany(request => request.RequestedRolls
+                .Where(roll => roll.InvestigatorId == investigatorId
+                    && (roll.Status == RequestedRollStatus.PushAsked
+                        || (roll.Status == RequestedRollStatus.Rolled && request.CanBePushed(roll))))
+                .Select(roll => new WaitingRequestedRollView(request.Id, request.Target, request.Message, request.Visibility, request.CreatedAt, ToView(roll, request))))
             .ToList();
     }
 
@@ -150,7 +175,7 @@ public class SceneRollRequestService
         }
 
         return await TrySaveAsync(cancellationToken)
-            ? new RequestedRollWriteResult(RequestedRollWriteOutcome.Rolled, ToView(result.Roll!))
+            ? new RequestedRollWriteResult(RequestedRollWriteOutcome.Rolled, ToView(result.Roll!, request))
             : new RequestedRollWriteResult(RequestedRollWriteOutcome.NotWaiting, null);
     }
 
@@ -183,8 +208,111 @@ public class SceneRollRequestService
         }
 
         return await TrySaveAsync(cancellationToken)
-            ? new RequestedRollWriteResult(RequestedRollWriteOutcome.Cancelled, ToView(result.Roll!))
+            ? new RequestedRollWriteResult(RequestedRollWriteOutcome.Cancelled, ToView(result.Roll!, request))
             : new RequestedRollWriteResult(RequestedRollWriteOutcome.NotWaiting, null);
+    }
+
+    /// <summary>
+    /// Asks to push the Investigator's Requested Roll with a justification. Only a roll of the Active Scene can ask; the
+    /// Scene check runs before the status check, and a lost race reports the roll as not pushable, never retried (ADR 0032).
+    /// </summary>
+    public async Task<RequestedRollWriteResult> AskToPushAsync(
+        Guid campaignId,
+        Guid requestId,
+        Guid investigatorId,
+        string justification,
+        CancellationToken cancellationToken)
+    {
+        var request = await _requests.FindAsync(campaignId, requestId, cancellationToken);
+        if (request is null)
+        {
+            return new RequestedRollWriteResult(RequestedRollWriteOutcome.NotFound, null);
+        }
+
+        var active = await _scenes.FindActiveAsync(campaignId, cancellationToken);
+        if (active is null || active.Id != request.SceneId)
+        {
+            return new RequestedRollWriteResult(RequestedRollWriteOutcome.SceneNotActive, null);
+        }
+
+        var result = request.AskToPushInvestigatorRoll(investigatorId, justification);
+        if (result.Outcome != RequestedRollOutcome.PushAsked)
+        {
+            return new RequestedRollWriteResult(ToWriteOutcome(result.Outcome), null);
+        }
+
+        return await TrySaveAsync(cancellationToken)
+            ? new RequestedRollWriteResult(RequestedRollWriteOutcome.PushAsked, ToView(result.Roll!, request))
+            : new RequestedRollWriteResult(RequestedRollWriteOutcome.NotPushable, null);
+    }
+
+    /// <summary>
+    /// Approves the Investigator's push with the Keeper's dice for the pushed roll. Only a roll of the Active Scene can
+    /// approve; the Scene check runs before the dice and the status checks, and a lost race reports the roll as not push
+    /// asked, never retried (ADR 0032).
+    /// </summary>
+    public async Task<RequestedRollWriteResult> ApprovePushAsync(
+        Guid campaignId,
+        Guid requestId,
+        Guid investigatorId,
+        int bonusDice,
+        int penaltyDice,
+        CancellationToken cancellationToken)
+    {
+        var request = await _requests.FindAsync(campaignId, requestId, cancellationToken);
+        if (request is null)
+        {
+            return new RequestedRollWriteResult(RequestedRollWriteOutcome.NotFound, null);
+        }
+
+        var active = await _scenes.FindActiveAsync(campaignId, cancellationToken);
+        if (active is null || active.Id != request.SceneId)
+        {
+            return new RequestedRollWriteResult(RequestedRollWriteOutcome.SceneNotActive, null);
+        }
+
+        var result = request.ApprovePushInvestigatorRoll(investigatorId, bonusDice, penaltyDice);
+        if (result.Outcome != RequestedRollOutcome.Pushed)
+        {
+            return new RequestedRollWriteResult(ToWriteOutcome(result.Outcome), null);
+        }
+
+        return await TrySaveAsync(cancellationToken)
+            ? new RequestedRollWriteResult(RequestedRollWriteOutcome.Pushed, ToView(result.Roll!, request))
+            : new RequestedRollWriteResult(RequestedRollWriteOutcome.NotPushAsked, null);
+    }
+
+    /// <summary>
+    /// Declines the Investigator's push, moving the roll back to Rolled. Only a roll of the Active Scene can decline; the
+    /// Scene check runs before the status check, and a lost race reports the roll as not push asked, never retried (ADR 0032).
+    /// </summary>
+    public async Task<RequestedRollWriteResult> DeclinePushAsync(
+        Guid campaignId,
+        Guid requestId,
+        Guid investigatorId,
+        CancellationToken cancellationToken)
+    {
+        var request = await _requests.FindAsync(campaignId, requestId, cancellationToken);
+        if (request is null)
+        {
+            return new RequestedRollWriteResult(RequestedRollWriteOutcome.NotFound, null);
+        }
+
+        var active = await _scenes.FindActiveAsync(campaignId, cancellationToken);
+        if (active is null || active.Id != request.SceneId)
+        {
+            return new RequestedRollWriteResult(RequestedRollWriteOutcome.SceneNotActive, null);
+        }
+
+        var result = request.DeclinePushInvestigatorRoll(investigatorId);
+        if (result.Outcome != RequestedRollOutcome.PushDeclined)
+        {
+            return new RequestedRollWriteResult(ToWriteOutcome(result.Outcome), null);
+        }
+
+        return await TrySaveAsync(cancellationToken)
+            ? new RequestedRollWriteResult(RequestedRollWriteOutcome.PushDeclined, ToView(result.Roll!, request))
+            : new RequestedRollWriteResult(RequestedRollWriteOutcome.NotPushAsked, null);
     }
 
     private async Task<bool> TrySaveAsync(CancellationToken cancellationToken)
@@ -212,9 +340,9 @@ public class SceneRollRequestService
             request.BonusDice,
             request.PenaltyDice,
             request.CreatedAt,
-            request.RequestedRolls.Select(ToView).ToList());
+            request.RequestedRolls.Select(roll => ToView(roll, request)).ToList());
 
-    private static RequestedRollView ToView(RequestedRoll roll) =>
+    private static RequestedRollView ToView(RequestedRoll roll, RollRequest request) =>
         new(
             roll.RollRequestId,
             roll.InvestigatorId,
@@ -225,6 +353,10 @@ public class SceneRollRequestService
             roll.BonusDice,
             roll.PenaltyDice,
             roll.Status,
+            roll.PushJustification,
+            roll.PushBonusDice,
+            roll.PushPenaltyDice,
+            request.CanBePushed(roll),
             roll.RollRecords);
 
     private static RollRequestWriteResult Refused(RollRequestWriteOutcome outcome) => new(outcome, null);
@@ -245,6 +377,14 @@ public class SceneRollRequestService
     {
         RequestedRollOutcome.InvestigatorNotRequested => RequestedRollWriteOutcome.InvestigatorNotRequested,
         RequestedRollOutcome.AlreadyCancelled => RequestedRollWriteOutcome.AlreadyCancelled,
+        RequestedRollOutcome.PushAsked => RequestedRollWriteOutcome.PushAsked,
+        RequestedRollOutcome.Pushed => RequestedRollWriteOutcome.Pushed,
+        RequestedRollOutcome.PushDeclined => RequestedRollWriteOutcome.PushDeclined,
+        RequestedRollOutcome.NotPushable => RequestedRollWriteOutcome.NotPushable,
+        RequestedRollOutcome.NotPushAsked => RequestedRollWriteOutcome.NotPushAsked,
+        RequestedRollOutcome.JustificationRequired => RequestedRollWriteOutcome.JustificationRequired,
+        RequestedRollOutcome.JustificationTooLong => RequestedRollWriteOutcome.JustificationTooLong,
+        RequestedRollOutcome.InvalidDice => RequestedRollWriteOutcome.InvalidDice,
         _ => RequestedRollWriteOutcome.NotWaiting,
     };
 }
