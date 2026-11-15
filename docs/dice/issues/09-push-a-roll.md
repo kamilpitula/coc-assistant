@@ -1,6 +1,6 @@
 ---
 id: PBI-DICE-009
-status: todo
+status: done
 blocked_by: [PBI-DICE-005]
 ---
 
@@ -24,10 +24,10 @@ Let a Player ask to push a failed roll with a justification, and let the Keeper 
 Read: [roll-requests spec](../../../specs/roll-requests/spec.md), Requested Roll status, Lifecycle with the Scene, and the push API; the skill rolls document, Pushing a roll.
 
 ## Verification
-- [ ] A Player asks to push a pushable failed roll; any other roll returns 409, and a missing or too long justification returns 400.
-- [ ] The Keeper approves or declines; after approval the Player rolls once more and the card shows the justification and both results.
-- [ ] Finishing the Scene or removing an Investigator present cancels `Pushed` rolls and declines `PushAsked` ones.
-- [ ] Unit tests cover each transition and its rule section; Playwright E2E covers the roll-requests scenarios "A Player asks to push a failed roll and the Keeper approves" and "The Keeper declines a push".
+- [x] A Player asks to push a pushable failed roll; any other roll returns 409, and a missing or too long justification returns 400.
+- [x] The Keeper approves or declines; after approval the Player rolls once more and the card shows the justification and both results.
+- [x] Finishing the Scene or removing an Investigator present cancels `Pushed` rolls and declines `PushAsked` ones.
+- [x] Unit tests cover each transition and its rule section; Playwright E2E covers the roll-requests scenarios "A Player asks to push a failed roll and the Keeper approves" and "The Keeper declines a push".
 
 ## Refinement Protocol
 A change to pushing updates the roll-requests spec and ux.md, the skill rolls document reference, and tests together.

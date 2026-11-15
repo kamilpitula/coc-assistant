@@ -43,7 +43,7 @@ public class RequestedRoll
     /// <summary>The optimistic token that stops a Requested Roll being rolled twice (ADR 0032).</summary>
     public int Version { get; private set; }
 
-    /// <summary>The Roll Record, once the roll rolled; at most one in this PBI.</summary>
+    /// <summary>The Roll Records, once the roll rolled; at most two, the second only for a pushed roll.</summary>
     public IReadOnlyList<RollRecord> RollRecords => _rollRecords.ToList();
 
     private RequestedRoll()

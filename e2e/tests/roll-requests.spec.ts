@@ -613,12 +613,12 @@ test.describe('Roll Requests', () => {
 
         await openWall(page, campaignId)
         const keeperCard = rollRequestCard(page, 'Cthulhu Mythos')
-        await expect(keeperCard.getByText('First roll:')).toBeVisible()
+        await expect(keeperCard.getByText('First roll:', { exact: false })).toBeVisible()
         await expect(keeperCard.getByText('Pushed roll: Regular . 1 Bonus Die')).toBeVisible()
         await expect(keeperCard.getByText('Push justification: "I search every shelf through the night."')).toBeVisible()
         await openWall(table.harvey.page, campaignId)
         const harveyCard = rollRequestCard(table.harvey.page, 'Cthulhu Mythos')
-        await expect(harveyCard.getByText('First roll:')).toBeVisible()
+        await expect(harveyCard.getByText('First roll:', { exact: false })).toBeVisible()
         await expect(harveyCard.getByText('Pushed roll: Regular . 1 Bonus Die')).toBeVisible()
       })
     } finally {
@@ -682,16 +682,18 @@ test.describe('Roll Requests', () => {
 
       await test.step('RR-UX-32: the asked card shows Push declined and the pushed card shows Cancelled with its first result', async () => {
         await openWall(page, campaignId)
-        const mythosCard = rollRequestCard(page, 'Cthulhu Mythos')
-        await expect(mythosCard.getByText('Push declined')).toBeVisible()
-        await expect(mythosCard.getByText('Cancelled', { exact: true })).toBeVisible()
+        const askedCard = rollRequestCard(page, 'Cthulhu Mythos').filter({ hasText: 'Push declined' })
+        await expect(askedCard.getByText('Push declined')).toBeVisible()
+        const pushedCard = rollRequestCard(page, 'Cthulhu Mythos').filter({ hasText: 'The pushed roll was cancelled.' })
+        await expect(pushedCard.getByText('Cancelled', { exact: true })).toBeVisible()
         await expect(rollRequestCard(page, 'Listen').getByText('Cancelled', { exact: true })).toBeVisible()
       })
 
       await test.step('RR-UX-33: the Scene History shows the declined and the cancelled-after-push rows', async () => {
         await page.goto(`/campaigns/${campaignId}/scene-history`)
-        await expect(page.getByRole('article', { name: 'Cthulhu Mythos roll' }).getByText('Push declined')).toBeVisible()
-        await expect(page.getByRole('article', { name: 'Cthulhu Mythos roll' }).getByText('Cancelled', { exact: true })).toBeVisible()
+        const history = page.getByRole('article', { name: 'Cthulhu Mythos roll' })
+        await expect(history.filter({ hasText: 'Push declined' })).toBeVisible()
+        await expect(history.filter({ hasText: 'The pushed roll was cancelled.' })).toBeVisible()
       })
     } finally {
       await closeTable(table)
