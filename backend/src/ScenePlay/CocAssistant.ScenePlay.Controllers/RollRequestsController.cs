@@ -112,6 +112,62 @@ public class RollRequestsController : ScenePlayControllerBase
         return result.Roll is not null ? Ok(RollRequestMapping.ToResponse(result.Roll)) : CancelFailure(result.Outcome);
     }
 
+    /// <summary>The calling Player's pushable Requested Rolls in the Active Scene. 404 for the Keeper and for a Player without an Approved Investigator.</summary>
+    [HttpGet("investigators/mine/pushable-rolls")]
+    public async Task<ActionResult<WaitingRollsResponse>> GetMinePushable(Guid campaignId, CancellationToken cancellationToken)
+    {
+        var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
+        if (accountId is null)
+        {
+            return Unauthorized();
+        }
+
+        var mine = await _requests.ListMinePushableAsync(campaignId, accountId.Value, cancellationToken);
+        return mine is null ? NotFound() : Ok(RollRequestMapping.ToResponse(mine));
+    }
+
+    /// <summary>Asks to push the Investigator's failed, pushable Requested Roll and returns it. The Investigator's Player only.</summary>
+    [HttpPost("roll-requests/{rollRequestId:guid}/requested-rolls/{investigatorId:guid}/push")]
+    public async Task<ActionResult<RequestedRollResponse>> Push(Guid campaignId, Guid rollRequestId, Guid investigatorId, PushRequest request, CancellationToken cancellationToken)
+    {
+        var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
+        if (accountId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _requests.AskToPushAsync(campaignId, accountId.Value, rollRequestId, investigatorId, request?.Justification, cancellationToken);
+        return result.Roll is not null ? Ok(RollRequestMapping.ToResponse(result.Roll)) : PushFailure(result.Outcome);
+    }
+
+    /// <summary>Approves the Investigator's push with the Keeper's dice for the pushed roll and returns it. The Keeper only.</summary>
+    [HttpPost("roll-requests/{rollRequestId:guid}/requested-rolls/{investigatorId:guid}/push/approve")]
+    public async Task<ActionResult<RequestedRollResponse>> ApprovePush(Guid campaignId, Guid rollRequestId, Guid investigatorId, ApprovePushRequest request, CancellationToken cancellationToken)
+    {
+        var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
+        if (accountId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _requests.ApprovePushAsync(campaignId, accountId.Value, rollRequestId, investigatorId, request?.BonusDice, request?.PenaltyDice, cancellationToken);
+        return result.Roll is not null ? Ok(RollRequestMapping.ToResponse(result.Roll)) : ApprovePushFailure(result.Outcome);
+    }
+
+    /// <summary>Declines the Investigator's push and returns it. The Keeper only.</summary>
+    [HttpPost("roll-requests/{rollRequestId:guid}/requested-rolls/{investigatorId:guid}/push/decline")]
+    public async Task<ActionResult<RequestedRollResponse>> DeclinePush(Guid campaignId, Guid rollRequestId, Guid investigatorId, CancellationToken cancellationToken)
+    {
+        var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
+        if (accountId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _requests.DeclinePushAsync(campaignId, accountId.Value, rollRequestId, investigatorId, cancellationToken);
+        return result.Roll is not null ? Ok(RollRequestMapping.ToResponse(result.Roll)) : DeclinePushFailure(result.Outcome);
+    }
+
     private static RollRequestTargetInput ToInput(RollRequestTargetRequest? target) =>
         target is null
             ? new RollRequestTargetInput(RollRequestTargetKind.Unknown, null, null, null)
@@ -185,6 +241,45 @@ public class RollRequestsController : ScenePlayControllerBase
                 Problem(statusCode: StatusCodes.Status409Conflict, title: ItemHolderProblems.ConflictTitle),
             CancelRequestedRollOutcome.AlreadyCancelled =>
                 Problem(statusCode: StatusCodes.Status409Conflict, title: RollRequestProblems.CancelledTitle),
+            _ => NotFound(),
+        };
+
+    private ActionResult PushFailure(AskPushOutcome outcome) =>
+        outcome switch
+        {
+            AskPushOutcome.SceneNotActive =>
+                Problem(statusCode: StatusCodes.Status409Conflict, title: ActiveSceneProblems.NoActiveSceneTitle),
+            AskPushOutcome.JustificationRequired => Invalid(RollRequestProblems.JustificationKey, RollRequestProblems.JustificationRequiredMessage),
+            AskPushOutcome.JustificationTooLong => Invalid(RollRequestProblems.JustificationKey, RollRequestProblems.JustificationTooLongMessage),
+            AskPushOutcome.AlreadyCancelled =>
+                Problem(statusCode: StatusCodes.Status409Conflict, title: RollRequestProblems.CancelledTitle),
+            AskPushOutcome.NotPushable =>
+                Problem(statusCode: StatusCodes.Status409Conflict, title: ItemHolderProblems.ConflictTitle),
+            _ => NotFound(),
+        };
+
+    private ActionResult ApprovePushFailure(ApprovePushOutcome outcome) =>
+        outcome switch
+        {
+            ApprovePushOutcome.SceneNotActive =>
+                Problem(statusCode: StatusCodes.Status409Conflict, title: ActiveSceneProblems.NoActiveSceneTitle),
+            ApprovePushOutcome.InvalidDice => Invalid(RollRequestProblems.DiceKey, RollRequestProblems.InvalidDiceMessage),
+            ApprovePushOutcome.AlreadyCancelled =>
+                Problem(statusCode: StatusCodes.Status409Conflict, title: RollRequestProblems.CancelledTitle),
+            ApprovePushOutcome.NotPushAsked =>
+                Problem(statusCode: StatusCodes.Status409Conflict, title: ItemHolderProblems.ConflictTitle),
+            _ => NotFound(),
+        };
+
+    private ActionResult DeclinePushFailure(DeclinePushOutcome outcome) =>
+        outcome switch
+        {
+            DeclinePushOutcome.SceneNotActive =>
+                Problem(statusCode: StatusCodes.Status409Conflict, title: ActiveSceneProblems.NoActiveSceneTitle),
+            DeclinePushOutcome.AlreadyCancelled =>
+                Problem(statusCode: StatusCodes.Status409Conflict, title: RollRequestProblems.CancelledTitle),
+            DeclinePushOutcome.NotPushAsked =>
+                Problem(statusCode: StatusCodes.Status409Conflict, title: ItemHolderProblems.ConflictTitle),
             _ => NotFound(),
         };
 

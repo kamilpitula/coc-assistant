@@ -14,6 +14,7 @@
     <ProjectReference Include="..\CocAssistant.ScenePlay.Application\CocAssistant.ScenePlay.Application.csproj" />
     <!-- Adapters for Scene Play's consumer-owned ports (ADR 0008, ADR 0024). -->
     <ProjectReference Include="..\..\ScenarioPreparation\CocAssistant.ScenarioPreparation.Application\CocAssistant.ScenarioPreparation.Application.csproj" />
+    <ProjectReference Include="..\..\ScenarioPreparation\CocAssistant.ScenarioPreparation.Domain\CocAssistant.ScenarioPreparation.Domain.csproj" />
     <ProjectReference Include="..\..\CampaignPlay\CocAssistant.CampaignPlay.Application\CocAssistant.CampaignPlay.Application.csproj" />
   </ItemGroup>
 

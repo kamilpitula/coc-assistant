@@ -16,7 +16,7 @@ public sealed record PercentileOutcomeView(
     RollSuccessLevel SuccessLevel,
     bool IsSuccess);
 
-/// <summary>A rolled result as everyone sees it: the dice, the faces, who rolled by display name, when, and the percentile resolution. It carries no Account id.</summary>
+/// <summary>A rolled result as everyone sees it: the dice, the faces, who rolled by display name, when, the percentile resolution, and whether it is the pushed roll's record. It carries no Account id.</summary>
 public sealed record CompletedRollView(
     string Dice,
     int Result,
@@ -24,9 +24,10 @@ public sealed record CompletedRollView(
     string? RolledByName,
     DateTimeOffset? RolledAt,
     PercentileOutcomeView? Percentile,
-    bool? EarnsExperienceCheck);
+    bool? EarnsExperienceCheck,
+    bool IsPushed);
 
-/// <summary>One Requested Roll as everyone sees it: the snapshot value, the effective Difficulty and dice, the status, and the result once rolled. It carries no Account or Investigator id beyond its own Investigator.</summary>
+/// <summary>One Requested Roll as everyone sees it: the snapshot value, the effective Difficulty and dice, the status, the push fields, whether it can be pushed, and the results once rolled. It carries no Account or Investigator id beyond its own Investigator.</summary>
 public sealed record RequestedRollView(
     Guid InvestigatorId,
     string? InvestigatorName,
@@ -37,6 +38,10 @@ public sealed record RequestedRollView(
     int BonusDice,
     int PenaltyDice,
     RequestedRollStatus Status,
+    string? PushJustification,
+    int? PushBonusDice,
+    int? PushPenaltyDice,
+    bool CanBePushed,
     IReadOnlyList<CompletedRollView> Rolls);
 
 /// <summary>A Roll Request as the caller may see it: the snapshot target, message, visibility, defaults, and one view per Requested Roll.</summary>
@@ -112,3 +117,45 @@ public enum CancelRequestedRollOutcome
 
 /// <summary>The Requested Roll when <see cref="CancelRequestedRollOutcome.Cancelled"/>, otherwise null.</summary>
 public sealed record CancelRequestedRollResult(CancelRequestedRollOutcome Outcome, RequestedRollView? Roll);
+
+/// <summary>How asking to push a Requested Roll ended. NotFound covers a caller who may not ask for this Investigator (including the Keeper), a missing request, and a hidden request.</summary>
+public enum AskPushOutcome
+{
+    Asked,
+    NotFound,
+    SceneNotActive,
+    NotPushable,
+    AlreadyCancelled,
+    JustificationRequired,
+    JustificationTooLong,
+}
+
+/// <summary>The Requested Roll when <see cref="AskPushOutcome.Asked"/>, otherwise null.</summary>
+public sealed record AskPushResult(AskPushOutcome Outcome, RequestedRollView? Roll);
+
+/// <summary>How approving a push ended. NotFound covers a caller who is not the Keeper, a missing request, and an Investigator without a Requested Roll.</summary>
+public enum ApprovePushOutcome
+{
+    Approved,
+    NotFound,
+    SceneNotActive,
+    NotPushAsked,
+    AlreadyCancelled,
+    InvalidDice,
+}
+
+/// <summary>The Requested Roll when <see cref="ApprovePushOutcome.Approved"/>, otherwise null.</summary>
+public sealed record ApprovePushResult(ApprovePushOutcome Outcome, RequestedRollView? Roll);
+
+/// <summary>How declining a push ended. NotFound covers a caller who is not the Keeper, a missing request, and an Investigator without a Requested Roll.</summary>
+public enum DeclinePushOutcome
+{
+    Declined,
+    NotFound,
+    SceneNotActive,
+    NotPushAsked,
+    AlreadyCancelled,
+}
+
+/// <summary>The Requested Roll when <see cref="DeclinePushOutcome.Declined"/>, otherwise null.</summary>
+public sealed record DeclinePushResult(DeclinePushOutcome Outcome, RequestedRollView? Roll);

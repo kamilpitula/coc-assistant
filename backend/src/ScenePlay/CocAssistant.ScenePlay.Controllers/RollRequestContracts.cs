@@ -19,6 +19,13 @@ public record CreateRollRequestRequest(
     int? PenaltyDice,
     IReadOnlyList<RequestedRollCreateRequest>? Investigators);
 
+/// <summary>Asks to push a failed, pushable roll: the trimmed justification of 1 to 2000 characters.</summary>
+public record PushRequest(string? Justification);
+
+/// <summary>Approves a push: the Keeper's Bonus and Penalty Dice for the pushed roll, each 0 to 2.</summary>
+public record ApprovePushRequest(int? BonusDice, int? PenaltyDice);
+
+/// <summary>A Roll Request's target: <c>kind</c> is <c>Skill</c>, <c>Characteristic</c>, or <c>Luck</c>; a skill needs <c>skill</c> with an optional <c>specialization</c>, a characteristic needs its code (<c>STR</c>, <c>CON</c>, ...).</summary>
 public record RollRequestTargetResponse(string Kind, string? Skill, string? Specialization, string? Characteristic);
 
 /// <summary>A resolved percentile roll: the kept tens die, the read result, and its Success Level.</summary>
@@ -30,7 +37,7 @@ public record PercentileOutcomeResponse(
     string SuccessLevel,
     bool IsSuccess);
 
-/// <summary>A rolled result: the dice, the faces, who rolled by display name, when, and the percentile resolution for a percentile roll.</summary>
+/// <summary>A rolled result: the dice, the faces, who rolled by display name, when, the percentile resolution for a percentile roll, and whether it is the pushed roll's record.</summary>
 public record CompletedRollResponse(
     string Dice,
     int Result,
@@ -38,9 +45,10 @@ public record CompletedRollResponse(
     string? RolledBy,
     DateTimeOffset? RolledAt,
     PercentileOutcomeResponse? Percentile,
-    bool? EarnsExperienceCheck);
+    bool? EarnsExperienceCheck,
+    bool IsPushed);
 
-/// <summary>One Requested Roll: the snapshot value, the effective Difficulty and dice, the status, and the result once rolled.</summary>
+/// <summary>One Requested Roll: the snapshot value, the effective Difficulty and dice, the status, the push fields, whether it can be pushed, and the results once rolled.</summary>
 public record RequestedRollResponse(
     Guid InvestigatorId,
     string? InvestigatorName,
@@ -51,6 +59,10 @@ public record RequestedRollResponse(
     int BonusDice,
     int PenaltyDice,
     string Status,
+    string? PushJustification,
+    int? PushBonusDice,
+    int? PushPenaltyDice,
+    bool CanBePushed,
     IReadOnlyList<CompletedRollResponse> Rolls);
 
 /// <summary>A Roll Request: the snapshot target, message, visibility, defaults, and one Requested Roll per targeted Investigator.</summary>
@@ -85,6 +97,7 @@ internal static class RollRequestProblems
     public const string InvestigatorsKey = "investigators";
     public const string MessageKey = "message";
     public const string DiceKey = "dice";
+    public const string JustificationKey = "justification";
     public const string UnknownTargetMessage = "Choose a skill, a characteristic, or Luck to roll against.";
     public const string UnknownSkillMessage = "This skill or characteristic isn't known.";
     public const string SpecializationRequiredMessage = "Choose a specialization for this skill.";
@@ -98,5 +111,7 @@ internal static class RollRequestProblems
     public const string MessageTooLongMessage = "The message is at most 2000 characters.";
     public const string UnknownDifficultyMessage = "Choose Regular, Hard, or Extreme difficulty.";
     public const string UnknownVisibilityMessage = "Choose Public or Keeper only visibility.";
+    public const string JustificationRequiredMessage = "Tell the Keeper how the Investigator tries again.";
+    public const string JustificationTooLongMessage = "The justification is at most 2000 characters.";
     public const string CancelledTitle = "This roll was cancelled.";
 }

@@ -255,8 +255,8 @@ public class SceneRollRequestService
         Guid campaignId,
         Guid requestId,
         Guid investigatorId,
-        int bonusDice,
-        int penaltyDice,
+        int? bonusDice,
+        int? penaltyDice,
         CancellationToken cancellationToken)
     {
         var request = await _requests.FindAsync(campaignId, requestId, cancellationToken);
@@ -271,7 +271,12 @@ public class SceneRollRequestService
             return new RequestedRollWriteResult(RequestedRollWriteOutcome.SceneNotActive, null);
         }
 
-        var result = request.ApprovePushInvestigatorRoll(investigatorId, bonusDice, penaltyDice);
+        if (bonusDice is null || penaltyDice is null)
+        {
+            return new RequestedRollWriteResult(RequestedRollWriteOutcome.InvalidDice, null);
+        }
+
+        var result = request.ApprovePushInvestigatorRoll(investigatorId, bonusDice.Value, penaltyDice.Value);
         if (result.Outcome != RequestedRollOutcome.Pushed)
         {
             return new RequestedRollWriteResult(ToWriteOutcome(result.Outcome), null);

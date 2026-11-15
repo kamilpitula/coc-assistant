@@ -508,6 +508,183 @@ public class RollRequestServiceTests
         Assert.Equal([LogLevel.Warning], _logger.Levels);
     }
 
+    [Theory]
+    [InlineData("keeper")]
+    [InlineData("other")]
+    [InlineData("stranger")]
+    public async Task Given_a_Keeper_another_Player_or_a_non_member_When_asking_to_push_Then_it_is_NotFound_and_the_provider_is_untouched(string caller)
+    {
+        _requests.Found = StoredRequest();
+        var accountId = caller switch
+        {
+            "keeper" => KeeperId,
+            "other" => LucyPlayerId,
+            _ => StrangerId,
+        };
+
+        var result = await Service.AskToPushAsync(CampaignId, accountId, RequestId, Harvey, "Trying again.", CancellationToken.None);
+
+        Assert.Equal(AskPushOutcome.NotFound, result.Outcome);
+        Assert.Null(result.Roll);
+        Assert.DoesNotContain(nameof(FakeRollRequests.AskToPushAsync), _requests.Calls);
+        Assert.Empty(_signals.Publications);
+    }
+
+    [Fact]
+    public async Task Given_a_KeeperOnly_request_When_its_Player_asks_to_push_Then_it_is_NotFound()
+    {
+        _requests.Found = StoredRequest() with { Visibility = RollRequestVisibility.KeeperOnly };
+
+        var result = await Service.AskToPushAsync(CampaignId, HarveyPlayerId, RequestId, Harvey, "Trying again.", CancellationToken.None);
+
+        Assert.Equal(AskPushOutcome.NotFound, result.Outcome);
+        Assert.DoesNotContain(nameof(FakeRollRequests.AskToPushAsync), _requests.Calls);
+    }
+
+    [Fact]
+    public async Task Given_their_own_pushable_roll_When_a_Player_asks_to_push_Then_it_is_Asked_and_only_their_Player_is_signalled()
+    {
+        _requests.Found = StoredRequest();
+        _requests.AskToPushResult = new RequestedRollWriteResult(RequestedRollWriteOutcome.PushAsked, PushAskedHarvey());
+
+        var result = await Service.AskToPushAsync(CampaignId, HarveyPlayerId, RequestId, Harvey, "Trying again.", CancellationToken.None);
+
+        Assert.Equal(AskPushOutcome.Asked, result.Outcome);
+        Assert.Equal(("Trying again.", RequestedRollStatus.PushAsked), (result.Roll!.PushJustification, result.Roll.Status));
+        Assert.Equal("Trying again.", _requests.LastJustification);
+        var publication = Assert.Single(_signals.Publications);
+        Assert.Equal(RollRequestVisibility.Public, publication.Visibility);
+        Assert.Equal([HarveyPlayerId], publication.PlayerAccountIds);
+    }
+
+    [Theory]
+    [InlineData(RequestedRollWriteOutcome.NotFound, AskPushOutcome.NotFound)]
+    [InlineData(RequestedRollWriteOutcome.InvestigatorNotRequested, AskPushOutcome.NotFound)]
+    [InlineData(RequestedRollWriteOutcome.SceneNotActive, AskPushOutcome.SceneNotActive)]
+    [InlineData(RequestedRollWriteOutcome.NotPushable, AskPushOutcome.NotPushable)]
+    [InlineData(RequestedRollWriteOutcome.AlreadyCancelled, AskPushOutcome.AlreadyCancelled)]
+    [InlineData(RequestedRollWriteOutcome.JustificationRequired, AskPushOutcome.JustificationRequired)]
+    [InlineData(RequestedRollWriteOutcome.JustificationTooLong, AskPushOutcome.JustificationTooLong)]
+    public async Task Given_a_refused_ask_When_asking_to_push_Then_the_outcome_is_returned_and_no_signal_is_made(
+        RequestedRollWriteOutcome providerOutcome, AskPushOutcome expected)
+    {
+        _requests.Found = StoredRequest();
+        _requests.AskToPushResult = new RequestedRollWriteResult(providerOutcome, null);
+
+        var result = await Service.AskToPushAsync(CampaignId, HarveyPlayerId, RequestId, Harvey, "Trying again.", CancellationToken.None);
+
+        Assert.Equal((expected, null), (result.Outcome, result.Roll));
+        Assert.Empty(_signals.Publications);
+    }
+
+    [Theory]
+    [InlineData("player")]
+    [InlineData("stranger")]
+    public async Task Given_a_Player_or_a_non_member_When_approving_or_declining_Then_it_is_NotFound_and_the_provider_is_untouched(string caller)
+    {
+        var accountId = caller == "player" ? HarveyPlayerId : StrangerId;
+        _requests.Found = StoredRequest();
+
+        var approved = await Service.ApprovePushAsync(CampaignId, accountId, RequestId, Harvey, 1, 0, CancellationToken.None);
+        var declined = await Service.DeclinePushAsync(CampaignId, accountId, RequestId, Harvey, CancellationToken.None);
+
+        Assert.Equal(ApprovePushOutcome.NotFound, approved.Outcome);
+        Assert.Equal(DeclinePushOutcome.NotFound, declined.Outcome);
+        Assert.DoesNotContain(nameof(FakeRollRequests.ApprovePushAsync), _requests.Calls);
+        Assert.DoesNotContain(nameof(FakeRollRequests.DeclinePushAsync), _requests.Calls);
+        Assert.Empty(_signals.Publications);
+    }
+
+    [Fact]
+    public async Task Given_a_PushAsked_roll_When_the_Keeper_approves_Then_it_is_Approved_with_the_dice_and_only_the_Investigators_Player_is_signalled()
+    {
+        _requests.Found = StoredRequest();
+        _requests.ApprovePushResult = new RequestedRollWriteResult(RequestedRollWriteOutcome.Pushed, PushedHarvey());
+
+        var result = await Service.ApprovePushAsync(CampaignId, KeeperId, RequestId, Harvey, 1, 0, CancellationToken.None);
+
+        Assert.Equal(ApprovePushOutcome.Approved, result.Outcome);
+        Assert.Equal(((1, 0), RequestedRollStatus.Pushed), ((result.Roll!.PushBonusDice, result.Roll.PushPenaltyDice), result.Roll.Status));
+        Assert.Equal((1, 0), _requests.LastApprovedDice);
+        Assert.Equal([HarveyPlayerId], Assert.Single(_signals.Publications).PlayerAccountIds);
+    }
+
+    [Theory]
+    [InlineData(RequestedRollWriteOutcome.NotFound, ApprovePushOutcome.NotFound)]
+    [InlineData(RequestedRollWriteOutcome.InvestigatorNotRequested, ApprovePushOutcome.NotFound)]
+    [InlineData(RequestedRollWriteOutcome.SceneNotActive, ApprovePushOutcome.SceneNotActive)]
+    [InlineData(RequestedRollWriteOutcome.NotPushAsked, ApprovePushOutcome.NotPushAsked)]
+    [InlineData(RequestedRollWriteOutcome.AlreadyCancelled, ApprovePushOutcome.AlreadyCancelled)]
+    [InlineData(RequestedRollWriteOutcome.InvalidDice, ApprovePushOutcome.InvalidDice)]
+    public async Task Given_a_refused_approval_When_approving_Then_the_outcome_is_returned_and_no_signal_is_made(
+        RequestedRollWriteOutcome providerOutcome, ApprovePushOutcome expected)
+    {
+        _requests.Found = StoredRequest();
+        _requests.ApprovePushResult = new RequestedRollWriteResult(providerOutcome, null);
+
+        var result = await Service.ApprovePushAsync(CampaignId, KeeperId, RequestId, Harvey, 1, 0, CancellationToken.None);
+
+        Assert.Equal((expected, null), (result.Outcome, result.Roll));
+        Assert.Empty(_signals.Publications);
+    }
+
+    [Fact]
+    public async Task Given_a_PushAsked_roll_When_the_Keeper_declines_Then_it_is_Declined_and_only_the_Investigators_Player_is_signalled()
+    {
+        _requests.Found = StoredRequest();
+        _requests.DeclinePushResult = new RequestedRollWriteResult(RequestedRollWriteOutcome.PushDeclined, DeclinedHarvey());
+
+        var result = await Service.DeclinePushAsync(CampaignId, KeeperId, RequestId, Harvey, CancellationToken.None);
+
+        Assert.Equal(DeclinePushOutcome.Declined, result.Outcome);
+        Assert.Equal(RequestedRollStatus.Rolled, result.Roll!.Status);
+        Assert.Equal([HarveyPlayerId], Assert.Single(_signals.Publications).PlayerAccountIds);
+    }
+
+    [Theory]
+    [InlineData(RequestedRollWriteOutcome.NotFound, DeclinePushOutcome.NotFound)]
+    [InlineData(RequestedRollWriteOutcome.InvestigatorNotRequested, DeclinePushOutcome.NotFound)]
+    [InlineData(RequestedRollWriteOutcome.SceneNotActive, DeclinePushOutcome.SceneNotActive)]
+    [InlineData(RequestedRollWriteOutcome.NotPushAsked, DeclinePushOutcome.NotPushAsked)]
+    [InlineData(RequestedRollWriteOutcome.AlreadyCancelled, DeclinePushOutcome.AlreadyCancelled)]
+    public async Task Given_a_refused_decline_When_declining_Then_the_outcome_is_returned_and_no_signal_is_made(
+        RequestedRollWriteOutcome providerOutcome, DeclinePushOutcome expected)
+    {
+        _requests.Found = StoredRequest();
+        _requests.DeclinePushResult = new RequestedRollWriteResult(providerOutcome, null);
+
+        var result = await Service.DeclinePushAsync(CampaignId, KeeperId, RequestId, Harvey, CancellationToken.None);
+
+        Assert.Equal((expected, null), (result.Outcome, result.Roll));
+        Assert.Empty(_signals.Publications);
+    }
+
+    [Fact]
+    public async Task Given_a_Player_When_listing_pushable_Then_only_Public_rolls_come()
+    {
+        var pushable = new WaitingRequestedRollRecord(RequestId, SkillTarget(), "Something moves upstairs.", RollRequestVisibility.Public, new DateTimeOffset(2026, 11, 12, 19, 40, 0, TimeSpan.Zero), PushAskedHarvey());
+        var hidden = pushable with { Visibility = RollRequestVisibility.KeeperOnly };
+        _requests.PushableForInvestigator.Add(hidden);
+        _requests.PushableForInvestigator.Add(pushable);
+
+        var result = await Service.ListMinePushableAsync(CampaignId, HarveyPlayerId, CancellationToken.None);
+
+        var roll = Assert.Single(result!.Rolls);
+        Assert.Equal(RequestId, roll.RollRequestId);
+        Assert.Equal("Harvey Walters", result.InvestigatorName);
+    }
+
+    [Theory]
+    [InlineData("keeper")]
+    [InlineData("stranger")]
+    public async Task Given_the_Keeper_or_a_Player_without_an_Investigator_When_listing_pushable_Then_it_is_null(string caller)
+    {
+        var accountId = caller == "keeper" ? KeeperId : StrangerId;
+
+        Assert.Null(await Service.ListMinePushableAsync(CampaignId, accountId, CancellationToken.None));
+        Assert.DoesNotContain(nameof(FakeRollRequests.ListPushableForInvestigatorAsync), _requests.Calls);
+    }
+
     [Fact]
     public void Given_the_outcome_enums_When_mapping_Then_every_member_maps()
     {
@@ -537,6 +714,45 @@ public class RollRequestServiceTests
                     _ => CancelRequestedRollOutcome.NotFound,
                 },
                 Enum.GetValues<CancelRequestedRollOutcome>()));
+        Assert.All(
+            Enum.GetValues<RequestedRollWriteOutcome>(),
+            outcome => Assert.Contains(
+                outcome switch
+                {
+                    RequestedRollWriteOutcome.PushAsked => AskPushOutcome.Asked,
+                    RequestedRollWriteOutcome.SceneNotActive => AskPushOutcome.SceneNotActive,
+                    RequestedRollWriteOutcome.NotPushable => AskPushOutcome.NotPushable,
+                    RequestedRollWriteOutcome.AlreadyCancelled => AskPushOutcome.AlreadyCancelled,
+                    RequestedRollWriteOutcome.JustificationRequired => AskPushOutcome.JustificationRequired,
+                    RequestedRollWriteOutcome.JustificationTooLong => AskPushOutcome.JustificationTooLong,
+                    _ => AskPushOutcome.NotFound,
+                },
+                Enum.GetValues<AskPushOutcome>()));
+        Assert.All(
+            Enum.GetValues<RequestedRollWriteOutcome>(),
+            outcome => Assert.Contains(
+                outcome switch
+                {
+                    RequestedRollWriteOutcome.Pushed => ApprovePushOutcome.Approved,
+                    RequestedRollWriteOutcome.SceneNotActive => ApprovePushOutcome.SceneNotActive,
+                    RequestedRollWriteOutcome.NotPushAsked => ApprovePushOutcome.NotPushAsked,
+                    RequestedRollWriteOutcome.AlreadyCancelled => ApprovePushOutcome.AlreadyCancelled,
+                    RequestedRollWriteOutcome.InvalidDice => ApprovePushOutcome.InvalidDice,
+                    _ => ApprovePushOutcome.NotFound,
+                },
+                Enum.GetValues<ApprovePushOutcome>()));
+        Assert.All(
+            Enum.GetValues<RequestedRollWriteOutcome>(),
+            outcome => Assert.Contains(
+                outcome switch
+                {
+                    RequestedRollWriteOutcome.PushDeclined => DeclinePushOutcome.Declined,
+                    RequestedRollWriteOutcome.SceneNotActive => DeclinePushOutcome.SceneNotActive,
+                    RequestedRollWriteOutcome.NotPushAsked => DeclinePushOutcome.NotPushAsked,
+                    RequestedRollWriteOutcome.AlreadyCancelled => DeclinePushOutcome.AlreadyCancelled,
+                    _ => DeclinePushOutcome.NotFound,
+                },
+                Enum.GetValues<DeclinePushOutcome>()));
     }
 
     private static RequestedRollRecord RolledHarvey(Guid rollerAccountId) =>
@@ -550,6 +766,10 @@ public class RollRequestServiceTests
             0,
             0,
             RequestedRollStatus.Rolled,
+            null,
+            null,
+            null,
+            false,
             [
                 new StoredRollRecord(
                     "1D100",
@@ -558,7 +778,8 @@ public class RollRequestServiceTests
                     rollerAccountId,
                     new DateTimeOffset(2026, 11, 12, 19, 45, 0, TimeSpan.Zero),
                     new PercentileOutcomeData(5, [2], 2, 25, RollSuccessLevel.Hard, true),
-                    true),
+                    true,
+                    false),
             ]);
 
     private static RequestedRollRecord RolledLucy() =>
@@ -575,7 +796,33 @@ public class RollRequestServiceTests
             0,
             0,
             RequestedRollStatus.Cancelled,
+            null,
+            null,
+            null,
+            false,
             []);
+
+    private static RequestedRollRecord PushAskedHarvey() =>
+        RolledHarvey(HarveyPlayerId) with
+        {
+            Status = RequestedRollStatus.PushAsked,
+            PushJustification = "Trying again.",
+            CanBePushed = false,
+        };
+
+    private static RequestedRollRecord PushedHarvey() =>
+        PushAskedHarvey() with
+        {
+            Status = RequestedRollStatus.Pushed,
+            PushBonusDice = 1,
+            PushPenaltyDice = 0,
+        };
+
+    private static RequestedRollRecord DeclinedHarvey() =>
+        PushAskedHarvey() with { Status = RequestedRollStatus.Rolled };
+
+    private static RollRequestTargetInput SkillTarget() =>
+        new(RollRequestTargetKind.Skill, "Spot Hidden", null, null);
 
     private static RollRequestRecord StoredRequest() =>
         new(
@@ -590,7 +837,7 @@ public class RollRequestServiceTests
             0,
             new DateTimeOffset(2026, 11, 12, 19, 40, 0, TimeSpan.Zero),
             [
-                new RequestedRollRecord(RequestId, Harvey, 60, false, false, RollRequestDifficulty.Regular, 0, 0, RequestedRollStatus.Waiting, []),
-                new RequestedRollRecord(RequestId, Lucy, 40, false, false, RollRequestDifficulty.Regular, 0, 0, RequestedRollStatus.Waiting, []),
+                new RequestedRollRecord(RequestId, Harvey, 60, false, false, RollRequestDifficulty.Regular, 0, 0, RequestedRollStatus.Waiting, null, null, null, false, []),
+                new RequestedRollRecord(RequestId, Lucy, 40, false, false, RollRequestDifficulty.Regular, 0, 0, RequestedRollStatus.Waiting, null, null, null, false, []),
             ]);
 }

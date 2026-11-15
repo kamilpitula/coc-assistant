@@ -59,9 +59,13 @@ public class SceneHistoryServiceTests
             0,
             0,
             status,
+            null,
+            null,
+            null,
+            false,
             rolledBy is null
                 ? []
-                : [new StoredRollRecord("1D100", 25, [2, 5], rolledBy, Now, null, null)]);
+                : [new StoredRollRecord("1D100", 25, [2, 5], rolledBy, Now, null, null, false)]);
 
     private static RollRequestRecord HistoryRequest(
         Guid sceneId,

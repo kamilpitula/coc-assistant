@@ -46,6 +46,10 @@ internal static class RollRequestProjection
             roll.BonusDice,
             roll.PenaltyDice,
             roll.Status,
+            roll.PushJustification,
+            roll.PushBonusDice,
+            roll.PushPenaltyDice,
+            roll.CanBePushed,
             roll.RollRecords.Select(record => ForRecord(record, rollerNames)).ToList());
 
     private static RollRequestTargetView ForTarget(RollRequestTargetInput target) =>
@@ -67,7 +71,8 @@ internal static class RollRequestProjection
                     record.Percentile.Result,
                     record.Percentile.SuccessLevel,
                     record.Percentile.IsSuccess),
-            record.EarnsExperienceCheck);
+            record.EarnsExperienceCheck,
+            record.IsPushed);
 
     private static string? InvestigatorName(IReadOnlyList<ApprovedInvestigatorRef> approved, Guid investigatorId) =>
         approved.FirstOrDefault(candidate => candidate.InvestigatorId == investigatorId)?.Name;

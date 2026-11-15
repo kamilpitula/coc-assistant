@@ -26,6 +26,10 @@ internal static class RollRequestMapping
             view.BonusDice,
             view.PenaltyDice,
             view.Status.ToString(),
+            view.PushJustification,
+            view.PushBonusDice,
+            view.PushPenaltyDice,
+            view.CanBePushed,
             view.Rolls.Select(ToResponse).ToList());
 
     public static WaitingRollsResponse ToResponse(WaitingRollsResult result) =>
@@ -53,5 +57,6 @@ internal static class RollRequestMapping
                     view.Percentile.Result,
                     view.Percentile.SuccessLevel.ToString(),
                     view.Percentile.IsSuccess),
-            view.EarnsExperienceCheck);
+            view.EarnsExperienceCheck,
+            view.IsPushed);
 }
