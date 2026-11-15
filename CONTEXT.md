@@ -175,6 +175,9 @@ _Avoid_: Advantage, disadvantage
 A second attempt at a failed roll that the Player justifies and the Keeper agrees to, per the [pushing rules](docs/game-rules/coc7_skill_rolls_rules.md#6-pushing-a-roll).
 _Avoid_: Re-roll, retry
 
+**Push justification**:
+The Player's reason for pushing a failed Requested Roll, shown with the roll to every member who can see it. It is kept after the Keeper approves or declines.
+
 **Combat**:
 A fight between Investigators and Non-Player Entities. Not yet specified: combat resolution is not yet documented in [docs/game-rules](docs/game-rules/README.md).
 _Avoid_: Fight, battle

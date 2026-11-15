@@ -147,6 +147,16 @@ project a success counts as having used a Bonus Die only when the roll has more
 Bonus Dice than Penalty Dice. A success with as many Penalty Dice as Bonus
 Dice, or more, earns a check wherever section 16.1 otherwise allows one.
 
+## 4.10 A declined push
+
+**House rule (resolves a rules gap).**
+[Skill rolls section 6](coc7_skill_rolls_rules.md#6-pushing-a-roll) says a
+roll that has been pushed cannot be pushed again, but it does not say whether a
+push the Keeper refuses counts
+([skill rolls section 9](coc7_skill_rolls_rules.md#9-rules-gaps)). In this
+project, when the Keeper refuses to let a Player push a roll, the roll counts as
+pushed for `canPush`: it cannot be pushed again.
+
 # 5. Non-Player Entity profiles
 
 This section applies

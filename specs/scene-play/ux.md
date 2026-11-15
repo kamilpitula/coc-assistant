@@ -1073,7 +1073,7 @@ Investigators present: Harvey Walters and Lucy Ward            (Keeper only)
   - The Reveal item is unchanged: closed until "Show", with the Keeper's " . to {names}".
 - **Roll Request item:**
   - It is the card of [roll-requests ux](../roll-requests/ux.md) section 5 (5.2 for the "Keeper only" badge): an `article` labelled by its h3 "{target} roll", with the request time, the Keeper's display name, the message, and one row per Requested Roll. It has no actions.
-  - Cancelled rows are not rendered. A card with no rows left is not rendered.
+  - Cancelled rows without a Roll Record are not rendered. A card with no rows left is not rendered. A Cancelled row that has a Roll Record (a Pushed roll cancelled at Scene exit) is rendered as in [roll-requests ux](../roll-requests/ux.md) section 19.3 (PBI-DICE-009).
   - Waiting rows show only in the Active Scene, because finishing a Scene cancels them.
 - **Who sees which Roll Requests:**
   - Keeper: every Roll Request of the Scene, Keeper-only ones with their badge.
@@ -1112,7 +1112,7 @@ Stories add: a Scene with mixed items for the Keeper and for a Player; a card wi
 **New acceptance criteria:**
 - **SPL-UX-73** Each listed Scene shows its Reveals and Roll Request cards in one list, newest first by Revealed time and request time; on equal times the Reveal comes first.
 - **SPL-UX-74** The Keeper sees every Roll Request, Keeper-only ones with the "Keeper only" badge. A Player sees every Public Roll Request of the Scene, including ones that don't involve their Investigator, and never a Keeper-only one.
-- **SPL-UX-75** A Cancelled Requested Roll is not shown in the Scene History, and a Roll Request whose rows are all Cancelled is not listed.
+- **SPL-UX-75** A Cancelled Requested Roll without a Roll Record is not shown in the Scene History, and a Roll Request whose rows are all such rows is not listed. A Cancelled row with a Roll Record is shown (amended by PBI-DICE-009, RR-UX-33).
 - **SPL-UX-76** A Scene with nothing to list shows "Nothing was revealed or rolled in this Scene." to the Keeper and "Nothing from this Scene reached {name}." to a Player with an Approved Investigator.
 - **SPL-UX-77** During the Active Scene, a new Public Roll Request, its results, and its cancelled rows appear and update in a connected member's Scene History without reloading and without announcements.
 - **SPL-A11Y-28** In the combined list each Reveal and each card is an `article` labelled by an h3, in visual order. Results, "Waiting", and "Keeper only" are text, never colour alone. A live update never moves focus (1.3.1, 1.4.1, 2.4.3, 4.1.3).
@@ -1125,6 +1125,11 @@ Behavior: [roll-requests spec](../roll-requests/spec.md), Lifecycle with the Sce
 **The count {n}:**
 - It is the number of Waiting Requested Rolls the change will cancel, taken from the Keeper's Active Scene roll requests, which are already loaded on every Campaign page.
 - It can lag by one live update. The server always cancels exactly the rolls that are Waiting when the change commits.
+
+**Pushes (PBI-DICE-009, [roll-requests ux](../roll-requests/ux.md) section 19.6):**
+- {n} counts the Waiting and Pushed Requested Rolls the change will cancel. A second count {d} counts the Push asked rolls it will decline.
+- Each sentence below is followed by " 1 push will be declined." or " {d} pushes will be declined." (" 1 push declined." / " {d} pushes declined." in the present-save report), only when d is above 0. With n = 0 and d above 0, only the push sentence is shown (and the start-page hint shows).
+- While the counts are unknown, the finish dialog says "Any waiting rolls will be cancelled and any asked pushes declined."
 
 ### 24.1 Finish dialog (section 3)
 
@@ -1164,7 +1169,7 @@ A Finished Scene can't be started again. Players will see that it has finished.
 
 ### 24.4 Acceptance criteria
 
-- **SPL-UX-70** With n waiting rolls in the Active Scene, the finish dialog shows "{n} waiting rolls will be cancelled." ("1 waiting roll ..." for one, nothing for none). Confirming finishes the Scene and shows each of those rolls as "Cancelled" on its card.
-- **SPL-UX-71** Unchecking an Investigator with Waiting rolls and saving shows "Investigators present saved. {n} waiting roll(s) cancelled.", and only that Investigator's rolls become "Cancelled". There is no warning before saving.
-- **SPL-UX-72** On the start page, while another Scene with waiting rolls is Active, the hint "{n} waiting roll(s) will be cancelled." shows under "Finish {title} first". Starting with it checked shows the finished Scene's rolls as "Cancelled".
+- **SPL-UX-70** With n waiting rolls in the Active Scene, the finish dialog shows "{n} waiting rolls will be cancelled." ("1 waiting roll ..." for one, nothing for none). Confirming finishes the Scene and shows each of those rolls as "Cancelled" on its card. (PBI-DICE-009) With d Push asked rolls, it adds "{d} push(es) will be declined." only when d > 0, and those rows show "Push declined".
+- **SPL-UX-71** Unchecking an Investigator with Waiting rolls and saving shows "Investigators present saved. {n} waiting roll(s) cancelled.", and only that Investigator's rolls become "Cancelled". There is no warning before saving. (PBI-DICE-009) Declined pushes add " {d} push(es) declined." only when d > 0.
+- **SPL-UX-72** On the start page, while another Scene with waiting rolls is Active, the hint "{n} waiting roll(s) will be cancelled." shows under "Finish {title} first". Starting with it checked shows the finished Scene's rolls as "Cancelled". (PBI-DICE-009) The hint adds "{d} push(es) will be declined." only when d > 0.
 - **SPL-A11Y-27** The finish-dialog sentence is part of the dialog's accessible description. The start-page hint is linked to its checkbox with `aria-describedby`. Count updates never move focus (1.3.1, 4.1.2, 2.4.3).

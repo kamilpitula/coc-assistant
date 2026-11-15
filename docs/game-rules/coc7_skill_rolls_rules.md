@@ -232,6 +232,9 @@ The rules leave these cases open. The project decisions are recorded in
   counts as having used a Bonus Die for the experience check of
   [character rules section 16.1](coc7_character_creation_and_development_rules.md#161-skill-experience-tick-during-play).
   Decided in [project_ruleset.md section 4.9](project_ruleset.md#49-experience-checks-when-bonus-dice-are-cancelled).
+- **A refused push.** Whether a roll the Keeper refused to let the Player push
+  ([section 6](#6-pushing-a-roll)) counts as pushed. Decided in
+  [project_ruleset.md section 4.10](project_ruleset.md#410-a-declined-push).
 
 ---
 

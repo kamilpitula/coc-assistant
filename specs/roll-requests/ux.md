@@ -32,7 +32,20 @@ Human decisions (2026-11-14, PBI-DICE-008), section 18, chosen from a clickable 
 - Cancelled Requested Rolls are hidden in the Scene History, for the Keeper and for Players. A Roll Request whose rows are all Cancelled is not listed there. The Wall and the Wall preview keep showing "Cancelled" rows.
 - The order is newest first, consistent with the other items of the Scene History: Reveals by their Revealed time and Roll Requests by their request time in one list. On equal times the Reveal comes first.
 
-Behavior and rules: [specs/roll-requests/spec.md](spec.md). This document covers presentation only. Rules are cited, never restated: [skill rolls](../../docs/game-rules/coc7_skill_rolls_rules.md) sections 2 to 5 and 7, [project_ruleset.md](../../docs/game-rules/project_ruleset.md) sections 4.2, 4.7, 4.8, and 4.9, and [character rules section 16.1](../../docs/game-rules/coc7_character_creation_and_development_rules.md#161-skill-experience-tick-during-play).
+Human decisions (2026-11-15, PBI-DICE-009), section 19:
+- **Option A (the Player's panel lists the rolls they can push)** with **K1 (the Keeper sets the pushed roll's Bonus and Penalty Dice when approving)**. No prototype. Option B (push from the card) and Option C (push from "Your last roll" only) were rejected at the gate:
+  - Option B reverses section 5's "no actions on the card" and spreads one action over three card hosts.
+  - Option C loses the push on a reload, in another tab, or when the Keeper rolled for the Player.
+- K2 (approve keeps the original dice) was rejected: skill rolls section 6 has the Keeper set the dice for the new circumstances.
+- A declined push uses up the push ([project_ruleset.md section 4.10](../../docs/game-rules/project_ruleset.md#410-a-declined-push)).
+- Counts:
+  - "Waiting rolls" and the Keeper's tab badge count Waiting, Push asked, and Pushed rows.
+  - The Player's badge counts Waiting and Pushed.
+  - The finish dialog and the start-page hint add "{n} push(es) will be declined." only when n > 0.
+- A declined push keeps its justification on the card, with a muted "Push declined". Push asked and Pushed rows show only while the Scene is Active.
+- A Pushed roll cancelled at Scene exit keeps its first result on the card, and the Scene History shows such a Cancelled row (RR-UX-33, amending RR-UX-24).
+
+Behavior and rules: [specs/roll-requests/spec.md](spec.md). This document covers presentation only. Rules are cited, never restated: [skill rolls](../../docs/game-rules/coc7_skill_rolls_rules.md) sections 2 to 7, [project_ruleset.md](../../docs/game-rules/project_ruleset.md) sections 4.2, 4.7, 4.8, 4.9, and 4.10, and [character rules section 16.1](../../docs/game-rules/coc7_character_creation_and_development_rules.md#161-skill-experience-tick-during-play).
 
 ## 1. Information architecture
 
@@ -160,6 +173,7 @@ Keeper only: the app rolls this now and only you see the results.   (only in Kee
   - On 409 (already rolled, for example by the Player): the row leaves the list, and the status says "{name}'s {target} roll was already made." with the same focus rule.
   - On a network error: the button returns and an inline `Alert` under the row says "We couldn't roll that. Try again.".
 - Second action (PBI-DICE-007): a ghost `Button` "Cancel" after "Roll for {name}" (section 17.1).
+- **Push rows (PBI-DICE-009):** the list also shows Push asked and Pushed rows, and the count includes them (section 19.2).
 - **Empty:** "No rolls waiting." (muted). The section stays.
 - **Live:** rows come and go in place without announcement and never move focus, except as described above when the focused row leaves.
 
@@ -201,6 +215,8 @@ Keeper only: the app rolls this now and only you see the results.   (only in Kee
 
 ### 5.1 Placeholder states for later PBIs (not built in PBI-DICE-005)
 
+The push states are specified in section 19.3 (PBI-DICE-009), which replaces the push rows of this table.
+
 Defined here so that later PBIs add data and controls only:
 
 | State (PBI) | Row status text | Extra row line | Card header |
@@ -241,6 +257,7 @@ The Corbitt House                                     (h1)
 - **404** (no longer visible): the row leaves the list without a message.
 - **Network error:** the button returns, and an inline `Alert` under the row says "We couldn't roll that. Try again.".
 - **Live:** new rolls are appended in place. They never move focus and are announced as in section 8.
+- **Pushes (PBI-DICE-009):** the list also holds Pushed rolls, and the panel holds the "Rolls you can push" group (section 19.1).
 
 ## 7. Campaign tab badge (`campaign-header`)
 
@@ -251,6 +268,7 @@ Overview   Active Scene (Live) (2)   Scene History   Wall   Settings
 - The "Active Scene" link gets a count `Badge` (solid, tabular numbers) after the Live badge when the count is above 0:
   - Keeper: the number of Waiting Requested Rolls in the Active Scene.
   - Player: the number of their own Waiting Requested Rolls.
+  - PBI-DICE-009: the Keeper's count adds Push asked and Pushed rolls, and the Player's count adds Pushed rolls (section 19.6).
 - Accessible name: "Active Scene, live, {n} rolls waiting" ("1 roll waiting"). Without a count the name stays "Active Scene, live" (NAV-UX-3). The count is never shown without an Active Scene.
 - It is shown on every Campaign page, updates live, and never moves focus. Amends [navigation ux](../navigation/ux.md) section 2 and NAV-UX-3 (count added, Live unchanged).
 
@@ -260,6 +278,7 @@ Overview   Active Scene (Live) (2)   Scene History   Wall   Settings
 - **What is announced:** a Requested Roll for the Player's Investigator that appears after the Player's waiting list has been fetched since the page opened. Nothing is announced on first load, for cached data shown first, or on reconnect catch-up of rolls that were already waiting.
   - One: "Roll requested for {Investigator name}: {target}. Roll it on the Active Scene." On the Active Scene page itself: "Roll requested for {Investigator name}: {target}."
   - Several within one 5-second window: "{n} rolls requested for {Investigator name}. Roll them on the Active Scene." The window is the merge rule of [campaign-wall ux](../campaign-wall/ux.md) section 4.5.
+- **Pushed rolls (PBI-DICE-009):** an approved push is announced with its own copy (section 19.5).
 - **Not announced assertively:** results, rolls leaving the list, and anything for the Keeper. The Keeper creates the requests and sees the status line.
 - **Polite:** the new `RollRequest` Wall Entry is a Wall Entry, so the Wall preview and the Wall page announce it as "New Wall Entry from {Keeper}." (WL-UX-14, unchanged). Results are not announced politely to other members.
 
@@ -271,6 +290,7 @@ Overview   Active Scene (Live) (2)   Scene History   Wall   Settings
 - [scene-play ux](../scene-play/ux.md) section 21.3: the "Future play tools" slot holds sections 3 and 4. SPL-UX-50 becomes "Keeper notes, Request a roll, Waiting rolls, Investigators present, Wall".
 - [navigation ux](../navigation/ux.md) NAV-UX-3: the tab may also carry the count of section 7.
 - [scene-play ux](../scene-play/ux.md) section 23 (PBI-DICE-008): sections 23.2, 23.3, 23.5, and 23.6, and SPL-UX-63, SPL-UX-64, and SPL-UX-68, as amended in section 23.11.
+- [scene-play ux](../scene-play/ux.md) section 24 and SPL-UX-70 to SPL-UX-72 (PBI-DICE-009): the declined-push clause (section 19.6). Section 23.11 and SPL-UX-75: Cancelled rows with a Roll Record stay visible (RR-UX-33).
 - [campaign-overview ux](../campaign-overview/ux.md) CO-A11Y-7: Roll Request announcements to the targeted Player use the assertive region of section 8. Every other live change stays polite.
 
 ## 10. Cancelling (PBI-DICE-007)
@@ -320,6 +340,7 @@ The finish-dialog count, the present-save report, and the start-page hint are in
 | Cancel error (DICE-007) | "We couldn't cancel that. Try again." |
 | Cancelled row (DICE-007) | "Cancelled" |
 | Scene History empty Scene, Keeper (DICE-008) | "Nothing was revealed or rolled in this Scene." |
+| Pushing (DICE-009) | section 19.7 |
 
 ## 12. Prototype validation
 
@@ -366,6 +387,7 @@ The finish-dialog count, the present-save report, and the start-page hint are in
 | Tab badge | `campaign-header` (`CampaignNavLink` gains a count) | `Badge` |
 | Assertive region | `campaign-layout` | the reducer of `wallEntryAnnouncementThrottle`, generalized |
 | Run slot | `run-view` | left column |
+| Pushing (DICE-009) | `rolls-you-can-push`, `push-ruling-row`, `roll-request-card` rows | section 19.8 |
 
 ## 14. UX acceptance criteria
 
@@ -415,7 +437,8 @@ The finish-dialog count, the present-save report, and the start-page hint are in
 ## 16. Open decisions and research gaps
 
 - **Research gap:** whether merged assertive announcements are too interruptive in a busy scene. Validate with a screen-reader user at the table.
-- **Open (DICE-009):** the Keeper's push rulings live in "Waiting rolls" (section 5.1), and PBI-DICE-009 confirms their copy. The copy for Cancel is confirmed in section 17.
+- **Closed (DICE-009):** the Keeper's push rulings live in "Waiting rolls", with their copy in section 19.2. The copy for Cancel is confirmed in section 17.
+- **Research gap (DICE-009):** whether Keepers decline by mistake with the immediate "Decline push", which uses up the push. If it happens, revisit confirming it.
 - **Research gap (DICE-007):** whether Keepers cancel by mistake when "Cancel" sits next to "Roll for". A mistaken cancel costs a re-request. If it happens, revisit the rejected confirm options (Human decisions, 2026-11-14).
 - **Research gap (DICE-006):** whether Keepers who leave the form on "Keeper only" send an unintended hidden roll. The opposite mistake, a Public roll meant to be hidden, is the one the mode line and the "Roll now" label guard against (section 3.1). Check with early Keepers.
 
@@ -471,7 +494,171 @@ Behavior: [spec.md](spec.md), Scene History. Presentation: [scene-play ux](../sc
 
 - **The card:** the card of section 5 (5.2 for "Keeper only"), with no actions. Its data comes with the Scene History read, so in the history it has no loading, error, or "Try again" state of its own.
 - **Rows:** Waiting and Rolled rows render as in section 5. Waiting rows appear only in the Active Scene, because finishing a Scene cancels them (section 17.4).
-- **Cancelled:** a Cancelled row is not rendered in the Scene History, and a card whose rows are all Cancelled is not rendered. The Wall and the Wall preview are unchanged (section 17.2, RR-UX-21).
+- **Cancelled:** a Cancelled row is not rendered in the Scene History, and a card whose rows are all Cancelled is not rendered. PBI-DICE-009 narrows this to Cancelled rows without a Roll Record (RR-UX-33). The Wall and the Wall preview are unchanged (section 17.2, RR-UX-21).
 - **Who sees which cards:** the Keeper sees every card. A Player sees every Public card of the Scene, including ones that don't involve their Investigator. A Keeper-only card leaves no trace for a Player (as section 5.2 and RR-UX-19).
-- **RR-UX-24** (PBI-DICE-008) In the Scene History, a Roll Request card shows its Waiting and Rolled rows exactly as in sections 5 and 5.2, never shows a Cancelled row, and is absent when every row is Cancelled.
+- **RR-UX-24** (PBI-DICE-008) In the Scene History, a Roll Request card shows its Waiting and Rolled rows exactly as in sections 5 and 5.2, never shows a Cancelled row, and is absent when every row is Cancelled. (Amended by RR-UX-33.)
 - **RR-A11Y-17** (PBI-DICE-008) In the Scene History the card stays an `article` labelled by its h3, at the same heading level as a Reveal (1.3.1).
+
+## 19. Pushing a roll (PBI-DICE-009)
+
+Behavior: [spec.md](spec.md), Requested Roll status and the push contract. Rules: [skill rolls section 6](../../docs/game-rules/coc7_skill_rolls_rules.md#6-pushing-a-roll) and [project_ruleset.md section 4.10](../../docs/game-rules/project_ruleset.md#410-a-declined-push). Design: [PBI-DICE-009 design record](../../docs/dice/issues/09-push-a-roll.design.md).
+
+### 19.1 "Rolls you can push" (Player, in `waiting-rolls-panel`)
+
+```
+Rolls waiting for you  [1]                                   (h2)
+Library Use . Regular . 1 Bonus Die . pushed  [ Roll Library Use ]
+-----------------------------------------------------------------
+Rolls you can push                                           (h3)
+Spot Hidden . 81: Failure                       [ Push this roll ]
+  +-- Tell the Keeper how Harvey Walters tries again.
+      [                                              ]
+      0 / 2000
+      [ Ask the Keeper ]  [ Never mind ]
+Listen . 62: Failure
+  Push asked - waiting for the Keeper
+  Push justification: "I press my ear to the door for an hour."
+-----------------------------------------------------------------
+Your last roll                                               (h3)
+You rolled 81: Failure. You can ask to push it.     (status)
+```
+
+- **Source:** the Player read `GET .../investigators/mine/pushable-rolls` (spec.md): this Investigator's Requested Rolls in the Active Scene that can be pushed now, plus the ones whose push is asked. Hidden rolls and Luck rolls never appear.
+- **Where:**
+  - An `h3` "Rolls you can push" group inside the panel `section`, after the waiting `ul` and before "Your last roll".
+  - The panel renders when the waiting list or this list has a row, or when a status line from this tab exists.
+  - The h2 count and the tab badge count only the waiting list (Waiting and Pushed).
+  - When the waiting list is empty but this group has rows, the h2 still reads "Rolls waiting for you", with the count 0 visually hidden ("Rolls waiting for you, 0").
+- **Row that can be pushed:**
+  - "{target} . {result}: {outcome}" (outcome copy of section 5), and the message in quotes when present.
+  - A secondary `Button` "Push this roll", `min-h-11`, with the accessible name "Push {target} roll" and `aria-expanded`. When two rows share a target, the accessible name adds the request time: "Push {target} roll, requested 19:21".
+- **Justification group:** opened by "Push this roll"; `role="group"` with the accessible name "Push justification for {target}". It holds:
+  - A `Textarea` (3 rows) with the visible label "Tell the Keeper how {Investigator name} tries again.". Focus moves to it on open.
+  - The counter "{n} / 2000", where n is the trimmed length. No `maxLength`. Over 2000 the counter becomes the error "Justifications can be at most 2000 characters." (`aria-invalid`, destructive colour plus text), as in section 3, Message.
+  - A primary `Button` "Ask the Keeper". It is disabled while the trimmed text is empty (`aria-describedby` points to the hint "Write a justification first."), while over 2000, and while in flight ("Asking...").
+  - A ghost `Button` "Never mind". It closes the group, discards the text, and returns focus to "Push this roll".
+  - Only one group is open at a time. Opening another row's group closes the first and discards its text.
+- **Success** (confirmed, not optimistic):
+  - The row becomes "Push asked - waiting for the Keeper" (warning colour plus text), with the line `Push justification: "{text}"`.
+  - The panel status line says "You asked the Keeper to push your {target} roll." and receives focus.
+- **400:** an inline `Alert` in the group: "We couldn't ask for that push: {reason}.". The text is kept.
+- **409** (no longer pushable, already asked, or ruled on elsewhere): the row refreshes or leaves, and the status line says "Your {target} roll can't be pushed any more." and receives focus. A 409 because the Scene ended moves the page through the live `activeScene` signal, as for "Roll".
+- **Network or 5xx:** an `Alert` under the group: "We couldn't send that. Try again.". The text is kept.
+- **After a failed roll from the panel:** when the rolled result can be pushed, the status line adds " You can ask to push it." (for example "You rolled 81: Failure. You can ask to push it.").
+- **Approved (live):**
+  - The Push asked row leaves this group.
+  - The roll appears in the waiting list as "{target} . {Difficulty} . {pushed dice} . pushed" with "Roll {target}" (accessible name "Roll pushed {target}").
+  - It is announced assertively (section 19.5).
+- **Declined (live):**
+  - The Push asked row leaves.
+  - The status line (polite `role="status"`) says "The Keeper declined your {target} push.". Focus does not move.
+  - Removing the Investigator from the Investigators present also declines the push and shows the same line.
+- **Rolling a Pushed roll:** as in section 6. The status is "You rolled {result}: {outcome}." plus " Experience check earned." when earned. It never adds " You can ask to push it.", because a pushed roll can't be pushed again.
+- **Focus on live removal:** as RR-A11Y-16. When the removed row held focus, focus goes to the h3 "Rolls you can push" (`tabIndex=-1`); if that group empties, to the panel h2; if the panel unmounts, to the page h1.
+
+### 19.2 Push rulings in "Waiting rolls" (Keeper, section 4)
+
+```
+Waiting rolls  [3]                                           (h2)
+Harvey Walters . Spot Hidden . asks to push . first roll 81: Failure   19:14
+  "I search every shelf through the night."
+  [Approve push] [Decline push]
+  +-- Dice for Harvey Walters's pushed roll   (group, after Approve push)
+      Bonus Dice [0 v]  Penalty Dice [0 v]
+      [Confirm approval]
+Lucy Ward . Listen . Regular . 1 Bonus Die . pushed                   19:16
+  [Roll pushed Listen for Lucy Ward]
+```
+
+- **Rows:** Waiting, Push asked, and Pushed rows, in the existing order: oldest request first, then the request's row order.
+- **Push asked row:**
+  - "{name} . {target} . asks to push . first roll {result}: {outcome}", the request time, and the justification in quotes (`whitespace-pre-line`, `break-words`).
+  - "Approve push": a secondary `Button` with `aria-expanded` and the accessible name "Approve push of {target} for {name}".
+    - It opens an inline `role="group"` named "Dice for {name}'s pushed roll", with:
+      - `Select`s "Bonus Dice" and "Penalty Dice" (0, 1, 2), defaulting to the Requested Roll's original dice;
+      - a primary `Button` "Confirm approval" (accessible name "Confirm approval of {target} push for {name}"; "Approving..." in flight).
+    - Focus moves to "Bonus Dice" on open. Activating "Approve push" again closes the group and keeps focus on it.
+  - "Decline push": a ghost `Button` (accessible name "Decline push of {target} for {name}"). It is immediate, with no confirmation, like "Cancel" (section 17.1). It reads "Declining..." in flight.
+  - All of the row's buttons are disabled while any of its actions is in flight.
+  - The Difficulty is not offered: the pushed roll keeps it (skill rolls section 6).
+- **Approve success:** the row becomes a Pushed row in place. The section status says "{name}'s push was approved.", and focus moves to that row's "Roll pushed {target} for {name}".
+- **Decline success:** the row leaves. The status says "{name}'s push was declined.", and focus moves as after "Cancel": the next row's first button, else the previous row's, else the h2.
+- **409, the push was already ruled on** (for example from another tab): the row refreshes or leaves, and the status says "{name}'s push was already ruled on.". When the row leaves, focus moves as on decline.
+- **409 for a cancelled roll:** "{name}'s {target} roll was cancelled.", as in section 17.1.
+- **409 (no Active Scene), network error, or 5xx:** an inline `Alert` under the row: "We couldn't approve that push. Try again." or "We couldn't decline that push. Try again.". The group and its choices are kept.
+- **Pushed row:** "{name} . {target} . {Difficulty} . {pushed dice} . pushed", with "Roll for {name}" (accessible name "Roll pushed {target} for {name}"). Rolling behaves as in section 4. It has no "Cancel": spec.md allows cancelling only Waiting rolls.
+- **Count:** the h2 count and the Keeper's tab badge count Waiting, Push asked, and Pushed rows (section 19.6).
+- **Live:** a new Push asked row is inserted in place. It is not announced and does not move focus (section 8: nothing assertive for the Keeper).
+
+### 19.3 Card rows (section 5; replaces the push rows of section 5.1)
+
+| State | Line 1 status | Lines after the target line |
+|---|---|---|
+| Push asked | "Push asked" (warning, text) | the first result's faces, "Rolled by", and check; then `Push justification: "{text}"` |
+| Pushed | "Pushed - waiting for the pushed roll" (warning) | the first result's lines; the justification; "Pushed roll: {Difficulty} . {pushed dice}" |
+| Pushed roll rolled | the pushed result, "{result}: {outcome}", with the check or cross icon | "First roll: {result}: {outcome}" with its faces, "Rolled by", and check; the justification; "Pushed roll: {Difficulty} . {pushed dice}" with its faces, "Rolled by", and check |
+| Push declined | the first result, as Rolled | the first result's lines; the justification; "Push declined" (muted) |
+| Cancelled after approval (Scene exit) | "Cancelled" (muted) | the first result's lines; the justification; "The pushed roll was cancelled." (muted) |
+
+- The pushed roll's check line follows its own Roll Record ([character rules 16.1](../../docs/game-rules/coc7_character_creation_and_development_rules.md#161-skill-experience-tick-during-play)).
+- The card still has no actions for anyone (section 5).
+- Push asked and Pushed rows exist only while the Scene is Active: Scene exit declines or cancels them (spec.md, Lifecycle with the Scene).
+- **Scene History (section 18):** a Cancelled row with a Roll Record is rendered as in the table. A Cancelled row without one stays hidden.
+
+### 19.4 Hidden and Luck rolls
+
+Nothing in this section ever appears for a `KeeperOnly` Roll Request or a Luck target. They never enter "Rolls you can push", and their cards show no push lines.
+
+### 19.5 Announcements (section 8)
+
+- A Pushed roll that appears in the Player's waiting list is announced assertively: "Push approved for {Investigator name}: {target}. Roll it on the Active Scene.". On the Active Scene page the sentence ends after "{target}.".
+- Several Pushed and new Waiting rolls within the 5-second window merge into the existing "{n} rolls requested for {name}." sentence.
+- Asking, declining, and Keeper-side changes are never announced assertively.
+
+### 19.6 Counts (sections 4 and 7, and scene-play ux section 24)
+
+- **Keeper "Waiting rolls" count and tab badge:** Waiting + Push asked + Pushed. The badge's accessible name stays "{n} rolls waiting".
+- **Player tab badge:** Waiting + Pushed.
+- **Finish dialog and start-page hint:**
+  - c is the number of Waiting and Pushed rolls to cancel; d is the number of Push asked rolls to decline.
+  - "{c} waiting roll(s) will be cancelled." and then " {d} push(es) will be declined.", each only when its count is above 0. Singular: "1 push will be declined.".
+  - While unknown: "Any waiting rolls will be cancelled and any asked pushes declined.".
+  - With both at 0: no sentence in the finish dialog, and no start-page hint.
+- **Present-save report:** "Investigators present saved." followed by " {c} waiting roll(s) cancelled." and " {d} push(es) declined.", each only when above 0.
+
+### 19.7 Content
+
+| Element | Copy |
+|---|---|
+| Player group | "Rolls you can push"; "Push this roll"; label "Tell the Keeper how {name} tries again."; "Ask the Keeper" / "Asking..."; "Never mind"; hint "Write a justification first." |
+| Player statuses | "You asked the Keeper to push your {target} roll."; "Your {target} roll can't be pushed any more."; "The Keeper declined your {target} push."; suffix " You can ask to push it." |
+| Player errors | "Justifications can be at most 2000 characters."; "We couldn't ask for that push: {reason}."; "We couldn't send that. Try again." |
+| Keeper ruling | "asks to push . first roll {result}: {outcome}"; "Approve push"; "Confirm approval" / "Approving..."; "Decline push" / "Declining..."; group "Dice for {name}'s pushed roll" |
+| Keeper statuses | "{name}'s push was approved."; "{name}'s push was declined."; "{name}'s push was already ruled on."; "We couldn't approve that push. Try again."; "We couldn't decline that push. Try again." |
+| Card | "Push asked"; "Pushed - waiting for the pushed roll"; `Push justification: "{text}"`; "First roll:"; "Pushed roll: {Difficulty} . {dice}"; "Push declined"; "The pushed roll was cancelled." |
+| Announcement | "Push approved for {name}: {target}. Roll it on the Active Scene." |
+| Counts | "{d} push(es) will be declined."; "{d} push(es) declined."; "Any waiting rolls will be cancelled and any asked pushes declined." |
+
+### 19.8 Component mapping
+
+| Element | Component | Notes |
+|---|---|---|
+| Player group | new `rolls-you-can-push` (roll-requests slice), hosted by `waiting-rolls-panel` | `Textarea`, `Button`, `Alert` |
+| Keeper ruling row | new `push-ruling-row` (roll-requests slice), used by `waiting-rolls` | `Select`, `Button`; the inline group follows the "Change for" pattern of section 3 |
+| Card push lines | `roll-request-card` row; the state comes from a pure presentation helper | no new primitive |
+
+### 19.9 Acceptance criteria
+
+- **RR-UX-25** A Player whose Investigator has a failed, pushable roll of a Public Roll Request in the Active Scene sees it under "Rolls you can push" with "Push this roll". Luck rolls, hidden rolls, successes, and rolls already pushed or declined never appear there.
+- **RR-UX-26** "Ask the Keeper" is disabled until the trimmed justification has 1 to 2000 characters. Over 2000 it shows "Justifications can be at most 2000 characters.". Asking turns the row into "Push asked - waiting for the Keeper" with the justification and shows "You asked the Keeper to push your {target} roll.".
+- **RR-UX-27** The Keeper sees a Push asked row in "Waiting rolls" with the justification and the first result. "Approve push" opens "Bonus Dice" and "Penalty Dice", preset to the original dice. "Confirm approval" turns the row into a Pushed row with "Roll for {name}" and shows "{name}'s push was approved.".
+- **RR-UX-28** "Decline push" removes the row and shows "{name}'s push was declined.". The Player's row leaves "Rolls you can push" with "The Keeper declined your {target} push.", and the roll can't be pushed again.
+- **RR-UX-29** After approval, the Player's waiting list shows "Roll {target}" marked pushed, with the pushed dice. Rolling it adds the second result. The card shows, for every member and without reloading, "First roll:" with the first result, the justification, and "Pushed roll:" with the dice and the second result; line 1 shows the pushed result.
+- **RR-UX-30** The card shows the Push asked, Pushed, Push declined, and Cancelled-after-approval states as in section 19.3, and never offers an action.
+- **RR-UX-31** "Waiting rolls" and the Keeper's tab badge count Waiting, Push asked, and Pushed rows; the Player's badge counts Waiting and Pushed. The finish dialog, the start-page hint, and the present-save report add the declined-push clause only when it is above 0.
+- **RR-UX-32** Finishing the Scene, starting another Scene with "Finish {title} first", or removing an Investigator present cancels Pushed rolls (the card shows "Cancelled" and keeps the first result) and declines Push asked ones (the card shows "Push declined").
+- **RR-UX-33** (amends RR-UX-24) In the Scene History, a Cancelled row with a Roll Record is shown as in section 19.3; a Cancelled row without one stays hidden.
+- **RR-A11Y-18** "Push this roll" and "Approve push" have `aria-expanded`. Each group has an accessible name. The Textarea has a visible label. The empty hint and the over-limit error are linked by `aria-describedby` and `aria-invalid` (1.3.1, 3.3.1, 3.3.2, 4.1.2).
+- **RR-A11Y-19** Opening a group moves focus into it, and "Never mind" returns it to its toggle. After asking, focus is on the panel status. After approving, focus is on the row's roll button. After declining, focus follows section 17.1, and after a live removal it follows section 19.1. Focus never lands on `body` (2.4.3).
+- **RR-A11Y-20** "Push asked", "Pushed", "Push declined", and "pushed" are conveyed by text, not colour alone (1.4.1). Every new button is at least 44px high (2.5.8). The groups reflow at 320px and 200% zoom (1.4.10).
+- **RR-A11Y-21** The approval announcement uses the assertive region. Declines and asks use polite `role="status"` lines only (4.1.3).
