@@ -498,20 +498,20 @@ describe('ActiveScenePage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('The front door revealed to Harvey Walters.')
   })
 
-  it('says "Investigators present saved." after a save with no cancelled roll (SPL-UX-71)', () => {
+  it('says "Investigators present saved." after a save with no closed roll (SPL-UX-71)', () => {
     render(<ActiveScenePage campaignId="c1" />)
 
-    act(() => tabValue?.onPresentSaved(0))
+    act(() => tabValue?.onPresentSaved({ cancelled: 0, declined: 0 }))
 
     expect(screen.getByRole('status')).toHaveTextContent('Investigators present saved.')
   })
 
-  it('names how many waiting rolls the present save cancelled (SPL-UX-71)', () => {
+  it('names how many waiting rolls the present save cancelled and how many pushes it declined (SPL-UX-71)', () => {
     render(<ActiveScenePage campaignId="c1" />)
 
-    act(() => tabValue?.onPresentSaved(2))
+    act(() => tabValue?.onPresentSaved({ cancelled: 2, declined: 1 }))
 
-    expect(screen.getByRole('status')).toHaveTextContent('Investigators present saved. 2 waiting rolls cancelled.')
+    expect(screen.getByRole('status')).toHaveTextContent('Investigators present saved. 2 waiting rolls cancelled. 1 push declined.')
   })
 
   it('says "{target} roll requested from {names}." after a request from Run (RR-UX-6)', () => {

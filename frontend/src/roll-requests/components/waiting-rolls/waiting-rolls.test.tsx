@@ -4,18 +4,20 @@ import userEvent from '@testing-library/user-event'
 import { act, type ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
-import { AlreadyRolledError, RequestedRollCancelledError } from '@/roll-requests/services/rollRequestApi'
+import { AlreadyRolledError, PushAlreadyRuledError, RequestedRollCancelledError } from '@/roll-requests/services/rollRequestApi'
 import type { RequestedRoll, RollRequest } from '@/roll-requests/types/RollRequest'
 
 import { WaitingRolls } from './waiting-rolls'
 
 // specs/roll-requests/ux.md sections 4 and 17.1; RR-UX-7, RR-UX-20, RR-A11Y-15.
-const { mockUseActiveSceneRollRequests, mockMutate, mockCancelMutate } = vi.hoisted(() => ({ mockUseActiveSceneRollRequests: vi.fn(), mockMutate: vi.fn(), mockCancelMutate: vi.fn() }))
+const { mockUseActiveSceneRollRequests, mockMutate, mockCancelMutate, mockApproveMutate, mockDeclineMutate } = vi.hoisted(() => ({ mockUseActiveSceneRollRequests: vi.fn(), mockMutate: vi.fn(), mockCancelMutate: vi.fn(), mockApproveMutate: vi.fn(), mockDeclineMutate: vi.fn() }))
 
 vi.mock('@/roll-requests/hooks/useRollRequests', () => ({
   useActiveSceneRollRequests: mockUseActiveSceneRollRequests,
   useRollRequestedRoll: () => ({ mutate: mockMutate, isPending: false }),
   useCancelRequestedRoll: () => ({ mutate: mockCancelMutate, isPending: false }),
+  useApprovePush: () => ({ mutate: mockApproveMutate, isPending: false }),
+  useDeclinePush: () => ({ mutate: mockDeclineMutate, isPending: false }),
 }))
 
 interface RollCallbacks {
@@ -34,6 +36,10 @@ function waitingRoll(overrides: Partial<RequestedRoll> = {}): RequestedRoll {
     bonusDice: 0,
     penaltyDice: 0,
     status: 'Waiting',
+    pushJustification: null,
+    pushBonusDice: null,
+    pushPenaltyDice: null,
+    canBePushed: false,
     rolls: [],
     ...overrides,
   }
@@ -72,6 +78,7 @@ const rolledHarvey: RequestedRoll = {
       rolledAt: '2026-11-12T19:22:00Z',
       percentile: { unitsFace: 5, tensFaces: [20], keptTens: 20, result: 25, successLevel: 'Hard', isSuccess: true },
       earnsExperienceCheck: true,
+      isPushed: false,
     },
   ],
 }
@@ -80,6 +87,8 @@ function setup(data: RollRequest[] | null | undefined = requests) {
   mockUseActiveSceneRollRequests.mockReturnValue({ data, isPending: data === undefined, isError: false, refetch: vi.fn() })
   mockMutate.mockReset()
   mockCancelMutate.mockReset()
+  mockApproveMutate.mockReset()
+  mockDeclineMutate.mockReset()
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   const view = render(<WaitingRolls campaignId="c1" />, { wrapper })
@@ -250,5 +259,126 @@ describe('WaitingRolls', () => {
     rerenderWith([requests[1]])
 
     expect(screen.getByRole('status')).toHaveTextContent("Harvey Walters's Spot Hidden roll was cancelled.")
+  })
+
+  // specs/roll-requests/ux.md section 19.2; RR-UX-27, RR-UX-28, RR-UX-31.
+  describe('push rulings', () => {
+    function pushAskedRoll(): RequestedRoll {
+      return {
+        ...waitingRoll(),
+        status: 'PushAsked',
+        pushJustification: 'I search every shelf.',
+        rolls: [
+          {
+            dice: '1D100',
+            result: 81,
+            faces: [80, 1],
+            rolledBy: 'Harvey Walters',
+            rolledAt: '2026-11-12T19:22:00Z',
+            percentile: { unitsFace: 1, tensFaces: [80], keptTens: 80, result: 81, successLevel: 'Failure', isSuccess: false },
+            earnsExperienceCheck: false,
+            isPushed: false,
+          },
+        ],
+      }
+    }
+
+    function pushedRoll(): RequestedRoll {
+      return {
+        ...pushAskedRoll(),
+        status: 'Pushed',
+        pushBonusDice: 1,
+        pushPenaltyDice: 0,
+      }
+    }
+
+    function pushRequest(roll: RequestedRoll): RollRequest {
+      return request('r3', { requestedRolls: [roll] })
+    }
+
+    function captureApprove() {
+      let callbacks: { onSuccess: (result: RequestedRoll) => void; onError: (error: Error) => void } | undefined
+      mockApproveMutate.mockImplementation((_input: unknown, options: { onSuccess: (result: RequestedRoll) => void; onError: (error: Error) => void }) => {
+        callbacks = options
+      })
+      return () => {
+        if (!callbacks) {
+          throw new Error('expected the approval to be requested')
+        }
+        return callbacks
+      }
+    }
+
+    function captureDecline() {
+      let callbacks: { onSuccess: (result: RequestedRoll) => void; onError: (error: Error) => void } | undefined
+      mockDeclineMutate.mockImplementation((_input: unknown, options: { onSuccess: (result: RequestedRoll) => void; onError: (error: Error) => void }) => {
+        callbacks = options
+      })
+      return () => {
+        if (!callbacks) {
+          throw new Error('expected the decline to be requested')
+        }
+        return callbacks
+      }
+    }
+
+    it('lists PushAsked rows with the justification and first result, and counts every open row (RR-UX-27, RR-UX-31)', () => {
+      setup([pushRequest(pushAskedRoll()), pushRequest(pushedRoll())])
+
+      expect(screen.getByRole('heading', { level: 2, name: 'Waiting rolls, 2' })).toBeInTheDocument()
+      const item = screen.getAllByRole('listitem')[0]
+      expect(item.textContent).toContain('Harvey Walters . Spot Hidden . asks to push . first roll 81: Failure')
+      expect(within(item).getByText('"I search every shelf."')).toBeInTheDocument()
+      const pushed = screen.getAllByRole('listitem')[1]
+      expect(pushed.textContent).toContain('Harvey Walters . Spot Hidden . Regular . 1 Bonus Die . pushed')
+      expect(screen.getByRole('button', { name: 'Roll pushed Spot Hidden for Harvey Walters' })).toHaveTextContent('Roll for Harvey Walters')
+    })
+
+    it('approves with the chosen dice and focuses the pushed row (RR-UX-27, RR-A11Y-19)', async () => {
+      const { rerenderWith } = setup([pushRequest(pushAskedRoll())])
+      const getCallbacks = captureApprove()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Approve push of Spot Hidden for Harvey Walters' }))
+      await userEvent.click(screen.getByRole('combobox', { name: 'Bonus Dice' }))
+      await userEvent.click(screen.getByRole('option', { name: '1' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Confirm approval of Spot Hidden push for Harvey Walters' }))
+      expect(mockApproveMutate).toHaveBeenCalledWith(
+        { rollRequestId: 'r3', investigatorId: 'i1', bonusDice: 1, penaltyDice: 0 },
+        expect.anything(),
+      )
+      await act(async () => {
+        getCallbacks().onSuccess(pushedRoll())
+      })
+      rerenderWith([pushRequest(pushedRoll())])
+
+      expect(screen.getByRole('status')).toHaveTextContent("Harvey Walters's push was approved.")
+      expect(screen.getByRole('button', { name: 'Roll pushed Spot Hidden for Harvey Walters' })).toHaveFocus()
+    })
+
+    it('declines and moves focus as after Cancel (RR-UX-28)', async () => {
+      const { rerenderWith } = setup([pushRequest(pushAskedRoll()), requests[1]])
+      const getCallbacks = captureDecline()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Decline push of Spot Hidden for Harvey Walters' }))
+      await act(async () => {
+        getCallbacks().onSuccess(waitingRoll())
+      })
+      rerenderWith([requests[1]])
+
+      expect(screen.getByRole('status')).toHaveTextContent("Harvey Walters's push was declined.")
+      expect(screen.getByRole('button', { name: 'Roll Listen for Lucy Ward' })).toHaveFocus()
+    })
+
+    it('says the push was already ruled on when another tab ruled first (RR-UX-27)', async () => {
+      setup([pushRequest(pushAskedRoll())])
+      const getCallbacks = captureDecline()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Decline push of Spot Hidden for Harvey Walters' }))
+      await act(async () => {
+        getCallbacks().onError(new PushAlreadyRuledError())
+      })
+
+      expect(screen.getByRole('status')).toHaveTextContent("Harvey Walters's push was already ruled on.")
+    })
   })
 })

@@ -18,7 +18,10 @@ import {
 } from '../fixtures/scene-play'
 import { openWall, wallPreview } from '../fixtures/wall'
 import {
+  approvePushViaUi,
+  askToPushViaUi,
   cancelRollViaUi,
+  declinePushViaUi,
   expectedOutcome,
   requestRollForm,
   requestRollViaUi,
@@ -35,11 +38,12 @@ import {
  * control and Cancelled card (RR-UX-20 to RR-UX-22, RR-A11Y-15, RR-A11Y-16), the Player's panel (RR-UX-8, RR-UX-9,
  * RR-A11Y-4), the Wall card (RR-UX-10, RR-UX-11), the tab badge (RR-UX-12), the assertive announcement (RR-UX-13),
  * the no-other-Investigator guard (RR-UX-14), the hidden roll form, card, and invisibility (RR-UX-15 to RR-UX-19,
- * RR-A11Y-11 to RR-A11Y-14), and the automatic cancellation on Scene changes (RR-UX-23 with SPL-UX-70 to SPL-UX-72
- * and SPL-A11Y-27 from specs/scene-play/ux.md section 24), and the Wall amendments (WL-UX-7, WL-UX-9).
- * Exceptions, covered by the unit tests: "server rolls 25" (the exact dice mapping of faces to outcome) and the
- * push scenarios of PBI-DICE-009. The 409 on cancelling a roll that is not Waiting cannot be reached through the UI
- * without a race, so the API integration tests cover it.
+ * RR-A11Y-11 to RR-A11Y-14), the push journeys (RR-UX-25 to RR-UX-33, RR-A11Y-18 to RR-A11Y-21), and the automatic
+ * cancellation on Scene changes (RR-UX-23 with SPL-UX-70 to SPL-UX-72 and SPL-A11Y-27 from specs/scene-play/ux.md
+ * section 24), and the Wall amendments (WL-UX-7, WL-UX-9).
+ * Exceptions, covered by the unit tests: "server rolls 25" (the exact dice mapping of faces to outcome).
+ * The 409 on cancelling a roll that is not Waiting cannot be reached through the UI without a race, so the API
+ * integration tests cover it.
  */
 test.describe('Roll Requests', () => {
   // Each journey signs in a Keeper and joins Players in isolated contexts before it checks anything, which takes longer than the default.
@@ -568,10 +572,155 @@ test.describe('Roll Requests', () => {
       await closeTable(table)
     }
   })
+
+  test('A Player pushes a failed roll and the Keeper approves it with a Bonus Die', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'PushApprove')
+    try {
+      const campaignId = table.prepared.campaignId
+      await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
+      await table.harvey.page.goto(`/campaigns/${campaignId}/active-scene`)
+      await page.goto(activeScenePath(campaignId))
+      await rollMythosUntilPushable(page, table.harvey.page)
+
+      await test.step('RR-UX-25, RR-UX-26: the failed roll lists under "Rolls you can push", asking shows the Push asked row', async () => {
+        const panel = waitingRollsPanel(table.harvey.page)
+        await expect(panel.getByRole('heading', { name: 'Rolls you can push' })).toBeVisible()
+        await expect(panel.getByRole('button', { name: 'Push Cthulhu Mythos roll' })).toBeVisible()
+        await askToPushViaUi(table.harvey.page, 'Cthulhu Mythos', 'I search every shelf through the night.')
+        await expect(panel.getByRole('status')).toHaveText('You asked the Keeper to push your Cthulhu Mythos roll.')
+      })
+
+      await test.step("RR-UX-27, RR-UX-31: the Keeper approves with a Bonus Die and the badges count the Pushed roll", async () => {
+        await expect(waitingRolls(page).getByText(/asks to push/)).toBeVisible()
+        await approvePushViaUi(page, HARVEY, 'Cthulhu Mythos', 1, 0)
+        await expect(waitingRolls(page).getByRole('status')).toHaveText("Harvey Walters's push was approved.")
+        await expect(campaignNav(page).getByRole('link', { name: 'Active Scene, live, 1 roll waiting' })).toBeVisible()
+      })
+
+      await test.step('RR-UX-12, RR-UX-29, RR-A11Y-21: the Player sees the pushed row, the badge, and the approval announcement', async () => {
+        const panel = waitingRollsPanel(table.harvey.page)
+        await expect(panel.getByRole('button', { name: 'Roll pushed Cthulhu Mythos' })).toBeVisible()
+        await expect(panel).toContainText('Cthulhu Mythos . Regular . 1 Bonus Die . pushed')
+        await expect(campaignNav(table.harvey.page).getByRole('link', { name: 'Active Scene, live, 1 roll waiting' })).toBeVisible()
+        await expect(table.harvey.page.locator('div[aria-live="assertive"]')).toContainText('Push approved for Harvey Walters: Cthulhu Mythos')
+      })
+
+      await test.step('RR-UX-29: rolling the pushed roll adds the second result, and the card shows both with the justification', async () => {
+        await rollFromPanel(table.harvey.page, 'Roll pushed Cthulhu Mythos')
+        const result = waitingRollsPanel(table.harvey.page).getByRole('status')
+        await expect(result).toContainText(/^You rolled \d+: .+\./)
+        await expect(result).not.toContainText('You can ask to push it.')
+
+        await openWall(page, campaignId)
+        const keeperCard = rollRequestCard(page, 'Cthulhu Mythos')
+        await expect(keeperCard.getByText('First roll:')).toBeVisible()
+        await expect(keeperCard.getByText('Pushed roll: Regular . 1 Bonus Die')).toBeVisible()
+        await expect(keeperCard.getByText('Push justification: "I search every shelf through the night."')).toBeVisible()
+        await openWall(table.harvey.page, campaignId)
+        const harveyCard = rollRequestCard(table.harvey.page, 'Cthulhu Mythos')
+        await expect(harveyCard.getByText('First roll:')).toBeVisible()
+        await expect(harveyCard.getByText('Pushed roll: Regular . 1 Bonus Die')).toBeVisible()
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('The Keeper declines a push and it cannot be asked again', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'PushDecline')
+    try {
+      const campaignId = table.prepared.campaignId
+      await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
+      await table.harvey.page.goto(`/campaigns/${campaignId}/active-scene`)
+      await page.goto(activeScenePath(campaignId))
+      await rollMythosUntilPushable(page, table.harvey.page)
+      await askToPushViaUi(table.harvey.page, 'Cthulhu Mythos', 'I search every shelf through the night.')
+
+      await test.step("RR-UX-28: declining removes the ruling row and the Player's row with a polite note", async () => {
+        await declinePushViaUi(page, HARVEY, 'Cthulhu Mythos')
+        await expect(waitingRolls(page).getByText('No rolls waiting.')).toBeVisible()
+        const panel = waitingRollsPanel(table.harvey.page)
+        await expect(panel.getByRole('button', { name: /Push Cthulhu Mythos roll/ })).toHaveCount(0)
+        await expect(panel.getByRole('status')).toHaveText('The Keeper declined your Cthulhu Mythos push.')
+      })
+
+      await test.step('RR-UX-30: the card shows Push declined with the justification and the first result', async () => {
+        await openWall(page, campaignId)
+        const keeperCard = rollRequestCard(page, 'Cthulhu Mythos')
+        await expect(keeperCard.getByText('Push declined')).toBeVisible()
+        await expect(keeperCard.getByText('Push justification: "I search every shelf through the night."')).toBeVisible()
+        await openWall(table.harvey.page, campaignId)
+        await expect(rollRequestCard(table.harvey.page, 'Cthulhu Mythos').getByText('Push declined')).toBeVisible()
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
+
+  test('Finishing the Scene closes pushes', async ({ page, browser }) => {
+    const table = await setUpTable(page, browser, 'PushFinish')
+    try {
+      const campaignId = table.prepared.campaignId
+      await startSceneViaApi(page.request, table.keeperBearer, campaignId, table.prepared.sceneId, [table.harveyId, table.lucyId])
+      await table.harvey.page.goto(`/campaigns/${campaignId}/active-scene`)
+      await table.lucy.page.goto(`/campaigns/${campaignId}/active-scene`)
+      await page.goto(activeScenePath(campaignId))
+      await requestRollViaUi(page, { target: 'Listen', investigators: [HARVEY] })
+      await rollMythosUntilPushable(page, table.harvey.page, HARVEY)
+      await rollMythosUntilPushable(page, table.lucy.page, LUCY)
+      await askToPushViaUi(table.harvey.page, 'Cthulhu Mythos', 'I search every shelf through the night.')
+      await askToPushViaUi(table.lucy.page, 'Cthulhu Mythos', 'I press my ear to the door.')
+      await approvePushViaUi(page, LUCY, 'Cthulhu Mythos', 0, 0)
+
+      await test.step('SPL-UX-70, RR-UX-31: the finish dialog names the rolls to cancel and the push to decline', async () => {
+        await page.getByRole('button', { name: 'Finish Scene' }).click()
+        await expect(page.getByRole('alertdialog')).toContainText('2 waiting rolls will be cancelled.')
+        await expect(page.getByRole('alertdialog')).toContainText('1 push will be declined.')
+        await page.getByRole('alertdialog').getByRole('button', { name: 'Finish Scene' }).click()
+        await expect(pageStatus(page)).toHaveText(`${PREPARED.firstSceneTitle} finished.`)
+      })
+
+      await test.step('RR-UX-32: the asked card shows Push declined and the pushed card shows Cancelled with its first result', async () => {
+        await openWall(page, campaignId)
+        const mythosCard = rollRequestCard(page, 'Cthulhu Mythos')
+        await expect(mythosCard.getByText('Push declined')).toBeVisible()
+        await expect(mythosCard.getByText('Cancelled', { exact: true })).toBeVisible()
+        await expect(rollRequestCard(page, 'Listen').getByText('Cancelled', { exact: true })).toBeVisible()
+      })
+
+      await test.step('RR-UX-33: the Scene History shows the declined and the cancelled-after-push rows', async () => {
+        await page.goto(`/campaigns/${campaignId}/scene-history`)
+        await expect(page.getByRole('article', { name: 'Cthulhu Mythos roll' }).getByText('Push declined')).toBeVisible()
+        await expect(page.getByRole('article', { name: 'Cthulhu Mythos roll' }).getByText('Cancelled', { exact: true })).toBeVisible()
+      })
+    } finally {
+      await closeTable(table)
+    }
+  })
 })
 
-/** The Keeper's Active Scene Roll Requests: the row ids, snapshot targets, and results the card asserts on. */
-interface KeeperRow {
+/**
+ * Requests a Cthulhu Mythos roll with 2 Penalty Dice for the named Player, rolls it from their panel, and returns
+ * when the panel offers the push. Cthulhu Mythos starts at target 0 (project_ruleset.md section 4.7), so only a
+ * Critical 01 succeeds and the roll fails in practice; the request repeats at most 3 times when a roll succeeds
+ * anyway. This deviates from spec.md Scenario "A Player asks to push a failed roll and the Keeper approves", which
+ * names Library Use: Library Use can succeed, while Mythos with 2 Penalty Dice fails dependably.
+ */
+async function rollMythosUntilPushable(page: Page, harveyPage: Page, name: string = HARVEY): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await requestRollViaUi(page, { target: 'Cthulhu Mythos', investigators: [{ name, penaltyDice: 2 }] })
+    await rollFromPanel(harveyPage, 'Roll Cthulhu Mythos')
+    const status = waitingRollsPanel(harveyPage).getByRole('status')
+    await expect(status).toContainText(/^You rolled \d+: .+\./)
+    if ((await status.textContent())?.includes('You can ask to push it.') === true) {
+      return
+    }
+  }
+
+  throw new Error('Cthulhu Mythos never failed in 3 attempts')
+}
+
+/** The Keeper's Active Scene Roll Requests: the row ids, snapshot targets, and results the card asserts on. */interface KeeperRow {
   investigatorId: string
   targetValue: number
   status: string

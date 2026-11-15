@@ -77,7 +77,7 @@ describe('queryKeysForTopics', () => {
   })
 
   it('refetches only the own waiting rolls for the myRequestedRolls topic (RR-UX-8)', () => {
-    expect(queryKeysForTopics('c1', ['myRequestedRolls'])).toEqual([rollRequestQueryKeys.mine('c1')])
+    expect(queryKeysForTopics('c1', ['myRequestedRolls'])).toEqual([rollRequestQueryKeys.mine('c1'), rollRequestQueryKeys.pushable('c1')])
   })
 
   it('ignores topics this client does not know yet, so a newer server never breaks it', () => {

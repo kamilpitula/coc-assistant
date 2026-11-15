@@ -185,6 +185,37 @@ export async function rollFromPanel(page: Page, name: string | RegExp): Promise<
   await waitingRollsPanel(page).getByRole('button', { name }).click()
 }
 
+/** Asks to push the Player's failed roll from "Rolls you can push" and waits for the Push asked row (ux.md RR-UX-26). */
+export async function askToPushViaUi(page: Page, target: string, justification: string): Promise<void> {
+  const panel = waitingRollsPanel(page)
+  await panel.getByRole('button', { name: new RegExp(`^Push ${target} roll`) }).click()
+  await panel.getByRole('textbox', { name: /Tell the Keeper how/ }).fill(justification)
+  await panel.getByRole('button', { name: 'Ask the Keeper' }).click()
+  await expect(panel.getByText('Push asked - waiting for the Keeper')).toBeVisible()
+}
+
+/** Approves the push from the Keeper's "Waiting rolls" with the dice and waits for the Pushed row (ux.md RR-UX-27). */
+export async function approvePushViaUi(page: Page, investigatorName: string, target: string, bonusDice: number, penaltyDice: number): Promise<void> {
+  const list = waitingRolls(page)
+  await list.getByRole('button', { name: `Approve push of ${target} for ${investigatorName}` }).click()
+  const group = list.getByRole('group', { name: `Dice for ${investigatorName}'s pushed roll` })
+  await group.getByRole('combobox', { name: 'Bonus Dice' }).click()
+  await page.getByRole('option', { name: String(bonusDice), exact: true }).click()
+  if (penaltyDice !== 0) {
+    await group.getByRole('combobox', { name: 'Penalty Dice' }).click()
+    await page.getByRole('option', { name: String(penaltyDice), exact: true }).click()
+  }
+  await group.getByRole('button', { name: `Confirm approval of ${target} push for ${investigatorName}` }).click()
+  await expect(list.getByRole('button', { name: `Roll pushed ${target} for ${investigatorName}` })).toBeVisible()
+}
+
+/** Declines the push from the Keeper's "Waiting rolls" and waits for the declined status (ux.md RR-UX-28). */
+export async function declinePushViaUi(page: Page, investigatorName: string, target: string): Promise<void> {
+  const list = waitingRolls(page)
+  await list.getByRole('button', { name: `Decline push of ${target} for ${investigatorName}` }).click()
+  await expect(list.getByRole('status')).toHaveText(`${investigatorName}'s push was declined.`)
+}
+
 /** Rolls a Waiting row for this Investigator from the Keeper's "Waiting rolls" (accessible name "Roll {target} for {name}"). */
 export async function rollForViaUi(page: Page, investigatorName: string, target: string): Promise<void> {
   await waitingRolls(page).getByRole('button', { name: `Roll ${target} for ${investigatorName}` }).click()

@@ -1,9 +1,10 @@
 import { Check, X } from 'lucide-react'
-import { useId } from 'react'
+import { useId, type ReactNode } from 'react'
 
 import { WallEntryTime } from '@/campaign-play/components/wall-entry-time/wall-entry-time'
 import { useRollRequest } from '@/roll-requests/hooks/useRollRequests'
 import { describeDice, describeFaces, describeOutcome, describeTargets, rollTargetName } from '@/roll-requests/services/rollRequestPresentation'
+import { requestedRollPushState, type RequestedRollPushState } from '@/roll-requests/services/requestedRollPushState'
 import type { CompletedRoll, RequestedRoll, RollRequest } from '@/roll-requests/types/RollRequest'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
@@ -99,6 +100,20 @@ function CardHeader({ request, headingId, requestedByDisplayName }: { request: R
 }
 
 function RequestedRollRow({ roll, hidden }: { roll: RequestedRoll; hidden: boolean }) {
+  // Strategy from the client push state (specs/roll-requests/ux.md section 19.3): push rows render their
+  // justification and both results; every other row renders as before.
+  const state = requestedRollPushState(roll)
+  const pushView: Partial<Record<RequestedRollPushState, ReactNode>> = {
+    PushAsked: <PushAskedRow roll={roll} hidden={hidden} />,
+    Pushed: <PushedRow roll={roll} hidden={hidden} />,
+    PushedRolled: <PushedRolledRow roll={roll} hidden={hidden} />,
+    PushDeclined: <PushDeclinedRow roll={roll} hidden={hidden} />,
+    CancelledAfterPush: <CancelledAfterPushRow roll={roll} hidden={hidden} />,
+  }
+  return pushView[state] ?? <PlainRequestedRollRow roll={roll} hidden={hidden} />
+}
+
+function PlainRequestedRollRow({ roll, hidden }: { roll: RequestedRoll; hidden: boolean }) {
   const result = roll.rolls[0]
 
   return (
@@ -109,10 +124,7 @@ function RequestedRollRow({ roll, hidden }: { roll: RequestedRoll; hidden: boole
           <RollStatus roll={roll} result={result} />
         </span>
       </div>
-      <p className="text-sm text-muted-foreground">
-        {roll.difficulty} . {describeDice(roll.bonusDice, roll.penaltyDice)} . target {describeTargets(roll.targetValue)}
-        {roll.usesBaseValue && ' (base value)'}
-      </p>
+      {targetLine(roll)}
       {result?.percentile && <p className="text-sm">{describeFaces(result.percentile)}</p>}
       {result?.rolledBy && <p className="text-sm">Rolled by {result.rolledBy}{hidden ? ' (hidden roll)' : ''}</p>}
       {result?.earnsExperienceCheck === true && <p className="text-sm text-success">Experience check earned</p>}
@@ -144,5 +156,131 @@ function RollStatus({ roll, result }: { roll: RequestedRoll; result: CompletedRo
       <X aria-hidden="true" className="size-4" />
       {result.percentile.result}: {outcome}
     </span>
+  )
+}
+
+/** The first result's record of a pushed or declined row; the pushed roll's record is found by its marker. */
+function firstRecord(roll: RequestedRoll): CompletedRoll | undefined {
+  return roll.rolls.find((record) => !record.isPushed) ?? roll.rolls[0]
+}
+
+function pushedRecord(roll: RequestedRoll): CompletedRoll | undefined {
+  return roll.rolls.find((record) => record.isPushed)
+}
+
+function pushDiceLine(roll: RequestedRoll): string {
+  return `Pushed roll: ${roll.difficulty} . ${describeDice(roll.pushBonusDice ?? roll.bonusDice, roll.pushPenaltyDice ?? roll.penaltyDice)}`
+}
+
+function recordLines(record: CompletedRoll | undefined, hidden: boolean) {
+  return (
+    <>
+      {record?.percentile && <p className="text-sm">{describeFaces(record.percentile)}</p>}
+      {record?.rolledBy && <p className="text-sm">Rolled by {record.rolledBy}{hidden ? ' (hidden roll)' : ''}</p>}
+      {record?.earnsExperienceCheck === true && <p className="text-sm text-success">Experience check earned</p>}
+    </>
+  )
+}
+
+function justificationLine(roll: RequestedRoll) {
+  return <p className="text-sm break-words whitespace-pre-line">Push justification: &quot;{roll.pushJustification}&quot;</p>
+}
+
+function rowHeader(name: string, status: ReactNode) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="font-bold break-words">{name}</span>
+      <span className="ml-auto">{status}</span>
+    </div>
+  )
+}
+
+function targetLine(roll: RequestedRoll) {
+  return (
+    <p className="text-sm text-muted-foreground">
+      {roll.difficulty} . {describeDice(roll.bonusDice, roll.penaltyDice)} . target {describeTargets(roll.targetValue)}
+      {roll.usesBaseValue && ' (base value)'}
+    </p>
+  )
+}
+
+function PushAskedRow({ roll, hidden }: { roll: RequestedRoll; hidden: boolean }) {
+  const result = firstRecord(roll)
+  return (
+    <li className="flex flex-col gap-1 border-t pt-2">
+      {rowHeader(roll.investigatorName ?? 'Unnamed Investigator', <span className="text-warning">Push asked</span>)}
+      {targetLine(roll)}
+      {recordLines(result, hidden)}
+      {justificationLine(roll)}
+    </li>
+  )
+}
+
+function PushedRow({ roll, hidden }: { roll: RequestedRoll; hidden: boolean }) {
+  const result = firstRecord(roll)
+  return (
+    <li className="flex flex-col gap-1 border-t pt-2">
+      {rowHeader(roll.investigatorName ?? 'Unnamed Investigator', <span className="text-warning">Pushed - waiting for the pushed roll</span>)}
+      {targetLine(roll)}
+      {recordLines(result, hidden)}
+      {justificationLine(roll)}
+      <p className="text-sm">{pushDiceLine(roll)}</p>
+    </li>
+  )
+}
+
+function outcomeText(record: CompletedRoll | undefined, roll: RequestedRoll): string {
+  if (record?.percentile === null || record?.percentile === undefined) {
+    return `${record?.result ?? 'unknown'}`
+  }
+  return `${record.result}: ${describeOutcome(record.percentile.successLevel, record.percentile.isSuccess, roll.difficulty)}`
+}
+
+function PushedRolledRow({ roll, hidden }: { roll: RequestedRoll; hidden: boolean }) {
+  const first = firstRecord(roll)
+  const pushed = pushedRecord(roll)
+  return (
+    <li className="flex flex-col gap-1 border-t pt-2">
+      {rowHeader(
+        roll.investigatorName ?? 'Unnamed Investigator',
+        <span className="inline-flex items-center gap-1">
+          {pushed?.percentile?.isSuccess === true ? <Check aria-hidden="true" className="size-4" /> : <X aria-hidden="true" className="size-4" />}
+          {outcomeText(pushed, roll)}
+        </span>,
+      )}
+      <p className="text-sm">
+        First roll: {outcomeText(first, roll)}
+      </p>
+      {recordLines(first, hidden)}
+      {justificationLine(roll)}
+      <p className="text-sm">{pushDiceLine(roll)}</p>
+      {recordLines(pushed, hidden)}
+    </li>
+  )
+}
+
+function PushDeclinedRow({ roll, hidden }: { roll: RequestedRoll; hidden: boolean }) {
+  const result = firstRecord(roll)
+  return (
+    <li className="flex flex-col gap-1 border-t pt-2">
+      {rowHeader(roll.investigatorName ?? 'Unnamed Investigator', <RollStatus roll={roll} result={result} />)}
+      {targetLine(roll)}
+      {recordLines(result, hidden)}
+      {justificationLine(roll)}
+      <p className="text-sm text-muted-foreground">Push declined</p>
+    </li>
+  )
+}
+
+function CancelledAfterPushRow({ roll, hidden }: { roll: RequestedRoll; hidden: boolean }) {
+  const result = firstRecord(roll)
+  return (
+    <li className="flex flex-col gap-1 border-t pt-2">
+      {rowHeader(roll.investigatorName ?? 'Unnamed Investigator', <span className="text-muted-foreground">Cancelled</span>)}
+      {targetLine(roll)}
+      {recordLines(result, hidden)}
+      {justificationLine(roll)}
+      <p className="text-sm text-muted-foreground">The pushed roll was cancelled.</p>
+    </li>
   )
 }

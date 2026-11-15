@@ -10,7 +10,7 @@ const props = {
   sceneTitle: 'The Corbitt House',
   pending: false,
   failed: false,
-  waitingRollCount: 0,
+  closingRolls: { cancelled: 0, declined: 0 },
   onConfirm: vi.fn(),
   onCancel: vi.fn(),
   onCloseAutoFocus: vi.fn(),
@@ -26,18 +26,27 @@ describe('FinishSceneDialog', () => {
   })
 
   it('names how many waiting rolls finishing will cancel (SPL-UX-70, SPL-A11Y-27)', () => {
-    const { rerender } = render(<FinishSceneDialog {...props} waitingRollCount={2} />)
+    const { rerender } = render(<FinishSceneDialog {...props} closingRolls={{ cancelled: 2, declined: 0 }} />)
 
     expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(/2 waiting rolls will be cancelled\./)
 
-    rerender(<FinishSceneDialog {...props} waitingRollCount={1} />)
+    rerender(<FinishSceneDialog {...props} closingRolls={{ cancelled: 1, declined: 0 }} />)
     expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(/1 waiting roll will be cancelled\./)
   })
 
-  it('warns in general while the count is unknown (SPL-UX-70)', () => {
-    render(<FinishSceneDialog {...props} waitingRollCount={undefined} />)
+  it('adds the declined-push clause only when it is above 0 (RR-UX-31)', () => {
+    const { rerender } = render(<FinishSceneDialog {...props} closingRolls={{ cancelled: 2, declined: 1 }} />)
 
-    expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(/Any waiting rolls will be cancelled\./)
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(/2 waiting rolls will be cancelled\. 1 push will be declined\./)
+
+    rerender(<FinishSceneDialog {...props} closingRolls={{ cancelled: 0, declined: 2 }} />)
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(/2 pushes will be declined\./)
+  })
+
+  it('warns in general while the count is unknown (SPL-UX-70)', () => {
+    render(<FinishSceneDialog {...props} closingRolls={undefined} />)
+
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(/Any waiting rolls will be cancelled and any asked pushes declined\./)
   })
 
   it('confirms with Finish Scene and cancels with Cancel', async () => {

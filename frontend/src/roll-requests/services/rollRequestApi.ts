@@ -36,6 +36,7 @@ const completedRollSchema = z.strictObject({
   rolledAt: z.string().nullable(),
   percentile: percentileSchema.nullable(),
   earnsExperienceCheck: z.boolean().nullable(),
+  isPushed: z.boolean(),
 })
 
 const requestedRollSchema = z.strictObject({
@@ -47,7 +48,11 @@ const requestedRollSchema = z.strictObject({
   difficulty: z.enum(['Regular', 'Hard', 'Extreme']),
   bonusDice: z.number().int(),
   penaltyDice: z.number().int(),
-  status: z.enum(['Waiting', 'Rolled', 'Cancelled']),
+  status: z.enum(['Waiting', 'Rolled', 'PushAsked', 'Pushed', 'Cancelled']),
+  pushJustification: z.string().nullable(),
+  pushBonusDice: z.number().int().nullable(),
+  pushPenaltyDice: z.number().int().nullable(),
+  canBePushed: z.boolean(),
   rolls: z.array(completedRollSchema),
 })
 
@@ -82,6 +87,7 @@ export const rollRequestQueryKeys = {
   detail: (campaignId: string, rollRequestId: string) => ['campaigns', campaignId, 'roll-requests', rollRequestId] as const,
   activeScene: (campaignId: string) => ['campaigns', campaignId, 'roll-requests', 'active-scene'] as const,
   mine: (campaignId: string) => ['campaigns', campaignId, 'roll-requests', 'mine'] as const,
+  pushable: (campaignId: string) => ['campaigns', campaignId, 'roll-requests', 'pushable'] as const,
 }
 
 /** The API refused the request (400): every field message joined, for the form's Alert (specs/roll-requests/ux.md section 3). */
@@ -113,6 +119,30 @@ export class RequestedRollGoneError extends Error {
   constructor() {
     super('The roll is gone or no longer visible')
     this.name = 'RequestedRollGoneError'
+  }
+}
+
+/** The API refused the push justification (400): every field message joined, for the ask form's Alert (specs/roll-requests/ux.md section 19.1). */
+export class AskPushRefusedError extends Error {
+  constructor(reasons: string) {
+    super(`We couldn't ask for that push: ${reasons}.`)
+    this.name = 'AskPushRefusedError'
+  }
+}
+
+/** The API answered 409 to an ask with anything but "No Scene is Active": the roll can't be pushed any more. */
+export class PushNotAllowedError extends Error {
+  constructor() {
+    super("The roll can't be pushed any more")
+    this.name = 'PushNotAllowedError'
+  }
+}
+
+/** The API answered 409 to a push ruling with the conflict title: the push was already ruled on elsewhere. */
+export class PushAlreadyRuledError extends Error {
+  constructor() {
+    super('The push was already ruled on')
+    this.name = 'PushAlreadyRuledError'
   }
 }
 
@@ -206,6 +236,22 @@ export async function getMyRequestedRolls(accessToken: string, campaignId: strin
   return waitingRollsSchema.parse(await response.json())
 }
 
+/** Calls GET .../investigators/mine/pushable-rolls (Player only): the rolls the caller can push now, plus Push asked ones; null without an Approved Investigator (404). */
+export async function getMyPushableRolls(accessToken: string, campaignId: string): Promise<WaitingRolls | null> {
+  const response = await apiFetch(`/api/campaigns/${campaignId}/investigators/mine/pushable-rolls`, {
+    headers: authHeaders(accessToken),
+  })
+
+  if (response.status === 404) {
+    return null
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to load the rolls you can push (${response.status})`)
+  }
+
+  return waitingRollsSchema.parse(await response.json())
+}
+
 /**
  * Calls POST .../roll-requests/{id}/requested-rolls/{investigatorId}/roll: rolls the Requested Roll with the server's
  * dice and returns it. 409 means the roll was already made, or already cancelled, unless the Scene is no longer Active.
@@ -253,6 +299,102 @@ async function parseRequestedRoll(response: Response, verb: 'roll' | 'cancel'): 
       throw new NoActiveSceneError()
     }
     throw title === CANCELLED_TITLE ? new RequestedRollCancelledError() : new AlreadyRolledError()
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to ${verb} (${response.status})`)
+  }
+
+  return requestedRollSchema.parse(await response.json())
+}
+
+/**
+ * Calls POST .../requested-rolls/{investigatorId}/push (Player only): asks to push the failed, pushable roll with a
+ * justification and returns it (specs/roll-requests/ux.md section 19.1). 404 leaves without a message; 400 carries
+ * the refusal; 409 means the roll can't be pushed any more, unless the Scene is no longer Active.
+ */
+export async function askToPush(
+  accessToken: string,
+  campaignId: string,
+  rollRequestId: string,
+  investigatorId: string,
+  justification: string,
+): Promise<RequestedRoll> {
+  const response = await apiFetch(`/api/campaigns/${campaignId}/roll-requests/${rollRequestId}/requested-rolls/${investigatorId}/push`, {
+    method: 'POST',
+    headers: authHeaders(accessToken),
+    body: JSON.stringify({ justification }),
+  })
+
+  if (response.status === 404) {
+    throw new RequestedRollGoneError()
+  }
+  if (response.status === 400) {
+    throw new AskPushRefusedError(await refusalReasons(response))
+  }
+  if (response.status === 409) {
+    const title = await problemTitle(response)
+    if (title === NO_ACTIVE_SCENE_TITLE) {
+      throw new NoActiveSceneError()
+    }
+    throw title === CANCELLED_TITLE ? new RequestedRollCancelledError() : new PushNotAllowedError()
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to ask for the push (${response.status})`)
+  }
+
+  return requestedRollSchema.parse(await response.json())
+}
+
+/**
+ * Calls POST .../push/approve (Keeper only): approves the push with the Keeper's dice and returns the Pushed roll
+ * (specs/roll-requests/ux.md section 19.2). 409 names the refusal; a 400 or 5xx asks to try again.
+ */
+export async function approvePush(
+  accessToken: string,
+  campaignId: string,
+  rollRequestId: string,
+  investigatorId: string,
+  bonusDice: number,
+  penaltyDice: number,
+): Promise<RequestedRoll> {
+  const response = await apiFetch(`/api/campaigns/${campaignId}/roll-requests/${rollRequestId}/requested-rolls/${investigatorId}/push/approve`, {
+    method: 'POST',
+    headers: authHeaders(accessToken),
+    body: JSON.stringify({ bonusDice, penaltyDice }),
+  })
+
+  return parsePushRuling(response, 'approve')
+}
+
+/**
+ * Calls POST .../push/decline (Keeper only): declines the push and returns the Rolled roll
+ * (specs/roll-requests/ux.md section 19.2). 409 names the refusal; a 400 or 5xx asks to try again.
+ */
+export async function declinePush(
+  accessToken: string,
+  campaignId: string,
+  rollRequestId: string,
+  investigatorId: string,
+): Promise<RequestedRoll> {
+  const response = await apiFetch(`/api/campaigns/${campaignId}/roll-requests/${rollRequestId}/requested-rolls/${investigatorId}/push/decline`, {
+    method: 'POST',
+    headers: authHeaders(accessToken),
+  })
+
+  return parsePushRuling(response, 'decline')
+}
+
+/** Reads a push ruling response: 404 leaves without a message, 409 names the refusal, anything else throws. */
+async function parsePushRuling(response: Response, verb: 'approve' | 'decline'): Promise<RequestedRoll> {
+  if (response.status === 404) {
+    throw new RequestedRollGoneError()
+  }
+  if (response.status === 409) {
+    const title = await problemTitle(response)
+    if (title === NO_ACTIVE_SCENE_TITLE) {
+      throw new NoActiveSceneError()
+    }
+    throw title === CANCELLED_TITLE ? new RequestedRollCancelledError() : new PushAlreadyRuledError()
   }
   if (!response.ok) {
     throw new Error(`Failed to ${verb} (${response.status})`)

@@ -3,13 +3,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import { useAccessToken } from '@/shared/hooks/useAccessToken'
 import {
+  approvePush,
   cancelRequestedRoll,
+  declinePush,
   getActiveSceneRollRequests,
+  getMyPushableRolls,
   getMyRequestedRolls,
   getRollRequest,
   requestRoll,
   rollRequestQueryKeys,
   rollRequestedRoll,
+  askToPush,
 } from '@/roll-requests/services/rollRequestApi'
 import type { CreateRollRequestInput, RollRequest } from '@/roll-requests/types/RollRequest'
 
@@ -42,6 +46,17 @@ export function useMyRequestedRolls(campaignId: string, enabled = true) {
   return useQuery({
     queryKey: rollRequestQueryKeys.mine(campaignId),
     queryFn: async () => getMyRequestedRolls(await getAccessToken(), campaignId),
+    enabled,
+  })
+}
+
+/** The calling Player's pushable Requested Rolls: failed rolls they can push now, plus Push asked ones. */
+export function useMyPushableRolls(campaignId: string, enabled = true) {
+  const getAccessToken = useAccessToken()
+
+  return useQuery({
+    queryKey: rollRequestQueryKeys.pushable(campaignId),
+    queryFn: async () => getMyPushableRolls(await getAccessToken(), campaignId),
     enabled,
   })
 }
@@ -90,6 +105,51 @@ export function useCancelRequestedRoll(campaignId: string) {
   return useMutation({
     mutationFn: async ({ rollRequestId, investigatorId }: { rollRequestId: string; investigatorId: string }) =>
       cancelRequestedRoll(await getAccessToken(), campaignId, rollRequestId, investigatorId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: rollRequestQueryKeys.all(campaignId) }),
+  })
+}
+
+/**
+ * Asks to push a failed, pushable roll (specs/roll-requests/ux.md section 19.1). The card and both Player lists
+ * refetch at once.
+ */
+export function useAskToPush(campaignId: string) {
+  const getAccessToken = useAccessToken()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ rollRequestId, investigatorId, justification }: { rollRequestId: string; investigatorId: string; justification: string }) =>
+      askToPush(await getAccessToken(), campaignId, rollRequestId, investigatorId, justification),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: rollRequestQueryKeys.all(campaignId) }),
+  })
+}
+
+/**
+ * Approves a push with the Keeper's dice (specs/roll-requests/ux.md section 19.2). The card, the Waiting rolls, and
+ * the Player's lists read the same queries, so every list refetches at once.
+ */
+export function useApprovePush(campaignId: string) {
+  const getAccessToken = useAccessToken()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ rollRequestId, investigatorId, bonusDice, penaltyDice }: { rollRequestId: string; investigatorId: string; bonusDice: number; penaltyDice: number }) =>
+      approvePush(await getAccessToken(), campaignId, rollRequestId, investigatorId, bonusDice, penaltyDice),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: rollRequestQueryKeys.all(campaignId) }),
+  })
+}
+
+/**
+ * Declines a push (specs/roll-requests/ux.md section 19.2). The card shows the declined row, so the same queries
+ * refetch as after an approval.
+ */
+export function useDeclinePush(campaignId: string) {
+  const getAccessToken = useAccessToken()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ rollRequestId, investigatorId }: { rollRequestId: string; investigatorId: string }) =>
+      declinePush(await getAccessToken(), campaignId, rollRequestId, investigatorId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: rollRequestQueryKeys.all(campaignId) }),
   })
 }

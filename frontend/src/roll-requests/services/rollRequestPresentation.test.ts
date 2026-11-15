@@ -100,6 +100,10 @@ describe('hiddenRollStatus', () => {
       bonusDice: 0,
       penaltyDice: 0,
       status: 'Rolled',
+      pushJustification: null,
+      pushBonusDice: null,
+      pushPenaltyDice: null,
+      canBePushed: false,
       rolls: [
         {
           dice: '1D100',
@@ -109,6 +113,7 @@ describe('hiddenRollStatus', () => {
           rolledAt: '2026-11-13T19:45:00Z',
           percentile: { unitsFace: 4, tensFaces: [30], keptTens: 30, result, successLevel, isSuccess },
           earnsExperienceCheck: false,
+          isPushed: false,
         },
       ],
     }

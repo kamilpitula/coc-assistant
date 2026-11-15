@@ -7,12 +7,14 @@ import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
 import { rollRequestQueryKeys } from '@/roll-requests/services/rollRequestApi'
 import type { RollRequest } from '@/roll-requests/types/RollRequest'
 
-import { useMyRequestedRolls, useRequestRoll, useRollRequestedRoll } from './useRollRequests'
+import { useAskToPush, useMyPushableRolls, useMyRequestedRolls, useRequestRoll, useRollRequestedRoll } from './useRollRequests'
 
-const { mockGetMine, mockRequestRoll, mockRollRequestedRoll } = vi.hoisted(() => ({
+const { mockGetMine, mockGetPushable, mockRequestRoll, mockRollRequestedRoll, mockAskToPush } = vi.hoisted(() => ({
   mockGetMine: vi.fn(),
+  mockGetPushable: vi.fn(),
   mockRequestRoll: vi.fn(),
   mockRollRequestedRoll: vi.fn(),
+  mockAskToPush: vi.fn(),
 }))
 
 vi.mock('@/shared/hooks/useAccessToken', () => ({ useAccessToken: () => async () => 'token' }))
@@ -20,8 +22,10 @@ vi.mock('@/shared/hooks/useAccessToken', () => ({ useAccessToken: () => async ()
 vi.mock('@/roll-requests/services/rollRequestApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/roll-requests/services/rollRequestApi')>()),
   getMyRequestedRolls: mockGetMine,
+  getMyPushableRolls: mockGetPushable,
   requestRoll: mockRequestRoll,
   rollRequestedRoll: mockRollRequestedRoll,
+  askToPush: mockAskToPush,
 }))
 
 function setup() {
@@ -94,5 +98,29 @@ describe('roll request queries and mutations', () => {
     expect(mockRollRequestedRoll).toHaveBeenCalledWith('token', 'c1', 'r1', 'i1')
     expect(invalidate).toHaveBeenCalledWith({ queryKey: rollRequestQueryKeys.all('c1') })
     expect(invalidate).not.toHaveBeenCalledWith({ queryKey: campaignQueryKeys.wall('c1') })
+  })
+
+  it('reads the calling Player pushable rolls through the pushable key', async () => {
+    mockGetPushable.mockResolvedValue({ investigatorName: 'Harvey Walters', rolls: [] })
+    const { wrapper } = setup()
+
+    const { result } = renderHook(() => useMyPushableRolls('c1'), { wrapper })
+
+    await waitFor(() => expect(result.current.data).toEqual({ investigatorName: 'Harvey Walters', rolls: [] }))
+    expect(mockGetPushable).toHaveBeenCalledWith('token', 'c1')
+  })
+
+  it('asks to push with the justification and refetches every Roll Request query', async () => {
+    mockAskToPush.mockResolvedValue({ investigatorId: 'i1', status: 'PushAsked', rolls: [] })
+    const { queryClient, wrapper } = setup()
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useAskToPush('c1'), { wrapper })
+
+    await act(async () => {
+      await result.current.mutateAsync({ rollRequestId: 'r1', investigatorId: 'i1', justification: 'Trying again.' })
+    })
+
+    expect(mockAskToPush).toHaveBeenCalledWith('token', 'c1', 'r1', 'i1', 'Trying again.')
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: rollRequestQueryKeys.all('c1') })
   })
 })

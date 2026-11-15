@@ -21,6 +21,10 @@ function waitingRoll(rollRequestId: string, investigatorId: string, minute = 0, 
     bonusDice: 0,
     penaltyDice: 0,
     status: 'Waiting',
+    pushJustification: null,
+    pushBonusDice: null,
+    pushPenaltyDice: null,
+    canBePushed: false,
     rolls: [],
   }
   return { rollRequestId, target, message: null, createdAt: new Date(Date.UTC(2026, 9, 16, 19, minute)).toISOString(), roll }

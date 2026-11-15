@@ -16,7 +16,7 @@ export interface PercentileOutcome {
   isSuccess: boolean
 }
 
-/** One rolled result: the dice, the faces, who rolled by display name, when, and the percentile resolution. */
+/** One rolled result: the dice, the faces, who rolled by display name, when, the percentile resolution, and whether it is the pushed roll's record. */
 export interface CompletedRoll {
   dice: string
   result: number
@@ -25,13 +25,14 @@ export interface CompletedRoll {
   rolledAt: string | null
   percentile: PercentileOutcome | null
   earnsExperienceCheck: boolean | null
+  isPushed: boolean
 }
 
-export const REQUESTED_ROLL_STATUSES = ['Waiting', 'Rolled', 'Cancelled'] as const
+export const REQUESTED_ROLL_STATUSES = ['Waiting', 'Rolled', 'PushAsked', 'Pushed', 'Cancelled'] as const
 
 export type RequestedRollStatus = (typeof REQUESTED_ROLL_STATUSES)[number]
 
-/** One Requested Roll: the snapshot target value, the effective Difficulty and dice, the status, and the result once rolled. */
+/** One Requested Roll: the snapshot target value, the effective Difficulty and dice, the status, the push fields, whether it can be pushed, and the results once rolled. */
 export interface RequestedRoll {
   investigatorId: string
   investigatorName: string | null
@@ -42,6 +43,10 @@ export interface RequestedRoll {
   bonusDice: number
   penaltyDice: number
   status: RequestedRollStatus
+  pushJustification: string | null
+  pushBonusDice: number | null
+  pushPenaltyDice: number | null
+  canBePushed: boolean
   rolls: CompletedRoll[]
 }
 
@@ -60,6 +65,9 @@ export interface RollRequest {
 
 /** A Roll Request's message is at most 2000 characters (specs/roll-requests/ux.md section 3). */
 export const ROLL_REQUEST_MESSAGE_MAX_LENGTH = 2000
+
+/** A push justification is at most 2000 characters (specs/roll-requests/ux.md section 19.1). */
+export const PUSH_JUSTIFICATION_MAX_LENGTH = 2000
 
 /** One Waiting Requested Roll with the Roll Request's target, message, and creation time. */
 export interface WaitingRequestedRoll {

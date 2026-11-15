@@ -1,11 +1,13 @@
 import type { RollRequest } from '@/roll-requests/types/RollRequest'
 
 /**
- * A Roll Request with its Cancelled rows removed, or null when no rows are left (specs/roll-requests/ux.md RR-UX-24).
- * The Scene History host filters before rendering; the card view renders whatever rows it is given.
+ * A Roll Request with its Cancelled rows removed, or null when no rows are left (specs/roll-requests/ux.md
+ * RR-UX-24 as amended by RR-UX-33): a Cancelled row with a Roll Record (a Pushed roll cancelled at Scene exit)
+ * stays, so the card keeps its first result. The Scene History host filters before rendering; the card view renders
+ * whatever rows it is given.
  */
 export function withoutCancelledRolls(request: RollRequest): RollRequest | null {
-  const kept = request.requestedRolls.filter((roll) => roll.status !== 'Cancelled')
+  const kept = request.requestedRolls.filter((roll) => roll.status !== 'Cancelled' || roll.rolls.length > 0)
   return kept.length === 0 ? null : { ...request, requestedRolls: kept }
 }
 

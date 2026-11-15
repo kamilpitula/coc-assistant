@@ -64,4 +64,51 @@ export const Waiting: Story = {
   },
 }
 
+export const PushAskedAndPushed: Story = {
+  args: {
+    requests: [
+      requestWith('r1', 'Spot Hidden', [
+        {
+          ...waitingRoll('i1', 'Harvey Walters'),
+          status: 'PushAsked',
+          pushJustification: 'I search every shelf.',
+          rolls: [
+            {
+              dice: '1D100',
+              result: 81,
+              faces: [80, 1],
+              rolledBy: 'Harvey Walters',
+              rolledAt: '2026-11-15T19:14:00Z',
+              percentile: { unitsFace: 1, tensFaces: [80], keptTens: 80, result: 81, successLevel: 'Failure', isSuccess: false },
+              earnsExperienceCheck: false,
+              isPushed: false,
+            },
+          ],
+        },
+      ]),
+      requestWith('r2', 'Listen', [
+        {
+          ...waitingRoll('i2', 'Lucy Ward'),
+          status: 'Pushed',
+          pushJustification: 'I press my ear to the door.',
+          pushBonusDice: 1,
+          pushPenaltyDice: 0,
+          rolls: [
+            {
+              dice: '1D100',
+              result: 62,
+              faces: [60, 2],
+              rolledBy: 'Lucy Ward',
+              rolledAt: '2026-11-15T19:16:00Z',
+              percentile: { unitsFace: 2, tensFaces: [60], keptTens: 60, result: 62, successLevel: 'Failure', isSuccess: false },
+              earnsExperienceCheck: false,
+              isPushed: false,
+            },
+          ],
+        },
+      ]),
+    ],
+  },
+}
+
 export const Empty: Story = { args: { requests: [] } }

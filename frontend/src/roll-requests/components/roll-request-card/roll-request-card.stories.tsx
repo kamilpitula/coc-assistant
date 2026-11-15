@@ -117,6 +117,47 @@ export const Hidden: Story = {
 
 export const Cancelled: Story = { render: () => hosted(requestWith([{ ...waiting, status: 'Cancelled' }])) }
 
+const failedPush = {
+  ...rolled,
+  status: 'Rolled',
+  pushJustification: 'I search every shelf.',
+  canBePushed: false,
+  rolls: [
+    {
+      dice: '1D100',
+      result: 81,
+      faces: [80, 1],
+      rolledBy: 'Harvey Walters',
+      rolledAt: '2026-11-15T19:14:00Z',
+      percentile: { unitsFace: 1, tensFaces: [80], keptTens: 80, result: 81, successLevel: 'Failure', isSuccess: false },
+      earnsExperienceCheck: false,
+      isPushed: false,
+    },
+  ],
+} as const
+
+const pushedRollRecord = {
+  ...failedPush.rolls[0],
+  result: 15,
+  faces: [10, 5],
+  percentile: { unitsFace: 5, tensFaces: [10], keptTens: 10, result: 15, successLevel: 'Hard', isSuccess: true },
+  isPushed: true,
+} as const
+
+export const PushAsked: Story = { render: () => hosted(requestWith([{ ...failedPush, status: 'PushAsked' }])) }
+
+export const Pushed: Story = {
+  render: () => hosted(requestWith([{ ...failedPush, status: 'Pushed', pushBonusDice: 1, pushPenaltyDice: 0 }])),
+}
+
+export const PushedRolled: Story = {
+  render: () => hosted(requestWith([{ ...failedPush, pushBonusDice: 1, pushPenaltyDice: 0, rolls: [failedPush.rolls[0], pushedRollRecord] }])),
+}
+
+export const PushDeclined: Story = { render: () => hosted(requestWith([failedPush])) }
+
+export const CancelledAfterPush: Story = { render: () => hosted(requestWith([{ ...failedPush, status: 'Cancelled' }])) }
+
 export const Loading: Story = { render: () => hosted(undefined) }
 
 export const LoadError: Story = { render: () => hosted(undefined, true) }
