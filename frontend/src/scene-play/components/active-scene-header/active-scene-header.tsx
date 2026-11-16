@@ -4,7 +4,7 @@ import { useRef, useState, type Ref } from 'react'
 import { SceneStatusBadge } from '@/scenario-preparation/components/scene-status-badge/scene-status-badge'
 import { SceneTimes } from '@/scenario-preparation/components/scene-times/scene-times'
 import { useActiveSceneRollRequests } from '@/roll-requests/hooks/useRollRequests'
-import { countWaitingRolls } from '@/roll-requests/services/waitingRollCount'
+import { countClosingRolls } from '@/roll-requests/services/waitingRollCount'
 import { FinishSceneDialog } from '@/scene-play/components/finish-scene-dialog/finish-scene-dialog'
 import { useFinishActiveScene } from '@/scene-play/hooks/useActiveScene'
 import { NoActiveSceneError } from '@/scene-play/services/activeSceneApi'
@@ -115,7 +115,7 @@ function FinishControl({ campaignId, title, onFinished, onAlreadyFinished }: Fin
         sceneTitle={title}
         pending={finish.isPending}
         failed={finish.isError && !(finish.error instanceof NoActiveSceneError)}
-        waitingRollCount={countWaitingRolls(waitingRolls.data)}
+        closingRolls={countClosingRolls(waitingRolls.data)}
         onConfirm={confirm}
         onCancel={() => {
           finish.reset()

@@ -252,6 +252,10 @@ public class ScenePlayAuthorizationMatrixTests : IClassFixture<IdentityApiFactor
             new("GET", campaign + "/investigators/mine/requested-rolls", NoBody, HttpStatusCode.NotFound),
             new("POST", campaign + "/roll-requests/{rollRequestId}/requested-rolls/{investigatorId}/roll", NoBody, HttpStatusCode.NotFound),
             new("POST", campaign + "/roll-requests/{rollRequestId}/requested-rolls/{investigatorId}/cancel", NoBody, HttpStatusCode.NotFound),
+            new("GET", campaign + "/investigators/mine/pushable-rolls", NoBody, HttpStatusCode.NotFound),
+            new("POST", campaign + "/roll-requests/{rollRequestId}/requested-rolls/{investigatorId}/push", Json(new { justification = "Trying again." }), HttpStatusCode.NotFound),
+            new("POST", campaign + "/roll-requests/{rollRequestId}/requested-rolls/{investigatorId}/push/approve", Json(new { bonusDice = 0, penaltyDice = 0 }), HttpStatusCode.NotFound),
+            new("POST", campaign + "/roll-requests/{rollRequestId}/requested-rolls/{investigatorId}/push/decline", NoBody, HttpStatusCode.NotFound),
         ];
     }
 }

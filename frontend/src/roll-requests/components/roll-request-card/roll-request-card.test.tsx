@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { RequestedRoll, RollRequest } from '@/roll-requests/types/RollRequest'
+import type { CompletedRoll, RequestedRoll, RollRequest } from '@/roll-requests/types/RollRequest'
 
 import { RollRequestCard, RollRequestCardView } from './roll-request-card'
 
@@ -22,6 +22,10 @@ function rolledRoll(overrides: Partial<RequestedRoll> = {}): RequestedRoll {
     bonusDice: 0,
     penaltyDice: 0,
     status: 'Rolled',
+    pushJustification: null,
+    pushBonusDice: null,
+    pushPenaltyDice: null,
+    canBePushed: false,
     rolls: [
       {
         dice: '1d100',
@@ -31,6 +35,7 @@ function rolledRoll(overrides: Partial<RequestedRoll> = {}): RequestedRoll {
         rolledAt: '2026-11-12T19:22:00Z',
         percentile: { unitsFace: 5, tensFaces: [20], keptTens: 20, result: 25, successLevel: 'Hard', isSuccess: true },
         earnsExperienceCheck: true,
+        isPushed: false,
       },
     ],
     ...overrides,
@@ -48,6 +53,10 @@ function waitingRoll(overrides: Partial<RequestedRoll> = {}): RequestedRoll {
     bonusDice: 0,
     penaltyDice: 1,
     status: 'Waiting',
+    pushJustification: null,
+    pushBonusDice: null,
+    pushPenaltyDice: null,
+    canBePushed: false,
     rolls: [],
     ...overrides,
   }
@@ -229,5 +238,90 @@ describe('RollRequestCardView', () => {
     expect(within(article).getByText('Something moves upstairs.')).toBeInTheDocument()
     expect(within(article).getByText('25: Hard success')).toBeInTheDocument()
     expect(within(article).getByText('Waiting')).toBeInTheDocument()
+  })
+})
+
+describe('push states on the card (RR-UX-29, RR-UX-30)', () => {
+  const firstRecord: CompletedRoll = {
+    dice: '1D100',
+    result: 81,
+    faces: [80, 1],
+    rolledBy: 'Harvey Walters',
+    rolledAt: '2026-11-15T19:14:00Z',
+    percentile: { unitsFace: 1, tensFaces: [80], keptTens: 80, result: 81, successLevel: 'Failure', isSuccess: false },
+    earnsExperienceCheck: false,
+    isPushed: false,
+  }
+
+  const pushedRecord: CompletedRoll = {
+    ...firstRecord,
+    result: 15,
+    faces: [10, 5],
+    percentile: { unitsFace: 5, tensFaces: [10], keptTens: 10, result: 15, successLevel: 'Hard', isSuccess: true },
+    earnsExperienceCheck: false,
+    isPushed: true,
+  }
+
+  function pushRoll(overrides: Partial<RequestedRoll> = {}): RequestedRoll {
+    return {
+      ...rolledRoll(),
+      status: 'PushAsked',
+      pushJustification: 'I search every shelf.',
+      pushBonusDice: null,
+      pushPenaltyDice: null,
+      canBePushed: false,
+      rolls: [firstRecord],
+      ...overrides,
+    }
+  }
+
+  function show(roll: RequestedRoll) {
+    render(<RollRequestCardView request={{ ...request, requestedRolls: [roll] }} requestedByDisplayName="Eleanor Hart" />)
+    return screen.getByRole('article', { name: 'Spot Hidden roll' })
+  }
+
+  it('shows Push asked with the first result and the justification, and no action', () => {
+    const article = show(pushRoll())
+
+    const row = within(article).getByText('Harvey Walters').closest('li') as HTMLElement
+    expect(within(row).getByText('Push asked')).toBeInTheDocument()
+    expect(within(row).getByText('Tens 80, units 1 = 81')).toBeInTheDocument()
+    expect(within(row).getByText('Push justification: "I search every shelf."')).toBeInTheDocument()
+    expect(within(article).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('shows Pushed waiting for the pushed roll with the approved dice', () => {
+    const article = show(pushRoll({ status: 'Pushed', pushBonusDice: 1, pushPenaltyDice: 0 }))
+
+    const row = within(article).getByText('Harvey Walters').closest('li') as HTMLElement
+    expect(within(row).getByText('Pushed - waiting for the pushed roll')).toBeInTheDocument()
+    expect(within(row).getByText('Pushed roll: Regular . 1 Bonus Die')).toBeInTheDocument()
+  })
+
+  it('shows the pushed result first with "First roll" and "Pushed roll" lines', () => {
+    const article = show(pushRoll({ status: 'Rolled', pushBonusDice: 1, pushPenaltyDice: 0, rolls: [firstRecord, pushedRecord] }))
+
+    const row = within(article).getByText('Harvey Walters').closest('li') as HTMLElement
+    expect(within(row).getByText('15: Hard success')).toBeInTheDocument()
+    expect(within(row).getByText('First roll: 81: Failure')).toBeInTheDocument()
+    expect(within(row).getByText('Pushed roll: Regular . 1 Bonus Die')).toBeInTheDocument()
+  })
+
+  it('shows Push declined with the first result and the justification', () => {
+    const article = show(pushRoll({ status: 'Rolled' }))
+
+    const row = within(article).getByText('Harvey Walters').closest('li') as HTMLElement
+    expect(within(row).getByText('81: Failure')).toBeInTheDocument()
+    expect(within(row).getByText('Push declined')).toBeInTheDocument()
+    expect(within(row).getByText('Push justification: "I search every shelf."')).toBeInTheDocument()
+  })
+
+  it('shows a cancelled Pushed roll as Cancelled with its first result (RR-UX-32)', () => {
+    const article = show(pushRoll({ status: 'Cancelled' }))
+
+    const row = within(article).getByText('Harvey Walters').closest('li') as HTMLElement
+    expect(within(row).getByText('Cancelled')).toBeInTheDocument()
+    expect(within(row).getByText('Tens 80, units 1 = 81')).toBeInTheDocument()
+    expect(within(row).getByText('The pushed roll was cancelled.')).toBeInTheDocument()
   })
 })

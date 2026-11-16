@@ -90,6 +90,31 @@ public class RollRequestPersistenceTests : IDisposable
     }
 
     [Fact]
+    public async Task Given_a_pushed_request_When_saved_and_read_back_Then_the_push_fields_and_both_records_round_trip()
+    {
+        var (_, sceneId) = await SceneAsync();
+        var request = UnrolledRequest(_builder.CampaignId, sceneId, [Harvey]);
+        Assert.Equal(RequestedRollOutcome.Rolled, request.RollInvestigatorRoll(new ScriptedRoller(8, 1), Harvey, Roller, Now).Outcome);
+        Assert.Equal(RequestedRollOutcome.PushAsked, request.AskToPushInvestigatorRoll(Harvey, "Trying again.").Outcome);
+        Assert.Equal(RequestedRollOutcome.Pushed, request.ApprovePushInvestigatorRoll(Harvey, 1, 0).Outcome);
+        Assert.Equal(RequestedRollOutcome.Rolled, request.RollInvestigatorRoll(new ScriptedRoller(1, 2, 5), Harvey, Roller, Now.AddHours(1)).Outcome);
+        using (var context = _builder.Fixture.CreateContext())
+        {
+            new EfSceneRollRequestRepository(context).Add(request);
+            await context.SaveChangesAsync();
+        }
+
+        using var storedContext = _builder.Fixture.CreateContext();
+        var stored = (await new EfSceneRollRequestRepository(storedContext).FindAsync(_builder.CampaignId, request.Id, CancellationToken.None))!;
+
+        var roll = Assert.Single(stored.RequestedRolls);
+        Assert.Equal(RequestedRollStatus.Rolled, roll.Status);
+        Assert.Equal(("Trying again.", 1, 0, true), (roll.PushJustification, roll.PushBonusDice, roll.PushPenaltyDice, roll.HasBeenPushed));
+        Assert.Equal(2, roll.RollRecords.Count);
+        Assert.Equal($"RollRequest:{request.Id}:{Harvey}{RequestedRoll.PushPurposeSuffix}", roll.RollRecords[1].Purpose);
+    }
+
+    [Fact]
     public async Task Given_a_KeeperOnly_request_When_saved_and_read_back_Then_its_rolled_rolls_and_records_round_trip()
     {
         var (_, sceneId) = await SceneAsync();

@@ -42,7 +42,7 @@ const queryKeysByTopic: Record<string, (campaignId: string) => QueryKey[]> = {
   // directly (PBI-DICE-005 D2, single-option live publication). It also refetches an open Scene History, within the
   // audience rollRequests already has, so a Player is never signalled for a Keeper-only change (PBI-DICE-008 D4).
   rollRequests: (campaignId) => [rollRequestQueryKeys.all(campaignId), sceneHistoryQueryKeys.detail(campaignId)],
-  myRequestedRolls: (campaignId) => [rollRequestQueryKeys.mine(campaignId)],
+  myRequestedRolls: (campaignId) => [rollRequestQueryKeys.mine(campaignId), rollRequestQueryKeys.pushable(campaignId)],
 }
 
 /** The query keys to refetch for the topics; unknown topics are ignored and each key appears once. */

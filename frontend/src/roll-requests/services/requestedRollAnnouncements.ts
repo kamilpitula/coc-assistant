@@ -22,7 +22,7 @@ export function findNewRequestedRolls(
   return next.filter((roll) => !known.has(rollKey(roll)))
 }
 
-/** The assertive announcement for rolls that arrived together; empty for none (specs/roll-requests/ux.md section 8). */
+/** The assertive announcement for rolls that arrived together; empty for none (specs/roll-requests/ux.md sections 8 and 19.5). */
 export function describeNewRequestedRolls(
   rolls: readonly WaitingRequestedRoll[],
   investigatorName: string,
@@ -34,6 +34,9 @@ export function describeNewRequestedRolls(
 
   if (rolls.length === 1) {
     const direction = onActiveScenePage ? '' : ' Roll it on the Active Scene.'
+    if (rolls[0].roll.status === 'Pushed') {
+      return `Push approved for ${investigatorName}: ${rollTargetName(rolls[0].target)}.${direction}`
+    }
     return `Roll requested for ${investigatorName}: ${rollTargetName(rolls[0].target)}.${direction}`
   }
 

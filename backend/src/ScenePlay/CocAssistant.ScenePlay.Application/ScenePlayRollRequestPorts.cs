@@ -47,6 +47,8 @@ public enum RequestedRollStatus
 {
     Waiting,
     Rolled,
+    PushAsked,
+    Pushed,
     Cancelled,
 }
 
@@ -105,7 +107,7 @@ public sealed record PercentileOutcomeData(
     RollSuccessLevel SuccessLevel,
     bool IsSuccess);
 
-/// <summary>A stored Roll Record: what it was rolled for, the dice, the faces, who rolled, when, and the percentile resolution. It carries Account ids; views never do.</summary>
+/// <summary>A stored Roll Record: what it was rolled for, the dice, the faces, who rolled, when, and the percentile resolution. It carries Account ids; views never do. IsPushed marks the pushed roll's second record.</summary>
 public sealed record StoredRollRecord(
     string Dice,
     int Result,
@@ -113,9 +115,10 @@ public sealed record StoredRollRecord(
     Guid? RolledByAccountId,
     DateTimeOffset? RolledAt,
     PercentileOutcomeData? Percentile,
-    bool? EarnsExperienceCheck);
+    bool? EarnsExperienceCheck,
+    bool IsPushed);
 
-/// <summary>One Requested Roll as the provider returns it: the snapshot value, the effective Difficulty and dice, the status, and the Roll Record once rolled.</summary>
+/// <summary>One Requested Roll as the provider returns it: the snapshot value, the effective Difficulty and dice, the status, the push fields, whether it can be pushed, and the Roll Record once rolled.</summary>
 public sealed record RequestedRollRecord(
     Guid RollRequestId,
     Guid InvestigatorId,
@@ -126,6 +129,10 @@ public sealed record RequestedRollRecord(
     int BonusDice,
     int PenaltyDice,
     RequestedRollStatus Status,
+    string? PushJustification,
+    int? PushBonusDice,
+    int? PushPenaltyDice,
+    bool CanBePushed,
     IReadOnlyList<StoredRollRecord> RollRecords);
 
 /// <summary>A Roll Request as the provider returns it: the snapshot target, message, visibility, defaults, and one record per Requested Roll.</summary>
@@ -174,11 +181,19 @@ public enum RequestedRollWriteOutcome
 {
     Rolled,
     Cancelled,
+    PushAsked,
+    Pushed,
+    PushDeclined,
     NotFound,
     SceneNotActive,
     InvestigatorNotRequested,
     NotWaiting,
     AlreadyCancelled,
+    NotPushable,
+    NotPushAsked,
+    JustificationRequired,
+    JustificationTooLong,
+    InvalidDice,
 }
 
 /// <summary>The Requested Roll when <see cref="RequestedRollWriteOutcome.Rolled"/> or <see cref="RequestedRollWriteOutcome.Cancelled"/>, otherwise null.</summary>
@@ -226,6 +241,33 @@ public interface IRollRequests
         Guid requestId,
         Guid investigatorId,
         CancellationToken cancellationToken);
+
+    /// <summary>Asks to push the Investigator's Requested Roll with a justification.</summary>
+    Task<RequestedRollWriteResult> AskToPushAsync(
+        Guid campaignId,
+        Guid requestId,
+        Guid investigatorId,
+        string? justification,
+        CancellationToken cancellationToken);
+
+    /// <summary>Approves the Investigator's push with the Keeper's dice for the pushed roll.</summary>
+    Task<RequestedRollWriteResult> ApprovePushAsync(
+        Guid campaignId,
+        Guid requestId,
+        Guid investigatorId,
+        int? bonusDice,
+        int? penaltyDice,
+        CancellationToken cancellationToken);
+
+    /// <summary>Declines the Investigator's push, moving the roll back to Rolled.</summary>
+    Task<RequestedRollWriteResult> DeclinePushAsync(
+        Guid campaignId,
+        Guid requestId,
+        Guid investigatorId,
+        CancellationToken cancellationToken);
+
+    /// <summary>The Investigator's pushable Requested Rolls in the Active Scene, oldest first; an empty list when no Scene is Active.</summary>
+    Task<IReadOnlyList<WaitingRequestedRollRecord>> ListPushableForInvestigatorAsync(Guid campaignId, Guid investigatorId, CancellationToken cancellationToken);
 }
 
 /// <summary>One Investigator's snapshot value for a create call: who rolls, the value, and the per-Investigator overrides.</summary>

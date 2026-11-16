@@ -12,7 +12,7 @@ import { useActiveScene, useStartScene } from '@/scene-play/hooks/useActiveScene
 import { approvedInvestigatorsFrom, initialSelection, toggled } from '@/scene-play/services/presentSelection'
 import { refusalFor, validateStart, type StartErrors } from '@/scene-play/services/startSceneForm'
 import { useActiveSceneRollRequests } from '@/roll-requests/hooks/useRollRequests'
-import { countWaitingRolls, waitingRollsToCancelSentence } from '@/roll-requests/services/waitingRollCount'
+import { closingRollsSentence, countClosingRolls } from '@/roll-requests/services/waitingRollCount'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import type { ApprovedInvestigator, KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 import { Alert } from '@/shared/components/ui/alert'
@@ -307,11 +307,11 @@ interface FinishFirstNoticeProps {
 function FinishFirstNotice({ campaignId, title, checked, error, checkboxRef, onChange }: FinishFirstNoticeProps) {
   const errorId = 'finish-first-error'
   const hintId = 'finish-first-waiting-hint'
-  // The start page hides the hint while the count is unknown; the server still cancels exactly the Waiting rolls
+  // The start page hides the hint while the counts are unknown; the server still closes exactly the open rolls
   // (specs/scene-play/ux.md section 24.3).
   const activeRequests = useActiveSceneRollRequests(campaignId)
-  const waitingCount = countWaitingRolls(activeRequests.data)
-  const hint = waitingCount === undefined || waitingCount === 0 ? null : waitingRollsToCancelSentence(waitingCount)
+  const closing = countClosingRolls(activeRequests.data)
+  const hint = closing === undefined ? null : closingRollsSentence(closing)
   const describedBy = [error ? errorId : null, hint ? hintId : null].filter((id) => id !== null).join(' ') || undefined
 
   return (

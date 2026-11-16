@@ -179,6 +179,35 @@ describe('InvestigatorsPresentSection', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     changeMutate.mock.calls[0][1].onSuccess()
-    expect(onSaved).toHaveBeenCalledWith(1)
+    expect(onSaved).toHaveBeenCalledWith({ cancelled: 1, declined: 0 })
+  })
+
+  it('reports the declined pushes of the unchecked present Investigators (SPL-UX-72)', async () => {
+    mockUseWaitingRolls.mockReturnValue({
+      data: [
+        {
+          id: 'r1',
+          target: { kind: 'Skill', skill: 'Spot Hidden', specialization: null, characteristic: null },
+          message: null,
+          visibility: 'Public',
+          difficulty: 'Regular',
+          bonusDice: 0,
+          penaltyDice: 0,
+          createdAt: '2026-11-14T19:21:00Z',
+          requestedRolls: [
+            { investigatorId: 'i-a', investigatorName: 'Dr. Ames', targetValue: 60, usesBaseValue: false, canEarnExperienceCheck: true, difficulty: 'Regular', bonusDice: 0, penaltyDice: 0, status: 'PushAsked', rolls: [] },
+          ],
+        },
+      ],
+    })
+    renderSection()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Change' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: /Dr. Ames/ }))
+    await userEvent.click(screen.getByRole('checkbox', { name: /Mae Doyle/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    changeMutate.mock.calls[0][1].onSuccess()
+    expect(onSaved).toHaveBeenCalledWith({ cancelled: 0, declined: 1 })
   })
 })

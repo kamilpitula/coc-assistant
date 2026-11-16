@@ -186,7 +186,7 @@ describe('CampaignLayout', () => {
   describe('waiting roll count and announcement', () => {
     const listen: RollRequestTarget = { kind: 'Skill', skill: 'Listen', specialization: null, characteristic: null }
 
-    function requestedRoll(investigatorId: string, status: 'Waiting' | 'Rolled'): RequestedRoll {
+    function requestedRoll(investigatorId: string, status: 'Waiting' | 'Rolled' | 'PushAsked' | 'Pushed'): RequestedRoll {
       return {
         investigatorId,
         investigatorName: 'Harvey Walters',
@@ -197,6 +197,10 @@ describe('CampaignLayout', () => {
         bonusDice: 0,
         penaltyDice: 0,
         status,
+        pushJustification: null,
+        pushBonusDice: null,
+        pushPenaltyDice: null,
+        canBePushed: false,
         rolls: [],
       }
     }
@@ -227,16 +231,35 @@ describe('CampaignLayout', () => {
       return region
     }
 
-    it('counts every Waiting roll of the Active Scene for the Keeper (RR-UX-12)', () => {
+    it('counts every open roll of the Active Scene for the Keeper: Waiting, PushAsked, and Pushed (RR-UX-31)', () => {
       mockUseCampaign.mockReturnValue(query(keeperCampaign))
       mockUseActive.mockReturnValue(query(keeperScene))
       mockUseKeeperRolls.mockReturnValue(
-        query([rollRequest('r1', [requestedRoll('harvey', 'Waiting'), requestedRoll('lucy', 'Rolled')]), rollRequest('r2', [requestedRoll('lucy', 'Waiting')])]),
+        query([rollRequest('r1', [requestedRoll('harvey', 'Waiting'), requestedRoll('lucy', 'PushAsked')]), rollRequest('r2', [requestedRoll('lucy', 'Pushed'), requestedRoll('harvey', 'Rolled')])]),
       )
 
       renderLayout()
 
-      expect(screen.getByRole('link', { name: 'Active Scene, live, 2 rolls waiting' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Active Scene, live, 3 rolls waiting' })).toBeInTheDocument()
+    })
+
+    it('announces an approved push assertively with the push copy (RR-A11Y-21)', () => {
+      mockUseCampaign.mockReturnValue(query(campaign))
+      mockUseActive.mockReturnValue(query(keeperScene))
+      mockUseMineRolls.mockReturnValue(query({ investigatorName: 'Harvey Walters', rolls: [] }, { isFetchedAfterMount: true }))
+      const view = renderLayout()
+      mockUseMineRolls.mockReturnValue(
+        query({ investigatorName: 'Harvey Walters', rolls: [{ ...waitingRoll('r1'), roll: { ...waitingRoll('r1').roll, status: 'Pushed' } }] }, { isFetchedAfterMount: true }),
+      )
+
+      view.rerender(
+        <CampaignLayout campaignId="c1" section="overview" isOverview>
+          <p>Page content</p>
+        </CampaignLayout>,
+      )
+
+      expect(screen.getByRole('link', { name: 'Active Scene, live, 1 roll waiting' })).toBeInTheDocument()
+      expect(assertiveRegion(view.container)).toHaveTextContent('Push approved for Harvey Walters: Listen. Roll it on the Active Scene.')
     })
 
     it('counts the own waiting rolls for a Player (RR-UX-12)', () => {

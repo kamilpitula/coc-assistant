@@ -2,6 +2,7 @@ import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import { RollRequestForm } from '@/roll-requests/components/roll-request-form/roll-request-form'
 import { WaitingRolls } from '@/roll-requests/components/waiting-rolls/waiting-rolls'
 import { useScene } from '@/scenario-preparation/hooks/useScenes'
+import type { ClosingRollCounts } from '@/roll-requests/services/waitingRollCount'
 import { ActiveSceneWall } from '@/scene-play/components/active-scene-wall/active-scene-wall'
 import { InvestigatorsPresentSection } from '@/scene-play/components/investigators-present-section/investigators-present-section'
 import { KeeperNotesSection } from '@/scene-play/components/keeper-notes-section/keeper-notes-section'
@@ -12,8 +13,8 @@ import { Card } from '@/shared/components/ui/card'
 interface RunViewProps {
   campaignId: string
   scene: KeeperActiveScene
-  /** Called after the Investigators present are saved with the number of waiting rolls it cancelled. */
-  onPresentSaved: (cancelledCount: number) => void
+  /** Called after the Investigators present are saved with the closing rolls it closed. */
+  onPresentSaved: (closing: ClosingRollCounts) => void
   /** Called after a Wall Entry is added from Run, so the page can say "Wall Entry added.". */
   onWallEntryAdded: () => void
   /** A roll was requested, so the page says "{target} roll requested from {names}.". */

@@ -407,6 +407,10 @@ public class ScenarioPreparationDbContext : DbContext
             builder.Property(roll => roll.Difficulty).IsRequired().HasConversion<string>().HasMaxLength(20);
             builder.Property(roll => roll.BonusDice).IsRequired();
             builder.Property(roll => roll.PenaltyDice).IsRequired();
+            builder.Property(roll => roll.PushJustification).HasMaxLength(2000);
+            builder.Property(roll => roll.PushBonusDice);
+            builder.Property(roll => roll.PushPenaltyDice);
+            builder.Property(roll => roll.HasBeenPushed).IsRequired();
             builder.Property(roll => roll.Status).IsRequired().HasConversion<string>().HasMaxLength(20);
             builder.Property(roll => roll.RollRecords)
                 .IsRequired()

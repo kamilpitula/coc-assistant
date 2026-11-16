@@ -82,6 +82,18 @@ public class RollRequestApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
     private static Task<HttpResponseMessage> CancelAsync(Table table, Guid requestId, Guid investigatorId, string? oid = null) =>
         table.Client.SendAsync(BuildRequest(HttpMethod.Post, CampaignUri(table, $"/roll-requests/{requestId}/requested-rolls/{investigatorId}/cancel"), oid ?? table.KeeperOid));
 
+    private static Task<HttpResponseMessage> PushableAsync(Table table, string oid) =>
+        table.Client.SendAsync(BuildRequest(HttpMethod.Get, CampaignUri(table, "/investigators/mine/pushable-rolls"), oid));
+
+    private static Task<HttpResponseMessage> AskPushAsync(Table table, Guid requestId, Guid investigatorId, object body, string? oid = null) =>
+        table.Client.SendAsync(BuildRequest(HttpMethod.Post, CampaignUri(table, $"/roll-requests/{requestId}/requested-rolls/{investigatorId}/push"), oid ?? table.HarveyOid, body));
+
+    private static Task<HttpResponseMessage> ApprovePushAsync(Table table, Guid requestId, Guid investigatorId, object body) =>
+        table.Client.SendAsync(BuildRequest(HttpMethod.Post, CampaignUri(table, $"/roll-requests/{requestId}/requested-rolls/{investigatorId}/push/approve"), table.KeeperOid, body));
+
+    private static Task<HttpResponseMessage> DeclinePushAsync(Table table, Guid requestId, Guid investigatorId, string? oid = null) =>
+        table.Client.SendAsync(BuildRequest(HttpMethod.Post, CampaignUri(table, $"/roll-requests/{requestId}/requested-rolls/{investigatorId}/push/decline"), oid ?? table.KeeperOid, body: new { }));
+
     private static Task<HttpResponseMessage> ChangePresentAsync(Table table, Guid[] present) =>
         table.Client.SendAsync(BuildRequest(HttpMethod.Put, CampaignUri(table, "/active-scene/present-investigators"), table.KeeperOid, new { presentInvestigatorIds = present }));
 
@@ -123,6 +135,52 @@ public class RollRequestApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
             penaltyDice = 0,
             investigators = new[] { new { investigatorId } },
         };
+
+    private static object MythosRequest(Guid investigatorId) =>
+        new
+        {
+            target = new { kind = "Skill", skill = "Cthulhu Mythos" },
+            message = (string?)null,
+            visibility = "Public",
+            difficulty = "Regular",
+            bonusDice = 0,
+            penaltyDice = 2,
+            investigators = new[] { new { investigatorId } },
+        };
+
+    // Cthulhu Mythos starts at 0 (project_ruleset.md section 4.7), so with 2 Penalty Dice only a triple-zero tens keep
+    // with a units 1 succeeds. The loop is a safety net, not the plan.
+    private static async Task<Guid> FailedRollRequestAsync(Table table)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var requestId = (await JsonAsync(await CreateRollRequestAsync(table, MythosRequest(table.HarveyId)))).GetProperty("id").GetGuid();
+            var record = ((await JsonAsync(await RollAsync(table, requestId, table.HarveyId, table.HarveyOid))).GetProperty("rolls")[0]);
+            if (!record.GetProperty("percentile").GetProperty("isSuccess").GetBoolean())
+            {
+                return requestId;
+            }
+        }
+
+        Assert.Fail("Cthulhu Mythos with 2 Penalty Dice never failed in 3 attempts.");
+        throw new InvalidOperationException("Unreachable.");
+    }
+
+    private static async Task<Guid> SuccessfulRollRequestAsync(Table table)
+    {
+        for (var attempt = 0; attempt < 12; attempt++)
+        {
+            var requestId = (await JsonAsync(await CreateRollRequestAsync(table, SkillRequest(table.HarveyId)))).GetProperty("id").GetGuid();
+            var record = ((await JsonAsync(await RollAsync(table, requestId, table.HarveyId, table.HarveyOid))).GetProperty("rolls")[0]);
+            if (record.GetProperty("percentile").GetProperty("isSuccess").GetBoolean())
+            {
+                return requestId;
+            }
+        }
+
+        Assert.Fail("Spot Hidden at 45 never succeeded in 12 attempts.");
+        throw new InvalidOperationException("Unreachable.");
+    }
 
     private static async Task<JsonElement> JsonAsync(HttpResponseMessage response) =>
         JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
@@ -547,8 +605,181 @@ public class RollRequestApiTests : IClassFixture<IdentityApiFactory>, IAsyncLife
         Assert.Equal("wallEntries|rollRequests|rollRequests", await TopicsUntilActiveSceneAsync(lucyHub, table.CampaignId));
     }
 
+    [Fact]
+    public async Task Given_a_failed_roll_When_the_Player_asks_to_push_Then_it_is_200_PushAsked_with_the_justification()
+    {
+        var table = await TableAsync("push-1");
+        var requestId = await FailedRollRequestAsync(table);
+
+        var asked = await AskPushAsync(table, requestId, table.HarveyId, new { justification = "  I search every shelf.  " });
+
+        Assert.Equal(HttpStatusCode.OK, asked.StatusCode);
+        var roll = await JsonAsync(asked);
+        Assert.Equal(("PushAsked", "I search every shelf.", false), (roll.GetProperty("status").GetString(), roll.GetProperty("pushJustification").GetString(), roll.GetProperty("canBePushed").GetBoolean()));
+        Assert.Single(roll.GetProperty("rolls").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Given_the_Keeper_or_another_Player_When_asking_to_push_Then_it_is_404()
+    {
+        var table = await TableAsync("push-2");
+        var requestId = await FailedRollRequestAsync(table);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await AskPushAsync(table, requestId, table.HarveyId, new { justification = "Trying again." }, table.KeeperOid)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await AskPushAsync(table, requestId, table.HarveyId, new { justification = "Trying again." }, table.LucyOid)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_a_missing_or_too_long_justification_When_asking_to_push_Then_it_is_400_at_justification()
+    {
+        var table = await TableAsync("push-3");
+        var requestId = await FailedRollRequestAsync(table);
+
+        var missing = await AskPushAsync(table, requestId, table.HarveyId, new { justification = "   " });
+        var tooLong = await AskPushAsync(table, requestId, table.HarveyId, new { justification = new string('x', 2001) });
+
+        Assert.All([missing, tooLong], response => Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode));
+        Assert.Equal("justification", Errors(await JsonAsync(missing)).Single());
+        Assert.Equal(
+            "The justification is at most 2000 characters.",
+            (await JsonAsync(tooLong)).GetProperty("errors").GetProperty("justification")[0].GetString());
+    }
+
+    [Fact]
+    public async Task Given_a_success_Luck_a_second_ask_or_a_declined_roll_When_asking_to_push_Then_it_is_409()
+    {
+        var table = await TableAsync("push-4");
+        var successId = await SuccessfulRollRequestAsync(table);
+        var luckId = (await JsonAsync(await CreateRollRequestAsync(table, LuckRequest(table.HarveyId)))).GetProperty("id").GetGuid();
+        Assert.Equal(HttpStatusCode.OK, (await RollAsync(table, luckId, table.HarveyId, table.HarveyOid)).StatusCode);
+        var failedId = await FailedRollRequestAsync(table);
+        Assert.Equal(HttpStatusCode.OK, (await AskPushAsync(table, failedId, table.HarveyId, new { justification = "Trying again." })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await DeclinePushAsync(table, failedId, table.HarveyId)).StatusCode);
+
+        Assert.Equal(HttpStatusCode.Conflict, (await AskPushAsync(table, successId, table.HarveyId, new { justification = "Trying again." })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await AskPushAsync(table, luckId, table.HarveyId, new { justification = "Trying again." })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await AskPushAsync(table, failedId, table.HarveyId, new { justification = "Trying once more." })).StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_a_hidden_roll_When_asking_to_push_Then_it_is_404()
+    {
+        var table = await TableAsync("push-5");
+        var requestId = (await JsonAsync(await CreateRollRequestAsync(table, HiddenLuckRequest(table.HarveyId)))).GetProperty("id").GetGuid();
+
+        Assert.Equal(HttpStatusCode.NotFound, (await AskPushAsync(table, requestId, table.HarveyId, new { justification = "Trying again." })).StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_a_push_asked_roll_When_the_Keeper_approves_Then_the_Player_rolls_a_second_pushed_record()
+    {
+        var table = await TableAsync("push-6");
+        var requestId = await FailedRollRequestAsync(table);
+        Assert.Equal(HttpStatusCode.OK, (await AskPushAsync(table, requestId, table.HarveyId, new { justification = "I search every shelf." })).StatusCode);
+
+        var approved = await ApprovePushAsync(table, requestId, table.HarveyId, new { bonusDice = 1, penaltyDice = 0 });
+
+        Assert.Equal(HttpStatusCode.OK, approved.StatusCode);
+        var pushed = await JsonAsync(approved);
+        Assert.Equal(("Pushed", 1, 0), (pushed.GetProperty("status").GetString(), pushed.GetProperty("pushBonusDice").GetInt32(), pushed.GetProperty("pushPenaltyDice").GetInt32()));
+
+        var rolled = await RollAsync(table, requestId, table.HarveyId, table.HarveyOid);
+
+        Assert.Equal(HttpStatusCode.OK, rolled.StatusCode);
+        var roll = await JsonAsync(rolled);
+        Assert.Equal("Rolled", roll.GetProperty("status").GetString());
+        var records = roll.GetProperty("rolls").EnumerateArray().ToArray();
+        Assert.Equal(2, records.Length);
+        Assert.False(records[0].GetProperty("isPushed").GetBoolean());
+        Assert.True(records[1].GetProperty("isPushed").GetBoolean());
+
+        var card = await JsonAsync(await GetRollRequestAsync(table, requestId, table.LucyOid));
+        var cardRoll = Assert.Single(card.GetProperty("requestedRolls").EnumerateArray());
+        Assert.Equal(("I search every shelf.", 2), (cardRoll.GetProperty("pushJustification").GetString(), cardRoll.GetProperty("rolls").GetArrayLength()));
+    }
+
+    [Fact]
+    public async Task Given_dice_outside_0_and_2_When_approving_Then_it_is_400_at_dice()
+    {
+        var table = await TableAsync("push-7");
+        var requestId = await FailedRollRequestAsync(table);
+        Assert.Equal(HttpStatusCode.OK, (await AskPushAsync(table, requestId, table.HarveyId, new { justification = "Trying again." })).StatusCode);
+
+        var high = await ApprovePushAsync(table, requestId, table.HarveyId, new { bonusDice = 3, penaltyDice = 0 });
+        var missing = await ApprovePushAsync(table, requestId, table.HarveyId, new { });
+
+        Assert.All([high, missing], response => Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode));
+        Assert.Equal("dice", Errors(await JsonAsync(high)).Single());
+    }
+
+    [Fact]
+    public async Task Given_a_roll_that_is_not_push_asked_When_approving_or_declining_Then_it_is_409()
+    {
+        var table = await TableAsync("push-8");
+        var requestId = await FailedRollRequestAsync(table);
+
+        var approved = await ApprovePushAsync(table, requestId, table.HarveyId, new { bonusDice = 0, penaltyDice = 0 });
+        var declined = await DeclinePushAsync(table, requestId, table.HarveyId);
+
+        Assert.All([approved, declined], response => Assert.Equal(HttpStatusCode.Conflict, response.StatusCode));
+        Assert.Equal("Another change won the race. Fetch again and try again.", (await JsonAsync(approved)).GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public async Task Given_a_Player_When_approving_or_declining_Then_it_is_404()
+    {
+        var table = await TableAsync("push-9");
+        var requestId = await FailedRollRequestAsync(table);
+        Assert.Equal(HttpStatusCode.OK, (await AskPushAsync(table, requestId, table.HarveyId, new { justification = "Trying again." })).StatusCode);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await DeclinePushAsync(table, requestId, table.HarveyId, table.HarveyOid)).StatusCode);
+        var approved = await table.Client.SendAsync(BuildRequest(
+            HttpMethod.Post, CampaignUri(table, $"/roll-requests/{requestId}/requested-rolls/{table.HarveyId}/push/approve"),
+            table.HarveyOid, new { bonusDice = 0, penaltyDice = 0 }));
+
+        Assert.Equal(HttpStatusCode.NotFound, approved.StatusCode);
+    }
+
+    [Fact]
+    public async Task Given_a_finished_Scene_When_pushing_Then_it_is_409()
+    {
+        var table = await TableAsync("push-10");
+        var answerId = await FailedRollRequestAsync(table);
+        Assert.Equal(HttpStatusCode.OK, (await AskPushAsync(table, answerId, table.HarveyId, new { justification = "Trying again." })).StatusCode);
+        var decideId = await FailedRollRequestAsync(table);
+        await FinishAsync(table);
+
+        var asked = await AskPushAsync(table, decideId, table.HarveyId, new { justification = "Trying again." });
+        var approved = await ApprovePushAsync(table, answerId, table.HarveyId, new { bonusDice = 0, penaltyDice = 0 });
+        var declined = await DeclinePushAsync(table, answerId, table.HarveyId);
+
+        Assert.All([asked, approved, declined], response => Assert.Equal(HttpStatusCode.Conflict, response.StatusCode));
+        Assert.Equal("No Scene is Active.", (await JsonAsync(asked)).GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public async Task Given_a_declined_push_When_listing_pushable_Then_it_leaves_and_cannot_be_asked_again()
+    {
+        var table = await TableAsync("push-11");
+        var requestId = await FailedRollRequestAsync(table);
+        Assert.Equal(HttpStatusCode.OK, (await AskPushAsync(table, requestId, table.HarveyId, new { justification = "Trying again." })).StatusCode);
+
+        var pushable = await JsonAsync(await PushableAsync(table, table.HarveyOid));
+        var pushableRoll = Assert.Single(pushable.GetProperty("rolls").EnumerateArray()).GetProperty("roll");
+        Assert.Equal("PushAsked", pushableRoll.GetProperty("status").GetString());
+        Assert.Equal("Trying again.", pushableRoll.GetProperty("pushJustification").GetString());
+        Assert.Equal(HttpStatusCode.NotFound, (await PushableAsync(table, table.KeeperOid)).StatusCode);
+
+        Assert.Equal(HttpStatusCode.OK, (await DeclinePushAsync(table, requestId, table.HarveyId)).StatusCode);
+
+        var after = await JsonAsync(await PushableAsync(table, table.HarveyOid));
+        Assert.Empty(after.GetProperty("rolls").EnumerateArray());
+        Assert.Equal(HttpStatusCode.Conflict, (await AskPushAsync(table, requestId, table.HarveyId, new { justification = "Trying once more." })).StatusCode);
+    }
+
     // The activeScene and sceneHistory signals are sent after the change and in order on every connection, so everything
     // a client heard before them is what the change sent.
+
     private static async Task<string> TopicsUntilActiveSceneAsync(CampaignHubTestClient client, Guid campaignId)
     {
         var before = new List<string>();

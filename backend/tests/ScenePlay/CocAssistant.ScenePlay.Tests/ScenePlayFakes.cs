@@ -232,11 +232,23 @@ public sealed class FakeRollRequests : IRollRequests
 
     public List<WaitingRequestedRollRecord> WaitingForInvestigator { get; } = [];
 
+    public List<WaitingRequestedRollRecord> PushableForInvestigator { get; } = [];
+
     public RollRequestWriteResult CreateResult { get; set; } = new(RollRequestWriteOutcome.InvalidTarget, null);
 
     public RequestedRollWriteResult RollResult { get; set; } = new(RequestedRollWriteOutcome.NotFound, null);
 
     public RequestedRollWriteResult CancelResult { get; set; } = new(RequestedRollWriteOutcome.NotFound, null);
+
+    public RequestedRollWriteResult AskToPushResult { get; set; } = new(RequestedRollWriteOutcome.NotFound, null);
+
+    public RequestedRollWriteResult ApprovePushResult { get; set; } = new(RequestedRollWriteOutcome.NotFound, null);
+
+    public RequestedRollWriteResult DeclinePushResult { get; set; } = new(RequestedRollWriteOutcome.NotFound, null);
+
+    public string? LastJustification { get; private set; }
+
+    public (int? BonusDice, int? PenaltyDice) LastApprovedDice { get; private set; }
 
     public IReadOnlyList<RequestedRollValueInput>? LastInvestigators { get; private set; }
 
@@ -288,6 +300,32 @@ public sealed class FakeRollRequests : IRollRequests
     {
         Calls.Add(nameof(CancelAsync));
         return Task.FromResult(CancelResult);
+    }
+
+    public Task<IReadOnlyList<WaitingRequestedRollRecord>> ListPushableForInvestigatorAsync(Guid campaignId, Guid investigatorId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(ListPushableForInvestigatorAsync));
+        return Task.FromResult<IReadOnlyList<WaitingRequestedRollRecord>>(PushableForInvestigator.ToList());
+    }
+
+    public Task<RequestedRollWriteResult> AskToPushAsync(Guid campaignId, Guid requestId, Guid investigatorId, string? justification, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(AskToPushAsync));
+        LastJustification = justification;
+        return Task.FromResult(AskToPushResult);
+    }
+
+    public Task<RequestedRollWriteResult> ApprovePushAsync(Guid campaignId, Guid requestId, Guid investigatorId, int? bonusDice, int? penaltyDice, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(ApprovePushAsync));
+        LastApprovedDice = (bonusDice, penaltyDice);
+        return Task.FromResult(ApprovePushResult);
+    }
+
+    public Task<RequestedRollWriteResult> DeclinePushAsync(Guid campaignId, Guid requestId, Guid investigatorId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(DeclinePushAsync));
+        return Task.FromResult(DeclinePushResult);
     }
 }
 

@@ -3,6 +3,7 @@ import { createContext, useContext } from 'react'
 import type { GiveItemContext, GiveItemRequest } from '@/scene-play/components/give-item-dialog/give-item-dialog'
 import type { TakeBackItemContext, TakeBackItemRequest } from '@/scene-play/components/take-back-item-dialog/take-back-item-dialog'
 import type { RevealOpenContext, RevealTarget } from '@/scene-play/hooks/useRevealFlow'
+import type { ClosingRollCounts } from '@/roll-requests/services/waitingRollCount'
 import type { KeeperActiveScene } from '@/scene-play/types/ActiveScene'
 
 /** What the Active Scene layout offers the Keeper's sub-tab bodies (specs/scene-play/ux.md section 21.1). */
@@ -15,8 +16,8 @@ export interface ActiveSceneTabContextValue {
   onGive: (request: GiveItemRequest, context: GiveItemContext) => void
   /** Opens the layout-level take-back dialog for the Item, with the focus context (22.4). */
   onTakeBack: (request: TakeBackItemRequest, context: TakeBackItemContext) => void
-  /** The Investigators present were saved with the number of waiting rolls it cancelled (24.2). */
-  onPresentSaved: (cancelledCount: number) => void
+  /** The Investigators present were saved with the closing rolls it closed (24.2). */
+  onPresentSaved: (closing: ClosingRollCounts) => void
   /** A Wall Entry was added from Run, so the page says "Wall Entry added.". */
   onWallEntryAdded: () => void
   /** A present change found the Scene finished, so the page refetches. */

@@ -7,7 +7,7 @@ import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import { useActiveScene } from '@/scene-play/hooks/useActiveScene'
 import { useActiveSceneRollRequests, useMyRequestedRolls } from '@/roll-requests/hooks/useRollRequests'
 import { useRequestedRollAnnouncement } from '@/roll-requests/hooks/useRequestedRollAnnouncement'
-import { countWaitingRolls } from '@/roll-requests/services/waitingRollCount'
+import { countKeeperOpenRolls } from '@/roll-requests/services/waitingRollCount'
 import type { RollRequest } from '@/roll-requests/types/RollRequest'
 import { Header } from '@/shared/components/header/header'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
@@ -88,7 +88,7 @@ function CampaignFrame({ campaignId, section, isOverview, children }: CampaignLa
 
 /**
  * The waiting count for the Active Scene tab with the assertive announcement for a Player's new rolls
- * (specs/roll-requests/ux.md sections 7 and 8). The Keeper counts every Waiting roll of the Active Scene, a Player
+ * (specs/roll-requests/ux.md sections 7 and 8). The Keeper counts every open roll of the Active Scene, a Player
  * counts their own; both queries stay off until the Campaign, and so the role, has loaded.
  */
 function useWaitingRollBadge(campaignId: string, section: CampaignSection, isKeeper: boolean | undefined, hasActiveScene: boolean) {
@@ -105,7 +105,7 @@ function useWaitingRollBadge(campaignId: string, section: CampaignSection, isKee
   return { count: waitingRollCount(hasActiveScene, isKeeper, keeperRolls.data, mine.data?.rolls.length), announcement: announcement.message }
 }
 
-/** The waiting count for the Active Scene tab: every Waiting roll for the Keeper, the own rolls for a Player. */
+/** The waiting count for the Active Scene tab: every open roll for the Keeper, the own rolls for a Player. */
 function waitingRollCount(
   hasActiveScene: boolean,
   isKeeper: boolean | undefined,
@@ -117,7 +117,7 @@ function waitingRollCount(
   }
 
   if (isKeeper === true) {
-    return countWaitingRolls(keeperRequests)
+    return countKeeperOpenRolls(keeperRequests)
   }
 
   return mineCount

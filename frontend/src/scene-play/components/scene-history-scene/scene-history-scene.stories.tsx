@@ -18,6 +18,10 @@ function waitingRoll(investigatorId: string, investigatorName: string, status: R
     bonusDice: 0,
     penaltyDice: 0,
     status,
+    pushJustification: null,
+    pushBonusDice: null,
+    pushPenaltyDice: null,
+    canBePushed: false,
     rolls: [],
   }
 }

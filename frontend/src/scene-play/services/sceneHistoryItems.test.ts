@@ -27,6 +27,10 @@ function waitingRequest(id: string, createdAt: string): RollRequest {
         bonusDice: 0,
         penaltyDice: 0,
         status: 'Waiting',
+        pushJustification: null,
+        pushBonusDice: null,
+        pushPenaltyDice: null,
+        canBePushed: false,
         rolls: [],
       },
     ],
@@ -51,6 +55,34 @@ describe('withoutCancelledRolls', () => {
 
   it('returns null when every row is Cancelled, so the card is not listed (SPL-UX-75)', () => {
     expect(withoutCancelledRolls(cancelledRequest('q1', '2026-11-07T19:14:00Z'))).toBeNull()
+  })
+
+  it('keeps a Cancelled row with a Roll Record, so a cancelled Pushed roll stays visible (RR-UX-33)', () => {
+    const waiting = waitingRequest('q1', '2026-11-07T19:14:00Z').requestedRolls[0]
+    const record = {
+      dice: '1D100',
+      result: 81,
+      faces: [80, 1],
+      rolledBy: 'Harvey Walters',
+      rolledAt: '2026-11-07T19:14:00Z',
+      percentile: null,
+      earnsExperienceCheck: null,
+      isPushed: false,
+    }
+    const cancelledAfterPush = {
+      ...waiting,
+      investigatorId: 'i2',
+      investigatorName: 'Lucy Ward',
+      status: 'Cancelled' as const,
+      pushJustification: 'Trying again.',
+      rolls: [record],
+    }
+    const cancelled = { ...waiting, investigatorId: 'i3', investigatorName: 'Cy Holloway', status: 'Cancelled' as const }
+    const request = { ...waitingRequest('q1', '2026-11-07T19:14:00Z'), requestedRolls: [waiting, cancelledAfterPush, cancelled] }
+
+    const kept = withoutCancelledRolls(request)
+
+    expect(kept?.requestedRolls).toEqual([waiting, cancelledAfterPush])
   })
 })
 

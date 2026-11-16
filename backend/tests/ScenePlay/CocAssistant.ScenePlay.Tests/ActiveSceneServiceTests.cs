@@ -181,7 +181,7 @@ public class ActiveSceneServiceTests
         _scenes.FinishResult = new FinishSceneResult(
             FinishSceneOutcome.Finished,
             Scene("Meeting Knott", Harvey),
-            [new CancelledRequestedRoll(RequestId, Harvey, RollRequestVisibility.Public), new CancelledRequestedRoll(RequestId, Lucy, RollRequestVisibility.KeeperOnly)]);
+            [new ClosedRequestedRoll(RequestId, Harvey, RollRequestVisibility.Public), new ClosedRequestedRoll(RequestId, Lucy, RollRequestVisibility.KeeperOnly)]);
 
         var outcome = await Service.FinishAsync(CampaignId, KeeperId, CancellationToken.None);
 
@@ -209,7 +209,7 @@ public class ActiveSceneServiceTests
     public async Task Given_a_failing_roll_request_signal_When_finishing_Then_the_finish_still_succeeds_and_the_failure_is_logged()
     {
         _scenes.FinishResult = new FinishSceneResult(
-            FinishSceneOutcome.Finished, Scene("Meeting Knott", Harvey), [new CancelledRequestedRoll(RequestId, Harvey, RollRequestVisibility.Public)]);
+            FinishSceneOutcome.Finished, Scene("Meeting Knott", Harvey), [new ClosedRequestedRoll(RequestId, Harvey, RollRequestVisibility.Public)]);
         _rollRequests.Fail = true;
 
         var outcome = await Service.FinishAsync(CampaignId, KeeperId, CancellationToken.None);
@@ -224,7 +224,7 @@ public class ActiveSceneServiceTests
         ArrangeStart(Scene("The Corbitt House", Harvey), Scene("Meeting Knott", Harvey, Lucy));
         _scenes.StartResult = _scenes.StartResult with
         {
-            CancelledRolls = [new CancelledRequestedRoll(RequestId, Lucy, RollRequestVisibility.Public)],
+            ClosedRolls = [new ClosedRequestedRoll(RequestId, Lucy, RollRequestVisibility.Public)],
         };
 
         await Service.StartAsync(CampaignId, KeeperId, SceneId, [Harvey], true, CancellationToken.None);
@@ -238,7 +238,7 @@ public class ActiveSceneServiceTests
         _scenes.ChangeResult = new ChangePresentResult(
             ChangePresentOutcome.Replaced,
             Scene("The Corbitt House", Lucy),
-            [new CancelledRequestedRoll(RequestId, Lucy, RollRequestVisibility.Public)]);
+            [new ClosedRequestedRoll(RequestId, Lucy, RollRequestVisibility.Public)]);
 
         await Service.ChangePresentAsync(CampaignId, KeeperId, [Lucy], CancellationToken.None);
 

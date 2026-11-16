@@ -72,6 +72,35 @@ public sealed class ScenarioPreparationRollRequests : IRollRequests
         return new RequestedRollWriteResult(ScenarioPreparationPlayableScenes.Map<RequestedRollWriteOutcome>(result.Outcome), result.Roll is null ? null : ToRecord(result.Roll));
     }
 
+    public async Task<IReadOnlyList<WaitingRequestedRollRecord>> ListPushableForInvestigatorAsync(Guid campaignId, Guid investigatorId, CancellationToken cancellationToken) =>
+        (await _requests.ListPushableForInvestigatorAsync(campaignId, investigatorId, cancellationToken))
+            .Select(waiting => new WaitingRequestedRollRecord(
+                waiting.RollRequestId,
+                ToInput(waiting.Target),
+                waiting.Message,
+                ScenarioPreparationPlayableScenes.Map<RollRequestVisibility>(waiting.Visibility),
+                waiting.CreatedAt,
+                ToRecord(waiting.Roll)))
+            .ToList();
+
+    public async Task<RequestedRollWriteResult> AskToPushAsync(Guid campaignId, Guid requestId, Guid investigatorId, string? justification, CancellationToken cancellationToken)
+    {
+        var result = await _requests.AskToPushAsync(campaignId, requestId, investigatorId, justification ?? string.Empty, cancellationToken);
+        return new RequestedRollWriteResult(ScenarioPreparationPlayableScenes.Map<RequestedRollWriteOutcome>(result.Outcome), result.Roll is null ? null : ToRecord(result.Roll));
+    }
+
+    public async Task<RequestedRollWriteResult> ApprovePushAsync(Guid campaignId, Guid requestId, Guid investigatorId, int? bonusDice, int? penaltyDice, CancellationToken cancellationToken)
+    {
+        var result = await _requests.ApprovePushAsync(campaignId, requestId, investigatorId, bonusDice, penaltyDice, cancellationToken);
+        return new RequestedRollWriteResult(ScenarioPreparationPlayableScenes.Map<RequestedRollWriteOutcome>(result.Outcome), result.Roll is null ? null : ToRecord(result.Roll));
+    }
+
+    public async Task<RequestedRollWriteResult> DeclinePushAsync(Guid campaignId, Guid requestId, Guid investigatorId, CancellationToken cancellationToken)
+    {
+        var result = await _requests.DeclinePushAsync(campaignId, requestId, investigatorId, cancellationToken);
+        return new RequestedRollWriteResult(ScenarioPreparationPlayableScenes.Map<RequestedRollWriteOutcome>(result.Outcome), result.Roll is null ? null : ToRecord(result.Roll));
+    }
+
     internal static RollRequestRecord ToRecord(CocAssistant.ScenarioPreparation.Application.RollRequestView request) =>
         new RollRequestRecord(
                 request.Id,
@@ -97,6 +126,10 @@ public sealed class ScenarioPreparationRollRequests : IRollRequests
             roll.BonusDice,
             roll.PenaltyDice,
             ScenarioPreparationPlayableScenes.Map<RequestedRollStatus>(roll.Status),
+            roll.PushJustification,
+            roll.PushBonusDice,
+            roll.PushPenaltyDice,
+            roll.CanBePushed,
             roll.RollRecords.Select(ToRecord).ToList());
 
     internal static StoredRollRecord ToRecord(CocAssistant.GameRules.Domain.Dice.RollRecord record) =>
@@ -115,7 +148,8 @@ public sealed class ScenarioPreparationRollRequests : IRollRequests
                     record.Percentile.Result,
                     ScenarioPreparationPlayableScenes.Map<RollSuccessLevel>(record.Percentile.SuccessLevel),
                     record.Percentile.IsSuccess),
-            record.EarnsExperienceCheck);
+            record.EarnsExperienceCheck,
+            record.Purpose.EndsWith(CocAssistant.ScenarioPreparation.Domain.RollRequests.RequestedRoll.PushPurposeSuffix, StringComparison.Ordinal));
 
     private static RollRequestTargetInput ToInput(CocAssistant.ScenarioPreparation.Domain.RollRequests.RollTarget target) =>
         new(

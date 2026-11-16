@@ -64,11 +64,11 @@ public class ActiveSceneService
 
         await TryAddWallEntryAsync(campaignId, callerAccountId, $"Scene started: {result.Started!.Title}", cancellationToken);
         await TrySignalAsync(campaignId, cancellationToken);
-        await TrySignalCancelledRollsAsync(campaignId, result.CancelledRolls, approved, cancellationToken);
+        await TrySignalClosedRollsAsync(campaignId, result.ClosedRolls, approved, cancellationToken);
         return new StartSceneViewResult(StartSceneOutcome.Started, ActiveSceneProjection.ForKeeper(result.Started, approved));
     }
 
-    /// <summary>Finishes the Active Scene, telling the cancelled rolls' owners through the roll-request topics.</summary>
+    /// <summary>Finishes the Active Scene, telling the closed rolls' owners through the roll-request topics.</summary>
     public async Task<FinishSceneOutcome> FinishAsync(Guid campaignId, Guid callerAccountId, CancellationToken cancellationToken)
     {
         if (!await IsKeeperAsync(campaignId, callerAccountId, cancellationToken))
@@ -84,7 +84,7 @@ public class ActiveSceneService
 
         await TryAddWallEntryAsync(campaignId, callerAccountId, $"Scene finished: {result.Finished!.Title}", cancellationToken);
         await TrySignalAsync(campaignId, cancellationToken);
-        await TrySignalCancelledRollsAsync(campaignId, result.CancelledRolls, await _approved.ListAsync(campaignId, cancellationToken), cancellationToken);
+        await TrySignalClosedRollsAsync(campaignId, result.ClosedRolls, await _approved.ListAsync(campaignId, cancellationToken), cancellationToken);
         return FinishSceneOutcome.Finished;
     }
 
@@ -109,7 +109,7 @@ public class ActiveSceneService
         }
 
         await TrySignalAsync(campaignId, cancellationToken);
-        await TrySignalCancelledRollsAsync(campaignId, result.CancelledRolls, approved, cancellationToken);
+        await TrySignalClosedRollsAsync(campaignId, result.ClosedRolls, approved, cancellationToken);
         return new ChangePresentViewResult(ChangePresentOutcome.Replaced, ActiveSceneProjection.ForKeeper(result.Scene!, approved));
     }
 
@@ -162,16 +162,16 @@ public class ActiveSceneService
     }
 
     /// <summary>
-    /// Tells the cancelled rolls' owners through the roll-request topics (specs/roll-requests/spec.md, Live updates):
-    /// one publication per visibility, best-effort like the other signals. Nothing is sent when nothing was cancelled.
+    /// Tells the closed rolls' owners through the roll-request topics (specs/roll-requests/spec.md, Live updates):
+    /// one publication per visibility, best-effort like the other signals. Nothing is sent when nothing was closed.
     /// </summary>
-    private async Task TrySignalCancelledRollsAsync(
+    private async Task TrySignalClosedRollsAsync(
         Guid campaignId,
-        IReadOnlyList<CancelledRequestedRoll> cancelled,
+        IReadOnlyList<ClosedRequestedRoll> closed,
         IReadOnlyList<ApprovedInvestigatorRef> approved,
         CancellationToken cancellationToken)
     {
-        foreach (var group in cancelled.GroupBy(roll => roll.Visibility))
+        foreach (var group in closed.GroupBy(roll => roll.Visibility))
         {
             try
             {

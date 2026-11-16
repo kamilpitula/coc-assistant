@@ -23,12 +23,20 @@ public enum RequestedRollWriteOutcome
 {
     Rolled,
     Cancelled,
+    PushAsked,
+    Pushed,
+    PushDeclined,
     NotFound,
     SceneNotActive,
     InvestigatorNotRequested,
     NotWaiting,
     AlreadyCancelled,
+    NotPushable,
+    NotPushAsked,
+    JustificationRequired,
+    JustificationTooLong,
+    InvalidDice,
 }
 
-/// <summary>The Requested Roll when <see cref="RequestedRollWriteOutcome.Rolled"/> or <see cref="RequestedRollWriteOutcome.Cancelled"/>, otherwise null.</summary>
+/// <summary>The Requested Roll when it transitioned (Rolled, Cancelled, PushAsked, Pushed, or PushDeclined), otherwise null.</summary>
 public sealed record RequestedRollWriteResult(RequestedRollWriteOutcome Outcome, RequestedRollView? Roll);

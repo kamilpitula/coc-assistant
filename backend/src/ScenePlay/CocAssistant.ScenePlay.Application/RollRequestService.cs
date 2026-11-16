@@ -220,6 +220,141 @@ public class RollRequestService
         };
     }
 
+    /// <summary>The caller's pushable Requested Rolls in the Active Scene; null when the caller is not a Player or has no Approved Investigator.</summary>
+    public async Task<PushableRollsResult?> ListMinePushableAsync(Guid campaignId, Guid callerAccountId, CancellationToken cancellationToken)
+    {
+        if (await _roles.RoleOfAsync(campaignId, callerAccountId, cancellationToken) != CampaignMemberRole.Player)
+        {
+            return null;
+        }
+
+        var approved = await _approved.ListAsync(campaignId, cancellationToken);
+        var mine = approved.FirstOrDefault(investigator => investigator.PlayerAccountId == callerAccountId);
+        if (mine is null)
+        {
+            return null;
+        }
+
+        var pushable = await _requests.ListPushableForInvestigatorAsync(campaignId, mine.InvestigatorId, cancellationToken);
+        var names = await RollerNames.ResolveAsync(_names, pushable.Select(item => item.Roll), cancellationToken);
+        return new PushableRollsResult(mine.Name, pushable.Select(item => RollRequestProjection.ForWaiting(item, approved, names)).ToList());
+    }
+
+    /// <summary>
+    /// Asks to push the Investigator's Requested Roll; only the Investigator's Player may ask, never the Keeper. The checks
+    /// run in this order: the Player's ownership, the Scene, the justification, then the status and pushability.
+    /// </summary>
+    public async Task<AskPushResult> AskToPushAsync(
+        Guid campaignId,
+        Guid callerAccountId,
+        Guid requestId,
+        Guid investigatorId,
+        string? justification,
+        CancellationToken cancellationToken)
+    {
+        var role = await _roles.RoleOfAsync(campaignId, callerAccountId, cancellationToken);
+        if (role != CampaignMemberRole.Player)
+        {
+            return new AskPushResult(AskPushOutcome.NotFound, null);
+        }
+
+        var request = await _requests.FindAsync(campaignId, requestId, cancellationToken);
+        var approved = await _approved.ListAsync(campaignId, cancellationToken);
+        if (!MayPush(request, approved, callerAccountId, investigatorId))
+        {
+            return new AskPushResult(AskPushOutcome.NotFound, null);
+        }
+
+        var owner = approved.FirstOrDefault(investigator => investigator.InvestigatorId == investigatorId);
+        var result = await _requests.AskToPushAsync(campaignId, requestId, investigatorId, justification, cancellationToken);
+        return result.Outcome switch
+        {
+            RequestedRollWriteOutcome.PushAsked => await AskedAsync(campaignId, owner, result.Roll!, request!.Visibility, approved, cancellationToken),
+            RequestedRollWriteOutcome.SceneNotActive => new AskPushResult(AskPushOutcome.SceneNotActive, null),
+            RequestedRollWriteOutcome.InvestigatorNotRequested => new AskPushResult(AskPushOutcome.NotFound, null),
+            RequestedRollWriteOutcome.NotPushable => new AskPushResult(AskPushOutcome.NotPushable, null),
+            RequestedRollWriteOutcome.AlreadyCancelled => new AskPushResult(AskPushOutcome.AlreadyCancelled, null),
+            RequestedRollWriteOutcome.JustificationRequired => new AskPushResult(AskPushOutcome.JustificationRequired, null),
+            RequestedRollWriteOutcome.JustificationTooLong => new AskPushResult(AskPushOutcome.JustificationTooLong, null),
+            _ => new AskPushResult(AskPushOutcome.NotFound, null),
+        };
+    }
+
+    /// <summary>
+    /// Approves the Investigator's push with the Keeper's dice for the pushed roll; only the Keeper may approve. The checks
+    /// run in this order: the Keeper, the request, the Scene, the dice, then the status.
+    /// </summary>
+    public async Task<ApprovePushResult> ApprovePushAsync(
+        Guid campaignId,
+        Guid callerAccountId,
+        Guid requestId,
+        Guid investigatorId,
+        int? bonusDice,
+        int? penaltyDice,
+        CancellationToken cancellationToken)
+    {
+        if (await _roles.RoleOfAsync(campaignId, callerAccountId, cancellationToken) != CampaignMemberRole.Keeper)
+        {
+            return new ApprovePushResult(ApprovePushOutcome.NotFound, null);
+        }
+
+        var request = await _requests.FindAsync(campaignId, requestId, cancellationToken);
+        if (request is null)
+        {
+            return new ApprovePushResult(ApprovePushOutcome.NotFound, null);
+        }
+
+        var approved = await _approved.ListAsync(campaignId, cancellationToken);
+        var owner = approved.FirstOrDefault(investigator => investigator.InvestigatorId == investigatorId);
+        var result = await _requests.ApprovePushAsync(campaignId, requestId, investigatorId, bonusDice, penaltyDice, cancellationToken);
+        return result.Outcome switch
+        {
+            RequestedRollWriteOutcome.Pushed => await ApprovedAsync(campaignId, owner, result.Roll!, request.Visibility, approved, cancellationToken),
+            RequestedRollWriteOutcome.SceneNotActive => new ApprovePushResult(ApprovePushOutcome.SceneNotActive, null),
+            RequestedRollWriteOutcome.InvestigatorNotRequested => new ApprovePushResult(ApprovePushOutcome.NotFound, null),
+            RequestedRollWriteOutcome.NotPushAsked => new ApprovePushResult(ApprovePushOutcome.NotPushAsked, null),
+            RequestedRollWriteOutcome.AlreadyCancelled => new ApprovePushResult(ApprovePushOutcome.AlreadyCancelled, null),
+            RequestedRollWriteOutcome.InvalidDice => new ApprovePushResult(ApprovePushOutcome.InvalidDice, null),
+            _ => new ApprovePushResult(ApprovePushOutcome.NotFound, null),
+        };
+    }
+
+    /// <summary>
+    /// Declines the Investigator's push; only the Keeper may decline. The checks run in this order: the Keeper, the request,
+    /// the Scene, then the status.
+    /// </summary>
+    public async Task<DeclinePushResult> DeclinePushAsync(
+        Guid campaignId,
+        Guid callerAccountId,
+        Guid requestId,
+        Guid investigatorId,
+        CancellationToken cancellationToken)
+    {
+        if (await _roles.RoleOfAsync(campaignId, callerAccountId, cancellationToken) != CampaignMemberRole.Keeper)
+        {
+            return new DeclinePushResult(DeclinePushOutcome.NotFound, null);
+        }
+
+        var request = await _requests.FindAsync(campaignId, requestId, cancellationToken);
+        if (request is null)
+        {
+            return new DeclinePushResult(DeclinePushOutcome.NotFound, null);
+        }
+
+        var approved = await _approved.ListAsync(campaignId, cancellationToken);
+        var owner = approved.FirstOrDefault(investigator => investigator.InvestigatorId == investigatorId);
+        var result = await _requests.DeclinePushAsync(campaignId, requestId, investigatorId, cancellationToken);
+        return result.Outcome switch
+        {
+            RequestedRollWriteOutcome.PushDeclined => await DeclinedAsync(campaignId, owner, result.Roll!, request.Visibility, approved, cancellationToken),
+            RequestedRollWriteOutcome.SceneNotActive => new DeclinePushResult(DeclinePushOutcome.SceneNotActive, null),
+            RequestedRollWriteOutcome.InvestigatorNotRequested => new DeclinePushResult(DeclinePushOutcome.NotFound, null),
+            RequestedRollWriteOutcome.NotPushAsked => new DeclinePushResult(DeclinePushOutcome.NotPushAsked, null),
+            RequestedRollWriteOutcome.AlreadyCancelled => new DeclinePushResult(DeclinePushOutcome.AlreadyCancelled, null),
+            _ => new DeclinePushResult(DeclinePushOutcome.NotFound, null),
+        };
+    }
+
     /// <summary>Whether the caller may roll: the request exists, the caller may see it, and a Player rolls only their own Investigator's.</summary>
     private static bool MayRoll(
         RollRequestRecord? request,
@@ -236,6 +371,22 @@ public class RollRequestService
         if (role == CampaignMemberRole.Keeper)
         {
             return true;
+        }
+
+        var owner = approved.FirstOrDefault(investigator => investigator.InvestigatorId == investigatorId);
+        return owner is not null && owner.PlayerAccountId == callerAccountId;
+    }
+
+    /// <summary>Whether the caller may ask to push: a Public request exists and the caller owns the Investigator. The Keeper never asks.</summary>
+    private static bool MayPush(
+        RollRequestRecord? request,
+        IReadOnlyList<ApprovedInvestigatorRef> approved,
+        Guid callerAccountId,
+        Guid investigatorId)
+    {
+        if (request is null || !RollRequestVisibilityRule.IsVisibleTo(request, CampaignMemberRole.Player))
+        {
+            return false;
         }
 
         var owner = approved.FirstOrDefault(investigator => investigator.InvestigatorId == investigatorId);
@@ -272,6 +423,54 @@ public class RollRequestService
         return new CancelRequestedRollResult(
             CancelRequestedRollOutcome.Cancelled,
             RollRequestProjection.ForRoll(roll, owner?.Name ?? approved.FirstOrDefault(candidate => candidate.InvestigatorId == roll.InvestigatorId)?.Name, names));
+    }
+
+    private async Task<AskPushResult> AskedAsync(
+        Guid campaignId,
+        ApprovedInvestigatorRef? owner,
+        RequestedRollRecord roll,
+        RollRequestVisibility visibility,
+        IReadOnlyList<ApprovedInvestigatorRef> approved,
+        CancellationToken cancellationToken) =>
+        new(
+            AskPushOutcome.Asked,
+            await SignalledRollAsync(campaignId, owner, roll, visibility, approved, cancellationToken));
+
+    private async Task<ApprovePushResult> ApprovedAsync(
+        Guid campaignId,
+        ApprovedInvestigatorRef? owner,
+        RequestedRollRecord roll,
+        RollRequestVisibility visibility,
+        IReadOnlyList<ApprovedInvestigatorRef> approved,
+        CancellationToken cancellationToken) =>
+        new(
+            ApprovePushOutcome.Approved,
+            await SignalledRollAsync(campaignId, owner, roll, visibility, approved, cancellationToken));
+
+    private async Task<DeclinePushResult> DeclinedAsync(
+        Guid campaignId,
+        ApprovedInvestigatorRef? owner,
+        RequestedRollRecord roll,
+        RollRequestVisibility visibility,
+        IReadOnlyList<ApprovedInvestigatorRef> approved,
+        CancellationToken cancellationToken) =>
+        new(
+            DeclinePushOutcome.Declined,
+            await SignalledRollAsync(campaignId, owner, roll, visibility, approved, cancellationToken));
+
+    /// <summary>Signals the roll change to the owner's account and projects the roll with display names.</summary>
+    private async Task<RequestedRollView> SignalledRollAsync(
+        Guid campaignId,
+        ApprovedInvestigatorRef? owner,
+        RequestedRollRecord roll,
+        RollRequestVisibility visibility,
+        IReadOnlyList<ApprovedInvestigatorRef> approved,
+        CancellationToken cancellationToken)
+    {
+        var affected = owner is null ? [] : (IReadOnlyCollection<Guid>)[owner.PlayerAccountId];
+        await TrySignalAsync(campaignId, visibility, affected, cancellationToken);
+        var names = await RollerNames.ResolveAsync(_names, [roll], cancellationToken);
+        return RollRequestProjection.ForRoll(roll, owner?.Name ?? approved.FirstOrDefault(candidate => candidate.InvestigatorId == roll.InvestigatorId)?.Name, names);
     }
 
     private async Task<RollRequestView> ProjectAsync(

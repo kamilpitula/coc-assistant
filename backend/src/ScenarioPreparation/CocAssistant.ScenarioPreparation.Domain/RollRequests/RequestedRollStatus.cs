@@ -5,5 +5,7 @@ public enum RequestedRollStatus
 {
     Waiting,
     Rolled,
+    PushAsked,
+    Pushed,
     Cancelled,
 }

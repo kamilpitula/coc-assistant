@@ -23,6 +23,10 @@ function waitingRoll(investigatorId: string, investigatorName: string): Requeste
     bonusDice: 0,
     penaltyDice: 0,
     status: 'Waiting',
+    pushJustification: null,
+    pushBonusDice: null,
+    pushPenaltyDice: null,
+    canBePushed: false,
     rolls: [],
   }
 }

@@ -51,10 +51,11 @@ public class SceneRollRequestServiceTests : IDisposable
         Guid? campaignId = null,
         ISceneRollRequestRepository? requests = null,
         RollRequestVisibility visibility = RollRequestVisibility.Public,
-        Guid? keeperAccountId = null)
+        Guid? keeperAccountId = null,
+        IDiceRoller? roller = null)
     {
         using var context = _builder.Fixture.CreateContext();
-        return await Service(context, requests: requests).CreateAsync(
+        return await Service(context, requests: requests, roller: roller).CreateAsync(
             campaignId ?? _builder.CampaignId,
             target ?? SpotHidden,
             "Something moves upstairs.",
@@ -79,6 +80,27 @@ public class SceneRollRequestServiceTests : IDisposable
         using var context = _builder.Fixture.CreateContext();
         return await Service(context).CancelAsync(
             campaignId ?? _builder.CampaignId, requestId, investigator, CancellationToken.None);
+    }
+
+    private async Task<RequestedRollWriteResult> AskToPushAsync(Guid requestId, Guid investigator, string justification = "Trying again.")
+    {
+        using var context = _builder.Fixture.CreateContext();
+        return await Service(context).AskToPushAsync(
+            _builder.CampaignId, requestId, investigator, justification, CancellationToken.None);
+    }
+
+    private async Task<RequestedRollWriteResult> ApprovePushAsync(Guid requestId, Guid investigator, int bonusDice = 1, int penaltyDice = 0)
+    {
+        using var context = _builder.Fixture.CreateContext();
+        return await Service(context).ApprovePushAsync(
+            _builder.CampaignId, requestId, investigator, bonusDice, penaltyDice, CancellationToken.None);
+    }
+
+    private async Task<RequestedRollWriteResult> DeclinePushAsync(Guid requestId, Guid investigator)
+    {
+        using var context = _builder.Fixture.CreateContext();
+        return await Service(context).DeclinePushAsync(
+            _builder.CampaignId, requestId, investigator, CancellationToken.None);
     }
 
     private async Task<int> StoredRequestCountAsync()
@@ -472,5 +494,223 @@ public class SceneRollRequestServiceTests : IDisposable
 
         Assert.Equal(RequestedRollWriteOutcome.NotWaiting, result.Outcome);
         Assert.Null(result.Roll);
+    }
+
+    [Fact]
+    public async Task Given_a_failed_roll_When_asking_to_push_Then_it_is_push_asked_with_the_justification_and_no_longer_pushable()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(created.Request!.Id, Harvey, roller: new ScriptedRoller(8, 1))).Outcome);
+
+        var result = await AskToPushAsync(created.Request.Id, Harvey, justification: "  Trying again.  ");
+
+        Assert.Equal(RequestedRollWriteOutcome.PushAsked, result.Outcome);
+        var roll = result.Roll!;
+        Assert.Equal(RequestedRollStatus.PushAsked, roll.Status);
+        Assert.Equal("Trying again.", roll.PushJustification);
+        Assert.False(roll.CanBePushed);
+    }
+
+    [Fact]
+    public async Task Given_a_missing_or_too_long_justification_When_asking_to_push_Then_it_is_refused()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(created.Request!.Id, Harvey, roller: new ScriptedRoller(8, 1))).Outcome);
+
+        Assert.Equal(RequestedRollWriteOutcome.JustificationRequired, (await AskToPushAsync(created.Request.Id, Harvey, "   ")).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.JustificationTooLong, (await AskToPushAsync(created.Request.Id, Harvey, new string('x', 2001))).Outcome);
+    }
+
+    [Fact]
+    public async Task Given_a_successful_roll_When_asking_to_push_Then_it_is_not_pushable()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(created.Request!.Id, Harvey)).Outcome);
+
+        var result = await AskToPushAsync(created.Request.Id, Harvey);
+
+        Assert.Equal(RequestedRollWriteOutcome.NotPushable, result.Outcome);
+        Assert.Null(result.Roll);
+    }
+
+    [Fact]
+    public async Task Given_a_finished_scene_When_asking_to_push_Then_the_scene_check_wins()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(created.Request!.Id, Harvey, roller: new ScriptedRoller(8, 1))).Outcome);
+        using (var context = _builder.Fixture.CreateContext())
+        {
+            Assert.Equal(SceneFinishOutcome.Finished, (await _builder.CreateLifecycleService(context).FinishActiveAsync(_builder.CampaignId, CancellationToken.None)).Outcome);
+        }
+
+        var result = await AskToPushAsync(created.Request.Id, Harvey);
+
+        Assert.Equal(RequestedRollWriteOutcome.SceneNotActive, result.Outcome);
+        Assert.Null(result.Roll);
+    }
+
+    [Fact]
+    public async Task Given_an_unknown_request_When_asking_to_push_Then_it_is_not_found()
+    {
+        var (_, _) = await ActiveSceneAsync();
+
+        Assert.Equal(RequestedRollWriteOutcome.NotFound, (await AskToPushAsync(Guid.NewGuid(), Harvey)).Outcome);
+    }
+
+    [Fact]
+    public async Task Given_a_lost_save_race_When_asking_to_push_Then_it_is_not_pushable()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(created.Request!.Id, Harvey, roller: new ScriptedRoller(8, 1))).Outcome);
+        using var context = _builder.Fixture.CreateContext();
+        var service = Service(context, requests: new ConflictingRequests(new EfSceneRollRequestRepository(context)));
+
+        var result = await service.AskToPushAsync(_builder.CampaignId, created.Request!.Id, Harvey, "Trying again.", CancellationToken.None);
+
+        Assert.Equal(RequestedRollWriteOutcome.NotPushable, result.Outcome);
+        Assert.Null(result.Roll);
+    }
+
+    [Fact]
+    public async Task Given_a_push_asked_roll_When_approving_Then_it_is_pushed_with_the_approved_dice_and_the_originals_unchanged()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(created.Request!.Id, Harvey, roller: new ScriptedRoller(8, 1))).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.PushAsked, (await AskToPushAsync(created.Request.Id, Harvey)).Outcome);
+
+        var result = await ApprovePushAsync(created.Request.Id, Harvey, bonusDice: 1, penaltyDice: 2);
+
+        Assert.Equal(RequestedRollWriteOutcome.Pushed, result.Outcome);
+        var roll = result.Roll!;
+        Assert.Equal(RequestedRollStatus.Pushed, roll.Status);
+        Assert.Equal((1, 2), (roll.PushBonusDice, roll.PushPenaltyDice));
+        Assert.Equal((0, 0), (roll.BonusDice, roll.PenaltyDice));
+    }
+
+    [Fact]
+    public async Task Given_dice_outside_0_and_2_When_approving_Then_the_dice_are_invalid()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(created.Request!.Id, Harvey, roller: new ScriptedRoller(8, 1))).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.PushAsked, (await AskToPushAsync(created.Request.Id, Harvey)).Outcome);
+
+        Assert.Equal(RequestedRollWriteOutcome.InvalidDice, (await ApprovePushAsync(created.Request.Id, Harvey, bonusDice: 3)).Outcome);
+    }
+
+    [Fact]
+    public async Task Given_a_roll_that_was_never_asked_When_approving_or_declining_Then_it_is_not_push_asked()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(created.Request!.Id, Harvey, roller: new ScriptedRoller(8, 1))).Outcome);
+
+        Assert.Equal(RequestedRollWriteOutcome.NotPushAsked, (await ApprovePushAsync(created.Request.Id, Harvey)).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.NotPushAsked, (await DeclinePushAsync(created.Request.Id, Harvey)).Outcome);
+    }
+
+    [Fact]
+    public async Task Given_a_push_asked_roll_When_declining_Then_it_moves_back_to_rolled()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(created.Request!.Id, Harvey, roller: new ScriptedRoller(8, 1))).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.PushAsked, (await AskToPushAsync(created.Request.Id, Harvey)).Outcome);
+
+        var result = await DeclinePushAsync(created.Request.Id, Harvey);
+
+        Assert.Equal(RequestedRollWriteOutcome.PushDeclined, result.Outcome);
+        Assert.Equal(RequestedRollStatus.Rolled, result.Roll!.Status);
+        Assert.Equal(RequestedRollWriteOutcome.NotPushable, (await AskToPushAsync(created.Request.Id, Harvey)).Outcome);
+    }
+
+    [Fact]
+    public async Task Given_a_finished_scene_When_approving_or_declining_Then_the_scene_check_wins()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(created.Request!.Id, Harvey, roller: new ScriptedRoller(8, 1))).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.PushAsked, (await AskToPushAsync(created.Request.Id, Harvey)).Outcome);
+        using (var context = _builder.Fixture.CreateContext())
+        {
+            Assert.Equal(SceneFinishOutcome.Finished, (await _builder.CreateLifecycleService(context).FinishActiveAsync(_builder.CampaignId, CancellationToken.None)).Outcome);
+        }
+
+        Assert.Equal(RequestedRollWriteOutcome.SceneNotActive, (await ApprovePushAsync(created.Request.Id, Harvey)).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.SceneNotActive, (await DeclinePushAsync(created.Request.Id, Harvey)).Outcome);
+    }
+
+    [Fact]
+    public async Task Given_a_lost_save_race_When_approving_or_declining_Then_it_is_not_push_asked()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var created = await CreateAsync(sceneId);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(created.Request!.Id, Harvey, roller: new ScriptedRoller(8, 1))).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.PushAsked, (await AskToPushAsync(created.Request.Id, Harvey)).Outcome);
+        using var context = _builder.Fixture.CreateContext();
+        var service = Service(context, requests: new ConflictingRequests(new EfSceneRollRequestRepository(context)));
+
+        Assert.Equal(RequestedRollWriteOutcome.NotPushAsked, (await service.ApprovePushAsync(_builder.CampaignId, created.Request!.Id, Harvey, 1, 0, CancellationToken.None)).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.NotPushAsked, (await service.DeclinePushAsync(_builder.CampaignId, created.Request!.Id, Harvey, CancellationToken.None)).Outcome);
+    }
+
+    [Fact]
+    public async Task Given_waiting_pushed_and_other_rolls_When_listing_mine_Then_waiting_and_pushed_come()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var waiting = await CreateAsync(sceneId, [Input(Harvey)]);
+        _builder.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        var failed = await CreateAsync(sceneId, [Input(Harvey)]);
+        _builder.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        var rolled = await CreateAsync(sceneId, [Input(Harvey)]);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(failed.Request!.Id, Harvey, roller: new ScriptedRoller(8, 1))).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(rolled.Request!.Id, Harvey)).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.PushAsked, (await AskToPushAsync(failed.Request.Id, Harvey)).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.Pushed, (await ApprovePushAsync(failed.Request.Id, Harvey)).Outcome);
+
+        using var context = _builder.Fixture.CreateContext();
+        var mine = await Service(context).ListWaitingForInvestigatorAsync(_builder.CampaignId, Harvey, CancellationToken.None);
+
+        Assert.Equal([waiting.Request!.Id, failed.Request.Id], mine.Select(roll => roll.RollRequestId));
+    }
+
+    [Fact]
+    public async Task Given_pushable_asked_and_other_rolls_When_listing_pushable_Then_only_pushable_rolled_and_push_asked_come()
+    {
+        var (_, sceneId) = await ActiveSceneAsync();
+        var pushable = await CreateAsync(sceneId, [Input(Harvey), Input(Lucy)]);
+        _builder.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        var success = await CreateAsync(sceneId, [Input(Harvey)]);
+        _builder.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        var waiting = await CreateAsync(sceneId, [Input(Harvey)]);
+        _builder.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        var declined = await CreateAsync(sceneId, [Input(Harvey)]);
+        _builder.TimeProvider.Advance(TimeSpan.FromMinutes(1));
+        var hidden = await CreateAsync(sceneId, [Input(Harvey)], visibility: RollRequestVisibility.KeeperOnly, roller: new ScriptedRoller(8, 1));
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(pushable.Request!.Id, Harvey, roller: new ScriptedRoller(8, 1))).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(pushable.Request.Id, Lucy, roller: new ScriptedRoller(8, 1))).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(success.Request!.Id, Harvey)).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.Rolled, (await RollAsync(declined.Request!.Id, Harvey, roller: new ScriptedRoller(8, 1))).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.PushAsked, (await AskToPushAsync(pushable.Request.Id, Lucy)).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.PushAsked, (await AskToPushAsync(declined.Request.Id, Harvey)).Outcome);
+        Assert.Equal(RequestedRollWriteOutcome.PushDeclined, (await DeclinePushAsync(declined.Request.Id, Harvey)).Outcome);
+        _ = (waiting, hidden);
+
+        using var context = _builder.Fixture.CreateContext();
+        var mine = await Service(context).ListPushableForInvestigatorAsync(_builder.CampaignId, Harvey, CancellationToken.None);
+        var lucy = await Service(context).ListPushableForInvestigatorAsync(_builder.CampaignId, Lucy, CancellationToken.None);
+
+        var harveyRoll = Assert.Single(mine);
+        Assert.Equal(pushable.Request.Id, harveyRoll.RollRequestId);
+        Assert.True(harveyRoll.Roll.CanBePushed);
+        var lucyRoll = Assert.Single(lucy);
+        Assert.Equal(pushable.Request.Id, lucyRoll.RollRequestId);
+        Assert.Equal(RequestedRollStatus.PushAsked, lucyRoll.Roll.Status);
     }
 }

@@ -559,7 +559,7 @@ public class SceneLifecycleServiceTests : IDisposable
         Assert.Equal(SceneFinishOutcome.Finished, finish.Outcome);
         Assert.Equal(
             [(requestId, Harvey, RollRequestVisibility.Public), (requestId, Lucy, RollRequestVisibility.Public)],
-            finish.CancelledRolls.Select(cancelled => (cancelled.RollRequestId, cancelled.InvestigatorId, cancelled.Visibility)));
+            finish.ClosedRolls.Select(closed => (closed.RollRequestId, closed.InvestigatorId, closed.Visibility)));
         Assert.All(await StoredRollsAsync(requestId), roll => Assert.Equal(RequestedRollStatus.Cancelled, roll.Status));
     }
 
@@ -582,10 +582,43 @@ public class SceneLifecycleServiceTests : IDisposable
         var finish = await FinishAsync();
 
         Assert.Equal(SceneFinishOutcome.Finished, finish.Outcome);
-        Assert.Equal([(requestId, Lucy)], finish.CancelledRolls.Select(cancelled => (cancelled.RollRequestId, cancelled.InvestigatorId)));
+        Assert.Equal([(requestId, Lucy)], finish.ClosedRolls.Select(closed => (closed.RollRequestId, closed.InvestigatorId)));
         var stored = await StoredRollsAsync(requestId);
         Assert.Equal(RequestedRollStatus.Rolled, stored.Single(roll => roll.InvestigatorId == Harvey).Status);
         Assert.Equal(RequestedRollStatus.Cancelled, stored.Single(roll => roll.InvestigatorId == Lucy).Status);
+    }
+
+    [Fact]
+    public async Task Given_a_pushed_and_a_push_asked_roll_When_finishing_Then_the_pushed_roll_is_cancelled_and_the_asked_one_is_declined()
+    {
+        var (_, meetingKnott, _) = await TwoScenesAsync();
+        await StartAsync(meetingKnott, [Harvey, Lucy]);
+        var requestId = await RequestRollsAsync(Harvey, Lucy);
+        using (var context = _builder.Fixture.CreateContext())
+        {
+            var service = new SceneRollRequestService(
+                new EfSceneRepository(context),
+                new EfSceneRollRequestRepository(context),
+                new ScriptedRoller(8, 1, 8, 1),
+                _builder.TimeProvider);
+            Assert.Equal(RequestedRollWriteOutcome.Rolled, (await service.RollAsync(_builder.CampaignId, requestId, Harvey, Roller, CancellationToken.None)).Outcome);
+            Assert.Equal(RequestedRollWriteOutcome.Rolled, (await service.RollAsync(_builder.CampaignId, requestId, Lucy, Roller, CancellationToken.None)).Outcome);
+            Assert.Equal(RequestedRollWriteOutcome.PushAsked, (await service.AskToPushAsync(_builder.CampaignId, requestId, Harvey, "Trying again.", CancellationToken.None)).Outcome);
+            Assert.Equal(RequestedRollWriteOutcome.PushAsked, (await service.AskToPushAsync(_builder.CampaignId, requestId, Lucy, "Trying again.", CancellationToken.None)).Outcome);
+            Assert.Equal(RequestedRollWriteOutcome.Pushed, (await service.ApprovePushAsync(_builder.CampaignId, requestId, Harvey, 0, 0, CancellationToken.None)).Outcome);
+        }
+
+        var finish = await FinishAsync();
+
+        Assert.Equal(SceneFinishOutcome.Finished, finish.Outcome);
+        Assert.Equal([(requestId, Harvey), (requestId, Lucy)], finish.ClosedRolls.Select(closed => (closed.RollRequestId, closed.InvestigatorId)));
+        var stored = await StoredRollsAsync(requestId);
+        var harvey = stored.Single(roll => roll.InvestigatorId == Harvey);
+        Assert.Equal(RequestedRollStatus.Cancelled, harvey.Status);
+        Assert.Single(harvey.RollRecords);
+        var lucy = stored.Single(roll => roll.InvestigatorId == Lucy);
+        Assert.Equal(RequestedRollStatus.Rolled, lucy.Status);
+        Assert.Equal("Trying again.", lucy.PushJustification);
     }
 
     [Fact]
@@ -598,7 +631,7 @@ public class SceneLifecycleServiceTests : IDisposable
         var replaced = await ReplaceAsync(Harvey);
 
         Assert.Equal(InvestigatorsPresentOutcome.Replaced, replaced.Outcome);
-        Assert.Equal([(requestId, Lucy)], replaced.CancelledRolls.Select(cancelled => (cancelled.RollRequestId, cancelled.InvestigatorId)));
+        Assert.Equal([(requestId, Lucy)], replaced.ClosedRolls.Select(closed => (closed.RollRequestId, closed.InvestigatorId)));
         var stored = await StoredRollsAsync(requestId);
         Assert.Equal(RequestedRollStatus.Waiting, stored.Single(roll => roll.InvestigatorId == Harvey).Status);
         Assert.Equal(RequestedRollStatus.Cancelled, stored.Single(roll => roll.InvestigatorId == Lucy).Status);
@@ -614,7 +647,7 @@ public class SceneLifecycleServiceTests : IDisposable
         var replaced = await ReplaceAsync();
 
         Assert.Equal(InvestigatorsPresentOutcome.NoInvestigatorPresent, replaced.Outcome);
-        Assert.Empty(replaced.CancelledRolls);
+        Assert.Empty(replaced.ClosedRolls);
         Assert.All(await StoredRollsAsync(requestId), roll => Assert.Equal(RequestedRollStatus.Waiting, roll.Status));
     }
 
@@ -630,7 +663,7 @@ public class SceneLifecycleServiceTests : IDisposable
         Assert.Equal(SceneStartOutcome.Started, start.Outcome);
         Assert.Equal(
             [(requestId, Harvey, RollRequestVisibility.Public), (requestId, Lucy, RollRequestVisibility.Public)],
-            start.CancelledRolls.Select(cancelled => (cancelled.RollRequestId, cancelled.InvestigatorId, cancelled.Visibility)));
+            start.ClosedRolls.Select(closed => (closed.RollRequestId, closed.InvestigatorId, closed.Visibility)));
         Assert.All(await StoredRollsAsync(requestId), roll => Assert.Equal(RequestedRollStatus.Cancelled, roll.Status));
     }
 
@@ -644,7 +677,7 @@ public class SceneLifecycleServiceTests : IDisposable
         var start = await StartAsync(corbittHouse, [Harvey]);
 
         Assert.Equal(SceneStartOutcome.ActiveSceneExists, start.Outcome);
-        Assert.Empty(start.CancelledRolls);
+        Assert.Empty(start.ClosedRolls);
         Assert.All(await StoredRollsAsync(requestId), roll => Assert.Equal(RequestedRollStatus.Waiting, roll.Status));
     }
 
@@ -671,7 +704,7 @@ public class SceneLifecycleServiceTests : IDisposable
         var finish = await _builder.CreateLifecycleService(stale).FinishActiveAsync(_builder.CampaignId, CancellationToken.None);
 
         Assert.Equal(SceneFinishOutcome.Conflict, finish.Outcome);
-        Assert.Empty(finish.CancelledRolls);
+        Assert.Empty(finish.ClosedRolls);
         using var check = _builder.Fixture.CreateContext();
         Assert.Equal(SceneStatus.Active, (await new EfSceneRepository(check).FindActiveAsync(_builder.CampaignId, CancellationToken.None))!.Status);
         Assert.Equal(RequestedRollStatus.Rolled, (await StoredRollsAsync(requestId)).Single().Status);

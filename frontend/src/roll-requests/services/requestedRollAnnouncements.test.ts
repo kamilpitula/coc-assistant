@@ -21,6 +21,10 @@ function waitingRoll(rollRequestId: string, investigatorId: string, skill = 'Spo
       bonusDice: 0,
       penaltyDice: 0,
       status: 'Waiting',
+      pushJustification: null,
+      pushBonusDice: null,
+      pushPenaltyDice: null,
+      canBePushed: false,
       rolls: [],
     },
   }
@@ -67,5 +71,27 @@ describe('describeNewRequestedRolls', () => {
     expect(
       describeNewRequestedRolls([waitingRoll('r1', 'i1'), waitingRoll('r2', 'i1', 'Listen')], 'Harvey Walters', true),
     ).toBe('2 rolls requested for Harvey Walters.')
+  })
+
+  it('names an approved push on its own, off the Active Scene page (RR-UX-12, RR-A11Y-21)', () => {
+    const pushed = { ...waitingRoll('r1', 'i1'), roll: { ...waitingRoll('r1', 'i1').roll, status: 'Pushed' as const } }
+
+    expect(describeNewRequestedRolls([pushed], 'Harvey Walters', false)).toBe(
+      'Push approved for Harvey Walters: Spot Hidden. Roll it on the Active Scene.',
+    )
+  })
+
+  it('leaves the page direction out for an approved push on the Active Scene page itself', () => {
+    const pushed = { ...waitingRoll('r1', 'i1'), roll: { ...waitingRoll('r1', 'i1').roll, status: 'Pushed' as const } }
+
+    expect(describeNewRequestedRolls([pushed], 'Harvey Walters', true)).toBe('Push approved for Harvey Walters: Spot Hidden.')
+  })
+
+  it('merges an approved push with new Waiting rolls into the count', () => {
+    const pushed = { ...waitingRoll('r1', 'i1'), roll: { ...waitingRoll('r1', 'i1').roll, status: 'Pushed' as const } }
+
+    expect(describeNewRequestedRolls([pushed, waitingRoll('r2', 'i1', 'Listen')], 'Harvey Walters', false)).toBe(
+      '2 rolls requested for Harvey Walters. Roll them on the Active Scene.',
+    )
   })
 })

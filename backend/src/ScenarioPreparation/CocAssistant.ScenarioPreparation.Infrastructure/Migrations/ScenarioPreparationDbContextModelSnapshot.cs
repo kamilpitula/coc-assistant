@@ -365,7 +365,20 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<bool>("HasBeenPushed")
+                        .HasColumnType("bit");
+
                     b.Property<int>("PenaltyDice")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PushBonusDice")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PushJustification")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int?>("PushPenaltyDice")
                         .HasColumnType("int");
 
                     b.Property<string>("RollRecords")

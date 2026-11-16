@@ -14,7 +14,7 @@ public sealed record RollRequestView(
     DateTimeOffset CreatedAt,
     IReadOnlyList<RequestedRollView> RequestedRolls);
 
-/// <summary>One Requested Roll with its snapshot target value, effective Difficulty and dice, status, and Roll Records.</summary>
+/// <summary>One Requested Roll with its snapshot target value, effective Difficulty and dice, status, the push fields, whether it can be pushed, and Roll Records.</summary>
 public sealed record RequestedRollView(
     Guid RollRequestId,
     Guid InvestigatorId,
@@ -25,6 +25,10 @@ public sealed record RequestedRollView(
     int BonusDice,
     int PenaltyDice,
     RequestedRollStatus Status,
+    string? PushJustification,
+    int? PushBonusDice,
+    int? PushPenaltyDice,
+    bool CanBePushed,
     IReadOnlyList<RollRecord> RollRecords);
 
 /// <summary>One Investigator's Waiting Requested Roll with the Roll Request's target, message, visibility, and creation time (specs/roll-requests/spec.md).</summary>

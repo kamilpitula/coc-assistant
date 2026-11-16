@@ -101,8 +101,8 @@ export const FinishFirstCancelsWaitingRolls: Story = {
         penaltyDice: 0,
         createdAt: '2026-11-14T19:21:00Z',
         requestedRolls: [
-          { investigatorId: 'i-c', investigatorName: 'Mae Doyle', targetValue: 40, usesBaseValue: false, canEarnExperienceCheck: true, difficulty: 'Regular', bonusDice: 0, penaltyDice: 0, status: 'Waiting', rolls: [] },
-          { investigatorId: 'i-a', investigatorName: 'Dr. Ames', targetValue: 60, usesBaseValue: false, canEarnExperienceCheck: true, difficulty: 'Regular', bonusDice: 0, penaltyDice: 0, status: 'Waiting', rolls: [] },
+          { investigatorId: 'i-c', investigatorName: 'Mae Doyle', targetValue: 40, usesBaseValue: false, canEarnExperienceCheck: true, difficulty: 'Regular', bonusDice: 0, penaltyDice: 0, status: 'Waiting', pushJustification: null, pushBonusDice: null, pushPenaltyDice: null, canBePushed: false, rolls: [] },
+          { investigatorId: 'i-a', investigatorName: 'Dr. Ames', targetValue: 60, usesBaseValue: false, canEarnExperienceCheck: true, difficulty: 'Regular', bonusDice: 0, penaltyDice: 0, status: 'Waiting', pushJustification: null, pushBonusDice: null, pushPenaltyDice: null, canBePushed: false, rolls: [] },
         ],
       },
     ],

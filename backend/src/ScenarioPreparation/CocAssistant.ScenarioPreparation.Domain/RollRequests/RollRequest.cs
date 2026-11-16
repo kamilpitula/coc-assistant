@@ -176,8 +176,73 @@ public class RollRequest
     }
 
     /// <summary>
-    /// Closes the Waiting Requested Rolls a Scene exit affects (specs/roll-requests/spec.md, Lifecycle with the Scene):
-    /// every Waiting roll whose Investigator matches moves to Cancelled. Returns the closed Investigator ids in request order.
+    /// Asks to push the Investigator's Requested Roll (skill rolls section 6): a failed, not yet pushed, pushable Rolled
+    /// roll of a Public request moves to PushAsked with its justification. An Investigator without a Requested Roll is
+    /// refused; every other refusal comes from the roll and changes nothing.
+    /// </summary>
+    public RequestedRollResult AskToPushInvestigatorRoll(Guid investigatorId, string justification)
+    {
+        var roll = _requestedRolls.FirstOrDefault(candidate => candidate.InvestigatorId == investigatorId);
+        if (roll is null)
+        {
+            return new RequestedRollResult(RequestedRollOutcome.InvestigatorNotRequested, null);
+        }
+
+        var outcome = roll.AskToPush(justification, CanBePushed(roll));
+        return new RequestedRollResult(outcome, outcome == RequestedRollOutcome.PushAsked ? roll : null);
+    }
+
+    /// <summary>
+    /// Approves the Investigator's push (skill rolls section 6): a PushAsked roll moves to Pushed with the Keeper's dice
+    /// for the pushed roll. An Investigator without a Requested Roll is refused; every other refusal comes from the roll
+    /// and changes nothing.
+    /// </summary>
+    public RequestedRollResult ApprovePushInvestigatorRoll(Guid investigatorId, int bonusDice, int penaltyDice)
+    {
+        var roll = _requestedRolls.FirstOrDefault(candidate => candidate.InvestigatorId == investigatorId);
+        if (roll is null)
+        {
+            return new RequestedRollResult(RequestedRollOutcome.InvestigatorNotRequested, null);
+        }
+
+        var outcome = roll.ApprovePush(bonusDice, penaltyDice);
+        return new RequestedRollResult(outcome, outcome == RequestedRollOutcome.Pushed ? roll : null);
+    }
+
+    /// <summary>
+    /// Declines the Investigator's push (project_ruleset.md section 4.10): a PushAsked roll moves back to Rolled and counts
+    /// as pushed. An Investigator without a Requested Roll is refused; every other refusal comes from the roll and changes
+    /// nothing.
+    /// </summary>
+    public RequestedRollResult DeclinePushInvestigatorRoll(Guid investigatorId)
+    {
+        var roll = _requestedRolls.FirstOrDefault(candidate => candidate.InvestigatorId == investigatorId);
+        if (roll is null)
+        {
+            return new RequestedRollResult(RequestedRollOutcome.InvestigatorNotRequested, null);
+        }
+
+        var outcome = roll.DeclinePush();
+        return new RequestedRollResult(outcome, outcome == RequestedRollOutcome.PushDeclined ? roll : null);
+    }
+
+    /// <summary>
+    /// Whether the roll can be pushed now: a Skill or Characteristic roll of a Public request, with one failed Roll
+    /// Record, that has not been pushed (skill rolls section 6 with project_ruleset.md section 4.10, through
+    /// GameRules Pushing).
+    /// </summary>
+    public bool CanBePushed(RequestedRoll roll) =>
+        roll is { RollRecords.Count: 1 }
+        && roll.RollRecords[0].Percentile is { IsSuccess: var isSuccess }
+        && Pushing.CanPush(
+            isSuccess,
+            roll.HasBeenPushed,
+            Visibility == RollRequestVisibility.Public && Target.Kind is RollTargetKind.Skill or RollTargetKind.Characteristic);
+
+    /// <summary>
+    /// Closes the Requested Rolls a Scene exit affects (specs/roll-requests/spec.md, Lifecycle with the Scene): every
+    /// Waiting or Pushed roll whose Investigator matches moves to Cancelled, every matching PushAsked roll moves back to
+    /// Rolled (declined). Returns the closed Investigator ids in request order.
     /// </summary>
     public IReadOnlyList<Guid> CloseRollsForSceneExit(Func<Guid, bool> isAffected) =>
         _requestedRolls
