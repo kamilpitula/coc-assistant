@@ -48,27 +48,29 @@ export function rollRequestCard(page: Page, target: string): Locator {
 }
 
 /**
- * Picks the "What to roll" target through the combobox's keyboard typeahead without ever relying on the open
- * dropdown: waits for it to be enabled (the catalog has loaded), focuses it, types the full option name, presses
- * Escape, and asserts the combobox shows the chosen value. Every step is valid whether the dropdown stays closed or
- * opens mid-typing, which is what makes this deterministic. Radix hides everything outside an open listbox from
- * assistive tech (`hideOthers`) and blocks pointer events there, so the combobox can only be queried while closed.
- * Typing on the closed trigger commits every keystroke through its own typeahead, so each longer prefix only narrows
- * the match and the full name, spaces included, always selects itself (a space opens the dropdown only when no search
- * is active, and the search here is never empty mid-name). If the popper positions and steals focus mid-typing, later
- * keys only highlight through the listbox typeahead, which never commits without Enter and cannot move the value away
- * from what the earlier keystrokes already selected. Escape closes an open dropdown without changing the value and is
- * a no-op on a closed one, so the final assertion always sees the settled, queryable combobox. This is also how real
- * keyboard users pick a value (focus and type), so it exercises the ux.md RR-UX-2 promise. Clicking the option
- * directly is not stable here: the list is long and grouped, and Playwright's scroll-into-view cannot reach options
- * outside the Radix popper viewport ("element is outside of the viewport"). Real users scroll the inner viewport
- * instead.
+ * Picks the "What to roll" target through the combobox's keyboard typeahead: waits for it to be enabled (the catalog
+ * has loaded), focuses it, opens it once to clear any leftover typeahead search, waits until the open listbox is gone
+ * again, types the full option name, and asserts the combobox shows the chosen value. The open-then-close matters:
+ * Radix keeps one search per combobox until it is opened or a full second passes without typing, so typing a second
+ * target within a second of the first ("Listen" then "Cthulhu Mythos") searches for the concatenated text, matches
+ * nothing, and silently keeps the old value. Opening resets the search (`handleOpen` calls `resetTypeahead`) and
+ * Escape closes without changing the value; the listbox waits prove the open and the close finished, so typing always
+ * starts on the closed trigger, where every keystroke commits and each longer prefix only narrows the match until the
+ * full name selects itself. The name types without a per-key delay so a slow frame cannot split one word across the
+ * search reset. This is also how real keyboard users pick a value (focus and type), so it exercises the ux.md RR-UX-2
+ * promise. Clicking the option directly is not stable here: the list is long and grouped, and Playwright's
+ * scroll-into-view cannot reach options outside the Radix popper viewport ("element is outside of the viewport").
+ * Real users scroll the inner viewport instead.
  */
 async function chooseTarget(page: Page, target: string): Promise<void> {
   const combobox = page.getByRole('combobox', { name: 'What to roll', exact: true })
   await expect(combobox).toBeEnabled()
   await combobox.focus()
-  await page.keyboard.type(target, { delay: 25 })
+  await combobox.click()
+  await expect(page.getByRole('listbox')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('listbox')).toBeHidden()
+  await page.keyboard.type(target)
   await page.keyboard.press('Escape')
   await expect(combobox).toContainText(target)
 }
