@@ -27,9 +27,10 @@ Read: [roll-requests spec](../../../specs/roll-requests/spec.md), Requested Roll
 - [x] A Player asks to push a pushable failed roll; any other roll returns 409, and a missing or too long justification returns 400.
 - [x] The Keeper approves or declines; after approval the Player rolls once more and the card shows the justification and both results.
 - [x] Finishing the Scene or removing an Investigator present cancels `Pushed` rolls and declines `PushAsked` ones.
-- [x] Unit tests cover each transition and its rule section; Playwright E2E covers the roll-requests scenarios "A Player asks to push a failed roll and the Keeper approves" and "The Keeper declines a push".
+- [ ] Unit tests cover each transition and its rule section; Playwright E2E covers the roll-requests scenarios "A Player asks to push a failed roll and the Keeper approves" and "The Keeper declines a push". Deferred: see Follow-ups.
 
 ## Refinement Protocol
 A change to pushing updates the roll-requests spec and ux.md, the skill rolls document reference, and tests together.
 
 ## Follow-ups
+- Deferred verification: the Playwright push journeys (approve, decline, finish-closes-pushes in `e2e/tests/roll-requests.spec.ts`) could not be run green in this environment: every attempt fails in the shared authenticated-harness sign-in (MSAL redirect to the mock OIDC issuer, or the account-name check after it) before any push code executes, including pre-existing journeys untouched by this PBI. The same failure reproduces on unmodified master `1bd7767` (`campaign-list` sign-in journey, same `auth.ts` step). Unit tests (domain, provider, Scene Play service, frontend) and API integration tests cover the same transitions and return codes green. Re-run the three push journeys in a quiet environment (or CI) and re-tick the item above.
