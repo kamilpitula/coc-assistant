@@ -677,7 +677,11 @@ test.describe('Roll Requests', () => {
         await expect(page.getByRole('alertdialog')).toContainText('2 waiting rolls will be cancelled.')
         await expect(page.getByRole('alertdialog')).toContainText('1 push will be declined.')
         await page.getByRole('alertdialog').getByRole('button', { name: 'Finish Scene' }).click()
-        await expect(pageStatus(page)).toHaveText(`${PREPARED.firstSceneTitle} finished.`)
+        // The Waiting rolls ruling note ("Lucy Ward's push was approved.") stays visible next to the page status,
+        // so narrow the shared status locator to the finished message instead of assuming a single status.
+        await expect(pageStatus(page).filter({ hasText: `${PREPARED.firstSceneTitle} finished.` })).toHaveText(
+          `${PREPARED.firstSceneTitle} finished.`,
+        )
       })
 
       await test.step('RR-UX-32: the asked card shows Push declined and the pushed card shows Cancelled with its first result', async () => {
