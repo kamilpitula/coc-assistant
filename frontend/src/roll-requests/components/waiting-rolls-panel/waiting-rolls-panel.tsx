@@ -32,6 +32,11 @@ function hasPanelContent(rolls: WaitingRequestedRoll[], pushable: WaitingRequest
   return rolls.length > 0 || pushable.length > 0 || status !== null || declined.length > 0
 }
 
+/** "You asked the Keeper to push your {target} roll.": the ask confirmation a decline note supersedes (RR-UX-26, RR-UX-28). */
+function askConfirmation(targetName: string): string {
+  return `You asked the Keeper to push your ${targetName} roll.`
+}
+
 /** The keys of Pushed rows in the waiting list, by roll request. */
 function pushedRowKeys(rolls: WaitingRequestedRoll[]): Set<string> {
   return new Set(rolls.filter((row) => row.roll.status === 'Pushed').map((row) => row.rollRequestId))
@@ -42,11 +47,12 @@ function findDeclinedPushes(
   previous: Map<string, WaitingRequestedRoll>,
   next: Map<string, WaitingRequestedRoll>,
   pushedKeys: Set<string>,
-): Array<{ key: string; message: string }> {
-  const declined: Array<{ key: string; message: string }> = []
+): Array<{ key: string; target: string; message: string }> {
+  const declined: Array<{ key: string; target: string; message: string }> = []
   for (const [key, row] of previous) {
     if (row.roll.status === 'PushAsked' && !next.has(key) && !pushedKeys.has(key)) {
-      declined.push({ key, message: `The Keeper declined your ${rollTargetName(row.target)} push.` })
+      const target = rollTargetName(row.target)
+      declined.push({ key, target, message: `The Keeper declined your ${target} push.` })
     }
   }
   return declined
@@ -97,7 +103,7 @@ export function WaitingRollsPanel({ campaignId }: WaitingRollsPanelProps) {
   const [rollingKey, setRollingKey] = useState<string | null>(null)
   const [failedKey, setFailedKey] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
-  const [declined, setDeclined] = useState<Array<{ key: string; message: string }>>([])
+  const [declined, setDeclined] = useState<Array<{ key: string; target: string; message: string }>>([])
 
   const rolls = useMemo(() => mine.data?.rolls ?? [], [mine.data])
   const pushable = useMemo(() => pushableQuery.data?.rolls ?? [], [pushableQuery.data])
@@ -120,7 +126,7 @@ export function WaitingRollsPanel({ campaignId }: WaitingRollsPanelProps) {
   // A PushAsked row that leaves without its Pushed roll was declined: by the Keeper, or by removing the Investigator
   // from the Investigators present (UX 19.1). An approval arrives as a Pushed row instead and is announced
   // assertively; a late Pushed arrival clears a note it raced. Polite only, focus never moves (RR-A11Y-21). A new
-  // note replaces a stale status line, so the panel holds a single polite message (RR-UX-28).
+  // note replaces only the ask confirmation it supersedes, so a concurrent status line stays (RR-UX-28).
   const previousPushable = useRef<Map<string, WaitingRequestedRoll> | null>(null)
   useEffect(() => {
     const previous = previousPushable.current
@@ -135,7 +141,8 @@ export function WaitingRollsPanel({ campaignId }: WaitingRollsPanelProps) {
     )
     if (fresh.length > 0) {
       setDeclined((current) => [...current, ...fresh])
-      setStatus(null)
+      const superseded = new Set(fresh.map((declinedPush) => askConfirmation(declinedPush.target)))
+      setStatus((current) => (current !== null && superseded.has(current) ? null : current))
     }
     setDeclined((current) => {
       const kept = current.filter((note) => !pushedKeys.has(note.key))
@@ -204,7 +211,7 @@ export function WaitingRollsPanel({ campaignId }: WaitingRollsPanelProps) {
         investigatorName={investigatorName}
         pushable={pushable}
         headingRef={pushableHeadingRef}
-        onAsked={(targetName) => setStatus(`You asked the Keeper to push your ${targetName} roll.`)}
+        onAsked={(targetName) => setStatus(askConfirmation(targetName))}
         onUnpushable={(targetName) => setStatus(`Your ${targetName} roll can't be pushed any more.`)}
       />
       {declined.map((note) => (

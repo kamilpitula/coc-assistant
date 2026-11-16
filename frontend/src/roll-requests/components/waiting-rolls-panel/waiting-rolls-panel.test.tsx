@@ -447,6 +447,23 @@ function pushableList(...rolls: WaitingRequestedRoll[]): PushableRolls {
       expect(screen.getByRole('status')).toHaveTextContent('The Keeper declined your Spot Hidden push.')
     })
 
+    it('keeps a concurrent roll-result status when the decline note arrives (RR-UX-28)', async () => {
+      const { rerenderWith } = setup({ ...mine, rolls: [mineRoll()] }, pushableList(pushableRow('r2', failedRoll({ status: 'PushAsked', pushJustification: 'Trying again.', canBePushed: false }), 'Spot Hidden')))
+      const getCallbacks = captureRoll()
+      await userEvent.click(screen.getByRole('button', { name: 'Roll Listen' }))
+      await act(async () => {
+        getCallbacks().onSuccess(rolled())
+      })
+      expect(screen.getByRole('status')).toHaveTextContent('You rolled 25: Hard success.')
+
+      rerenderWith({ ...mine, rolls: [] }, pushableList())
+
+      const notes = screen.getAllByRole('status')
+      expect(notes).toHaveLength(2)
+      expect(notes[0]).toHaveTextContent('The Keeper declined your Spot Hidden push.')
+      expect(notes[1]).toHaveTextContent('You rolled 25: Hard success.')
+    })
+
     it('moves focus to the "Rolls you can push" heading when a live removal takes the focused row (RR-A11Y-19)', async () => {
       const { rerenderWith } = setup(
         { ...mine, rolls: [] },
