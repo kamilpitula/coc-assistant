@@ -13,3 +13,5 @@ global using CocAssistant.ScenarioPreparation.Controllers;
 global using Microsoft.Extensions.Logging;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
+global using CampaignPlayApplication = CocAssistant.CampaignPlay.Application;
+global using CampaignPlayPresence = CocAssistant.CampaignPlay.Domain.Presence;

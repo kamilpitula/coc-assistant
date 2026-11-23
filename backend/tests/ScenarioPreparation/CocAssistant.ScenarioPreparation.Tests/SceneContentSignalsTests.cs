@@ -1,6 +1,3 @@
-using CampaignPlayApplication = CocAssistant.CampaignPlay.Application;
-using CampaignPlayPresence = CocAssistant.CampaignPlay.Domain.Presence;
-
 namespace CocAssistant.ScenarioPreparation.Tests;
 
 /// <summary>

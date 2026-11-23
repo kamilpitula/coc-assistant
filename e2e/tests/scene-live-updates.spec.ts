@@ -17,6 +17,8 @@ test.describe('Scene live updates', () => {
     page,
     browser,
   }) => {
+    // Two sign-ins, campaign/Scenario/Scene setup, an invite join, and a rename across tabs: slow on a cold stack.
+    test.slow()
     const keeper = newAccount('Keeper')
     await signIn(page, keeper)
     const campaignName = `Scene Live ${keeper.oid.slice(0, 6)}`
@@ -33,7 +35,26 @@ test.describe('Scene live updates', () => {
       await test.step('the Player has the Campaign open and the Keeper has the Scenario open in two tabs', async () => {
         await player.page.goto(`/campaigns/${campaignId}`)
         await expect(player.page.getByRole('heading', { level: 1, name: campaignName })).toBeVisible()
+        // MSAL and the account cache live in sessionStorage, which is per-tab: carry the Keeper's session into the
+        // second tab so it opens as the same signed-in account without a second sign-in flow.
+        const keeperSession = await page.evaluate(() => {
+          const entries: Record<string, string> = {}
+          for (let index = 0; index < sessionStorage.length; index += 1) {
+            const key = sessionStorage.key(index)
+            if (key !== null) {
+              entries[key] = sessionStorage.getItem(key) ?? ''
+            }
+          }
+          return entries
+        })
+        await tabB.goto('/')
+        await tabB.evaluate((entries: Record<string, string>) => {
+          for (const [key, value] of Object.entries(entries)) {
+            sessionStorage.setItem(key, value)
+          }
+        }, keeperSession)
         await tabB.goto(scenarioUrl)
+        await expect(tabB.getByRole('heading', { level: 1, name: 'The Haunting' })).toBeVisible()
         await expect(sceneLinks(tabB)).toHaveText(['The Corbitt House'])
         await tabB.evaluate(() => {
           ;(window as unknown as { __sceneLiveMarker?: boolean }).__sceneLiveMarker = true

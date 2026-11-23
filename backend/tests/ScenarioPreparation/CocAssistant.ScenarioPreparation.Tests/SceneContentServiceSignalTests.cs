@@ -121,6 +121,20 @@ public class SceneContentServiceSignalTests : IDisposable
     }
 
     [Fact]
+    public async Task Given_an_invalid_title_When_editing_Then_it_is_refused_and_nothing_is_signalled()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        ClearSignals();
+        using var context = _builder.Fixture.CreateContext();
+
+        var result = await _builder.CreateSceneService(context)
+            .EditAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, " ", null, null, CancellationToken.None);
+
+        Assert.Equal(SceneWriteOutcome.InvalidTitle, result.Outcome);
+        Assert.Empty(_builder.Signals.CampaignIds);
+    }
+
+    [Fact]
     public async Task Given_a_player_When_creating_a_scene_Then_it_is_not_found_and_nothing_is_signalled()
     {
         var scenarioId = await ScenarioAsync();

@@ -72,7 +72,7 @@ public class SceneContentLiveUpdateApiTests : IClassFixture<IdentityApiFactory>,
         content = Json(Text),
     };
 
-    private static HttpRequestMessage FileUpload(HttpMethod method, string uri, string oid, string? title = "Floor plan")
+    private static HttpRequestMessage FileUpload(HttpMethod method, string uri, string oid, string title = "Floor plan")
     {
         var png = ScenarioPreparation.Tests.HandoutFileSamples.Png();
         var content = new MultipartFormDataContent
