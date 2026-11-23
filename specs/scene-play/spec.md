@@ -3,7 +3,11 @@
 ## Blueprint
 
 ### Context
-Scene Play lets a Keeper run a prepared Scene at the table and lets Players experience it through their Investigators. The Keeper starts and finishes Scenes, chooses the Investigators present, reveals Handouts, Non-Player Entities, and Items to chosen Investigators, and gives Items to them. What an Investigator has received stays with that Investigator as Clues, and the Scenes played so far form the Scene History. Scene content is authored in [Scenario Preparation](../scenario-preparation/spec.md); this feature never edits it.
+Scene Play lets a Keeper run a prepared Scene at the table and lets Players experience it through their Investigators. The Keeper starts and finishes Scenes, chooses the Investigators present, reveals Handouts, Non-Player Entities, and Items to chosen Investigators, and gives Items to them. What an Investigator has received stays with that Investigator as Clues, and the Scenes played so far form the Scene History.
+
+**[DEPRECATED 2026-11-23]**
+~~Scene content is authored in [Scenario Preparation](../scenario-preparation/spec.md); this feature never edits it.~~
+Replaced by: Scene content is authored in [Scenario Preparation](../scenario-preparation/spec.md), and this feature's API never edits it. The Keeper's Run view edits the Active Scene's Keeper notes through Scenario Preparation's Keeper notes endpoint, and marks its [Beats](../beats/spec.md) through Scenario Preparation's Beat endpoints. Reason: the Keeper adds notes and tracks progress during play without leaving the Active Scene.
 
 ### Architecture
 - **Domain relationships:** A Campaign has at most one Active Scene. An Active or Finished Scene has a set of Investigators present and a list of Reveals. A Reveal has a subject (a Handout, a Non-Player Entity link, or an Item), a snapshot of the subject's Player-facing content as it was when revealed, the Investigators it reached, and a time. A Reveal of an Image, Document, or Map Handout snapshots the stored file's key, name, media type, size, and, for an Image or Map, its image description, and reads the file through a Scenario Preparation port; Scene Play never copies, overwrites, or deletes it ([ADR 0021](../../docs/adr/0021-handout-files-are-immutable-blobs-behind-a-storage-port.md)). An Investigator's Clues are every Reveal that reached it. An Item is held by at most one Investigator or by no one. An Item's Player-facing content is its name and Player-facing description ([scenario-preparation spec](../scenario-preparation/spec.md), Constraints).
@@ -28,7 +32,7 @@ Scene Play lets a Keeper run a prepared Scene at the table and lets Players expe
     - Answers 204 also when no one held the Item; 404 for an Item not in the Campaign.
   - `GET /api/campaigns/{campaignId}/investigators/mine/items` - Player only; the Items the caller's Investigator holds, newest first, each as it was when given (the give Reveal's snapshot). 404 for a Player without an Approved Investigator.
   - `GET /api/campaigns/{campaignId}/investigators/{investigatorId}/items` - Keeper only; the same for an Approved Investigator of the Campaign, with each Item's id.
-  - `GET /api/campaigns/{campaignId}/scene-history` - Active and Finished Scenes of every Scenario, newest started first, each with its Scenario title, Scene title, and start and finish times (`finishedAt` is null for the Active Scene). The Keeper gets every Reveal and each Scene's Investigators present (as they were when it finished, or now for the Active Scene). A Player gets, per Scene, only the Reveals that reached their Investigator, and never the Investigators present; a Player without an Approved Investigator gets every Scene with no Reveals. Prepared Scenes never appear. The exact shapes, the order, and its tie-break are in the [PBI-SPL-004 design record](../../docs/scene-play/issues/04-scene-history.design.md). Each Scene also carries its Roll Requests, newest first, as `GET .../roll-requests/{id}` shapes them: every one for the Keeper, and only the Public ones for a Player (with or without an Approved Investigator). The Requested Rolls of a Public Roll Request name their Investigators, as the card does; this is not the Investigators present ([PBI-DICE-008 design record](../../docs/dice/issues/08-roll-requests-in-the-scene-history.design.md)).
+  - `GET /api/campaigns/{campaignId}/scene-history` - Active and Finished Scenes of every Scenario, newest started first, each with its Scenario title, Scene title, and start and finish times (`finishedAt` is null for the Active Scene). The Keeper gets every Reveal and each Scene's Investigators present (as they were when it finished, or now for the Active Scene). A Player gets, per Scene, only the Reveals that reached their Investigator, and never the Investigators present; a Player without an Approved Investigator gets every Scene with no Reveals. Prepared Scenes never appear. The exact shapes, the order, and its tie-break are in the [PBI-SPL-004 design record](../../docs/scene-play/issues/04-scene-history.design.md). Each Scene also carries its Roll Requests, newest first, as `GET .../roll-requests/{id}` shapes them: every one for the Keeper, and only the Public ones for a Player (with or without an Approved Investigator). The Requested Rolls of a Public Roll Request name their Investigators, as the card does; this is not the Investigators present ([PBI-DICE-008 design record](../../docs/dice/issues/08-roll-requests-in-the-scene-history.design.md)). For the Keeper only, each Scene also carries its Beat counts ([beats spec](../beats/spec.md), Scene History).
 - **Campaign Wall:** Starting a Scene and finishing a Scene each create a Public Wall Entry authored by the Keeper that names only the Scene title, through the Campaign Play Wall Entry behavior ([campaign-play spec](../campaign-play/spec.md), Wall Entry API). Reveals and Item changes create no Wall Entries.
 - **Live updates:** Extends the closed topic set of the Campaign hub ([ADR 0009](../../docs/adr/0009-live-updates-through-campaign-hub-with-invalidation-topics.md)); the publication policy decides each audience:
   - `activeScene` to `campaign:{campaignId}` when a Scene starts or finishes or the Investigators present change.
@@ -38,7 +42,10 @@ Scene Play lets a Keeper run a prepared Scene at the table and lets Players expe
   - `myItems` to `account:{accountId}` of each Player whose Investigator gains or loses an Item.
   - `rollRequests` and `myRequestedRolls` when a Scene change cancels waiting Requested Rolls ([roll-requests spec](../roll-requests/spec.md), Live updates).
   - `scenes` to `campaign:{campaignId}:keeper` when Scene content, the prepared order, links, or Items change.
-- **UX specification:** [ux.md](ux.md) covers starting, the Active Scene page, and the overview card (PBI-SPL-001), and Reveals, revealed content, and the Clues pages (PBI-SPL-002). Items in play (PBI-SPL-003: giving, taking back, and revealing Items, and the Investigator's Items) are section 22. Scene History (PBI-SPL-004) is [section 23](ux.md#23-scene-history-pbi-spl-004); Roll Requests in the Scene History (PBI-DICE-008) are [section 23.11](ux.md#2311-roll-requests-in-the-scene-history-pbi-dice-008). The Active Scene redesign (PBI-SPL-006, PBI-SPL-007) is section 21: the Keeper's page is split into Run, To reveal, Keeper reference, and Revealed, with the Campaign Wall on Run, following the app-wide [navigation](../navigation/spec.md) pattern. Each later PBI with UI goes through the UX designer skill before it is built and extends it. Views: an Active Scene page for the Keeper (run controls) and for Players (what reached their Investigator, with a Map shown prominently and Read-aloud Handouts styled as read-aloud text), a Scene History page for every Campaign Member, an Investigator's Clues and Items, and an Active Scene card on the Campaign overview ([campaign-overview spec](../campaign-overview/spec.md)).
+    - As of 2026-11-23 the backend topic set (`CampaignDataTopic`) has no `scenes` member, so this signal is not yet sent.
+    - It is added with the Keeper notes endpoint and is published for every Keeper notes save and every Beat change.
+    - The Keeper's other tabs refetch the Scene, the Active Scene, and the Scene History from it.
+- **UX specification:** [ux.md](ux.md) covers starting, the Active Scene page, and the overview card (PBI-SPL-001), and Reveals, revealed content, and the Clues pages (PBI-SPL-002). Items in play (PBI-SPL-003: giving, taking back, and revealing Items, and the Investigator's Items) are section 22. Scene History (PBI-SPL-004) is [section 23](ux.md#23-scene-history-pbi-spl-004); Roll Requests in the Scene History (PBI-DICE-008) are [section 23.11](ux.md#2311-roll-requests-in-the-scene-history-pbi-dice-008). The Active Scene redesign (PBI-SPL-006, PBI-SPL-007) is section 21: the Keeper's page is split into Run, To reveal, Keeper reference, and Revealed, with the Campaign Wall on Run, following the app-wide [navigation](../navigation/spec.md) pattern. Each later PBI with UI goes through the UX designer skill before it is built and extends it. Editing Keeper notes on Run (read first, then "Edit" opens the editor, which autosaves until "Done") and the Run Beats section are added to [ux.md](ux.md) by their UX passes before they are built. Views: an Active Scene page for the Keeper (run controls) and for Players (what reached their Investigator, with a Map shown prominently and Read-aloud Handouts styled as read-aloud text), a Scene History page for every Campaign Member, an Investigator's Clues and Items, and an Active Scene card on the Campaign overview ([campaign-overview spec](../campaign-overview/spec.md)).
 - **Dependencies:** Depends on Scenario Preparation for Scenes, Handouts, Non-Player Entity links, Items, and Scene status transitions; on Campaign Play for membership, Investigator approval, the Campaign Wall, and the Campaign hub; on Identity and Access for authentication. Depended on by [Roll Requests](../roll-requests/spec.md) for the Active Scene and the Investigators present.
 
 ### Constraints
@@ -71,6 +78,9 @@ Scene Play lets a Keeper run a prepared Scene at the table and lets Players expe
 - [ ] Connected Campaign Members receive Active Scene, Scene History, Clue, and Item changes without reloading, within their visibility.
 - [ ] The Keeper's Active Scene keeps material off the main view: Player-facing material waits under "To reveal" until it has reached every Investigator present, Keeper-only material is under "Keeper reference", and Reveals are under "Revealed".
 - [ ] Campaign Members read and post to the Campaign Wall from the Active Scene, within each entry's visibility.
+- [ ] On Run, the Keeper opens the Keeper notes for editing with "Edit"; changes autosave through the Keeper notes endpoint, and "Done" returns to the read-only notes.
+- [ ] A stale autosave on Run shows a choice between reloading the newer notes and keeping the Keeper's own; keeping them saves them over the newer version.
+- [ ] A Keeper notes save in one Keeper tab updates the notes in the Keeper's other open tabs without reloading.
 
 ### Regression Guardrails
 - A Campaign never has two Active Scenes.
@@ -82,6 +92,7 @@ Scene Play lets a Keeper run a prepared Scene at the table and lets Players expe
 - An unapproved Investigator is never present in a Scene.
 - A Player can never perform a Keeper action of this feature.
 - Scene Play data never crosses Campaign boundaries.
+- Keeper notes, and any live signal about them, never reach a Player.
 
 ### Scenarios
 ```gherkin
@@ -242,6 +253,26 @@ Scenario: The Keeper posts to the Wall from the Active Scene
   When the Keeper adds the Public Wall Entry "The front door slams shut." from the Active Scene
   Then the entry is at the top of the Wall on the Active Scene and on the Wall page
   And every connected Player sees it without reloading
+
+Scenario: The Keeper adds to the Keeper notes during play
+  Given "The Corbitt House" is Active
+  When the Keeper chooses "Edit" on the Keeper notes on Run and types "Lucy pocketed the key."
+  Then the Keeper notes are saved without a Save action
+  When the Keeper chooses "Done"
+  Then Run shows the Keeper notes read-only with "Lucy pocketed the key."
+
+Scenario: Keeper notes edited in another tab conflict on Run
+  Given the Keeper has "The Corbitt House" open on Run in two tabs
+  And the first tab saved new Keeper notes
+  When the second tab autosaves Keeper notes based on the older version
+  Then the second tab offers to reload the newer notes or keep its own
+  And nothing is overwritten until the Keeper chooses
+
+Scenario: Keeper notes reach the Keeper's other tabs live
+  Given the Keeper has "The Corbitt House" open on Run in two tabs
+  When the Keeper saves Keeper notes in one tab
+  Then the other tab shows the new Keeper notes without reloading
+  And no Player receives a live signal about it
 
 Scenario: A Player never sees a Keeper-only Wall Entry on the Active Scene
   Given the Keeper added the Keeper-only Wall Entry "Corbitt has noticed Cy."

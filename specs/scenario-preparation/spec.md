@@ -18,7 +18,16 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
   - `GET /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes` lists the Scenario's Scenes in prepared order, each with `{id, title, status, startedAt, finishedAt}`.
   - `POST /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes` creates a Prepared Scene at the end of the prepared order.
   - `GET /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` returns one Scene with its title, location, Keeper notes, status, and dates, and its Non-Player Entity links, each `{id, nonPlayerEntity: {id, type, name}, playerFacingName, playerFacingDescription}`, in the order they were linked, its Item links, each `{id, item: {id, name}}`, in the order they were linked, and its Handouts, each `{id, kind, visibility, title}`, in stored order ([ADR 0014](../../docs/adr/0014-order-preparation-records-by-stored-position-with-tie-break.md)), without their text.
-  - `PUT /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` replaces its title, location, and Keeper notes; 409 when the Scene is Finished.
+    The response also carries `notesVersion`, the Keeper notes' own concurrency token. From the [mentions spec](../mentions/spec.md) it carries the resolved Mentions of its Keeper notes, and from the [beats spec](../beats/spec.md) its Beats.
+  - **[DEPRECATED 2026-11-23]**
+    ~~`PUT /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` replaces its title, location, and Keeper notes; 409 when the Scene is Finished.~~
+    Replaced by: `PUT /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` replaces its title and location; 409 when the Scene is Finished. Reason: Keeper notes stay editable after the Scene is Finished and are saved with their own version, so no save path bypasses the notes conflict check.
+  - `PUT /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}/keeper-notes` with `{keeperNotes, notesVersion}` replaces the Keeper notes in every status, Finished included.
+    - 200 with `{keeperNotes, notesVersion}`, the version incremented.
+    - 409 when `notesVersion` is not the current one, with the current `{keeperNotes, notesVersion}` in the body; nothing changes.
+    - 400 keyed `keeperNotes` for rich text outside the rich-text constraint.
+    - A Keeper notes save never changes the Scene version ([ADR 0025](../../docs/adr/0025-one-active-scene-per-campaign-through-a-filtered-index-and-a-scene-version.md)), so it never conflicts with a start or finish. The separate notes version is recorded in a new ADR beside ADR 0025.
+    - Each save publishes the `scenes` topic to `campaign:{campaignId}:keeper` ([scene-play spec](../scene-play/spec.md), Live updates).
   - `DELETE /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}` removes a Prepared Scene; 409 when it is Active or Finished.
   - `PUT /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/order` replaces the prepared order with the complete list of the Scenario's Scene ids, as for Scenarios.
   - `POST /api/campaigns/{campaignId}/scenarios/{scenarioId}/scenes/{sceneId}/non-player-entity-links` links a Non-Player Entity of the same Campaign; `PUT` and `DELETE .../non-player-entity-links/{linkId}` replace its Player-facing name and description or unlink it; 409 when the Scene is Finished, before any 400; 400 for a Non-Player Entity that is not in the Campaign (PBI-SP-004, PBI-SP-006).
@@ -63,7 +72,10 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
   ~~Each Scene has a title, Keeper-facing description or read-aloud text, an order, optional Handouts, and links to relevant Non-Player Entities.~~
   Replaced by: a Scene has a required title (1-200 characters), an optional free-text location (up to 200 characters), optional rich-text Keeper notes, a position in the prepared order, a status, ordered Handouts, links to Non-Player Entities, and links to Items. Read-aloud text is a Handout of kind Read-aloud, so each passage can be revealed on its own.
 - The prepared order is a suggestion: any Prepared Scene can be started, and the order Scenes were played in is kept by Scene Play as the Scene History.
-- The Keeper edits a Scene and its Handouts, links, and Items while the Scene is Prepared or Active. A Finished Scene is read-only for everyone and is never reopened.
+- **[DEPRECATED 2026-11-23]**
+  ~~The Keeper edits a Scene and its Handouts, links, and Items while the Scene is Prepared or Active. A Finished Scene is read-only for everyone and is never reopened.~~
+  Replaced by: the Keeper edits a Scene and its Handouts, links, and Items while the Scene is Prepared or Active. A Finished Scene is read-only for everyone and is never reopened, except that the Keeper may still edit its Keeper notes. Reason: the Keeper records what happened at the table after the Scene ends; Keeper notes never reach Players, so the shared record is unchanged.
+- Keeper notes saves are optimistic: a save names the `notesVersion` it was based on, and a stale save is refused rather than overwriting a newer one.
 - A Scene can be removed only while it is Prepared.
 - The prepared order belongs to the Scenario: reordering may move Active and Finished Scenes, and a Scene's position is not part of its content.
 - A Non-Player Entity, Item, or Handout linked to an Active or Finished Scene cannot be deleted, and an Item that an Investigator holds cannot be deleted. Material linked only to Prepared Scenes can be deleted freely.
@@ -72,7 +84,7 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
   - Replacing the file of one of its Handouts keeps the old stored file.
   - Deleting an Item that is not in play removes its Scene links, its Handouts, and their files.
   - Removing a Prepared Scene removes its Item links but not the Items ([ADR 0022](../../docs/adr/0022-items-are-guarded-by-play-usage-read-through-ports.md)).
-- Rich text uses only these Lexical nodes: paragraph, heading (two levels), quote, bulleted and numbered list, list item, line break, link, and text with bold, italic, underline, or strikethrough formatting. Links use `http` or `https` and open in a new tab with `rel="noopener noreferrer"`. The server refuses with 400 a document that contains any other node, a link with another scheme, or more than 200 KB of serialized JSON. Images are never embedded in rich text; an image is its own Handout.
+- Rich text uses only these Lexical nodes: paragraph, heading (two levels), quote, bulleted and numbered list, list item, line break, link, and text with bold, italic, underline, or strikethrough formatting. Scene Keeper notes may also hold the Mention node of the [mentions spec](../mentions/spec.md); every other rich-text field refuses it. Links use `http` or `https` and open in a new tab with `rel="noopener noreferrer"`. The server refuses with 400 a document that contains any other node, a link with another scheme, or more than 200 KB of serialized JSON. Images are never embedded in rich text; an image is its own Handout.
 - Human NPCs and Mythos Creatures are distinct profiles. A Human NPC uses relevant human [characteristics](../../docs/game-rules/coc7_character_creation_and_development_rules.md#2-characteristics) and [skills](../../docs/game-rules/coc7_character_creation_and_development_rules.md#6-skills); a Mythos Creature may have attacks, armor, special abilities, and sanity loss.
 - **[DEPRECATED 2026-10-17]**
   ~~Non-Player Entity profile rules are taken from [docs/game-rules](../../docs/game-rules/README.md). Mythos Creature profile rules are not yet documented there and are added to `docs/game-rules/` before Mythos Creature profiles are implemented.~~
@@ -108,7 +120,11 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - [x] The Keeper can create, edit, and reorder the Scenarios of a Campaign; new Scenarios are added at the end of the Campaign's order.
 - [x] The Keeper can create, edit, reorder, and remove Scenes in a Scenario; new Scenes are added at the end of the prepared order, and only Prepared Scenes can be removed.
 - [x] A Scene stores its title, location, Keeper notes, status, ordered Handouts, linked Non-Player Entities with their Player-facing name and description, and linked Items.
-- [x] A Finished Scene and everything on it refuses every change with 409.
+- **[DEPRECATED 2026-11-23]** ~~[x] A Finished Scene and everything on it refuses every change with 409.~~ Replaced by the next item.
+- [ ] A Finished Scene and everything on it refuses every change with 409, except its Keeper notes.
+- [ ] The Keeper can save a Scene's Keeper notes in every status through the Keeper notes endpoint; a save based on a stale `notesVersion` is refused with 409 and changes nothing.
+- [ ] A Keeper notes save leaves the Scene version unchanged, so a concurrent start or finish still succeeds.
+- [ ] On the preparation Scene page of a Finished Scene, only the Keeper notes section offers editing.
 - [x] The Keeper can create, edit, delete, and duplicate both Human NPC and Mythos Creature profiles with their distinct required information, and sees their computed derived values.
 - [x] The Keeper can create rich-text Handouts of kind Read-aloud and Text, and file Handouts of kind Image, Document, and Map, each with an explicit visibility.
 - [x] File Handouts are stored durably in Azure Blob Storage and associated with a Scene or an Item.
@@ -128,7 +144,10 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - A stored Handout file is never overwritten, and a file of an Active or Finished Scene is never deleted.
 - No Player-visible API returns a Handout: a Player-facing Handout reaches a Player only as a Reveal in Scene Play, and a Keeper-facing Handout never does.
 - A Non-Player Entity profile never reaches a Player; only its Player-facing name and description in a Scene do, and only through a Reveal.
-- A Finished Scene's content never changes; its position in the prepared order may.
+- **[DEPRECATED 2026-11-23]** ~~A Finished Scene's content never changes; its position in the prepared order may.~~
+  Replaced by: a Finished Scene's content never changes, except its Keeper notes; its position in the prepared order may.
+- A Keeper notes save never overwrites a newer save it did not see.
+- Keeper notes never reach a Player, in any Scene status.
 - Material that an Active or Finished Scene refers to is never deleted.
 - Manual preparation remains valid without an LLM or uploaded source document.
 - Structured extraction, when added, produces the same domain concepts as manual preparation rather than a parallel scenario model.
@@ -212,6 +231,30 @@ Scenario: The Keeper edits an Active Scene's Keeper notes
   Given the Scene "The Corbitt House" is Active
   When the Keeper changes its Keeper notes
   Then the Scene shows the new Keeper notes
+
+Scenario: The Keeper edits a Finished Scene's Keeper notes
+  Given the Scene "Meeting Knott" is Finished
+  When the Keeper saves new Keeper notes with the current notes version
+  Then the Scene shows the new Keeper notes
+  And its title, location, Handouts, and links are unchanged
+
+Scenario: A stale Keeper notes save is refused
+  Given the Keeper opened the Keeper notes of "The Corbitt House" at notes version 4
+  And another tab of the Keeper saved them, making notes version 5
+  When the first tab saves Keeper notes with notes version 4
+  Then the save is refused with 409 carrying the notes at version 5
+  And the Keeper notes are those saved at version 5
+
+Scenario: A Keeper notes save does not block finishing the Scene
+  Given the Scene "The Corbitt House" is Active
+  When the Keeper saves its Keeper notes and finishes the Scene at the same time
+  Then the Scene is Finished
+  And the Scene shows the new Keeper notes
+
+Scenario: A Scene's title and location save no longer changes its Keeper notes
+  Given the Scene "The Corbitt House" has Keeper notes
+  When the Keeper saves a new title and location
+  Then the Scene keeps its Keeper notes and notes version
 
 Scenario: Scenes are the Keeper's alone
   # SP-UX-26
