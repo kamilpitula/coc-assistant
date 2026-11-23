@@ -41,9 +41,10 @@ Replaced by: Scene content is authored in [Scenario Preparation](../scenario-pre
   - `sceneReveals` to `campaign:{campaignId}:keeper` when a Reveal is made or an Item changes holder.
   - `myItems` to `account:{accountId}` of each Player whose Investigator gains or loses an Item.
   - `rollRequests` and `myRequestedRolls` when a Scene change cancels waiting Requested Rolls ([roll-requests spec](../roll-requests/spec.md), Live updates).
-  - `scenes` to `campaign:{campaignId}:keeper` when Scene content, the prepared order, links, or Items change.
-    - As of 2026-11-23 the backend topic set (`CampaignDataTopic`) has no `scenes` member, so this signal is not yet sent.
-    - It is added with the Keeper notes endpoint and is published for every Keeper notes save and every Beat change.
+  - `scenes` to `campaign:{campaignId}:keeper` when Scene content changes: creating, editing, reordering, or removing a
+    Scene; creating, editing, removing, or reordering a Handout of a Scene or of an Item, or replacing its file;
+    linking, editing, or unlinking a Non-Player Entity or an Item; editing or deleting an Item (PBI-SPL-008). It is
+    also published for every Keeper notes save and every Beat change.
     - The Keeper's other tabs refetch the Scene, the Active Scene, and the Scene History from it.
 - **UX specification:** [ux.md](ux.md) covers starting, the Active Scene page, and the overview card (PBI-SPL-001), and Reveals, revealed content, and the Clues pages (PBI-SPL-002). Items in play (PBI-SPL-003: giving, taking back, and revealing Items, and the Investigator's Items) are section 22. Scene History (PBI-SPL-004) is [section 23](ux.md#23-scene-history-pbi-spl-004); Roll Requests in the Scene History (PBI-DICE-008) are [section 23.11](ux.md#2311-roll-requests-in-the-scene-history-pbi-dice-008). The Active Scene redesign (PBI-SPL-006, PBI-SPL-007) is section 21: the Keeper's page is split into Run, To reveal, Keeper reference, and Revealed, with the Campaign Wall on Run, following the app-wide [navigation](../navigation/spec.md) pattern. Each later PBI with UI goes through the UX designer skill before it is built and extends it. Editing Keeper notes on Run (read first, then "Edit" opens the editor, which autosaves until "Done") and the Run Beats section are added to [ux.md](ux.md) by their UX passes before they are built. Views: an Active Scene page for the Keeper (run controls) and for Players (what reached their Investigator, with a Map shown prominently and Read-aloud Handouts styled as read-aloud text), a Scene History page for every Campaign Member, an Investigator's Clues and Items, and an Active Scene card on the Campaign overview ([campaign-overview spec](../campaign-overview/spec.md)).
 - **Dependencies:** Depends on Scenario Preparation for Scenes, Handouts, Non-Player Entity links, Items, and Scene status transitions; on Campaign Play for membership, Investigator approval, the Campaign Wall, and the Campaign hub; on Identity and Access for authentication. Depended on by [Roll Requests](../roll-requests/spec.md) for the Active Scene and the Investigators present.
@@ -272,6 +273,12 @@ Scenario: Keeper notes reach the Keeper's other tabs live
   Given the Keeper has "The Corbitt House" open on Run in two tabs
   When the Keeper saves Keeper notes in one tab
   Then the other tab shows the new Keeper notes without reloading
+  And no Player receives a live signal about it
+
+Scenario: Scene changes reach the Keeper's other tabs live
+  Given the Keeper has the Scenario open in two tabs and a Player is connected
+  When the Keeper renames a Scene in one tab
+  Then the other tab shows the new title without reloading
   And no Player receives a live signal about it
 
 Scenario: A Player never sees a Keeper-only Wall Entry on the Active Scene

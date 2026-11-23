@@ -46,6 +46,22 @@ describe('queryKeysForTopics', () => {
     expect(queryKeysForTopics('c1', ['sceneHistory'])).toEqual([sceneHistoryQueryKeys.detail('c1')])
   })
 
+  it('refetches the Scene queries, the Active Scene, and the Scene History for the scenes topic (PBI-SPL-008)', () => {
+    expect(queryKeysForTopics('c1', ['scenes'])).toEqual([
+      sceneQueryKeys.inCampaign('c1'),
+      activeSceneQueryKeys.detail('c1'),
+      sceneHistoryQueryKeys.detail('c1'),
+    ])
+  })
+
+  it('collapses the shared Scene queries when the scene topics arrive together', () => {
+    expect(queryKeysForTopics('c1', ['scenes', 'activeScene', 'sceneHistory'])).toEqual([
+      sceneQueryKeys.inCampaign('c1'),
+      activeSceneQueryKeys.detail('c1'),
+      sceneHistoryQueryKeys.detail('c1'),
+    ])
+  })
+
   it('refetches the Active Scene and the own Clues for the myClues topic, and the Scene History too (SPL-UX-28, SPL-UX-68)', () => {
     expect(queryKeysForTopics('c1', ['myClues'])).toEqual([
       activeSceneQueryKeys.detail('c1'),

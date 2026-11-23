@@ -36,6 +36,14 @@ const queryKeysByTopic: Record<string, (campaignId: string) => QueryKey[]> = {
   ],
   // A Scene starts or finishes, or the Investigators present change; the Scene History lists every played Scene (PBI-SPL-004).
   sceneHistory: (campaignId) => [sceneHistoryQueryKeys.detail(campaignId)],
+  // Scene content changed: the Keeper's other tabs refetch the Scene list and details, the Active Scene, and the
+  // Scene History from it (specs/scene-play/spec.md, Live updates; PBI-SPL-008). The topic carries no ids, so the
+  // campaign-wide prefix is the only possible key.
+  scenes: (campaignId) => [
+    sceneQueryKeys.inCampaign(campaignId),
+    activeSceneQueryKeys.detail(campaignId),
+    sceneHistoryQueryKeys.detail(campaignId),
+  ],
   // An Item given to the caller's Investigator reaches only its holder (PBI-SPL-003 D6).
   myItems: (campaignId) => [heldItemsQueryKeys.mine(campaignId)],
   // A Roll Request change reaches every member watching the Active Scene, and the targeted Players' own lists
