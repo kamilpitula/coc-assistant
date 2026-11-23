@@ -13,13 +13,15 @@ public class HandoutFileService
     private readonly IHandoutFileStore _store;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<HandoutFileService> _logger;
+    private readonly ISceneContentSignals _signals;
 
-    public HandoutFileService(HandoutOwnerLocator owners, IHandoutFileStore store, TimeProvider timeProvider, ILogger<HandoutFileService> logger)
+    public HandoutFileService(HandoutOwnerLocator owners, IHandoutFileStore store, TimeProvider timeProvider, ILogger<HandoutFileService> logger, ISceneContentSignals signals)
     {
         _owners = owners;
         _store = store;
         _timeProvider = timeProvider;
         _logger = logger;
+        _signals = signals;
     }
 
     /// <summary>Adds an Image, Document, or Map Handout after the owner's others.</summary>
@@ -42,7 +44,7 @@ public class HandoutFileService
 
         var file = await DescribeAsync(upload, kind, cancellationToken);
         var result = owner.AddFileHandout(kind, visibility, title, file, imageDescription, _timeProvider.GetUtcNow());
-        return await StoreAndSaveAsync(owner, result.Outcome, result.Handout, upload, file, null, cancellationToken);
+        return await StoreAndSaveAsync(campaignId, owner, result.Outcome, result.Handout, upload, file, null, cancellationToken);
     }
 
     /// <summary>Replaces a file Handout's kind, visibility, title, and, when given, its file; its place in the order is unchanged.</summary>
@@ -66,7 +68,7 @@ public class HandoutFileService
 
         var file = await DescribeAsync(upload, kind, cancellationToken);
         var result = owner.EditFileHandout(handoutId, kind, visibility, title, file, imageDescription);
-        return await StoreAndSaveAsync(owner, result.Outcome, result.Handout, upload, file, result.ReplacedKey, cancellationToken);
+        return await StoreAndSaveAsync(campaignId, owner, result.Outcome, result.Handout, upload, file, result.ReplacedKey, cancellationToken);
     }
 
     /// <summary>The Handout's stored bytes and details; NotFound for a non-Keeper, an unknown id, and a rich-text Handout.</summary>
@@ -91,6 +93,7 @@ public class HandoutFileService
     }
 
     private async Task<HandoutWriteResult> StoreAndSaveAsync(
+        Guid campaignId,
         IHandoutOwner owner,
         HandoutOutcome outcome,
         Handout? handout,
@@ -117,6 +120,8 @@ public class HandoutFileService
         {
             return new HandoutWriteResult(HandoutWriteOutcome.InPlay, null);
         }
+
+        await _signals.ScenesChangedAsync(campaignId, cancellationToken);
 
         if (replacedKey is not null)
         {

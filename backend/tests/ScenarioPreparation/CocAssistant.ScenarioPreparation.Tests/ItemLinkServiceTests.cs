@@ -152,7 +152,7 @@ public class ItemLinkServiceTests : IDisposable
         using var context = _builder.Fixture.CreateContext();
         var recording = new RecordingSceneRepository(new EfSceneRepository(context));
         var items = new RecordingItemRepository(new EfItemRepository(context));
-        var service = new ItemLinkService(_builder.Keepers, recording, items, _builder.TimeProvider);
+        var service = new ItemLinkService(_builder.Keepers, recording, items, _builder.TimeProvider, _builder.Signals);
 
         var linked = await service.LinkAsync(campaignId, accountId, scenarioId, sceneId, item.Id, CancellationToken.None);
         var unlinked = await service.UnlinkAsync(campaignId, accountId, scenarioId, sceneId, link.Id, CancellationToken.None);

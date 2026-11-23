@@ -15,6 +15,7 @@ public class ItemService
     private readonly IHandoutFileStore _fileStore;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<ItemService> _logger;
+    private readonly ISceneContentSignals _signals;
 
     public ItemService(
         ICampaignKeepers keepers,
@@ -24,7 +25,8 @@ public class ItemService
         LinkedSceneGuard linkedSceneGuard,
         IHandoutFileStore fileStore,
         TimeProvider timeProvider,
-        ILogger<ItemService> logger)
+        ILogger<ItemService> logger,
+        ISceneContentSignals signals)
     {
         _keepers = keepers;
         _items = items;
@@ -34,6 +36,7 @@ public class ItemService
         _fileStore = fileStore;
         _timeProvider = timeProvider;
         _logger = logger;
+        _signals = signals;
     }
 
     /// <summary>The Campaign's Items by name; null when the caller is not the Keeper.</summary>
@@ -97,6 +100,7 @@ public class ItemService
         }
 
         await _items.SaveChangesAsync(cancellationToken);
+        await _signals.ScenesChangedAsync(campaignId, cancellationToken);
         return new ItemWriteResult(ItemWriteOutcome.Saved, await ToViewAsync(item, cancellationToken));
     }
 
@@ -138,6 +142,8 @@ public class ItemService
             var current = await _items.FindByIdAsync(campaignId, itemId, cancellationToken);
             return current?.HolderInvestigatorId is not null ? ItemDeleteOutcome.Held : ItemDeleteOutcome.LinkedToPlayedScene;
         }
+
+        await _signals.ScenesChangedAsync(campaignId, cancellationToken);
 
         foreach (var fileKey in fileKeys)
         {

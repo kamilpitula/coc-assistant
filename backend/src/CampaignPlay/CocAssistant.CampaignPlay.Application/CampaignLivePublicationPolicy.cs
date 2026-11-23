@@ -86,6 +86,13 @@ public static class CampaignLivePublicationPolicy
         return publications;
     }
 
+    /// <summary>
+    /// Scene content changed: the Scene, the prepared order, links, or Items (specs/scene-play/spec.md, Live updates;
+    /// ADR 0036). The Keeper's other tabs refetch from it, so it goes to the Keeper group only; a Player never hears it.
+    /// </summary>
+    public static IReadOnlyList<LivePublication> ForScenesChanged(Guid campaignId) =>
+        [new LivePublication(LiveAudience.CampaignKeeper(campaignId), [CampaignDataTopic.Scenes])];
+
     /// <summary>Approval also changes what every member sees in the roster, so the Campaign hears "members".</summary>
     public static IReadOnlyList<LivePublication> ForInvestigatorApproved(Guid campaignId, Guid playerAccountId) =>
     [

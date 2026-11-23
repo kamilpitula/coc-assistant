@@ -28,6 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\src\CampaignPlay\CocAssistant.CampaignPlay.Application\CocAssistant.CampaignPlay.Application.csproj" />
     <ProjectReference Include="..\..\..\src\ScenarioPreparation\CocAssistant.ScenarioPreparation.Domain\CocAssistant.ScenarioPreparation.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\ScenarioPreparation\CocAssistant.ScenarioPreparation.Application\CocAssistant.ScenarioPreparation.Application.csproj" />
     <ProjectReference Include="..\..\..\src\ScenarioPreparation\CocAssistant.ScenarioPreparation.Infrastructure\CocAssistant.ScenarioPreparation.Infrastructure.csproj" />

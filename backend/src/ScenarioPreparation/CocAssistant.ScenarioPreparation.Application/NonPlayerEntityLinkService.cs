@@ -12,13 +12,15 @@ public class NonPlayerEntityLinkService
     private readonly ISceneRepository _scenes;
     private readonly INonPlayerEntityDirectory _directory;
     private readonly TimeProvider _timeProvider;
+    private readonly ISceneContentSignals _signals;
 
-    public NonPlayerEntityLinkService(ICampaignKeepers keepers, ISceneRepository scenes, INonPlayerEntityDirectory directory, TimeProvider timeProvider)
+    public NonPlayerEntityLinkService(ICampaignKeepers keepers, ISceneRepository scenes, INonPlayerEntityDirectory directory, TimeProvider timeProvider, ISceneContentSignals signals)
     {
         _keepers = keepers;
         _scenes = scenes;
         _directory = directory;
         _timeProvider = timeProvider;
+        _signals = signals;
     }
 
     /// <summary>Links an entity of the Scene's Campaign. A missing type or id is the same problem as an unknown entity.</summary>
@@ -42,7 +44,7 @@ public class NonPlayerEntityLinkService
         var entities = await _directory.ListForCampaignAsync(campaignId, cancellationToken);
         var entityInCampaign = type is not null && nonPlayerEntityId is not null && entities.Any(entity => entity.Type == type && entity.Id == nonPlayerEntityId);
         var result = scene.LinkNonPlayerEntity(type ?? default, nonPlayerEntityId ?? Guid.Empty, entityInCampaign, playerFacingName, playerFacingDescription, _timeProvider.GetUtcNow());
-        return await SaveAsync(result, entities, cancellationToken);
+        return await SaveAsync(campaignId, result, entities, cancellationToken);
     }
 
     /// <summary>Replaces a link's Player-facing name and description; the entity is fixed.</summary>
@@ -63,7 +65,7 @@ public class NonPlayerEntityLinkService
         }
 
         var result = scene.EditNonPlayerEntityLink(linkId, playerFacingName, playerFacingDescription);
-        return await SaveAsync(result, await _directory.ListForCampaignAsync(campaignId, cancellationToken), cancellationToken);
+        return await SaveAsync(campaignId, result, await _directory.ListForCampaignAsync(campaignId, cancellationToken), cancellationToken);
     }
 
     /// <summary>Removes a link; the profile itself is untouched.</summary>
@@ -88,10 +90,12 @@ public class NonPlayerEntityLinkService
         }
 
         await _scenes.SaveChangesAsync(cancellationToken);
+        await _signals.ScenesChangedAsync(campaignId, cancellationToken);
         return NonPlayerEntityUnlinkOutcome.Unlinked;
     }
 
     private async Task<NonPlayerEntityLinkWriteResult> SaveAsync(
+        Guid campaignId,
         NonPlayerEntityLinkResult result,
         IReadOnlyList<NonPlayerEntitySummary> entities,
         CancellationToken cancellationToken)
@@ -102,6 +106,7 @@ public class NonPlayerEntityLinkService
         }
 
         await _scenes.SaveChangesAsync(cancellationToken);
+        await _signals.ScenesChangedAsync(campaignId, cancellationToken);
         var view = NonPlayerEntityLinkViews.Create([result.Link], entities).Single();
         return new NonPlayerEntityLinkWriteResult(NonPlayerEntityLinkWriteOutcome.Saved, view);
     }
