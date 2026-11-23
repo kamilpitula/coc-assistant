@@ -934,7 +934,7 @@ Stories cover:
 
 ## 39. Scene link open decisions and research gaps
 
-- **Deferred:** reordering a Scene's links; showing on a profile page which Scenes link it; linking from the profile page (section 30); live updates across the Keeper's own tabs (no SignalR, design record D6).
+- **Deferred:** reordering a Scene's links; showing on a profile page which Scenes link it; linking from the profile page (section 30); ~~live updates across the Keeper's own tabs (no SignalR, design record D6)~~ done in PBI-SPL-008 (the `scenes` topic refetches silently).
 - **Research gap:** whether a radio list with search is enough for Campaigns with many Non-Player Entities, or a combobox is needed.
 
 ## 40. Handouts: information architecture
@@ -1147,7 +1147,7 @@ Stories cover:
   - revealing a Handout, and a "revealed" marker (PBI-SPL-002);
   - Active and Finished journeys end to end (PBI-SPL-001);
   - previews of the text in the Scene list;
-  - live updates across the Keeper's own tabs.
+  - ~~live updates across the Keeper's own tabs~~ done in PBI-SPL-008 (the `scenes` topic refetches silently).
 - **Research gap:** whether Keepers want to read all Read-aloud Handouts in sequence before play without opening each page. Option A's inline list is the fallback.
 
 ## 50. Image, Document, and Map Handouts: scope
