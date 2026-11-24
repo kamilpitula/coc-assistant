@@ -11,6 +11,8 @@ import {
   createSceneViaUi,
   formattingButton,
   keeperNotesEditor,
+  keeperNotesSection,
+  keeperNotesSectionEditor,
   sceneIdFromUrl,
   sceneLinks,
   sceneLocationField,
@@ -78,26 +80,39 @@ test.describe('Scenes', () => {
       await expect(sceneLinks(page)).toHaveText(['Meeting Knott', 'The Corbitt House'])
     })
 
-    await test.step('SP-UX-20: Edit then Save stores the changes, shows "Scene saved.", and survives a reload; Cancel discards', async () => {
+    await test.step('SP-UX-20: Edit then Save stores the title and location, shows "Scene saved.", and survives a reload; Cancel discards', async () => {
       await sceneLinks(page).filter({ hasText: 'The Corbitt House' }).click()
       // The Scenario page has its own Edit button until the Scene page replaces it, so wait for the Scene first.
       await expect(page.getByRole('heading', { level: 1, name: 'The Corbitt House' })).toBeVisible()
-      await page.getByRole('button', { name: 'Edit' }).click()
+      await page.getByRole('button', { name: 'Edit title and location' }).click()
       await expect(sceneTitleField(page)).toBeFocused()
       await sceneTitleField(page).fill('Discarded title')
       await page.getByRole('button', { name: 'Cancel' }).click()
       await expect(page.getByRole('heading', { level: 1, name: 'The Corbitt House' })).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Edit' })).toBeFocused()
+      await expect(page.getByRole('button', { name: 'Edit title and location' })).toBeFocused()
 
-      await page.getByRole('button', { name: 'Edit' }).click()
+      await page.getByRole('button', { name: 'Edit title and location' }).click()
       await sceneTitleField(page).fill('The Corbitt Cellar')
       await sceneLocationField(page).fill('Arkham, Boston Road, cellar')
       await page.getByRole('button', { name: 'Save' }).click()
       await expect(page.getByRole('status').filter({ hasText: 'Scene saved.' })).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Edit' })).toBeFocused()
+      await expect(page.getByRole('button', { name: 'Edit title and location' })).toBeFocused()
       await page.reload()
       await expect(page.getByRole('heading', { level: 1, name: 'The Corbitt Cellar' })).toBeVisible()
       await expect(page.getByText('Arkham, Boston Road, cellar')).toBeVisible()
+    })
+
+    await test.step('SP-UX-110: the Keeper notes save as the Keeper types and survive a reload with the title and location', async () => {
+      await page.getByRole('button', { name: 'Edit Keeper notes' }).click()
+      await keeperNotesSectionEditor(page).click()
+      await page.keyboard.type('Walter is in the cellar.')
+      await expect(keeperNotesSection(page).getByText('All changes saved')).toBeVisible()
+      await page.getByRole('button', { name: 'Done' }).click()
+      await expect(page.getByRole('button', { name: 'Edit Keeper notes' })).toBeVisible()
+      await page.reload()
+      await expect(page.getByRole('heading', { level: 1, name: 'The Corbitt Cellar' })).toBeVisible()
+      await expect(page.getByText('Arkham, Boston Road, cellar')).toBeVisible()
+      await expect(page.getByText('Walter is in the cellar.')).toBeVisible()
     })
 
     await test.step('SP-UX-23: Cancel in the remove dialog keeps the Scene', async () => {
@@ -193,12 +208,12 @@ test.describe('Scenes', () => {
         await expect(player.page.getByText('Secret scene')).toHaveCount(0)
       })
 
-      await test.step("the Player's bearer gets 404 on all six endpoints", async () => {
+      await test.step("the Player's bearer gets 404 on all seven endpoints", async () => {
         const bearer = await openAndCaptureBearer(player.page, `/campaigns/${campaignId}`)
         await expectAllNotFound(player.page, bearer, campaignId, scenarioId, sceneId)
       })
 
-      await test.step("another Keeper's bearer gets 404 on all six endpoints, and the UI shows not found", async () => {
+      await test.step("another Keeper's bearer gets 404 on all seven endpoints, and the UI shows not found", async () => {
         const bearer = await openAndCaptureBearer(otherKeeper.page, '/campaigns')
         await expectAllNotFound(otherKeeper.page, bearer, campaignId, scenarioId, sceneId)
         await otherKeeper.page.goto(`${scenarioPath}/scenes/${sceneId}`)
@@ -246,23 +261,35 @@ test.describe('Scenes', () => {
       },
     }
 
-    await test.step('SP-UX-18: a save with an image node or a javascript: link is refused with 400 and the Scene is unchanged', async () => {
+    await test.step('SP-UX-18: a Scene create with an image node or a javascript: link is refused with 400 keyed by keeperNotes', async () => {
       for (const keeperNotes of [imageNotes, scriptLinkNotes]) {
         const created = await page.request.post(scenesApiUrl(API_ORIGIN, campaignId, scenarioId), {
           headers,
           data: { title: 'Refused', keeperNotes },
         })
-        const edited = await page.request.put(scenesApiUrl(API_ORIGIN, campaignId, scenarioId, `/${sceneId}`), {
+        expect(created.status()).toBe(400)
+      }
+    })
+
+    await test.step('a title and location save with notes in the body leaves the notes alone, and a stale notes save is refused', async () => {
+      const edited = await page.request.put(scenesApiUrl(API_ORIGIN, campaignId, scenarioId, `/${sceneId}`), {
+        headers,
+        data: { title: 'Changed', keeperNotes: imageNotes },
+      })
+      expect(edited.status()).toBe(200)
+
+      for (const keeperNotes of [imageNotes, scriptLinkNotes]) {
+        const refused = await page.request.put(scenesApiUrl(API_ORIGIN, campaignId, scenarioId, `/${sceneId}/keeper-notes`), {
           headers,
-          data: { title: 'Changed', keeperNotes },
+          data: { keeperNotes, notesVersion: 0 },
         })
-        expect([created.status(), edited.status()]).toEqual([400, 400])
+        expect(refused.status()).toBe(400)
       }
 
       await page.goto(`/campaigns/${campaignId}/scenarios/${scenarioId}`)
-      await expect(sceneLinks(page)).toHaveText(['The Corbitt House'])
+      await expect(sceneLinks(page)).toHaveText(['Changed'])
       await page.goto(`/campaigns/${campaignId}/scenarios/${scenarioId}/scenes/${sceneId}`)
-      await expect(page.getByRole('heading', { level: 1, name: 'The Corbitt House' })).toBeVisible()
+      await expect(page.getByRole('heading', { level: 1, name: 'Changed' })).toBeVisible()
       expect(sceneIdFromUrl(page)).toBe(sceneId)
     })
   })
@@ -277,6 +304,10 @@ async function expectAllNotFound(page: Page, bearer: string, campaignId: string,
     create: await page.request.post(scenesApiUrl(API_ORIGIN, campaignId, scenarioId), { headers, data: body }),
     get: await page.request.get(scenesApiUrl(API_ORIGIN, campaignId, scenarioId, `/${sceneId}`), { headers }),
     edit: await page.request.put(scenesApiUrl(API_ORIGIN, campaignId, scenarioId, `/${sceneId}`), { headers, data: body }),
+    keeperNotes: await page.request.put(scenesApiUrl(API_ORIGIN, campaignId, scenarioId, `/${sceneId}/keeper-notes`), {
+      headers,
+      data: { keeperNotes: null, notesVersion: 0 },
+    }),
     remove: await page.request.delete(scenesApiUrl(API_ORIGIN, campaignId, scenarioId, `/${sceneId}`), { headers }),
     reorder: await page.request.put(scenesApiUrl(API_ORIGIN, campaignId, scenarioId, '/order'), {
       headers,
@@ -289,6 +320,7 @@ async function expectAllNotFound(page: Page, bearer: string, campaignId: string,
     create: 404,
     get: 404,
     edit: 404,
+    keeperNotes: 404,
     remove: 404,
     reorder: 404,
   })
@@ -304,16 +336,27 @@ test.describe('Played Scenes', () => {
       await page.goto(prepared.scenePath)
       await expect(page.getByText('Active', { exact: true })).toBeVisible()
       await expect(page.getByText('Started')).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Edit title and location' })).toBeVisible()
       await expect(page.getByRole('button', { name: 'Remove Scene' })).toHaveCount(0)
     })
 
     await test.step("SP-UX-20: the Keeper edits an Active Scene's title and saves it", async () => {
-      await page.getByRole('button', { name: 'Edit', exact: true }).click()
+      await page.getByRole('button', { name: 'Edit title and location' }).click()
       await sceneTitleField(page).fill('The Corbitt Cellar')
       await page.getByRole('button', { name: 'Save', exact: true }).click()
       await expect(page.getByRole('status').filter({ hasText: 'Scene saved.' })).toBeVisible()
       await expect(page.getByRole('heading', { level: 1, name: 'The Corbitt Cellar' })).toBeVisible()
+    })
+
+    await test.step("SP-UX-110: the Keeper edits an Active Scene's Keeper notes and they survive a reload", async () => {
+      await page.getByRole('button', { name: 'Edit Keeper notes' }).click()
+      await keeperNotesSectionEditor(page).click()
+      await page.keyboard.type('Harvey heard chanting below.')
+      await expect(keeperNotesSection(page).getByText('All changes saved')).toBeVisible()
+      await page.getByRole('button', { name: 'Done' }).click()
+      await page.reload()
+      await expect(page.getByRole('heading', { level: 1, name: 'The Corbitt Cellar' })).toBeVisible()
+      await expect(page.getByText('Harvey heard chanting below.')).toBeVisible()
     })
 
     await test.step('SP-UX-21: the Scenario page lists the Scene as Active', async () => {
@@ -322,17 +365,120 @@ test.describe('Played Scenes', () => {
     })
   })
 
-  test('A Finished Scene is read-only and shows when it started and finished', async ({ page, browser }) => {
+  test('A Finished Scene keeps its sentence and lets only its Keeper notes change', async ({ page, browser }) => {
     const prepared = await preparePlayedScenarioViaApi(page, browser, 'Finished Scene', 'Finished')
 
     await page.goto(prepared.scenePath)
 
-    await test.step('SP-UX-21, SP-UX-22: Finished with both times, the sentence, and neither Edit nor Remove Scene', async () => {
+    await test.step('SP-UX-21, SP-UX-114: Finished with both times, the sentence, only the Keeper notes Edit, and no Remove Scene', async () => {
       await expect(page.getByText('Finished', { exact: true })).toBeVisible()
       await expect(page.locator('time')).toHaveCount(2)
-      await expect(page.getByText("This Scene is finished and can't be changed.")).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0)
+      await expect(page.getByText("This Scene is finished. You can still edit its Keeper notes.")).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Edit title and location' })).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Remove Scene' })).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Edit Keeper notes' })).toBeVisible()
+    })
+  })
+
+  test("The Keeper edits a Finished Scene's Keeper notes", async ({ page, browser }) => {
+    const prepared = await preparePlayedScenarioViaApi(page, browser, 'Finished Notes', 'Finished')
+
+    await page.goto(prepared.scenePath)
+
+    await test.step('SP-UX-114: Edit notes, type, wait for "All changes saved", Done, and reload', async () => {
+      await page.getByRole('button', { name: 'Edit Keeper notes' }).click()
+      await keeperNotesSectionEditor(page).click()
+      await page.keyboard.type('Walter was buried in the cellar.')
+      await expect(keeperNotesSection(page).getByText('All changes saved')).toBeVisible()
+      await page.getByRole('button', { name: 'Done' }).click()
+      await expect(page.getByRole('button', { name: 'Edit Keeper notes' })).toBeVisible()
+      await page.reload()
+      await expect(page.getByRole('heading', { level: 2, name: 'Keeper notes' })).toBeVisible()
+      await expect(page.getByText('Walter was buried in the cellar.')).toBeVisible()
+      await expect(page.getByText("This Scene is finished. You can still edit its Keeper notes.")).toBeVisible()
+    })
+  })
+
+  test('A stale Keeper notes save is refused', async ({ page, browser }) => {
+    const prepared = await preparePlayedScenarioViaApi(page, browser, 'Stale Notes', 'Active')
+    const second = await page.context().newPage()
+    try {
+      await page.goto(prepared.scenePath)
+      await second.goto(prepared.scenePath)
+
+      await test.step('SP-UX-110: both windows Edit; the second window saves first', async () => {
+        await page.getByRole('button', { name: 'Edit Keeper notes' }).click()
+        await keeperNotesSectionEditor(page).click()
+        await page.keyboard.type('First draft. ')
+        await expect(keeperNotesSection(page).getByText('All changes saved')).toBeVisible()
+        // The live update refreshes the second window before it edits, so its save is based on version 1.
+        await expect(second.getByText('First draft. ')).toBeVisible()
+
+        await second.getByRole('button', { name: 'Edit Keeper notes' }).click()
+        await keeperNotesSectionEditor(second).click()
+        await second.keyboard.type('Second draft wins. ')
+        await expect(keeperNotesSection(second).getByText('All changes saved')).toBeVisible()
+      })
+
+      await test.step('SP-UX-113: the first window conflicts; Reload newer notes takes the winning text', async () => {
+        await keeperNotesSectionEditor(page).click()
+        await page.keyboard.type('First draft kept.')
+        const conflict = keeperNotesSection(page).getByRole('alert')
+        await expect(conflict).toContainText('These Keeper notes were changed in another window.')
+
+        await keeperNotesSection(page).getByRole('button', { name: 'Reload newer notes' }).click()
+        await expect(keeperNotesSectionEditor(page)).toBeFocused()
+        await expect(keeperNotesSection(page).getByText('Second draft wins.')).toBeVisible()
+        await keeperNotesSection(page).getByRole('button', { name: 'Done' }).click()
+        await expect(page.getByRole('button', { name: 'Edit Keeper notes' })).toBeVisible()
+        await expect(page.getByText('Second draft wins.')).toBeVisible()
+      })
+
+      await test.step('SP-UX-113: the first window conflicts again; Keep mine saves over the newer notes', async () => {
+        // The first window opens its editor before the second window saves, so its save is stale.
+        await page.getByRole('button', { name: 'Edit Keeper notes' }).click()
+        await keeperNotesSectionEditor(second).click()
+        await second.keyboard.type('Third draft wins. ')
+        await expect(keeperNotesSection(second).getByText('All changes saved')).toBeVisible()
+
+        await keeperNotesSectionEditor(page).click()
+        await page.keyboard.type('First draft kept.')
+        const conflict = keeperNotesSection(page).getByRole('alert')
+        await expect(conflict).toContainText('These Keeper notes were changed in another window.')
+
+        const saved = page.waitForResponse((response) => response.url().includes('/keeper-notes') && response.status() === 200)
+        await keeperNotesSection(page).getByRole('button', { name: 'Keep mine' }).click()
+        await saved
+        await expect(keeperNotesSection(page).getByText('All changes saved')).toHaveCount(2)
+        await keeperNotesSection(page).getByRole('button', { name: 'Done' }).click()
+        await expect(page.getByRole('button', { name: 'Edit Keeper notes' })).toBeVisible()
+        await page.reload()
+        await expect(page.getByText('First draft kept.')).toBeVisible()
+      })
+    } finally {
+      await second.close()
+    }
+  })
+
+  test("The Keeper's offline notes save once back online", async ({ page, context, browser }) => {
+    const prepared = await preparePlayedScenarioViaApi(page, browser, 'Offline Notes', 'Active')
+
+    await page.goto(prepared.scenePath)
+
+    await test.step('SP-UX-112: offline text shows, back online saves, and a reload keeps the text', async () => {
+      const offlineText = "You're offline. Your changes will save when you're back online."
+      await page.getByRole('button', { name: 'Edit Keeper notes' }).click()
+      await keeperNotesSectionEditor(page).click()
+      // Going offline before typing keeps the debounced save from firing while online.
+      await context.setOffline(true)
+      await page.keyboard.type('Typed offline. ')
+      await expect(keeperNotesSection(page).getByText(offlineText)).toHaveCount(2)
+      await context.setOffline(false)
+      await expect(keeperNotesSection(page).getByText('All changes saved')).toHaveCount(2)
+      await keeperNotesSection(page).getByRole('button', { name: 'Done' }).click()
+      await expect(page.getByRole('button', { name: 'Edit Keeper notes' })).toBeVisible()
+      await page.reload()
+      await expect(page.getByText('Typed offline.')).toBeVisible()
     })
   })
 })

@@ -23,9 +23,19 @@ export function sceneLocationField(page: Page): Locator {
   return page.getByLabel('Location (optional)')
 }
 
-/** The rich-text Keeper notes editor's editable area. */
+/** The rich-text Keeper notes editor's editable area on the Create Scene form. */
 export function keeperNotesEditor(page: Page): Locator {
   return page.getByRole('textbox', { name: 'Keeper notes (optional)' })
+}
+
+/** The Keeper notes section's editable area on the Scene page and Run (specs/scenario-preparation/ux.md section 73). */
+export function keeperNotesSectionEditor(page: Page): Locator {
+  return page.getByRole('textbox', { name: 'Keeper notes' })
+}
+
+/** The Keeper notes section, labelled by its heading. */
+export function keeperNotesSection(page: Page): Locator {
+  return page.locator('section').filter({ has: page.getByRole('heading', { level: 2, name: 'Keeper notes' }) })
 }
 
 /** A button of the editor's formatting toolbar, such as "Bold" or "Bulleted list". */

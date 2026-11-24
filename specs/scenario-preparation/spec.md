@@ -121,10 +121,10 @@ Scenario Preparation lets a Keeper turn a Call of Cthulhu 7th Edition Scenario i
 - [x] The Keeper can create, edit, reorder, and remove Scenes in a Scenario; new Scenes are added at the end of the prepared order, and only Prepared Scenes can be removed.
 - [x] A Scene stores its title, location, Keeper notes, status, ordered Handouts, linked Non-Player Entities with their Player-facing name and description, and linked Items.
 - **[DEPRECATED 2026-11-23]** ~~[x] A Finished Scene and everything on it refuses every change with 409.~~ Replaced by the next item.
-- [ ] A Finished Scene and everything on it refuses every change with 409, except its Keeper notes.
-- [ ] The Keeper can save a Scene's Keeper notes in every status through the Keeper notes endpoint; a save based on a stale `notesVersion` is refused with 409 and changes nothing.
-- [ ] A Keeper notes save leaves the Scene version unchanged, so a concurrent start or finish still succeeds.
-- [ ] On the preparation Scene page of a Finished Scene, only the Keeper notes section offers editing.
+- [x] A Finished Scene and everything on it refuses every change with 409, except its Keeper notes.
+- [x] The Keeper can save a Scene's Keeper notes in every status through the Keeper notes endpoint; a save based on a stale `notesVersion` is refused with 409 and changes nothing.
+- [x] A Keeper notes save leaves the Scene version unchanged, so a concurrent start or finish still succeeds.
+- [x] On the preparation Scene page of a Finished Scene, only the Keeper notes section offers editing.
 - [x] The Keeper can create, edit, delete, and duplicate both Human NPC and Mythos Creature profiles with their distinct required information, and sees their computed derived values.
 - [x] The Keeper can create rich-text Handouts of kind Read-aloud and Text, and file Handouts of kind Image, Document, and Map, each with an explicit visibility.
 - [x] File Handouts are stored durably in Azure Blob Storage and associated with a Scene or an Item.
@@ -227,18 +227,20 @@ Scenario: The Keeper edits an Active Scene
   Then the Handout is stored on the Scene
 
 Scenario: The Keeper edits an Active Scene's Keeper notes
-  # SP-UX-22
+  # SP-UX-22, SP-UX-110, SP-UX-111, SP-UX-112
   Given the Scene "The Corbitt House" is Active
   When the Keeper changes its Keeper notes
   Then the Scene shows the new Keeper notes
 
 Scenario: The Keeper edits a Finished Scene's Keeper notes
+  # SP-UX-114
   Given the Scene "Meeting Knott" is Finished
   When the Keeper saves new Keeper notes with the current notes version
   Then the Scene shows the new Keeper notes
   And its title, location, Handouts, and links are unchanged
 
 Scenario: A stale Keeper notes save is refused
+  # SP-UX-113
   Given the Keeper opened the Keeper notes of "The Corbitt House" at notes version 4
   And another tab of the Keeper saved them, making notes version 5
   When the first tab saves Keeper notes with notes version 4
@@ -252,6 +254,7 @@ Scenario: A Keeper notes save does not block finishing the Scene
   And the Scene shows the new Keeper notes
 
 Scenario: A Scene's title and location save no longer changes its Keeper notes
+  # SP-UX-115
   Given the Scene "The Corbitt House" has Keeper notes
   When the Keeper saves a new title and location
   Then the Scene keeps its Keeper notes and notes version
