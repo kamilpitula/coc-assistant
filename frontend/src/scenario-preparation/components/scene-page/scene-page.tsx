@@ -1,11 +1,11 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
 import { HandoutSection } from '@/scenario-preparation/components/handout-section/handout-section'
-import { KeeperNotesSection } from '@/scenario-preparation/components/keeper-notes-section/keeper-notes-section'
+import { KeeperNotesSection, type KeeperNotesSectionHandle } from '@/scenario-preparation/components/keeper-notes-section/keeper-notes-section'
 import { SceneItemSection } from '@/scenario-preparation/components/scene-item-section/scene-item-section'
 import { SceneLinkSection } from '@/scenario-preparation/components/scene-link-section/scene-link-section'
 import { ScenePanel } from '@/scenario-preparation/components/scene-panel/scene-panel'
@@ -93,6 +93,7 @@ function SceneDetail({ campaignId, scenarioId, scene, sceneUpdatedAt, onRefetch 
   const [returnedFromEdit, setReturnedFromEdit] = useState(false)
   const editButtonRef = useRef<HTMLButtonElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const notesSectionRef = useRef<KeeperNotesSectionHandle | null>(null)
 
   // The Edit button is mounted again when the form closes, so focus goes back to it; a Scene finished meanwhile has none.
   useEffect(() => {
@@ -101,12 +102,32 @@ function SceneDetail({ campaignId, scenarioId, scene, sceneUpdatedAt, onRefetch 
     }
   }, [isEditing, returnedFromEdit])
 
+  const keeperNotesSection = (hideEdit: boolean) => (
+    <KeeperNotesSection
+      campaignId={campaignId}
+      scenarioId={scenarioId}
+      sceneId={scene.id}
+      keeperNotes={scene.keeperNotes}
+      notesVersion={scene.notesVersion}
+      hideEdit={hideEdit}
+      sectionRef={notesSectionRef}
+    />
+  )
+
+  // Opening the title form finishes an in-progress notes edit first (its Done semantics): the form opens only once
+  // the notes are back in their reading state, so typing is never lost and the section never unmounts mid-edit.
   const startEditing = () => {
-    edit.reset()
-    setJustSaved(false)
-    setUnlinkedMessage(null)
-    setReturnedFromEdit(false)
-    setIsEditing(true)
+    const finished = notesSectionRef.current?.finishEditing() ?? Promise.resolve(true)
+    void finished.then((reading) => {
+      if (!reading) {
+        return
+      }
+      edit.reset()
+      setJustSaved(false)
+      setUnlinkedMessage(null)
+      setReturnedFromEdit(false)
+      setIsEditing(true)
+    })
   }
 
   const stopEditing = (saved: boolean) => {
@@ -143,7 +164,10 @@ function SceneDetail({ campaignId, scenarioId, scene, sceneUpdatedAt, onRefetch 
         </div>
       </div>
       {isEditing ? (
-        <EditSceneForm scene={scene} edit={edit} onDone={stopEditing} />
+        <>
+          <EditSceneForm scene={scene} edit={edit} onDone={stopEditing} />
+          {keeperNotesSection(true)}
+        </>
       ) : (
         <SceneView
           campaignId={campaignId}
@@ -159,6 +183,7 @@ function SceneDetail({ campaignId, scenarioId, scene, sceneUpdatedAt, onRefetch 
           onEdit={startEditing}
           onUnlinked={(name) => setUnlinkedMessage(`${name} unlinked.`)}
           onRefetch={onRefetch}
+          notesSection={keeperNotesSection(false)}
         />
       )}
       </div>
@@ -219,6 +244,8 @@ interface SceneViewProps {
   onEdit: () => void
   onUnlinked: (playerFacingName: string) => void
   onRefetch: () => void
+  /** The Keeper notes section, reading with its Edit unless the title form asked to hide it. */
+  notesSection: ReactNode
 }
 
 function SceneView({
@@ -235,6 +262,7 @@ function SceneView({
   onEdit,
   onUnlinked,
   onRefetch,
+  notesSection,
 }: SceneViewProps) {
   return (
     <>
@@ -244,13 +272,7 @@ function SceneView({
           <dd className="break-words">{scene.location}</dd>
         </dl>
       )}
-      <KeeperNotesSection
-        campaignId={campaignId}
-        scenarioId={scenarioId}
-        sceneId={scene.id}
-        keeperNotes={scene.keeperNotes}
-        notesVersion={scene.notesVersion}
-      />
+      {notesSection}
       <HandoutSection
         owner={{ type: 'scene', campaignId, scenarioId, sceneId: scene.id }}
         canChange={scene.status !== 'Finished'}

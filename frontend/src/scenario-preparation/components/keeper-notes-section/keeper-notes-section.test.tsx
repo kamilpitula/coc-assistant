@@ -2,13 +2,13 @@ import { $createParagraphNode, $createTextNode, $getRoot, type LexicalEditor } f
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ReactNode } from 'react'
+import { createRef, type ReactNode, type Ref } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { KeeperNotesConflictError, SceneNotFoundError, SceneValidationError } from '@/scenario-preparation/services/sceneApi'
 import type { RichTextDocument } from '@/shared/types/RichText'
 
-import { KeeperNotesSection } from './keeper-notes-section'
+import { KeeperNotesSection, type KeeperNotesSectionHandle } from './keeper-notes-section'
 
 // specs/scenario-preparation/ux.md section 73; SP-UX-110 to SP-UX-115 and SP-A11Y-61 to SP-A11Y-66.
 
@@ -32,10 +32,10 @@ const props = {
   notesVersion: 0,
 }
 
-function setup() {
+function setup(sectionRef?: Ref<KeeperNotesSectionHandle>) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  return render(<KeeperNotesSection {...props} />, { wrapper })
+  return render(<KeeperNotesSection {...props} sectionRef={sectionRef} />, { wrapper })
 }
 
 interface EditableElement extends HTMLElement {
@@ -244,5 +244,75 @@ describe('KeeperNotesSection', () => {
     await act(() => vi.advanceTimersByTimeAsync(1000))
     await act(async () => {})
     expect(live).toHaveTextContent('')
+  })
+
+  it('shows no save status while the draft is over the limit', async () => {
+    setup()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Keeper notes' }))
+    await typeNotes(`x${'a'.repeat(300_000)}`)
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    await act(async () => {})
+
+    expect(api.saveKeeperNotes).not.toHaveBeenCalled()
+    expect(screen.getByText('Keeper notes are too long. Shorten them and try again.')).toBeInTheDocument()
+    expect(screen.queryByText('Saving...')).not.toBeInTheDocument()
+  })
+
+  it('hides its Edit through the hideEdit prop', () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    render(<KeeperNotesSection {...props} hideEdit />, {
+      wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    })
+
+    expect(screen.getByRole('heading', { name: 'Keeper notes' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Keeper notes' })).not.toBeInTheDocument()
+  })
+
+  it('finishEditing resolves true at once when reading', async () => {
+    const ref = createRef<KeeperNotesSectionHandle>()
+    setup(ref)
+
+    await act(async () => {
+      await expect(ref.current?.finishEditing()).resolves.toBe(true)
+    })
+    expect(screen.getByRole('button', { name: 'Edit Keeper notes' })).toBeInTheDocument()
+  })
+
+  it('finishEditing waits for a pending save and returns to reading', async () => {
+    api.saveKeeperNotes.mockResolvedValue({ keeperNotes: notes('The cellar door'), notesVersion: 1 })
+    const ref = createRef<KeeperNotesSectionHandle>()
+    setup(ref)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Keeper notes' }))
+    await typeNotes('The cellar door')
+    let finished!: Promise<boolean>
+    await act(async () => {
+      finished = ref.current?.finishEditing() ?? Promise.resolve(false)
+    })
+    await act(async () => {
+      await expect(finished).resolves.toBe(true)
+    })
+
+    expect(api.saveKeeperNotes).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Edit Keeper notes' })).toBeInTheDocument()
+  })
+
+  it('finishEditing resolves false on conflict and keeps the editor open', async () => {
+    api.saveKeeperNotes.mockRejectedValueOnce(new KeeperNotesConflictError({ keeperNotes: notes('Newer'), notesVersion: 5 }))
+    const ref = createRef<KeeperNotesSectionHandle>()
+    setup(ref)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Keeper notes' }))
+    await typeNotes('Mine')
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    await act(async () => {})
+    await expect(screen.findByRole('alert')).resolves.toBeInTheDocument()
+
+    await act(async () => {
+      await expect(ref.current?.finishEditing()).resolves.toBe(false)
+    })
+    expect(screen.getByRole('textbox', { name: 'Keeper notes' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Keeper notes' })).not.toBeInTheDocument()
   })
 })

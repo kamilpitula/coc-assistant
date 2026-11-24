@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useImperativeHandle, useRef, useState, type Ref } from 'react'
 
 import { useKeeperNotesAutosave } from '@/scenario-preparation/hooks/useKeeperNotesAutosave'
 import type { KeeperNotesSaveState } from '@/scenario-preparation/services/keeperNotesSave'
@@ -51,6 +51,24 @@ interface KeeperNotesSectionProps {
   sceneId: string
   keeperNotes: RichTextDocument | null
   notesVersion: number
+  /** Hides the reading state's Edit while the Scene page edits the title and location (ux.md section 14). */
+  hideEdit?: boolean
+  /** Lets the Scene page finish an in-progress notes edit before it opens the title form (ux.md section 14). */
+  sectionRef?: Ref<KeeperNotesSectionHandle>
+}
+
+/** What the Scene page needs to finish the notes edit before it opens the title form. */
+export interface KeeperNotesSectionHandle {
+  /**
+   * Returns the section to its reading state like Done, flushing a waiting save first. Resolves true once reading;
+   * resolves false when the editor stays open (a failed, refused, conflicting, missing, or offline save).
+   */
+  finishEditing: () => Promise<boolean>
+}
+
+/** What the section needs to finish an in-progress edit from its handle. */
+interface EditingKeeperNotesHandle {
+  finishEditing: () => Promise<boolean>
 }
 
 /**
@@ -58,14 +76,25 @@ interface KeeperNotesSectionProps {
  * section 73). A live update refreshes the reading state but never replaces text being edited; saving names the
  * version the editor opened with, and a stale save offers the newer notes or keeps mine.
  */
-export function KeeperNotesSection({ campaignId, scenarioId, sceneId, keeperNotes, notesVersion }: KeeperNotesSectionProps) {
+export function KeeperNotesSection({ campaignId, scenarioId, sceneId, keeperNotes, notesVersion, hideEdit = false, sectionRef }: KeeperNotesSectionProps) {
   const [editing, setEditing] = useState(false)
   const [returnedFromEdit, setReturnedFromEdit] = useState(false)
+  const editingRef = useRef<EditingKeeperNotesHandle | null>(null)
+
+  // Reading has nothing to finish; an in-progress edit finishes through the editor below.
+  useImperativeHandle(
+    sectionRef,
+    () => ({
+      finishEditing: () => editingRef.current?.finishEditing() ?? Promise.resolve(true),
+    }),
+    [],
+  )
 
   if (!editing) {
     return (
       <ReadingKeeperNotes
         keeperNotes={keeperNotes}
+        hideEdit={hideEdit}
         autoFocusEdit={returnedFromEdit}
         onEdit={() => {
           setReturnedFromEdit(false)
@@ -82,6 +111,7 @@ export function KeeperNotesSection({ campaignId, scenarioId, sceneId, keeperNote
       sceneId={sceneId}
       keeperNotes={keeperNotes}
       notesVersion={notesVersion}
+      editorRef={editingRef}
       onDone={() => {
         setReturnedFromEdit(true)
         setEditing(false)
@@ -92,10 +122,12 @@ export function KeeperNotesSection({ campaignId, scenarioId, sceneId, keeperNote
 
 function ReadingKeeperNotes({
   keeperNotes,
+  hideEdit,
   autoFocusEdit,
   onEdit,
 }: {
   keeperNotes: RichTextDocument | null
+  hideEdit: boolean
   autoFocusEdit: boolean
   onEdit: () => void
 }) {
@@ -103,10 +135,10 @@ function ReadingKeeperNotes({
   const editButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    if (autoFocusEdit) {
+    if (autoFocusEdit && !hideEdit) {
       editButtonRef.current?.focus()
     }
-  }, [autoFocusEdit])
+  }, [autoFocusEdit, hideEdit])
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
@@ -114,9 +146,11 @@ function ReadingKeeperNotes({
         <h2 id={headingId} className="text-lg font-semibold">
           Keeper notes
         </h2>
-        <Button ref={editButtonRef} type="button" variant="outline" size="sm" aria-label="Edit Keeper notes" onClick={onEdit}>
-          Edit
-        </Button>
+        {!hideEdit && (
+          <Button ref={editButtonRef} type="button" variant="outline" size="sm" aria-label="Edit Keeper notes" onClick={onEdit}>
+            Edit
+          </Button>
+        )}
       </div>
       {keeperNotes && !isEmptyRichText(keeperNotes) ? (
         <RichTextView document={keeperNotes} />
@@ -133,14 +167,22 @@ function EditingKeeperNotes({
   sceneId,
   keeperNotes,
   notesVersion,
+  editorRef,
   onDone,
-}: KeeperNotesSectionProps & { onDone: () => void }) {
+}: KeeperNotesSectionProps & { editorRef: Ref<EditingKeeperNotesHandle>; onDone: () => void }) {
   const headingId = useId()
   const hintId = useId()
   const errorId = useId()
   const editorId = useId()
   const autosave = useKeeperNotesAutosave({ campaignId, scenarioId, sceneId, notesVersion, onDone })
   const { state } = autosave
+  useImperativeHandle(
+    editorRef,
+    () => ({
+      finishEditing: () => autosave.finishEditing(),
+    }),
+    [autosave],
+  )
   // The editor starts from the notes at edit time and is remounted with the newer notes on reload.
   const [editorNotes, setEditorNotes] = useState(keeperNotes)
   const [editorKey, setEditorKey] = useState(0)
@@ -201,7 +243,7 @@ function EditingKeeperNotes({
         </p>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground empty:hidden">{statusText(state)}</p>
+        <p className="text-sm text-muted-foreground empty:hidden">{autosave.tooLong ? '' : statusText(state)}</p>
         <Button type="button" size="sm" aria-disabled={state.status === 'saving'} onClick={autosave.requestDone}>
           Done
         </Button>

@@ -1,8 +1,11 @@
 import { act, render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import userEvent from '@testing-library/user-event'
+import { $createParagraphNode, $createTextNode, $getRoot, type LexicalEditor } from 'lexical'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SceneFinishedError, SceneNotRemovableError, SceneValidationError } from '@/scenario-preparation/services/sceneApi'
+import type { SavedKeeperNotes } from '@/scenario-preparation/services/sceneApi'
 import type { Scene } from '@/scenario-preparation/types/Scene'
 import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { navigateSpy, routerState } from '@/shared/test-support/routerMock'
@@ -12,7 +15,7 @@ import { ScenePage } from './scene-page'
 
 // specs/scenario-preparation/ux.md section 14; SP-UX-20 to SP-UX-23, SP-UX-26, SP-UX-27, SP-A11Y-15, SP-A11Y-16.
 
-const { mockUseCampaign, mockUseScene, mockUseHandout, mockUseEdit, mockUseRemove, editMutate, removeMutate, unlinkMutate, unlinkItemMutate, reset, removeReset, refetch } = vi.hoisted(
+const { mockUseCampaign, mockUseScene, mockUseHandout, mockUseEdit, mockUseRemove, editMutate, removeMutate, unlinkMutate, unlinkItemMutate, saveNotesMutate, reset, removeReset, refetch } = vi.hoisted(
   () => ({
     mockUseCampaign: vi.fn(),
     mockUseScene: vi.fn(),
@@ -23,6 +26,7 @@ const { mockUseCampaign, mockUseScene, mockUseHandout, mockUseEdit, mockUseRemov
     removeMutate: vi.fn(),
     unlinkMutate: vi.fn(),
     unlinkItemMutate: vi.fn(),
+    saveNotesMutate: vi.fn(),
     reset: vi.fn(),
     removeReset: vi.fn(),
     refetch: vi.fn(),
@@ -46,8 +50,12 @@ vi.mock('@/scenario-preparation/hooks/useScenes', () => ({
   useScene: mockUseScene,
   useEditScene: mockUseEdit,
   useRemoveScene: mockUseRemove,
-  useSaveKeeperNotes: () => ({ mutateAsync: vi.fn(), mutate: vi.fn(), reset: vi.fn(), isPending: false, isError: false, error: null }),
+  useSaveKeeperNotes: () => ({ mutateAsync: saveNotesMutate, mutate: vi.fn(), reset: vi.fn(), isPending: false, isError: false, error: null }),
 }))
+
+interface EditableElement extends HTMLElement {
+  __lexicalEditor?: LexicalEditor
+}
 
 const notes: RichTextDocument = {
   root: {
@@ -104,12 +112,16 @@ const removing = (overrides: Record<string, unknown> = {}) => ({
 // The page's own status message comes first; the Handouts section has a live region of its own for moves.
 const pageStatus = () => screen.getAllByRole('status')[0]
 
-const renderPage = () =>
-  render(
-    <SidePanelScopeProvider>
-      <ScenePage campaignId="c1" scenarioId="s1" sceneId="a1" />
-    </SidePanelScopeProvider>,
+const renderPage = () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <SidePanelScopeProvider>
+        <ScenePage campaignId="c1" scenarioId="s1" sceneId="a1" />
+      </SidePanelScopeProvider>
+    </QueryClientProvider>,
   )
+}
 
 describe('ScenePage', () => {
   beforeEach(() => {
@@ -121,6 +133,11 @@ describe('ScenePage', () => {
     mockUseHandout.mockReturnValue({ data: undefined, isError: false, refetch })
     mockUseEdit.mockReturnValue(editing())
     mockUseRemove.mockReturnValue(removing())
+    saveNotesMutate.mockResolvedValue({ keeperNotes: null, notesVersion: 1 })
+    // jsdom has no layout; focusing the Lexical editor while the title form takes focus needs this.
+    if (typeof window.Range !== 'undefined' && !window.Range.prototype.getBoundingClientRect) {
+      window.Range.prototype.getBoundingClientRect = () => new DOMRect()
+    }
   })
 
   describe('view', () => {
@@ -481,6 +498,44 @@ describe('ScenePage', () => {
       expect(editMutate.mock.calls[0][0]).toEqual({ title: 'The Corbitt Cellar', location: 'Arkham, Boston Road' })
       expect(screen.getByRole('heading', { level: 2, name: 'Keeper notes' })).toBeInTheDocument()
       expect(screen.getByText('The key is under the stairs.')).toBeInTheDocument()
+    })
+
+    it('keeps the Keeper notes below the title form in reading state with its Edit hidden (ux-14)', async () => {
+      renderPage()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Edit title and location' }))
+
+      expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Keeper notes' })).toBeInTheDocument()
+      expect(screen.getByText('The key is under the stairs.')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Edit Keeper notes' })).not.toBeInTheDocument()
+    })
+
+    it('finishes a pending notes save before opening the title form (ux-14, SP-UX-110)', async () => {
+      let resolveSave!: (saved: SavedKeeperNotes) => void
+      saveNotesMutate.mockImplementationOnce(() => new Promise((resolve) => (resolveSave = resolve)))
+      renderPage()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Edit Keeper notes' }))
+      const box = screen.getByRole('textbox', { name: 'Keeper notes' }) as EditableElement
+      await act(async () => {
+        box.__lexicalEditor?.update(() => {
+          $getRoot()
+            .clear()
+            .append($createParagraphNode().append($createTextNode('Cellar')))
+        })
+      })
+
+      await userEvent.click(screen.getByRole('button', { name: 'Edit title and location' }))
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+
+      await act(async () => resolveSave({ keeperNotes: notes, notesVersion: 1 }))
+      await act(async () => {})
+
+      expect(saveNotesMutate).toHaveBeenCalledTimes(1)
+      expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Keeper notes' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Edit Keeper notes' })).not.toBeInTheDocument()
     })
 
     it('saves, returns to the view with "Scene saved." and moves focus to Edit (SP-UX-20, SP-A11Y-15, SP-A11Y-16)', async () => {
