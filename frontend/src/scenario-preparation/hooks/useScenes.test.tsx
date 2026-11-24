@@ -26,6 +26,20 @@ vi.mock('@/scenario-preparation/services/sceneApi', async (importOriginal) => ({
   ...api,
 }))
 
+// Design record D3: the Keeper notes mutation never retries, so a 400, 404, or 409 surfaces at once.
+const mutationOptions = vi.hoisted(() => ({ current: null as { retry?: unknown } | null }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useMutation: (options: { retry?: unknown }, ...rest: Array<unknown>) => {
+      mutationOptions.current = { retry: options.retry }
+      return (actual.useMutation as (...args: Array<unknown>) => unknown)(options, ...rest)
+    },
+  }
+})
+
 const knott: SceneSummary = { id: 'a1', title: 'Meeting Knott', status: 'Prepared', startedAt: null, finishedAt: null }
 const detail: Scene = { ...knott, location: '', keeperNotes: null, notesVersion: 0, nonPlayerEntityLinks: [], itemLinks: [], handouts: [] }
 const input = { title: 'Meeting Knott', location: '', keeperNotes: null }
@@ -128,5 +142,13 @@ describe('Scene hooks', () => {
     expect(client.getQueryData(sceneQueryKeys.detail('c1', 's1', 'a1'))).toEqual({ ...detail, keeperNotes: null, notesVersion: 1 })
     expect(client.getQueryData(sceneQueryKeys.list('c1', 's1'))).toEqual([knott])
     expect(invalidate).not.toHaveBeenCalled()
+  })
+
+  it('never retries a Keeper notes save', () => {
+    const { wrapper } = setup()
+
+    renderHook(() => useSaveKeeperNotes('c1', 's1', 'a1'), { wrapper })
+
+    expect(mutationOptions.current).toEqual({ retry: false })
   })
 })
