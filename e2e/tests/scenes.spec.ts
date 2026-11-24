@@ -13,6 +13,7 @@ import {
   keeperNotesEditor,
   keeperNotesSection,
   keeperNotesSectionEditor,
+  keeperNotesStatusRow,
   sceneIdFromUrl,
   sceneLinks,
   sceneLocationField,
@@ -450,7 +451,7 @@ test.describe('Played Scenes', () => {
         await keeperNotesSection(page).getByRole('button', { name: 'Keep mine' }).click()
         await saved
         // The visible status and the screen-reader announcement carry the same text; assert them separately.
-        const statusRow = keeperNotesSection(page).locator('div').filter({ has: keeperNotesSection(page).getByRole('button', { name: 'Done' }) })
+        const statusRow = keeperNotesStatusRow(page)
         await expect(statusRow.getByText('All changes saved', { exact: true })).toBeVisible()
         await expect(keeperNotesSection(page).getByRole('status')).toHaveText('All changes saved')
         await keeperNotesSection(page).getByRole('button', { name: 'Done' }).click()
@@ -475,7 +476,7 @@ test.describe('Played Scenes', () => {
       // Going offline before typing keeps the debounced save from firing while online.
       await context.setOffline(true)
       await page.keyboard.type('Typed offline. ')
-      const statusRow = keeperNotesSection(page).locator('div').filter({ has: keeperNotesSection(page).getByRole('button', { name: 'Done' }) })
+      const statusRow = keeperNotesStatusRow(page)
       await expect(statusRow.getByText(offlineText, { exact: true })).toBeVisible()
       await expect(keeperNotesSection(page).getByRole('status')).toHaveText(offlineText)
       await context.setOffline(false)

@@ -38,6 +38,13 @@ export function keeperNotesSection(page: Page): Locator {
   return page.locator('section').filter({ has: page.getByRole('heading', { level: 2, name: 'Keeper notes' }) })
 }
 
+/** The Keeper notes section's status row, which carries the visible save status next to Done. */
+export function keeperNotesStatusRow(page: Page): Locator {
+  return keeperNotesSection(page)
+    .locator('div')
+    .filter({ has: keeperNotesSection(page).getByRole('button', { name: 'Done' }) })
+}
+
 /** A button of the editor's formatting toolbar, such as "Bold" or "Bulleted list". */
 export function formattingButton(page: Page, name: string): Locator {
   return page.getByRole('toolbar', { name: 'Formatting' }).getByRole('button', { name, exact: true })
