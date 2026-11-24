@@ -1,6 +1,7 @@
 import { $createParagraphNode, $createTextNode, $getRoot, type LexicalEditor } from 'lexical'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { RichTextDocument } from '@/shared/types/RichText'
@@ -128,5 +129,12 @@ describe('RichTextEditor', () => {
 
     expect(screen.getByText('Enter a web address that starts with http:// or https://.')).toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Add link' })).toBeInTheDocument()
+  })
+
+  it('forwards a ref to the editable area', () => {
+    const editorRef = createRef<HTMLDivElement>()
+    renderEditor({ editorRef })
+
+    expect(editorRef.current).toBe(editable())
   })
 })

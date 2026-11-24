@@ -315,4 +315,44 @@ describe('KeeperNotesSection', () => {
     expect(screen.getByRole('textbox', { name: 'Keeper notes' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit Keeper notes' })).not.toBeInTheDocument()
   })
+
+  it('announces the confirmed save after keeping mine over newer notes (SP-A11Y-63)', async () => {
+    api.saveKeeperNotes.mockRejectedValueOnce(new KeeperNotesConflictError({ keeperNotes: notes('Newer'), notesVersion: 5 }))
+    api.saveKeeperNotes.mockResolvedValue({ keeperNotes: notes('Mine'), notesVersion: 6 })
+    setup()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Keeper notes' }))
+    await typeNotes('Mine')
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    await act(async () => {})
+    await screen.findByRole('alert')
+    expect(screen.getByRole('status')).toHaveTextContent('')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Keep mine' }))
+    await act(async () => {})
+
+    expect(screen.getAllByText('All changes saved')).toHaveLength(2)
+    expect(screen.getByRole('status')).toHaveTextContent('All changes saved')
+  })
+
+  it('announces the confirmed save after coming back online, clearing the offline text (SP-A11Y-63)', async () => {
+    api.saveKeeperNotes.mockResolvedValue({ keeperNotes: notes('The cellar door'), notesVersion: 1 })
+    setup()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Keeper notes' }))
+    await typeNotes('The cellar door')
+    await act(async () => {
+      window.dispatchEvent(new Event('offline'))
+    })
+    expect(screen.getByRole('status')).toHaveTextContent("You're offline. Your changes will save when you're back online.")
+
+    await act(async () => {
+      window.dispatchEvent(new Event('online'))
+    })
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    await act(async () => {})
+
+    expect(screen.getAllByText('All changes saved')).toHaveLength(2)
+    expect(screen.getByRole('status')).toHaveTextContent('All changes saved')
+  })
 })

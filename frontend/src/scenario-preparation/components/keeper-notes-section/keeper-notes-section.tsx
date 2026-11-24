@@ -29,17 +29,19 @@ function statusText(state: KeeperNotesSaveState): string {
 }
 
 /**
- * What the visually hidden live region announces (SP-A11Y-63): only the retrying and offline states, and
- * "All changes saved" when it follows one of those or a conflict. The routine "Saving..." stays silent.
+ * What the visually hidden live region announces (SP-A11Y-63): the retrying and offline states as they happen, and
+ * "All changes saved" when the save recovers from retrying, offline, or conflict. The routine "Saving..." stays
+ * silent. `recovered` latches because a confirming save passes through saving first, so the state just before it
+ * never names what it recovered from.
  */
-function announcementFor(previous: KeeperNotesSaveState['status'] | null, state: KeeperNotesSaveState): string | null {
+function announcementFor(state: KeeperNotesSaveState, recovered: boolean): string | null {
   if (state.status === 'retrying') {
     return "Couldn't save. Retrying..."
   }
   if (state.status === 'offline') {
     return "You're offline. Your changes will save when you're back online."
   }
-  if (state.status === 'saved' && (previous === 'retrying' || previous === 'offline' || previous === 'conflict')) {
+  if (state.status === 'saved' && recovered) {
     return 'All changes saved'
   }
   return null
@@ -187,17 +189,23 @@ function EditingKeeperNotes({
   const [editorNotes, setEditorNotes] = useState(keeperNotes)
   const [editorKey, setEditorKey] = useState(0)
   const [announcement, setAnnouncement] = useState<string | null>(null)
-  const previousStatusRef = useRef<KeeperNotesSaveState['status'] | null>(null)
+  // Whether the current save recovers from retrying, offline, or conflict; only such a save is announced.
+  const recoveredRef = useRef(false)
+  const editorBoxRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    document.getElementById(editorId)?.focus()
+    editorBoxRef.current?.focus()
     // Focus again when the editor remounts with reloaded notes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editorKey])
 
   useEffect(() => {
-    const announced = announcementFor(previousStatusRef.current, state)
-    previousStatusRef.current = state.status
+    if (state.status === 'retrying' || state.status === 'offline' || state.status === 'conflict') {
+      recoveredRef.current = true
+    }
+    const announced = announcementFor(state, recoveredRef.current)
+    if (state.status === 'saved' && recoveredRef.current) {
+      recoveredRef.current = false
+    }
     if (announced) {
       setAnnouncement(announced)
     }
@@ -214,7 +222,7 @@ function EditingKeeperNotes({
 
   const keepMine = () => {
     autosave.keepMine()
-    document.getElementById(editorId)?.focus()
+    editorBoxRef.current?.focus()
   }
 
   const describedBy = [hintId, autosave.tooLong ? errorId : undefined].filter(Boolean).join(' ') || undefined
@@ -231,6 +239,7 @@ function EditingKeeperNotes({
       <RichTextEditor
         key={editorKey}
         id={editorId}
+        editorRef={editorBoxRef}
         labelledBy={headingId}
         describedBy={describedBy}
         invalid={autosave.tooLong}

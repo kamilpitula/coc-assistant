@@ -329,4 +329,36 @@ describe('keeper notes autosave', () => {
     expect(onDone).not.toHaveBeenCalled()
     expect(result.current.state.status).toBe('conflict')
   })
+
+  it('passes through conflict, saving, and saved when keeping mine', async () => {
+    api.saveKeeperNotes.mockRejectedValueOnce(new KeeperNotesConflictError({ keeperNotes: notes('Newer'), notesVersion: 5 }))
+    api.saveKeeperNotes.mockResolvedValue({ keeperNotes: notes('Mine'), notesVersion: 6 })
+    const { result } = setup()
+
+    act(() => result.current.edited(notes('Mine')))
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    await act(async () => {})
+    expect(result.current.state.status).toBe('conflict')
+
+    act(() => result.current.keepMine())
+    expect(result.current.state.status).toBe('saving')
+    await act(async () => {})
+    expect(result.current.state).toEqual({ status: 'saved', baseVersion: 6 })
+  })
+
+  it('passes through offline and pending to saved when coming back online', async () => {
+    api.saveKeeperNotes.mockResolvedValue({ keeperNotes: notes('Cellar'), notesVersion: 1 })
+    const { result } = setup()
+
+    act(() => onlineManager.setOnline(false))
+    act(() => result.current.edited(notes('Cellar')))
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    expect(result.current.state.status).toBe('offline')
+
+    act(() => onlineManager.setOnline(true))
+    expect(result.current.state.status).toBe('pending')
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    await act(async () => {})
+    expect(result.current.state).toEqual({ status: 'saved', baseVersion: 1 })
+  })
 })
