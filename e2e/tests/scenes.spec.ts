@@ -449,7 +449,10 @@ test.describe('Played Scenes', () => {
         const saved = page.waitForResponse((response) => response.url().includes('/keeper-notes') && response.status() === 200)
         await keeperNotesSection(page).getByRole('button', { name: 'Keep mine' }).click()
         await saved
-        await expect(keeperNotesSection(page).getByText('All changes saved')).toHaveCount(2)
+        // The visible status and the screen-reader announcement carry the same text; assert them separately.
+        const statusRow = keeperNotesSection(page).locator('div').filter({ has: keeperNotesSection(page).getByRole('button', { name: 'Done' }) })
+        await expect(statusRow.getByText('All changes saved', { exact: true })).toBeVisible()
+        await expect(keeperNotesSection(page).getByRole('status')).toHaveText('All changes saved')
         await keeperNotesSection(page).getByRole('button', { name: 'Done' }).click()
         await expect(page.getByRole('button', { name: 'Edit Keeper notes' })).toBeVisible()
         await page.reload()
@@ -472,9 +475,12 @@ test.describe('Played Scenes', () => {
       // Going offline before typing keeps the debounced save from firing while online.
       await context.setOffline(true)
       await page.keyboard.type('Typed offline. ')
-      await expect(keeperNotesSection(page).getByText(offlineText)).toHaveCount(2)
+      const statusRow = keeperNotesSection(page).locator('div').filter({ has: keeperNotesSection(page).getByRole('button', { name: 'Done' }) })
+      await expect(statusRow.getByText(offlineText, { exact: true })).toBeVisible()
+      await expect(keeperNotesSection(page).getByRole('status')).toHaveText(offlineText)
       await context.setOffline(false)
-      await expect(keeperNotesSection(page).getByText('All changes saved')).toHaveCount(2)
+      await expect(statusRow.getByText('All changes saved', { exact: true })).toBeVisible()
+      await expect(keeperNotesSection(page).getByRole('status')).toHaveText('All changes saved')
       await keeperNotesSection(page).getByRole('button', { name: 'Done' }).click()
       await expect(page.getByRole('button', { name: 'Edit Keeper notes' })).toBeVisible()
       await page.reload()
