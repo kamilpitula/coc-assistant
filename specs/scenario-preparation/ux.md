@@ -54,6 +54,12 @@ An Item is linked to a Scene at most once, and the link has no fields of its own
 
 Items are specified in sections 59 to 70. Design record: [docs/scenario-preparation/issues/08-prepare-campaign-items.design.md](../../docs/scenario-preparation/issues/08-prepare-campaign-items.design.md).
 
+Keeper notes editing (PBI-SPL-009, PBI-SPL-010): **Option A, one Keeper notes section with its own "Edit", autosave, and "Done", the same on the Scene page and on Run**, chosen 2026-11-24 after a clickable prototype. The Scene page's "Edit" now covers only the title and location. When the Keeper finishes a Scene while notes are unsaved, the pending notes save is sent first and the Scene is finished whatever its outcome ([scene-play ux](../scene-play/ux.md) section 25). Alternatives considered:
+- **Option B (autosave on Run, "Edit Keeper notes" with "Save notes" and "Cancel" on the Scene page):** not selected. Two save models for the same content, and the save status and offline handling would exist on one surface only.
+- **Option C (Keeper notes stay in the Scene Edit form; a notes-only form on a Finished Scene; the conflict as a dialog):** not selected. One Save becomes two requests with a partial-failure state, the same "Edit" opens different forms by status, and a modal dialog interrupts typing during play.
+
+Keeper notes editing is specified in section 73. Design record: [docs/scene-play/issues/09-keeper-notes-endpoint.design.md](../../docs/scene-play/issues/09-keeper-notes-endpoint.design.md).
+
 ## 1. Information architecture
 
 ```
@@ -265,6 +271,7 @@ Scenes                                            (h2)  [Create Scene]
 - **Success:** navigate to the new Scene's page with the navigation status message "Scene created."; the Scene list is invalidated.
 - **Failure:** an `Alert` (`role=alert`) "We couldn't create the Scene. Try again."; the input is kept.
 - **Unsaved edits:** `useUnsavedChangesPrompt(isDirty)`. The notes count as changed once the editor reports a content change after it mounts, not by comparing JSON text.
+- **Keeper notes (PBI-SPL-009):** unchanged here. The create form keeps its "Keeper notes (optional)" editor and the explicit "Create Scene"; the notes are created with the Scene, and autosave starts only on the Scene page (section 73).
 
 ## 14. Scene page (`scene-page`)
 
@@ -274,7 +281,7 @@ Scene created.                                    (role=status)
 The Corbitt House                                 (h1)
 (o) Prepared
 Location   Arkham, Boston Road                    (dl)
-Keeper notes                                      (h2)
+Keeper notes                                      (h2)  [Edit]   (section 73)
 <rendered notes, or "No Keeper notes yet.">
 Handouts                                          (h2)  [Add Handout]  (section 41)
 Non-Player Entities                               (h2)  [Link a Non-Player Entity]  (section 32)
@@ -286,11 +293,11 @@ Non-Player Entities                               (h2)  [Link a Non-Player Entit
   - A `role=status` paragraph for the navigation status message and "Scene saved.".
   - `h1` the Scene title (`break-words`), then a line with the status badge and the times (section 12).
   - A `dl` with "Location" and its value, only when a location is set.
-  - `h2` "Keeper notes" with `rich-text-view`, or "No Keeper notes yet." in muted text when there are none.
+  - ~~`h2` "Keeper notes" with `rich-text-view`, or "No Keeper notes yet." in muted text when there are none.~~ Replaced by (PBI-SPL-009): the `keeper-notes-section` of section 73, in every status. It stays on the page while the title and location form is open.
   - The "Handouts" section (section 41), in view mode only.
   - The "Non-Player Entities" section (section 32), in view mode only; in Edit mode it is not shown.
-- **Actions by status:** Prepared: "Start Scene" (a link styled as a primary button to the start page), outline "Edit", and "Remove Scene" (outline, destructive text). Active: the link "Open Active Scene" and "Edit". Finished: no actions, and the muted sentence "This Scene is finished and can't be changed." The start page and the Active Scene page are specified in [scene-play ux](../scene-play/ux.md) sections 2 and 3 (PBI-SPL-001).
-- **Edit:** "Edit" swaps the view for `scene-form`, prefilled; the `h1` keeps the saved title. Actions "Save" ("Saving..." while busy, disabled) and "Cancel". Focus moves to the Title field.
+- **Actions by status:** Prepared: "Start Scene" (a link styled as a primary button to the start page), outline "Edit", and "Remove Scene" (outline, destructive text). Active: the link "Open Active Scene" and "Edit". ~~Finished: no actions, and the muted sentence "This Scene is finished and can't be changed."~~ Replaced by (PBI-SPL-009): Finished: no page actions, and the muted sentence "This Scene is finished. You can still edit its Keeper notes."; the Keeper notes section keeps its "Edit" (section 73). The start page and the Active Scene page are specified in [scene-play ux](../scene-play/ux.md) sections 2 and 3 (PBI-SPL-001).
+- ~~**Edit:** "Edit" swaps the view for `scene-form`, prefilled; the `h1` keeps the saved title. Actions "Save" ("Saving..." while busy, disabled) and "Cancel". Focus moves to the Title field.~~ Replaced by (PBI-SPL-009): **Edit:** "Edit" (accessible name "Edit title and location") swaps the title, status, and location block for `scene-form` without its Keeper notes field, prefilled; the `h1` keeps the saved title. Actions "Save" ("Saving..." while busy, disabled) and "Cancel". Focus moves to the Title field. The Keeper notes section stays below in its reading state; its "Edit" is hidden while this form is open. The Save success, Cancel, Save failure, and Finished refusal bullets below are unchanged and now concern the title and location only.
 - **Save success:** back to the view, the status says "Scene saved.", focus moves to "Edit".
 - **Cancel:** discards the edits without confirmation; focus moves to "Edit".
 - **Save failure:** the form stays, with "We couldn't save the Scene. Try again." (`role=alert`).
@@ -324,7 +331,7 @@ Non-Player Entities                               (h2)  [Link a Non-Player Entit
 | Status messages | Scene created. / Scene saved. / Scene removed. |
 | Failures | We couldn't create the Scene. Try again. / We couldn't save the Scene. Try again. / We couldn't remove the Scene. Try again. / We couldn't load this Scene. |
 | Conflicts | This Scene has been finished, so it can't be changed. Copy anything you need, then select Cancel. / This Scene has been started, so it can't be removed. |
-| Finished | This Scene is finished and can't be changed. |
+| Finished | ~~This Scene is finished and can't be changed.~~ Replaced by (PBI-SPL-009): This Scene is finished. You can still edit its Keeper notes. |
 | Remove dialog | Remove {title}? / This can't be undone. / Cancel / Remove Scene |
 | Toolbar | Formatting / Bold / Italic / Underline / Strikethrough / Heading / Subheading / Quote / Bulleted list / Numbered list / Link |
 | Link dialog | Add link / Edit link / Web address / Save link / Remove link / Cancel |
@@ -368,9 +375,9 @@ Stories cover:
 - **SP-UX-17** An empty or whitespace title shows "Enter a title." and focuses Title; a title or location over 200 characters and Keeper notes over 204,800 bytes show their messages; nothing is saved.
 - **SP-UX-18** Bold, italic, underline, strikethrough, Heading, Subheading, Quote, Bulleted list, Numbered list, and Link applied in the editor show formatted on the Scene page after a reload.
 - **SP-UX-19** The link dialog accepts only `http` and `https` addresses; a saved link opens in a new tab with `rel="noopener noreferrer"`.
-- **SP-UX-20** "Edit" then "Save" stores the title, location, and Keeper notes, shows "Scene saved.", and the change survives a reload; "Cancel" discards the edits.
+- **SP-UX-20** ~~"Edit" then "Save" stores the title, location, and Keeper notes, shows "Scene saved.", and the change survives a reload; "Cancel" discards the edits.~~ Replaced by (PBI-SPL-009): "Edit" then "Save" stores the title and location, shows "Scene saved.", and the change survives a reload; "Cancel" discards the edits. The form has no Keeper notes field, and saving it leaves the Keeper notes unchanged; Keeper notes are edited in their own section (SP-UX-110).
 - **SP-UX-21** Every row and the Scene page show the Scene's status as text; "Started ..." and "Finished ..." appear only once those times are set.
-- **SP-UX-22** A Finished Scene's page has no "Edit" and no "Remove Scene" and says "This Scene is finished and can't be changed."; a save refused because the Scene was finished meanwhile shows its message.
+- **SP-UX-22** ~~A Finished Scene's page has no "Edit" and no "Remove Scene" and says "This Scene is finished and can't be changed."; a save refused because the Scene was finished meanwhile shows its message.~~ Replaced by (PBI-SPL-009): a Finished Scene's page has no title and location "Edit" and no "Remove Scene", no Handout or link actions, and says "This Scene is finished. You can still edit its Keeper notes."; the Keeper notes section offers "Edit" (SP-UX-114). A title and location save refused because the Scene was finished meanwhile shows its message.
 - **SP-UX-23** Only a Prepared Scene shows "Remove Scene"; "Cancel" in the dialog keeps it; confirming returns to the Scenario page with "Scene removed." and without the Scene; a refused removal shows "This Scene has been started, so it can't be removed.".
 - **SP-UX-24** Moving Scenes behaves as SP-UX-11 to SP-UX-14, with Scene names and messages.
 - **SP-UX-25** Scene pages keep the Campaign header with Overview as the current tab (extends SP-UX-8).
@@ -1757,3 +1764,134 @@ One entry for a Scene's Handouts, Non-Player Entity links, and Items, used on th
 ### 72.2 Accessibility acceptance criteria (WCAG 2.2 AA)
 
 - **SP-A11Y-60** The title button is inside the entry's heading, is announced as opening a dialog, and returns focus to itself when the panel closes (1.3.1, 2.4.3, 4.1.2).
+
+## 73. Keeper notes section with autosave (`keeper-notes-section`, PBI-SPL-009)
+
+One component for a Scene's Keeper notes wherever the Keeper edits them: the Scene page (PBI-SPL-009) and Run ([scene-play ux](../scene-play/ux.md) section 25, PBI-SPL-010). Behavior: [spec.md](spec.md), Scene API (the Keeper notes endpoint) and Constraints. Keeper notes never reach a Player.
+
+### 73.1 Reading state
+
+```
+Keeper notes                                      (h2)  [Edit]
+<rendered notes, or "No Keeper notes yet.">
+```
+
+- A `section` labelled by its `h2` "Keeper notes", then `rich-text-view` (section 15) or "No Keeper notes yet." in muted text.
+- **"Edit":** an outline small `Button`, visible text "Edit", accessible name "Edit Keeper notes". Shown in every Scene status, Finished included.
+- **Live updates:** a `scenes` live update shows the new notes in place. Nothing is announced and focus does not move.
+
+### 73.2 Editing state
+
+```
+Keeper notes                                      (h2)
+Only you can read these. Changes save as you type.
+[B I U S | H1 H2 " * 1. | Link]                    (rich-text-toolbar)
++---------------------------------------------------------------+
+| Walter Corbitt is buried in the cellar.                       |
++---------------------------------------------------------------+
+All changes saved                                       [Done]
+```
+
+- **Enter:** "Edit" swaps the view for the shared `rich-text-editor` (section 15) holding the latest loaded notes, with the hint "Only you can read these. Changes save as you type." The editable area is named by the `h2` and described by the hint. Focus moves into the editor with the caret at the end. The section remembers the `notesVersion` it opened with.
+- **Autosave:** a save starts 1 second after the last change. A change counts once the editor reports a content change after it mounts (as section 13), not by comparing JSON text. At most one save is in flight; changes made during it are saved when it returns. Each save sends the current editor content with the `notesVersion` of the last confirmed save (or the one it opened with).
+- **Save status (`keeper-notes-save-status`)**, a line to the left of "Done":
+
+| State | Visible text | Notes |
+|---|---|---|
+| Opened, no change yet | (empty) | |
+| Change waiting or save in flight | "Saving..." | |
+| Saved | "All changes saved" | |
+| Save failed, retrying | "Couldn't save. Retrying..." | Destructive text. Retries after 2 and 4 seconds (3 attempts in all). Typing restarts the count. |
+| Failed after 3 attempts | (empty) | An `Alert` (destructive) "Couldn't save your changes." with the small button "Try again", which saves at once. The next change also saves again. |
+| Offline | "You're offline. Your changes will save when you're back online." | Warning text with an `aria-hidden` icon. Entered when the browser reports offline or a save fails with a network error while offline. Saving resumes on its own when the browser is back online. |
+| Conflict | "Not saved yet." | With the conflict `Alert` (73.3). |
+| Refused as invalid (400) | (empty) | An `Alert` (destructive) "These Keeper notes can't be saved. Shorten them or remove unsupported content." No retry; the next change saves again. |
+| Too long (checked before sending, more than 204,800 bytes) | (empty) | Error text under the editor "Keeper notes are too long. Shorten them and try again.", `aria-invalid` on the editor; nothing is sent. |
+| Scene gone (404) | (empty) | An `Alert` (destructive) "We couldn't find this Scene any more. Copy anything you need." Saving stops. |
+
+- **"Done"** (primary, small):
+  - With nothing unsaved: back to the reading state; focus moves to "Edit".
+  - With a change waiting or a save in flight: it saves at once, `aria-disabled` while it waits, and returns to the reading state when the save is confirmed.
+  - When that save fails, conflicts, or the browser is offline, the editor stays open in that state. Offline adds the `Alert` (warning) "Your changes aren't saved yet. Keep this page open until you're back online, then select Done."
+- **No "Cancel":** autosaved changes have nothing to discard. Ctrl+Z undoes within the editor.
+- **Leaving with unsaved changes:** `useUnsavedChangesPrompt` while a change is waiting, a save is in flight, or the state is retrying, failed, offline, conflict, or refused.
+- **Live updates while editing:** the editor's content is never replaced by a live update, so typing is never lost. If another window saved, the next save conflicts (73.3).
+- **Own saves:** a confirmed save puts its `{keeperNotes, notesVersion}` into the cached Scene, so the reading state shows it at once.
+
+### 73.3 Conflict (409, `keeper-notes-conflict`)
+
+```
++-- These Keeper notes were changed in another window. ----------+
+| "Reload newer notes" replaces your unsaved changes. "Keep mine"|
+| saves your version over the newer one.                         |
+| [Reload newer notes]  [Keep mine]                              |
++----------------------------------------------------------------+
+```
+
+- An inline `Alert` (destructive, `role=alert`) under the editor, title "These Keeper notes were changed in another window." and the description above. Buttons: outline "Reload newer notes", primary "Keep mine".
+- Autosave pauses while it is shown. The editor stays editable; nothing is saved until the Keeper chooses.
+- **"Reload newer notes":** the editor is remounted with the notes from the 409 body and that `notesVersion`. The Keeper's unsaved text is discarded. The status becomes "All changes saved", and focus moves into the editor.
+- **"Keep mine":** saves the editor's current content at once, based on the `notesVersion` from the 409 body. The status follows 73.2, and focus moves into the editor. If yet another save happened meanwhile, the prompt shows again with the newest notes.
+- Never a modal dialog.
+
+### 73.4 By Scene status
+
+- Prepared, Active, and Finished behave the same. On a Finished Scene this is the only editable part of the Scene page (section 14).
+- A Scene finished in another window while the Keeper edits here changes nothing in the section; its saves keep succeeding.
+
+### 73.5 Content
+
+| Key | Copy |
+|---|---|
+| Edit button | Edit (accessible name: Edit Keeper notes) |
+| Hint | Only you can read these. Changes save as you type. |
+| Done | Done |
+| Status | Saving... / All changes saved / Couldn't save. Retrying... / You're offline. Your changes will save when you're back online. / Not saved yet. |
+| Failure | Couldn't save your changes. / Try again |
+| Offline on Done | Your changes aren't saved yet. Keep this page open until you're back online, then select Done. |
+| Conflict | These Keeper notes were changed in another window. / "Reload newer notes" replaces your unsaved changes. "Keep mine" saves your version over the newer one. / Reload newer notes / Keep mine |
+| Refused | These Keeper notes can't be saved. Shorten them or remove unsupported content. |
+| Too long | Keeper notes are too long. Shorten them and try again. |
+| Scene gone | We couldn't find this Scene any more. Copy anything you need. |
+| Finished page sentence | This Scene is finished. You can still edit its Keeper notes. |
+
+### 73.6 Component mapping
+
+| Element | Component |
+|---|---|
+| Section | New `keeper-notes-section` in `frontend/src/scenario-preparation/components/keeper-notes-section/`, used by `scene-page` now and by scene-play's Run from PBI-SPL-010 (scene-play already imports `scenario-preparation` components, for example `scene-status-badge`) |
+| Save behavior | New `useKeeperNotesAutosave` hook in `scenario-preparation/hooks/`, driven by a pure reducer in `scenario-preparation/services/keeperNotesSave.ts` |
+| Request | New `saveKeeperNotes` and `KeeperNotesConflictError` in `sceneApi.ts`; new `useSaveKeeperNotes` in `useScenes.ts` |
+| Editor and view | Existing `rich-text-editor`, `rich-text-toolbar`, `rich-text-link-dialog`, `rich-text-view` |
+| Primitives | Existing `Button`, `Alert`; no new primitive |
+
+Stories (`keeper-notes-section`): reading with and without notes; editing idle; saving; saved; retrying; failed with "Try again"; offline; offline after Done; conflict; refused; too long; Scene gone; a Finished Scene page (`scene-page`).
+
+### 73.7 UX acceptance criteria
+
+- **SP-UX-110** On the Scene page, the Keeper notes section's "Edit" opens the editor with the current notes. Typing saves without a Save action, the status shows "Saving..." then "All changes saved", and the notes survive a reload.
+- **SP-UX-111** "Done" returns to the read-only notes. With a change still waiting, "Done" saves it first and returns only once it is saved.
+- **SP-UX-112** A save that fails shows "Couldn't save. Retrying...", then after 3 attempts "Couldn't save your changes." with "Try again". Offline shows "You're offline. Your changes will save when you're back online." and saves once back online. The typed text is never removed in these states.
+- **SP-UX-113** When another window saved the notes first, the section shows "These Keeper notes were changed in another window." with "Reload newer notes" and "Keep mine". Reload shows the newer notes; Keep mine saves the Keeper's text over them.
+- **SP-UX-114** On a Finished Scene, the Keeper notes "Edit" is the only edit action on the page. The page says "This Scene is finished. You can still edit its Keeper notes.", and a saved change shows after a reload.
+- **SP-UX-115** Saving the title and location leaves the Keeper notes and their version unchanged. A live update from another window refreshes the reading state but never replaces text being edited.
+
+### 73.8 Accessibility acceptance criteria (WCAG 2.2 AA)
+
+- **SP-A11Y-61** "Edit" has the accessible name "Edit Keeper notes", which contains its visible label (2.5.3). The page-level "Edit" is named "Edit title and location" (2.4.6).
+- **SP-A11Y-62** The editable area is named by the "Keeper notes" heading and described by the hint and any error (1.3.1, 3.3.2, 4.1.2).
+- **SP-A11Y-63** A visually hidden `role=status` region announces only "Couldn't save. Retrying...", the offline sentence, and "All changes saved" when it follows one of those or a conflict. The routine "Saving..." and "All changes saved" are visible but not announced. Failures, refusals, and the conflict use `role=alert` (4.1.3).
+- **SP-A11Y-64** Focus moves into the editor on "Edit", "Reload newer notes", and "Keep mine", and to "Edit" after "Done". It is never lost to `body` (2.4.3).
+- **SP-A11Y-65** State is always text, never colour or an icon alone. "Done", "Try again", "Reload newer notes", and "Keep mine" are at least 24 by 24 CSS px with a visible focus ring (1.4.1, 2.4.7, 2.5.8).
+- **SP-A11Y-66** At 320px and 200% zoom, the status line and "Done" wrap, and the conflict buttons stack, without horizontal scrolling (1.4.10).
+
+### 73.9 Prototype validation
+
+The Keeper notes prototype, its verdict, and its throwaway branch are recorded in [scene-play ux](../scene-play/ux.md) section 25.7.
+
+### 73.10 Open decisions and research gaps
+
+- **Deferred:** keeping unsaved notes across a closed or reloaded tab (local draft storage). Today only the leave prompt protects them.
+- **Deferred:** a side-by-side view of both versions in the conflict prompt.
+- **Deferred:** a "Last saved {time}" detail in the status line.
+- **Research gap:** whether 1 second suits typing during play; revisit with Keeper feedback after PBI-SPL-010.

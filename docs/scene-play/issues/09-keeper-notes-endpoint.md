@@ -41,3 +41,4 @@ Read: [scenario-preparation spec](../../../specs/scenario-preparation/spec.md), 
 A change to the notes save updates the scenario-preparation spec, its ux.md, the notes-version ADR, CONTEXT.md if the Finished exception changes, and tests together.
 
 ## Follow-ups
+- Prototype: `prototype/spl-009-keeper-notes` (`554378e`, local, never merged); verdict in [specs/scene-play/ux.md](../../../specs/scene-play/ux.md) section 25.7. Design: [09-keeper-notes-endpoint.design.md](09-keeper-notes-endpoint.design.md).
