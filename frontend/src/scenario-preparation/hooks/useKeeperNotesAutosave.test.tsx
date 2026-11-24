@@ -253,4 +253,80 @@ describe('keeper notes autosave', () => {
     expect(api.saveKeeperNotes).toHaveBeenCalledTimes(1)
     expect(api.saveKeeperNotes).toHaveBeenCalledWith('token', 'c1', 's1', 'a1', notes('Cellar'), 0)
   })
+
+  it('never resends a refused save on Done, on finish, or on unmount', async () => {
+    api.saveKeeperNotes.mockRejectedValueOnce(new SceneValidationError({ keeperNotes: 'x' }))
+    const onDone = vi.fn()
+    const { result, unmount } = setup(onDone)
+
+    act(() => result.current.edited(notes('Cellar')))
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    await act(async () => {})
+    expect(result.current.state.status).toBe('refused')
+
+    act(() => result.current.requestDone())
+    expect(api.saveKeeperNotes).toHaveBeenCalledTimes(1)
+    expect(onDone).not.toHaveBeenCalled()
+    expect(result.current.state.status).toBe('refused')
+
+    await act(async () => {
+      await expect(result.current.finishEditing()).resolves.toBe(false)
+    })
+    expect(api.saveKeeperNotes).toHaveBeenCalledTimes(1)
+
+    unmount()
+    await act(async () => {})
+    expect(api.saveKeeperNotes).toHaveBeenCalledTimes(1)
+  })
+
+  it('finishEditing saves a waiting change and resolves true once confirmed', async () => {
+    api.saveKeeperNotes.mockResolvedValue({ keeperNotes: notes('Cellar'), notesVersion: 1 })
+    const onDone = vi.fn()
+    const { result } = setup(onDone)
+
+    act(() => result.current.edited(notes('Cellar')))
+    let finished!: Promise<boolean>
+    act(() => {
+      finished = result.current.finishEditing()
+    })
+    await act(async () => {
+      await expect(finished).resolves.toBe(true)
+    })
+    expect(onDone).toHaveBeenCalledTimes(1)
+    expect(result.current.state).toEqual({ status: 'saved', baseVersion: 1 })
+  })
+
+  it('finishEditing resolves false while offline and shows the hint', async () => {
+    const onDone = vi.fn()
+    const { result } = setup(onDone)
+
+    act(() => onlineManager.setOnline(false))
+    act(() => result.current.edited(notes('Cellar')))
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    expect(result.current.state.status).toBe('offline')
+
+    await act(async () => {
+      await expect(result.current.finishEditing()).resolves.toBe(false)
+    })
+    expect(onDone).not.toHaveBeenCalled()
+    expect(result.current.showDoneOfflineHint).toBe(true)
+  })
+
+  it('finishEditing resolves false on conflict and keeps the editor state', async () => {
+    api.saveKeeperNotes.mockRejectedValueOnce(new KeeperNotesConflictError({ keeperNotes: notes('Newer'), notesVersion: 5 }))
+    const onDone = vi.fn()
+    const { result } = setup(onDone)
+
+    act(() => result.current.edited(notes('Mine')))
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    await act(async () => {})
+    expect(result.current.state.status).toBe('conflict')
+
+    await act(async () => {
+      await expect(result.current.finishEditing()).resolves.toBe(false)
+    })
+    expect(api.saveKeeperNotes).toHaveBeenCalledTimes(1)
+    expect(onDone).not.toHaveBeenCalled()
+    expect(result.current.state.status).toBe('conflict')
+  })
 })

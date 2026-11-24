@@ -48,10 +48,10 @@ function hasUnsavedChanges(state: KeeperNotesSaveState): boolean {
 }
 
 function isSendable(state: KeeperNotesSaveState): state is SendableState {
-  return state.status === 'pending' || state.status === 'retrying' || state.status === 'failed' || state.status === 'refused'
+  return state.status === 'pending' || state.status === 'retrying' || state.status === 'failed'
 }
 
-type SendableState = Extract<KeeperNotesSaveState, { status: 'pending' | 'retrying' | 'failed' | 'refused' }>
+type SendableState = Extract<KeeperNotesSaveState, { status: 'pending' | 'retrying' | 'failed' }>
 
 /**
  * Autosaves the Keeper notes: one debounced save per change, two timed retries, offline waiting, and the
@@ -69,9 +69,22 @@ export function useKeeperNotesAutosave({ campaignId, scenarioId, sceneId, notesV
   const sendNowRef = useRef<(current: KeeperNotesSaveState) => boolean>(() => false)
   const mountedRef = useRef(true)
   const doneAfterSaveRef = useRef(false)
+  const finishWaiterRef = useRef<{ promise: Promise<boolean>; resolve: (finished: boolean) => void } | null>(null)
   const [tooLong, setTooLong] = useState(false)
   const [showDoneOfflineHint, setShowDoneOfflineHint] = useState(false)
   useUnsavedChangesPrompt(hasUnsavedChanges(state))
+
+  /** The promise the current finishEditing waits on; a second finish while one is pending joins the same wait. */
+  const finishPromise = useCallback((): Promise<boolean> => {
+    finishWaiterRef.current ??= ((): { promise: Promise<boolean>; resolve: (finished: boolean) => void } => {
+      let resolve!: (finished: boolean) => void
+      const promise = new Promise<boolean>((inner) => {
+        resolve = inner
+      })
+      return { promise, resolve }
+    })()
+    return finishWaiterRef.current.promise
+  }, [])
 
   const finishSave = useCallback((saved: SavedKeeperNotes) => {
     if (!mountedRef.current) {
@@ -81,6 +94,8 @@ export function useKeeperNotesAutosave({ campaignId, scenarioId, sceneId, notesV
     if (doneAfterSaveRef.current) {
       doneAfterSaveRef.current = false
       onDoneRef.current()
+      finishWaiterRef.current?.resolve(true)
+      finishWaiterRef.current = null
     }
   }, [])
 
@@ -89,6 +104,8 @@ export function useKeeperNotesAutosave({ campaignId, scenarioId, sceneId, notesV
       return
     }
     doneAfterSaveRef.current = false
+    finishWaiterRef.current?.resolve(false)
+    finishWaiterRef.current = null
     if (error instanceof KeeperNotesConflictError) {
       dispatch({ type: 'saveConflict', keeperNotes: error.current.keeperNotes, notesVersion: error.current.notesVersion })
     } else if (error instanceof SceneValidationError) {
@@ -170,9 +187,12 @@ export function useKeeperNotesAutosave({ campaignId, scenarioId, sceneId, notesV
   )
 
   // Leaving with an unsaved change still tries to save it once; the cache merge keeps it.
+  // A refused save is never sent: its content failed validation and stays for the Keeper to fix.
   useEffect(
     () => () => {
       mountedRef.current = false
+      finishWaiterRef.current?.resolve(false)
+      finishWaiterRef.current = null
       const current = stateRef.current
       const latest = saveRef.current
       if (isSendable(current) && onlineManager.isOnline()) {
@@ -190,22 +210,36 @@ export function useKeeperNotesAutosave({ campaignId, scenarioId, sceneId, notesV
     [],
   )
 
-  // Done with unsaved changes saves at once and leaves only once the save is confirmed.
-  const requestDone = useCallback(() => {
+  /**
+   * Finishes editing like Done: with nothing unsaved it returns true at once; with a waiting or in-flight save it
+   * saves at once and resolves true once the save is confirmed. A failed, refused, conflicting, missing, or offline
+   * save keeps the editor open and resolves false, so the caller leaves it alone.
+   */
+  const finishEditing = useCallback((): Promise<boolean> => {
     const current = stateRef.current
     if (current.status === 'idle' || current.status === 'saved') {
       onDoneRef.current()
-    } else if (current.status === 'offline') {
-      setShowDoneOfflineHint(true)
-    } else if (current.status === 'saving') {
-      doneAfterSaveRef.current = true
-    } else if (isSendable(current)) {
-      doneAfterSaveRef.current = true
-      if (!sendNowRef.current(current)) {
-        doneAfterSaveRef.current = false
-      }
+      return Promise.resolve(true)
     }
-  }, [])
+    if (current.status === 'offline') {
+      setShowDoneOfflineHint(true)
+      return Promise.resolve(false)
+    }
+    if (current.status === 'conflict' || current.status === 'refused' || current.status === 'gone') {
+      return Promise.resolve(false)
+    }
+    doneAfterSaveRef.current = true
+    if (isSendable(current) && !sendNowRef.current(current)) {
+      doneAfterSaveRef.current = false
+      return Promise.resolve(false)
+    }
+    return finishPromise()
+  }, [finishPromise])
+
+  // Done with unsaved changes saves at once and leaves only once the save is confirmed.
+  const requestDone = useCallback(() => {
+    void finishEditing()
+  }, [finishEditing])
 
   /** Saves again after a failed save. */
   const retryNow = useCallback(() => {
@@ -248,5 +282,5 @@ export function useKeeperNotesAutosave({ campaignId, scenarioId, sceneId, notesV
     sendNowRef.current = sendNow
   })
 
-  return { state, edited, requestDone, retryNow, reloadServer, keepMine, tooLong, showDoneOfflineHint }
+  return { state, edited, requestDone, finishEditing, retryNow, reloadServer, keepMine, tooLong, showDoneOfflineHint }
 }
