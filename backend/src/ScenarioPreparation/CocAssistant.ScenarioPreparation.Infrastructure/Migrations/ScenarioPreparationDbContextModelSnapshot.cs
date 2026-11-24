@@ -503,6 +503,11 @@ namespace CocAssistant.ScenarioPreparation.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int>("NotesVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<int>("Position")
                         .HasColumnType("int");
 

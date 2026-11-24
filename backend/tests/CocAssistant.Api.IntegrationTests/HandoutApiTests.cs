@@ -140,7 +140,7 @@ public class HandoutApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
 
         Assert.Equal(0, loaded.GetProperty("handouts").GetArrayLength());
         Assert.Equal(
-            ["finishedAt", "handouts", "id", "itemLinks", "keeperNotes", "location", "nonPlayerEntityLinks", "startedAt", "status", "title"],
+            ["finishedAt", "handouts", "id", "itemLinks", "keeperNotes", "location", "nonPlayerEntityLinks", "notesVersion", "startedAt", "status", "title"],
             PropertyNames(loaded).Order());
     }
 

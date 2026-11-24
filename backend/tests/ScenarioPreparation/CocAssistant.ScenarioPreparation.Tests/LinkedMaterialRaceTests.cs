@@ -248,7 +248,7 @@ public class LinkedMaterialRaceTests : IDisposable
             await _builder.PlayAsync(sceneId, SceneStatus.Active);
         };
 
-        var result = await _builder.CreateSceneService(context, racing).EditAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, "Renamed", null, null, CancellationToken.None);
+        var result = await _builder.CreateSceneService(context, racing).EditAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, "Renamed", null, CancellationToken.None);
 
         Assert.Equal(SceneWriteOutcome.Saved, result.Outcome);
         var stored = await _builder.GetSceneAsync(_builder.CampaignId, scenarioId, sceneId);
@@ -267,7 +267,7 @@ public class LinkedMaterialRaceTests : IDisposable
             await _builder.PlayAsync(sceneId, SceneStatus.Finished);
         };
 
-        var result = await _builder.CreateSceneService(context, racing).EditAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, "Renamed", null, null, CancellationToken.None);
+        var result = await _builder.CreateSceneService(context, racing).EditAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, "Renamed", null, CancellationToken.None);
 
         Assert.Equal(SceneWriteOutcome.Finished, result.Outcome);
         Assert.Equal("The Corbitt House", (await _builder.GetSceneAsync(_builder.CampaignId, scenarioId, sceneId))!.Title);

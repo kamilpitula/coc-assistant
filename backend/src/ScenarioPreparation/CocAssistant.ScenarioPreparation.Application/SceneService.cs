@@ -87,7 +87,7 @@ public class SceneService
         return new SceneWriteResult(SceneWriteOutcome.Saved, ToDetail(creation.Scene, [], []));
     }
 
-    /// <summary>Replaces a Scene's title, location, and Keeper notes; its place in the order is unchanged.</summary>
+    /// <summary>Replaces a Scene's title and location; its place in the order is unchanged. Keeper notes keep their own endpoint.</summary>
     public async Task<SceneWriteResult> EditAsync(
         Guid campaignId,
         Guid callerAccountId,
@@ -95,7 +95,6 @@ public class SceneService
         Guid sceneId,
         string title,
         string? location,
-        string? keeperNotes,
         CancellationToken cancellationToken)
     {
         var scene = await FindSceneAsync(campaignId, callerAccountId, scenarioId, sceneId, cancellationToken);
@@ -104,7 +103,7 @@ public class SceneService
             return new SceneWriteResult(SceneWriteOutcome.NotFound, null);
         }
 
-        var outcome = scene.Edit(title, location, keeperNotes);
+        var outcome = scene.Edit(title, location);
         if (outcome != SceneFieldsOutcome.Accepted)
         {
             return new SceneWriteResult(ToWriteOutcome(outcome), null);
@@ -116,7 +115,7 @@ public class SceneService
         }
         catch (SceneConcurrencyException)
         {
-            return await EditAfterConcurrentChangeAsync(campaignId, callerAccountId, scenarioId, sceneId, title, location, keeperNotes, cancellationToken);
+            return await EditAfterConcurrentChangeAsync(campaignId, callerAccountId, scenarioId, sceneId, title, location, cancellationToken);
         }
 
         await _signals.ScenesChangedAsync(campaignId, cancellationToken);
@@ -131,7 +130,6 @@ public class SceneService
         Guid sceneId,
         string title,
         string? location,
-        string? keeperNotes,
         CancellationToken cancellationToken)
     {
         var scene = await FindSceneAsync(campaignId, callerAccountId, scenarioId, sceneId, cancellationToken);
@@ -140,7 +138,7 @@ public class SceneService
             return new SceneWriteResult(SceneWriteOutcome.NotFound, null);
         }
 
-        var outcome = scene.Edit(title, location, keeperNotes);
+        var outcome = scene.Edit(title, location);
         if (outcome != SceneFieldsOutcome.Accepted)
         {
             return new SceneWriteResult(ToWriteOutcome(outcome), null);
@@ -241,7 +239,7 @@ public class SceneService
     }
 
     private static SceneDetailView ToDetail(Scene scene, IReadOnlyList<NonPlayerEntityLinkView> links, IReadOnlyList<ItemLinkView> itemLinks) =>
-        new(scene.Id, scene.Title, scene.Location, scene.KeeperNotes, scene.Status, scene.StartedAt, scene.FinishedAt, links, itemLinks, scene.Handouts.Select(HandoutViews.ToSummary).ToList());
+        new(scene.Id, scene.Title, scene.Location, scene.KeeperNotes, scene.NotesVersion, scene.Status, scene.StartedAt, scene.FinishedAt, links, itemLinks, scene.Handouts.Select(HandoutViews.ToSummary).ToList());
 
     private static SceneWriteOutcome ToWriteOutcome(SceneFieldsOutcome outcome) => outcome switch
     {

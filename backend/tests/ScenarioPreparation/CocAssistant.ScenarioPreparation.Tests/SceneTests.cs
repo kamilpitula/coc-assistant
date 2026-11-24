@@ -106,10 +106,10 @@ public class SceneTests
     {
         var scene = PreparedScene();
 
-        var outcome = scene.Edit(" New title ", " Elsewhere ", Notes);
+        var outcome = scene.Edit(" New title ", " Elsewhere ");
 
         Assert.Equal(SceneFieldsOutcome.Accepted, outcome);
-        Assert.Equal(("New title", "Elsewhere", Notes, 1), (scene.Title, scene.Location, scene.KeeperNotes, scene.Position));
+        Assert.Equal(("New title", "Elsewhere", (string?)null, 1), (scene.Title, scene.Location, scene.KeeperNotes, scene.Position));
     }
 
     [Fact]
@@ -117,7 +117,7 @@ public class SceneTests
     {
         var scene = ActiveScene();
 
-        Assert.Equal(SceneFieldsOutcome.Accepted, scene.Edit("Changed", null, null));
+        Assert.Equal(SceneFieldsOutcome.Accepted, scene.Edit("Changed", null));
         Assert.Equal("Changed", scene.Title);
     }
 
@@ -126,8 +126,8 @@ public class SceneTests
     {
         var scene = FinishedScene();
 
-        Assert.Equal(SceneFieldsOutcome.SceneFinished, scene.Edit("Changed", "Somewhere", Notes));
-        Assert.Equal(SceneFieldsOutcome.SceneFinished, scene.Edit("", null, null));
+        Assert.Equal(SceneFieldsOutcome.SceneFinished, scene.Edit("Changed", "Somewhere"));
+        Assert.Equal(SceneFieldsOutcome.SceneFinished, scene.Edit("", null));
         Assert.Equal(("The Corbitt House", "Arkham", (string?)null), (scene.Title, scene.Location, scene.KeeperNotes));
     }
 
@@ -136,8 +136,8 @@ public class SceneTests
     {
         var scene = PreparedScene();
 
-        Assert.Equal(SceneFieldsOutcome.InvalidTitle, scene.Edit("", "Elsewhere", Notes));
-        Assert.Equal(SceneFieldsOutcome.InvalidKeeperNotes, scene.Edit("New", "Elsewhere", "{}"));
+        Assert.Equal(SceneFieldsOutcome.InvalidTitle, scene.Edit("", "Elsewhere"));
+        Assert.Equal(SceneFieldsOutcome.InvalidLocation, scene.Edit("New", new string('l', 201)));
         Assert.Equal(("The Corbitt House", "Arkham", (string?)null), (scene.Title, scene.Location, scene.KeeperNotes));
     }
 

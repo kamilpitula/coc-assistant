@@ -49,7 +49,7 @@ public class SceneContentServiceSignalTests : IDisposable
         using var context = _builder.Fixture.CreateContext();
 
         var result = await _builder.CreateSceneService(context)
-            .EditAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, "The Corbitt Cellar", null, null, CancellationToken.None);
+            .EditAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, "The Corbitt Cellar", null, CancellationToken.None);
 
         Assert.Equal(SceneWriteOutcome.Saved, result.Outcome);
         AssertSignalledOnce();
@@ -69,7 +69,7 @@ public class SceneContentServiceSignalTests : IDisposable
         };
 
         var result = await _builder.CreateSceneService(context, racing)
-            .EditAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, "Renamed", null, null, CancellationToken.None);
+            .EditAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, "Renamed", null, CancellationToken.None);
 
         Assert.Equal(SceneWriteOutcome.Saved, result.Outcome);
         AssertSignalledOnce();
@@ -114,7 +114,7 @@ public class SceneContentServiceSignalTests : IDisposable
         using var context = _builder.Fixture.CreateContext();
 
         var result = await _builder.CreateSceneService(context)
-            .EditAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, "Renamed", null, null, CancellationToken.None);
+            .EditAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, "Renamed", null, CancellationToken.None);
 
         Assert.Equal(SceneWriteOutcome.Finished, result.Outcome);
         Assert.Empty(_builder.Signals.CampaignIds);
@@ -128,9 +128,53 @@ public class SceneContentServiceSignalTests : IDisposable
         using var context = _builder.Fixture.CreateContext();
 
         var result = await _builder.CreateSceneService(context)
-            .EditAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, " ", null, null, CancellationToken.None);
+            .EditAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, " ", null, CancellationToken.None);
 
         Assert.Equal(SceneWriteOutcome.InvalidTitle, result.Outcome);
+        Assert.Empty(_builder.Signals.CampaignIds);
+    }
+
+    private async Task<SceneKeeperNotesWriteResult> SaveNotesAsync(Guid scenarioId, Guid sceneId, string? keeperNotes, int? notesVersion)
+    {
+        using var context = _builder.Fixture.CreateContext();
+        return await _builder.CreateKeeperNotesService(context)
+            .SaveAsync(_builder.CampaignId, Keeper, scenarioId, sceneId, keeperNotes, notesVersion, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Given_a_scene_When_the_keeper_saves_its_notes_Then_scenes_is_signalled_once()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        ClearSignals();
+
+        var result = await SaveNotesAsync(scenarioId, sceneId, Rich("The cellar key"), 0);
+
+        Assert.Equal(SceneKeeperNotesWriteOutcome.Saved, result.Outcome);
+        AssertSignalledOnce();
+    }
+
+    [Fact]
+    public async Task Given_a_stale_notes_save_When_saving_Then_it_is_refused_and_nothing_is_signalled()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        Assert.Equal(SceneKeeperNotesWriteOutcome.Saved, (await SaveNotesAsync(scenarioId, sceneId, Rich("The cellar key"), 0)).Outcome);
+        ClearSignals();
+
+        var result = await SaveNotesAsync(scenarioId, sceneId, Rich("Another note"), 0);
+
+        Assert.Equal(SceneKeeperNotesWriteOutcome.StaleNotesVersion, result.Outcome);
+        Assert.Empty(_builder.Signals.CampaignIds);
+    }
+
+    [Fact]
+    public async Task Given_invalid_notes_When_saving_Then_they_are_refused_and_nothing_is_signalled()
+    {
+        var (scenarioId, sceneId) = await SceneAsync();
+        ClearSignals();
+
+        var result = await SaveNotesAsync(scenarioId, sceneId, "{}", 0);
+
+        Assert.Equal(SceneKeeperNotesWriteOutcome.InvalidKeeperNotes, result.Outcome);
         Assert.Empty(_builder.Signals.CampaignIds);
     }
 

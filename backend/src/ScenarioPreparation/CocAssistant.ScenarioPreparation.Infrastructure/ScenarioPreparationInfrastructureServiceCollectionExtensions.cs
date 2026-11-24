@@ -30,6 +30,7 @@ public static class ScenarioPreparationInfrastructureServiceCollectionExtensions
         services.AddSingleton(provider => HandoutFileStoreRegistration.Create(provider.GetRequiredService<IConfiguration>()));
         services.AddScoped<ScenarioService>();
         services.AddScoped<SceneService>();
+        services.AddScoped<SceneKeeperNotesService>();
         services.AddScoped<SceneLifecycleService>();
         services.AddScoped<SceneRollRequestService>();
         services.AddScoped<SceneRevealService>();
