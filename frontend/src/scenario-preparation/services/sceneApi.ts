@@ -4,7 +4,8 @@ import { apiFetch } from '@/shared/services/apiFetch'
 import { authHeaders } from '@/campaign-play/services/authHeaders'
 import { SCENE_FIELD_MESSAGES, type SceneFieldErrors } from '@/scenario-preparation/services/sceneForm'
 import { readErrorKeys } from '@/scenario-preparation/services/validationProblem'
-import type { Scene, SceneInput, SceneSummary } from '@/scenario-preparation/types/Scene'
+import type { Scene, SceneEditInput, SceneInput, SceneSummary } from '@/scenario-preparation/types/Scene'
+import type { RichTextDocument } from '@/shared/types/RichText'
 
 export const sceneStatusSchema = z.enum(['Prepared', 'Active', 'Finished'])
 
@@ -56,9 +57,23 @@ export const itemLinkSchema = z.strictObject({
 const sceneSchema = sceneSummarySchema.extend({
   location: z.string(),
   keeperNotes: richTextSchema.nullable(),
+  /** The Keeper notes' own version; every Scene carries it (ADR 0037). */
+  notesVersion: z.number().int().nonnegative(),
   nonPlayerEntityLinks: z.array(nonPlayerEntityLinkSchema),
   itemLinks: z.array(itemLinkSchema),
   handouts: z.array(handoutSummarySchema),
+})
+
+// The Keeper notes endpoint answers only the notes with their version.
+const keeperNotesSchema = z.strictObject({
+  keeperNotes: richTextSchema.nullable(),
+  notesVersion: z.number().int().nonnegative(),
+})
+
+// A stale save is refused with 409 and the current notes; the problem envelope carries them at the top level.
+const keeperNotesConflictSchema = z.object({
+  keeperNotes: richTextSchema.nullable(),
+  notesVersion: z.number().int().nonnegative(),
 })
 
 const sceneListSchema = z.strictObject({ scenes: z.array(sceneSummarySchema) })
@@ -104,6 +119,23 @@ export class SceneFinishedError extends Error {
   constructor() {
     super('The Scene is finished')
     this.name = 'SceneFinishedError'
+  }
+}
+
+/** The Keeper notes as the notes endpoint saved or refused them: the document (null when none) with its version. */
+export interface SavedKeeperNotes {
+  keeperNotes: RichTextDocument | null
+  notesVersion: number
+}
+
+/** The API answered 409 to a Keeper notes save: another save won the race; the current notes come with the error. */
+export class KeeperNotesConflictError extends Error {
+  readonly current: SavedKeeperNotes
+
+  constructor(current: SavedKeeperNotes) {
+    super('The Keeper notes changed meanwhile')
+    this.name = 'KeeperNotesConflictError'
+    this.current = current
   }
 }
 
@@ -193,18 +225,18 @@ export async function createScene(accessToken: string, campaignId: string, scena
   return sceneSchema.parse(await response.json())
 }
 
-/** Calls PUT .../scenes/{sceneId}, which replaces the title, location, and Keeper notes. */
+/** Calls PUT .../scenes/{sceneId}, which replaces the title and location; the Keeper notes keep their own endpoint. */
 export async function editScene(
   accessToken: string,
   campaignId: string,
   scenarioId: string,
   sceneId: string,
-  input: SceneInput,
+  input: SceneEditInput,
 ): Promise<Scene> {
   const response = await apiFetch(`${scenesUrl(campaignId, scenarioId)}/${sceneId}`, {
     method: 'PUT',
     headers: authHeaders(accessToken),
-    body: toBody(input),
+    body: JSON.stringify({ title: input.title, location: input.location === '' ? null : input.location }),
   })
 
   if (!response.ok) {
@@ -212,6 +244,40 @@ export async function editScene(
   }
 
   return sceneSchema.parse(await response.json())
+}
+
+/**
+ * Calls PUT .../scenes/{sceneId}/keeper-notes, which replaces the Keeper notes when `notesVersion` is the current one.
+ * A stale save answers 409 with the current notes; the Scene version is untouched (ADR 0037).
+ */
+export async function saveKeeperNotes(
+  accessToken: string,
+  campaignId: string,
+  scenarioId: string,
+  sceneId: string,
+  keeperNotes: RichTextDocument | null,
+  notesVersion: number,
+): Promise<SavedKeeperNotes> {
+  const response = await apiFetch(`${scenesUrl(campaignId, scenarioId)}/${sceneId}/keeper-notes`, {
+    method: 'PUT',
+    headers: authHeaders(accessToken),
+    body: JSON.stringify({ keeperNotes, notesVersion }),
+  })
+
+  if (response.status === 409) {
+    throw new KeeperNotesConflictError(keeperNotesConflictSchema.parse(await response.json()))
+  }
+  if (response.status === 404) {
+    throw new SceneNotFoundError()
+  }
+  if (response.status === 400) {
+    throw new SceneValidationError(await readFieldErrors(response))
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to save the Keeper notes (${response.status})`)
+  }
+
+  return keeperNotesSchema.parse(await response.json())
 }
 
 /** Calls DELETE .../scenes/{sceneId}; a Scene that is no longer Prepared is refused with 409. */

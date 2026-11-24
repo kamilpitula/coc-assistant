@@ -46,6 +46,7 @@ vi.mock('@/scenario-preparation/hooks/useScenes', () => ({
   useScene: mockUseScene,
   useEditScene: mockUseEdit,
   useRemoveScene: mockUseRemove,
+  useSaveKeeperNotes: () => ({ mutateAsync: vi.fn(), mutate: vi.fn(), reset: vi.fn(), isPending: false, isError: false, error: null }),
 }))
 
 const notes: RichTextDocument = {
@@ -65,6 +66,7 @@ const prepared: Scene = {
   title: 'The Corbitt House',
   location: 'Arkham, Boston Road',
   keeperNotes: notes,
+  notesVersion: 0,
   status: 'Prepared',
   startedAt: null,
   finishedAt: null,
@@ -130,7 +132,7 @@ describe('ScenePage', () => {
       expect(screen.getByText('Location').nextElementSibling).toHaveTextContent('Arkham, Boston Road')
       expect(screen.getByRole('heading', { level: 2, name: 'Keeper notes' })).toBeInTheDocument()
       expect(screen.getByText('The key is under the stairs.')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Edit title and location' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Remove Scene' })).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Back to the Scenario' })).toHaveAttribute('href', '/campaigns/c1/scenarios/s1')
     })
@@ -162,19 +164,20 @@ describe('ScenePage', () => {
 
       expect(screen.getByText('Active')).toBeInTheDocument()
       expect(screen.getByText(/Started/)).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Edit title and location' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Remove Scene' })).not.toBeInTheDocument()
     })
 
-    it('shows a Finished Scene without Edit or Remove Scene and says it cannot be changed (SP-UX-22)', () => {
+    it('shows a Finished Scene with only the Keeper notes editable (SP-UX-114)', () => {
       mockUseScene.mockReturnValue(query(finished))
 
       renderPage()
 
       expect(screen.getByText('Finished', { selector: 'span.inline-flex' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Edit title and location' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Remove Scene' })).not.toBeInTheDocument()
-      expect(screen.getByText("This Scene is finished and can't be changed.")).toBeInTheDocument()
+      expect(screen.getByText('This Scene is finished. You can still edit its Keeper notes.')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Edit Keeper notes' })).toBeInTheDocument()
     })
   })
 
@@ -231,7 +234,7 @@ describe('ScenePage', () => {
 
       const keeperNotes = screen.getByRole('heading', { level: 2, name: 'Keeper notes' })
       const links = screen.getByRole('heading', { level: 2, name: 'Non-Player Entities' })
-      const edit = screen.getByRole('button', { name: 'Edit' })
+      const edit = screen.getByRole('button', { name: 'Edit title and location' })
       expect(keeperNotes.compareDocumentPosition(links) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(links.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(screen.getByRole('heading', { level: 3, name: 'A shape in the cellar' })).toBeInTheDocument()
@@ -241,7 +244,7 @@ describe('ScenePage', () => {
       mockUseScene.mockReturnValue(query(withLink))
       renderPage()
 
-      await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Edit title and location' }))
 
       expect(screen.queryByRole('heading', { level: 2, name: 'Non-Player Entities' })).not.toBeInTheDocument()
     })
@@ -293,7 +296,7 @@ describe('ScenePage', () => {
 
       const entities = screen.getByRole('heading', { level: 2, name: 'Non-Player Entities' })
       const items = screen.getByRole('heading', { level: 2, name: 'Items' })
-      const edit = screen.getByRole('button', { name: 'Edit' })
+      const edit = screen.getByRole('button', { name: 'Edit title and location' })
       expect(entities.compareDocumentPosition(items) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(items.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(screen.getByRole('button', { name: "Walter Corbitt's diary" })).toHaveAttribute('id', 'item-link-i1')
@@ -320,7 +323,7 @@ describe('ScenePage', () => {
       mockUseScene.mockReturnValue(query(withItems))
       renderPage()
 
-      await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Edit title and location' }))
 
       expect(screen.queryByRole('heading', { level: 2, name: 'Items' })).not.toBeInTheDocument()
     })
@@ -380,7 +383,7 @@ describe('ScenePage', () => {
       mockUseScene.mockReturnValue(query(withHandouts))
       renderPage()
 
-      await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Edit title and location' }))
 
       expect(screen.queryByRole('heading', { level: 2, name: 'Handouts' })).not.toBeInTheDocument()
     })
@@ -456,7 +459,7 @@ describe('ScenePage', () => {
     it('swaps the view for a prefilled form on Edit, keeps the saved title as the heading, and focuses Title (SP-UX-20, SP-A11Y-15)', async () => {
       renderPage()
 
-      await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Edit title and location' }))
 
       expect(screen.getByLabelText('Title')).toHaveValue('The Corbitt House')
       expect(screen.getByLabelText('Location (optional)')).toHaveValue('Arkham, Boston Road')
@@ -465,30 +468,45 @@ describe('ScenePage', () => {
       expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
     })
 
+    it('saves only the title and location and leaves the Keeper notes section intact (SP-UX-115)', async () => {
+      editMutate.mockImplementation((_values, options) => options.onSuccess())
+      renderPage()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Edit title and location' }))
+      expect(screen.queryByRole('textbox', { name: 'Keeper notes (optional)' })).not.toBeInTheDocument()
+      await userEvent.clear(screen.getByLabelText('Title'))
+      await userEvent.type(screen.getByLabelText('Title'), 'The Corbitt Cellar')
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      expect(editMutate.mock.calls[0][0]).toEqual({ title: 'The Corbitt Cellar', location: 'Arkham, Boston Road' })
+      expect(screen.getByRole('heading', { level: 2, name: 'Keeper notes' })).toBeInTheDocument()
+      expect(screen.getByText('The key is under the stairs.')).toBeInTheDocument()
+    })
+
     it('saves, returns to the view with "Scene saved." and moves focus to Edit (SP-UX-20, SP-A11Y-15, SP-A11Y-16)', async () => {
       editMutate.mockImplementation((_values, options) => options.onSuccess())
       renderPage()
 
-      await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Edit title and location' }))
       await userEvent.clear(screen.getByLabelText('Title'))
       await userEvent.type(screen.getByLabelText('Title'), 'The Corbitt Cellar')
       await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
       expect(editMutate.mock.calls[0][0]).toMatchObject({ title: 'The Corbitt Cellar', location: 'Arkham, Boston Road' })
       expect(pageStatus()).toHaveTextContent('Scene saved.')
-      expect(screen.getByRole('button', { name: 'Edit' })).toHaveFocus()
+      expect(screen.getByRole('button', { name: 'Edit title and location' })).toHaveFocus()
     })
 
     it('discards the edits on Cancel without confirmation and focuses Edit (SP-UX-20)', async () => {
       renderPage()
 
-      await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Edit title and location' }))
       await userEvent.type(screen.getByLabelText('Title'), ' II')
       await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
       expect(editMutate).not.toHaveBeenCalled()
       expect(screen.queryByLabelText('Title')).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Edit' })).toHaveFocus()
+      expect(screen.getByRole('button', { name: 'Edit title and location' })).toHaveFocus()
       expect(screen.getByRole('heading', { level: 1, name: 'The Corbitt House' })).toBeInTheDocument()
     })
 
@@ -496,7 +514,7 @@ describe('ScenePage', () => {
       mockUseEdit.mockReturnValue(editing({ isError: true, error: new Error('boom') }))
       renderPage()
 
-      await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Edit title and location' }))
 
       expect(screen.getByRole('alert')).toHaveTextContent("We couldn't save the Scene. Try again.")
       expect(screen.getByLabelText('Title')).toBeInTheDocument()
@@ -508,7 +526,7 @@ describe('ScenePage', () => {
       )
       renderPage()
 
-      await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Edit title and location' }))
 
       expect(screen.getByLabelText('Title')).toHaveAccessibleDescription('Enter a title.')
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -518,7 +536,7 @@ describe('ScenePage', () => {
       mockUseEdit.mockReturnValue(editing({ isError: true, error: new SceneFinishedError() }))
       renderPage()
 
-      await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Edit title and location' }))
       expect(screen.getByRole('alert')).toHaveTextContent(
         "This Scene has been finished, so it can't be changed. Copy anything you need, then select Cancel.",
       )
@@ -532,7 +550,7 @@ describe('ScenePage', () => {
       mockUseEdit.mockReturnValue(editing({ isPending: true }))
       renderPage()
 
-      await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Edit title and location' }))
 
       expect(screen.getByRole('button', { name: 'Saving...' })).toBeDisabled()
     })
@@ -614,7 +632,7 @@ describe('ScenePage run links', () => {
 
     const start = screen.getByRole('link', { name: 'Start Scene' })
     expect(start).toHaveAttribute('href', '/campaigns/c1/scenarios/s1/scenes/a1/start')
-    expect(start.compareDocumentPosition(screen.getByRole('button', { name: 'Edit' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(start.compareDocumentPosition(screen.getByRole('button', { name: 'Edit title and location' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.queryByRole('link', { name: 'Open Active Scene' })).not.toBeInTheDocument()
   })
 
@@ -624,7 +642,7 @@ describe('ScenePage run links', () => {
 
     const open = screen.getByRole('link', { name: 'Open Active Scene' })
     expect(open).toHaveAttribute('href', '/campaigns/c1/active-scene')
-    expect(open.compareDocumentPosition(screen.getByRole('button', { name: 'Edit' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(open.compareDocumentPosition(screen.getByRole('button', { name: 'Edit title and location' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.queryByRole('link', { name: 'Start Scene' })).not.toBeInTheDocument()
   })
 

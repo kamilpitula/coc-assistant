@@ -34,6 +34,7 @@ const material: Scene = {
   finishedAt: null,
   location: 'Arkham',
   keeperNotes: paragraph('Walter is in the cellar.'),
+  notesVersion: 0,
   itemLinks: [],
   nonPlayerEntityLinks: [
     {

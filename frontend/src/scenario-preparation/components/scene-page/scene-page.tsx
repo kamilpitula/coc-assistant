@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
 import { HandoutSection } from '@/scenario-preparation/components/handout-section/handout-section'
+import { KeeperNotesSection } from '@/scenario-preparation/components/keeper-notes-section/keeper-notes-section'
 import { SceneItemSection } from '@/scenario-preparation/components/scene-item-section/scene-item-section'
 import { SceneLinkSection } from '@/scenario-preparation/components/scene-link-section/scene-link-section'
 import { ScenePanel } from '@/scenario-preparation/components/scene-panel/scene-panel'
@@ -16,11 +17,9 @@ import { SceneTimes } from '@/scenario-preparation/components/scene-times/scene-
 import { useEditScene, useRemoveScene, useScene } from '@/scenario-preparation/hooks/useScenes'
 import { SceneFinishedError, SceneNotRemovableError, SceneValidationError } from '@/scenario-preparation/services/sceneApi'
 import type { Scene } from '@/scenario-preparation/types/Scene'
-import { RichTextView } from '@/shared/components/rich-text-view/rich-text-view'
 import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
-import { isEmptyRichText } from '@/shared/services/richText'
 
 interface ScenePageProps {
   campaignId: string
@@ -195,12 +194,13 @@ function EditSceneForm({ scene, edit, onDone }: EditSceneFormProps) {
       failureMessage={failureMessageFor(edit.error)}
       serverErrors={validationError?.fieldErrors}
       autoFocusTitle
+      withKeeperNotes={false}
       cancel={
         <Button type="button" variant="outline" onClick={() => onDone(false)}>
           Cancel
         </Button>
       }
-      onSubmit={(values) => edit.mutate(values, { onSuccess: () => onDone(true) })}
+      onSubmit={(values) => edit.mutate({ title: values.title, location: values.location }, { onSuccess: () => onDone(true) })}
     />
   )
 }
@@ -244,14 +244,13 @@ function SceneView({
           <dd className="break-words">{scene.location}</dd>
         </dl>
       )}
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">Keeper notes</h2>
-        {scene.keeperNotes && !isEmptyRichText(scene.keeperNotes) ? (
-          <RichTextView document={scene.keeperNotes} />
-        ) : (
-          <p className="text-sm text-muted-foreground">No Keeper notes yet.</p>
-        )}
-      </section>
+      <KeeperNotesSection
+        campaignId={campaignId}
+        scenarioId={scenarioId}
+        sceneId={scene.id}
+        keeperNotes={scene.keeperNotes}
+        notesVersion={scene.notesVersion}
+      />
       <HandoutSection
         owner={{ type: 'scene', campaignId, scenarioId, sceneId: scene.id }}
         canChange={scene.status !== 'Finished'}
@@ -281,11 +280,11 @@ function SceneView({
         onRefetch={onRefetch}
       />
       {scene.status === 'Finished' ? (
-        <p className="text-sm text-muted-foreground">This Scene is finished and can&apos;t be changed.</p>
+        <p className="text-sm text-muted-foreground">This Scene is finished. You can still edit its Keeper notes.</p>
       ) : (
         <div className="flex flex-wrap items-center gap-3">
           <SceneRunLink campaignId={campaignId} scenarioId={scenarioId} sceneId={scene.id} status={scene.status} />
-          <Button ref={editButtonRef} type="button" variant="outline" onClick={onEdit}>
+          <Button ref={editButtonRef} type="button" variant="outline" aria-label="Edit title and location" onClick={onEdit}>
             Edit
           </Button>
           {scene.status === 'Prepared' && (

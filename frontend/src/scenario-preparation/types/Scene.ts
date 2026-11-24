@@ -28,12 +28,14 @@ export interface NonPlayerEntityLink {
 }
 
 /**
- * A Scene with its location ("" when empty), rich-text Keeper notes (null when none), its Non-Player Entity links and Item links
- * in the order linked, and its Handouts in stored order (without their text).
+ * A Scene with its location ("" when empty), rich-text Keeper notes (null when none) and their own version (ADR 0037),
+ * its Non-Player Entity links and Item links in the order linked, and its Handouts in stored order (without their text).
  */
 export interface Scene extends SceneSummary {
   location: string
   keeperNotes: RichTextDocument | null
+  /** The Keeper notes' own version; a save names the version it was based on. */
+  notesVersion: number
   nonPlayerEntityLinks: NonPlayerEntityLink[]
   itemLinks: ItemLink[]
   handouts: HandoutSummary[]
@@ -65,6 +67,12 @@ export interface SceneInput {
   title: string
   location: string
   keeperNotes: RichTextDocument | null
+}
+
+/** What the Keeper changes on a Scene's title and location form; Keeper notes save through their own endpoint (ADR 0037). */
+export interface SceneEditInput {
+  title: string
+  location: string
 }
 
 /** The longest Scene title and location (specs/scenario-preparation/spec.md). */

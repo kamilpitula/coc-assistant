@@ -30,6 +30,7 @@ const prepared: Scene = {
   title: 'The Corbitt House',
   location: 'Arkham, Boston Road',
   keeperNotes: notes,
+  notesVersion: 0,
   status: 'Prepared',
   startedAt: null,
   finishedAt: null,
@@ -107,7 +108,7 @@ export const Finished: Story = {
 
 export const Edit: Story = {
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Edit' }))
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Edit title and location' }))
   },
 }
 
@@ -119,7 +120,7 @@ export const SavedStatus: Story = {
     window.fetch = () => Promise.resolve(new Response(JSON.stringify({ ...prepared, title: 'The Corbitt Cellar' }), { status: 200 }))
     try {
       const canvas = within(canvasElement)
-      await userEvent.click(canvas.getByRole('button', { name: 'Edit' }))
+      await userEvent.click(canvas.getByRole('button', { name: 'Edit title and location' }))
       await userEvent.click(canvas.getByRole('button', { name: 'Save' }))
       await canvas.findByText('Scene saved.')
     } finally {
@@ -136,7 +137,7 @@ export const SaveRefusedAsFinished: Story = {
     window.fetch = () => Promise.resolve(new Response(null, { status: 409 }))
     try {
       const canvas = within(canvasElement)
-      await userEvent.click(canvas.getByRole('button', { name: 'Edit' }))
+      await userEvent.click(canvas.getByRole('button', { name: 'Edit title and location' }))
       await userEvent.click(canvas.getByRole('button', { name: 'Save' }))
       await canvas.findByRole('alert')
     } finally {

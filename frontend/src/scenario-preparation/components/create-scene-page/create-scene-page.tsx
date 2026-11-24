@@ -55,6 +55,7 @@ export function CreateScenePage({ campaignId, scenarioId }: CreateScenePageProps
         initialValues={EMPTY_SCENE}
         submitLabel="Create Scene"
         busyLabel="Creating..."
+        withKeeperNotes
         pending={creation.isPending}
         failureMessage={failed ? "We couldn't create the Scene. Try again." : null}
         serverErrors={validationError?.fieldErrors}

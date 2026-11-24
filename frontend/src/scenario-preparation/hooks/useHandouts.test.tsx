@@ -37,6 +37,7 @@ const scene: Scene = {
   finishedAt: null,
   location: '',
   keeperNotes: null,
+  notesVersion: 0,
   nonPlayerEntityLinks: [],
   itemLinks: [],
   handouts: [{ id: 'h1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door' }],

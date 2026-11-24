@@ -13,6 +13,7 @@ const baseProps = {
   submitLabel: 'Create Scene',
   busyLabel: 'Creating...',
   pending: false,
+  withKeeperNotes: true,
   cancel: <a href="/campaigns/c1/scenarios/s1">Cancel</a>,
 }
 
@@ -158,6 +159,26 @@ describe('SceneForm', () => {
     render(<SceneForm {...baseProps} autoFocusTitle onSubmit={vi.fn()} />)
 
     expect(screen.getByLabelText('Title')).toHaveFocus()
+  })
+
+  it('edits only the title and location without a notes field when asked', async () => {
+    const onSubmit = vi.fn()
+    render(
+      <SceneForm
+        {...baseProps}
+        submitLabel="Save"
+        withKeeperNotes={false}
+        initialValues={{ title: 'The Corbitt House', location: 'Arkham', keeperNotes: null }}
+        onSubmit={onSubmit}
+      />,
+    )
+
+    expect(screen.queryByRole('textbox', { name: 'Keeper notes (optional)' })).not.toBeInTheDocument()
+    await userEvent.clear(screen.getByLabelText('Title'))
+    await userEvent.type(screen.getByLabelText('Title'), 'Knott')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onSubmit).toHaveBeenCalledWith({ title: 'Knott', location: 'Arkham', keeperNotes: null })
   })
 
   it('warns before leaving once the notes changed, not before', async () => {

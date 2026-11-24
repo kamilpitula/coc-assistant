@@ -38,6 +38,7 @@ const meta = {
     submitLabel: 'Create Scene',
     busyLabel: 'Creating...',
     pending: false,
+    withKeeperNotes: true,
     cancel: <a href="/">Cancel</a>,
     onSubmit: () => undefined,
   },
@@ -70,3 +71,12 @@ export const EveryFieldError: Story = {
 export const Failure: Story = { args: { failureMessage: "We couldn't create the Scene. Try again." } }
 
 export const Busy: Story = { args: { pending: true } }
+
+export const TitleAndLocationOnly: Story = {
+  args: {
+    initialValues: { title: 'The Corbitt House', location: 'Arkham, Boston Road', keeperNotes: formatted },
+    submitLabel: 'Save',
+    busyLabel: 'Saving...',
+    withKeeperNotes: false,
+  },
+}

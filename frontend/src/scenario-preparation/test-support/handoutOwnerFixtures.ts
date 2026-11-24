@@ -16,6 +16,7 @@ export function corbittHouse(status: SceneStatus): Scene {
     title: 'The Corbitt House',
     location: '',
     keeperNotes: null,
+    notesVersion: 0,
     status,
     startedAt: status === 'Prepared' ? null : '2026-10-12T19:40:00Z',
     finishedAt: status === 'Finished' ? '2026-10-12T21:05:00Z' : null,
