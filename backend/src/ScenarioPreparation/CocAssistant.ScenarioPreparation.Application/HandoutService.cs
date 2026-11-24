@@ -11,13 +11,15 @@ public class HandoutService
     private readonly IHandoutFileStore _fileStore;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<HandoutService> _logger;
+    private readonly ISceneContentSignals _signals;
 
-    public HandoutService(HandoutOwnerLocator owners, IHandoutFileStore fileStore, TimeProvider timeProvider, ILogger<HandoutService> logger)
+    public HandoutService(HandoutOwnerLocator owners, IHandoutFileStore fileStore, TimeProvider timeProvider, ILogger<HandoutService> logger, ISceneContentSignals signals)
     {
         _owners = owners;
         _fileStore = fileStore;
         _timeProvider = timeProvider;
         _logger = logger;
+        _signals = signals;
     }
 
     /// <summary>The Handout with its content, or null when the caller is not the Keeper or nothing matches.</summary>
@@ -42,7 +44,7 @@ public class HandoutService
         var owner = await _owners.FindAsync(campaignId, callerAccountId, ownerReference, cancellationToken);
         return owner is null
             ? Refused(HandoutWriteOutcome.NotFound)
-            : await SaveAsync(owner, owner.AddHandout(kind, visibility, title, content, _timeProvider.GetUtcNow()), cancellationToken);
+            : await SaveAsync(campaignId, owner, owner.AddHandout(kind, visibility, title, content, _timeProvider.GetUtcNow()), cancellationToken);
     }
 
     /// <summary>Replaces a Handout's kind, visibility, title, and content; its place in the order is unchanged.</summary>
@@ -60,7 +62,7 @@ public class HandoutService
         var owner = await _owners.FindAsync(campaignId, callerAccountId, ownerReference, cancellationToken);
         return owner is null
             ? Refused(HandoutWriteOutcome.NotFound)
-            : await SaveAsync(owner, owner.EditHandout(handoutId, kind, visibility, title, content), cancellationToken);
+            : await SaveAsync(campaignId, owner, owner.EditHandout(handoutId, kind, visibility, title, content), cancellationToken);
     }
 
     /// <summary>Removes a Handout; only a Prepared Scene's Handouts, and an Item's Handouts while it is not in play, can be removed.</summary>
@@ -87,6 +89,8 @@ public class HandoutService
         {
             return owner.RemoveRefusedAfterConcurrentChange;
         }
+
+        await _signals.ScenesChangedAsync(campaignId, cancellationToken);
 
         if (fileKey is not null)
         {
@@ -117,10 +121,11 @@ public class HandoutService
         }
 
         await owner.SaveChangesAsync(cancellationToken);
+        await _signals.ScenesChangedAsync(campaignId, cancellationToken);
         return new HandoutReorderResult(HandoutReorderOutcome.Reordered, owner.Handouts.Select(HandoutViews.ToSummary).ToList());
     }
 
-    private static async Task<HandoutWriteResult> SaveAsync(IHandoutOwner owner, HandoutResult result, CancellationToken cancellationToken)
+    private async Task<HandoutWriteResult> SaveAsync(Guid campaignId, IHandoutOwner owner, HandoutResult result, CancellationToken cancellationToken)
     {
         if (result.Handout is null)
         {
@@ -128,6 +133,7 @@ public class HandoutService
         }
 
         await owner.SaveChangesAsync(cancellationToken);
+        await _signals.ScenesChangedAsync(campaignId, cancellationToken);
         return new HandoutWriteResult(HandoutWriteOutcome.Saved, ToView(result.Handout));
     }
 

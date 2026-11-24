@@ -24,6 +24,7 @@ public static class ScenarioPreparationInfrastructureServiceCollectionExtensions
         services.AddScoped<IItemDirectory, EfItemDirectory>();
         services.AddScoped<IItemUsage, EfItemUsage>();
         services.AddScoped<ICampaignKeepers, CampaignPlayCampaignKeepers>();
+        services.AddScoped<ISceneContentSignals, CampaignPlaySceneContentSignals>();
         services.AddSingleton<INonPlayerEntityRuleData, CampaignPlayNonPlayerEntityRuleData>();
         // Resolved on first use, not at registration, so EF design-time tooling works without storage settings.
         services.AddSingleton(provider => HandoutFileStoreRegistration.Create(provider.GetRequiredService<IConfiguration>()));

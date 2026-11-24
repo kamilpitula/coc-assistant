@@ -14,6 +14,7 @@ global using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.DependencyInjection.Extensions;
+global using Microsoft.Extensions.Logging;
 global using CocAssistant.GameRules.Domain;
 global using CocAssistant.GameRules.Domain.Dice;
 global using Microsoft.EntityFrameworkCore.ChangeTracking;

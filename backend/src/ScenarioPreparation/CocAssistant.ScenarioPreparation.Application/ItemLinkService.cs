@@ -12,13 +12,15 @@ public class ItemLinkService
     private readonly ISceneRepository _scenes;
     private readonly IItemRepository _items;
     private readonly TimeProvider _timeProvider;
+    private readonly ISceneContentSignals _signals;
 
-    public ItemLinkService(ICampaignKeepers keepers, ISceneRepository scenes, IItemRepository items, TimeProvider timeProvider)
+    public ItemLinkService(ICampaignKeepers keepers, ISceneRepository scenes, IItemRepository items, TimeProvider timeProvider, ISceneContentSignals signals)
     {
         _keepers = keepers;
         _scenes = scenes;
         _items = items;
         _timeProvider = timeProvider;
+        _signals = signals;
     }
 
     /// <summary>Links an Item of the Scene's Campaign. A missing id is the same problem as an unknown Item.</summary>
@@ -44,9 +46,14 @@ public class ItemLinkService
             return new ItemLinkWriteResult(ToWriteOutcome(result.Outcome), null);
         }
 
-        if (result.Outcome == ItemLinkOutcome.Linked && !await TrySaveAsync(cancellationToken))
+        if (result.Outcome == ItemLinkOutcome.Linked)
         {
-            return await ExistingLinkAsync(campaignId, scenarioId, sceneId, itemId!.Value, cancellationToken);
+            if (!await TrySaveAsync(cancellationToken))
+            {
+                return await ExistingLinkAsync(campaignId, scenarioId, sceneId, itemId!.Value, cancellationToken);
+            }
+
+            await _signals.ScenesChangedAsync(campaignId, cancellationToken);
         }
 
         var view = result.Outcome == ItemLinkOutcome.Linked
@@ -100,6 +107,7 @@ public class ItemLinkService
         }
 
         await _scenes.SaveChangesAsync(cancellationToken);
+        await _signals.ScenesChangedAsync(campaignId, cancellationToken);
         return ItemUnlinkOutcome.Unlinked;
     }
 

@@ -23,6 +23,8 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
 
     public FakeHandoutFileStore FileStore { get; } = new();
 
+    public RecordingSceneContentSignals Signals { get; } = new();
+
     public RecordingLogger<ItemService> ItemLogger { get; } = new();
 
     public RecordingLogger<HandoutService> HandoutLogger { get; } = new();
@@ -45,7 +47,7 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
         new(Keepers, repository ?? new EfScenarioRepository(context), TimeProvider);
 
     public SceneService CreateSceneService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
-        new(Keepers, new EfScenarioRepository(context), repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), new EfItemRepository(context), FileStore, TimeProvider, SceneLogger);
+        new(Keepers, new EfScenarioRepository(context), repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), new EfItemRepository(context), FileStore, TimeProvider, SceneLogger, Signals);
 
     public static LinkedSceneGuard CreateLinkedSceneGuard(ScenarioPreparationDbContext context, ISceneRepository? scenes = null) =>
         new(scenes ?? new EfSceneRepository(context));
@@ -57,22 +59,22 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
         new(scenes ?? new EfSceneRepository(context), new EfScenarioRepository(context), requests ?? new EfSceneRollRequestRepository(context), TimeProvider);
 
     public NonPlayerEntityLinkService CreateLinkService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
-        new(Keepers, repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), TimeProvider);
+        new(Keepers, repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), TimeProvider, Signals);
 
     public ItemLinkService CreateItemLinkService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
-        new(Keepers, repository ?? new EfSceneRepository(context), new EfItemRepository(context), TimeProvider);
+        new(Keepers, repository ?? new EfSceneRepository(context), new EfItemRepository(context), TimeProvider, Signals);
 
     public ItemService CreateItemService(ScenarioPreparationDbContext context, IItemRepository? repository = null, IItemUsage? usage = null) =>
-        new(Keepers, repository ?? new EfItemRepository(context), new EfItemDirectory(context), usage ?? new EfItemUsage(context), CreateLinkedSceneGuard(context), FileStore, TimeProvider, ItemLogger);
+        new(Keepers, repository ?? new EfItemRepository(context), new EfItemDirectory(context), usage ?? new EfItemUsage(context), CreateLinkedSceneGuard(context), FileStore, TimeProvider, ItemLogger, Signals);
 
     public HandoutOwnerLocator CreateHandoutOwnerLocator(ScenarioPreparationDbContext context, ISceneRepository? scenes = null, IItemRepository? items = null) =>
         new(Keepers, scenes ?? new EfSceneRepository(context), items ?? new EfItemRepository(context), new EfItemUsage(context));
 
     public HandoutService CreateHandoutService(ScenarioPreparationDbContext context, ISceneRepository? repository = null, IItemRepository? items = null) =>
-        new(CreateHandoutOwnerLocator(context, repository, items), FileStore, TimeProvider, HandoutLogger);
+        new(CreateHandoutOwnerLocator(context, repository, items), FileStore, TimeProvider, HandoutLogger, Signals);
 
     public HandoutFileService CreateHandoutFileService(ScenarioPreparationDbContext context, ISceneRepository? repository = null, IItemRepository? items = null) =>
-        new(CreateHandoutOwnerLocator(context, repository, items), FileStore, TimeProvider, HandoutFileLogger);
+        new(CreateHandoutOwnerLocator(context, repository, items), FileStore, TimeProvider, HandoutFileLogger, Signals);
 
     public HumanNpcService CreateHumanNpcService(ScenarioPreparationDbContext context, IHumanNpcRepository? repository = null, INonPlayerEntityUsage? usage = null) =>
         new(Keepers, repository ?? new EfHumanNpcRepository(context), usage ?? new EfNonPlayerEntityUsage(context), CreateLinkedSceneGuard(context), new FakeNonPlayerEntityRuleData(), TimeProvider);

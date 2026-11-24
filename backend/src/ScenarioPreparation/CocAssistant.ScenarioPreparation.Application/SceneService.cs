@@ -16,6 +16,7 @@ public class SceneService
     private readonly IHandoutFileStore _fileStore;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<SceneService> _logger;
+    private readonly ISceneContentSignals _signals;
 
     public SceneService(
         ICampaignKeepers keepers,
@@ -25,7 +26,8 @@ public class SceneService
         IItemRepository items,
         IHandoutFileStore fileStore,
         TimeProvider timeProvider,
-        ILogger<SceneService> logger)
+        ILogger<SceneService> logger,
+        ISceneContentSignals signals)
     {
         _keepers = keepers;
         _scenarios = scenarios;
@@ -35,6 +37,7 @@ public class SceneService
         _fileStore = fileStore;
         _timeProvider = timeProvider;
         _logger = logger;
+        _signals = signals;
     }
 
     /// <summary>The Scenario's Scenes in prepared order; null when the caller may not see the Scenario.</summary>
@@ -80,6 +83,7 @@ public class SceneService
 
         _scenes.Add(creation.Scene);
         await _scenes.SaveChangesAsync(cancellationToken);
+        await _signals.ScenesChangedAsync(campaignId, cancellationToken);
         return new SceneWriteResult(SceneWriteOutcome.Saved, ToDetail(creation.Scene, [], []));
     }
 
@@ -115,6 +119,7 @@ public class SceneService
             return await EditAfterConcurrentChangeAsync(campaignId, callerAccountId, scenarioId, sceneId, title, location, keeperNotes, cancellationToken);
         }
 
+        await _signals.ScenesChangedAsync(campaignId, cancellationToken);
         return new SceneWriteResult(SceneWriteOutcome.Saved, await ToDetailAsync(scene, cancellationToken));
     }
 
@@ -142,6 +147,7 @@ public class SceneService
         }
 
         await _scenes.SaveChangesAsync(cancellationToken);
+        await _signals.ScenesChangedAsync(campaignId, cancellationToken);
         return new SceneWriteResult(SceneWriteOutcome.Saved, await ToDetailAsync(scene, cancellationToken));
     }
 
@@ -169,6 +175,8 @@ public class SceneService
         {
             return SceneRemoveOutcome.NotPrepared;
         }
+
+        await _signals.ScenesChangedAsync(campaignId, cancellationToken);
 
         foreach (var fileKey in fileKeys)
         {
@@ -202,6 +210,7 @@ public class SceneService
         }
 
         await _scenes.SaveChangesAsync(cancellationToken);
+        await _signals.ScenesChangedAsync(campaignId, cancellationToken);
         return new SceneReorderResult(SceneReorderOutcome.Reordered, ToSummaries(current.OrderBy(scene => scene.Position)));
     }
 

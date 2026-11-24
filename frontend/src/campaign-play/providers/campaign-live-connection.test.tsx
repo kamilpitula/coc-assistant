@@ -3,6 +3,9 @@ import { act, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { campaignQueryKeys } from '@/campaign-play/services/campaignApi'
+import { sceneQueryKeys } from '@/scenario-preparation/services/sceneApi'
+import { activeSceneQueryKeys } from '@/scene-play/services/activeSceneApi'
+import { sceneHistoryQueryKeys } from '@/scene-play/services/sceneHistoryApi'
 import type { LiveConnectionOptions } from '@/shared/services/liveConnection'
 
 import { CampaignLiveConnection } from './campaign-live-connection'
@@ -155,6 +158,19 @@ describe('CampaignLiveConnection', () => {
       campaignQueryKeys.members('c1'),
       campaignQueryKeys.myInvestigator('c1'),
       campaignQueryKeys.members('c1'),
+    ])
+  })
+
+  it('refetches the Scene list, the Active Scene, and the Scene History for the scenes topic (PBI-SPL-008)', async () => {
+    const { invalidate } = setup()
+    await connect('initial')
+
+    serverSends('CampaignDataChanged', { campaignId: 'c1', topics: ['scenes'] })
+
+    expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([
+      sceneQueryKeys.inCampaign('c1'),
+      activeSceneQueryKeys.detail('c1'),
+      sceneHistoryQueryKeys.detail('c1'),
     ])
   })
 

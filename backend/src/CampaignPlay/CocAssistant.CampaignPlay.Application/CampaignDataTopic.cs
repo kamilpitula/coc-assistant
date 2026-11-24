@@ -17,4 +17,5 @@ public enum CampaignDataTopic
     SceneReveals,
     RollRequests,
     MyRequestedRolls,
+    Scenes,
 }
