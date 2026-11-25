@@ -2,7 +2,7 @@ import { $createParagraphNode, $createTextNode, $getRoot, type LexicalEditor } f
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createRef, type ReactNode, type Ref } from 'react'
+import { createRef, StrictMode, type ReactNode, type Ref } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { KeeperNotesConflictError, SceneNotFoundError, SceneValidationError } from '@/scenario-preparation/services/sceneApi'
@@ -59,6 +59,10 @@ describe('KeeperNotesSection', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.clearAllMocks()
+    // jsdom has no layout; focusing the Lexical editor while it mounts needs this.
+    if (typeof window.Range !== 'undefined' && !window.Range.prototype.getBoundingClientRect) {
+      window.Range.prototype.getBoundingClientRect = () => new DOMRect()
+    }
   })
 
   afterEach(() => {
@@ -354,5 +358,25 @@ describe('KeeperNotesSection', () => {
 
     expect(screen.getAllByText('All changes saved')).toHaveLength(2)
     expect(screen.getByRole('status')).toHaveTextContent('All changes saved')
+  })
+
+  it('confirms saves under React StrictMode remounting (dev and E2E mount, cleanup, remount)', async () => {
+    api.saveKeeperNotes.mockResolvedValue({ keeperNotes: notes('The cellar door'), notesVersion: 1 })
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    render(
+      <StrictMode>
+        <QueryClientProvider client={client}>
+          <KeeperNotesSection {...props} />
+        </QueryClientProvider>
+      </StrictMode>,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Keeper notes' }))
+    await typeNotes('The cellar door')
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    await act(async () => {})
+
+    expect(api.saveKeeperNotes).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('All changes saved')).toBeInTheDocument()
   })
 })

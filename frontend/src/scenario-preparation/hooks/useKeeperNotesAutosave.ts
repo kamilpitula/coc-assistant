@@ -67,7 +67,6 @@ export function useKeeperNotesAutosave({ campaignId, scenarioId, sceneId, notesV
   const stateRef = useRef(state)
   const onDoneRef = useRef(onDone)
   const sendNowRef = useRef<(current: KeeperNotesSaveState) => boolean>(() => false)
-  const mountedRef = useRef(true)
   const doneAfterSaveRef = useRef(false)
   const finishWaiterRef = useRef<{ promise: Promise<boolean>; resolve: (finished: boolean) => void } | null>(null)
   const [tooLong, setTooLong] = useState(false)
@@ -86,10 +85,9 @@ export function useKeeperNotesAutosave({ campaignId, scenarioId, sceneId, notesV
     return finishWaiterRef.current.promise
   }, [])
 
+  // React 18+ ignores state updates after unmount, so confirmations need no mounted check; this also keeps
+  // them working under StrictMode remounting (dev and E2E mount, cleanup, remount without re-init).
   const finishSave = useCallback((saved: SavedKeeperNotes) => {
-    if (!mountedRef.current) {
-      return
-    }
     dispatch({ type: 'saveSucceeded', notesVersion: saved.notesVersion })
     if (doneAfterSaveRef.current) {
       doneAfterSaveRef.current = false
@@ -100,9 +98,6 @@ export function useKeeperNotesAutosave({ campaignId, scenarioId, sceneId, notesV
   }, [])
 
   const failSave = useCallback((error: unknown) => {
-    if (!mountedRef.current) {
-      return
-    }
     doneAfterSaveRef.current = false
     finishWaiterRef.current?.resolve(false)
     finishWaiterRef.current = null
@@ -190,7 +185,6 @@ export function useKeeperNotesAutosave({ campaignId, scenarioId, sceneId, notesV
   // A refused save is never sent: its content failed validation and stays for the Keeper to fix.
   useEffect(
     () => () => {
-      mountedRef.current = false
       finishWaiterRef.current?.resolve(false)
       finishWaiterRef.current = null
       const current = stateRef.current
