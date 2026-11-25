@@ -40,9 +40,11 @@ export function keeperNotesSection(page: Page): Locator {
 
 /** The Keeper notes section's status row, which carries the visible save status next to Done. */
 export function keeperNotesStatusRow(page: Page): Locator {
+  // The inner locator is rooted at the page like keeperNotesSection: a candidate div can only match through a
+  // descendant Done button, never through the section itself.
   return keeperNotesSection(page)
     .locator('div')
-    .filter({ has: keeperNotesSection(page).getByRole('button', { name: 'Done' }) })
+    .filter({ has: page.getByRole('button', { name: 'Done' }) })
 }
 
 /** A button of the editor's formatting toolbar, such as "Bold" or "Bulleted list". */
