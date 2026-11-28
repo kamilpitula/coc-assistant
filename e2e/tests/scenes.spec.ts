@@ -412,7 +412,9 @@ test.describe('Played Scenes', () => {
         await keeperNotesSectionEditor(page).click()
         await page.keyboard.type('First draft. ')
         await expect(keeperNotesSection(page).getByText('All changes saved')).toBeVisible()
-        // The live update refreshes the second window before it edits, so its save is based on version 1.
+        // Reloading the second window is the deterministic sync point: a fresh load opens its editor at notes
+        // version 1. Waiting on live propagation instead has no readiness signal if its connection lags behind.
+        await second.reload()
         await expect(second.getByText('First draft. ')).toBeVisible()
 
         await second.getByRole('button', { name: 'Edit Keeper notes' }).click()
