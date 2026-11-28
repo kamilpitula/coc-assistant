@@ -405,6 +405,24 @@ test.describe('Played Scenes', () => {
     const second = await page.context().newPage()
     try {
       await page.goto(prepared.scenePath)
+      // MSAL and the account cache live in sessionStorage, which is per-tab: carry the Keeper's session into the
+      // second tab so it opens as the same signed-in account instead of the signed-out landing page.
+      const keeperSession = await page.evaluate((): Record<string, string> => {
+        const entries: Record<string, string> = {}
+        for (let index = 0; index < sessionStorage.length; index += 1) {
+          const key = sessionStorage.key(index)
+          if (key !== null) {
+            entries[key] = sessionStorage.getItem(key) ?? ''
+          }
+        }
+        return entries
+      })
+      await second.goto('/')
+      await second.evaluate((entries: Record<string, string>) => {
+        for (const [key, value] of Object.entries(entries)) {
+          sessionStorage.setItem(key, value)
+        }
+      }, keeperSession)
       await second.goto(prepared.scenePath)
 
       await test.step('SP-UX-110: both windows Edit; the second window saves first', async () => {
