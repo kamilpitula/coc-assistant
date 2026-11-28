@@ -20,10 +20,10 @@ public class SceneServiceTests : IDisposable
     private async Task<Guid> ScenarioAsync(Guid? campaignId = null, string title = "The Haunting") =>
         (await _builder.CreateScenarioAsync(campaignId ?? _builder.CampaignId, title)).Id;
 
-    private async Task<SceneWriteResult> EditAsync(Guid campaignId, Guid caller, Guid scenarioId, Guid sceneId, string title, string? notes = null)
+    private async Task<SceneWriteResult> EditAsync(Guid campaignId, Guid caller, Guid scenarioId, Guid sceneId, string title, string? location = null)
     {
         using var context = _builder.Fixture.CreateContext();
-        return await _builder.CreateSceneService(context).EditAsync(campaignId, caller, scenarioId, sceneId, title, null, notes, CancellationToken.None);
+        return await _builder.CreateSceneService(context).EditAsync(campaignId, caller, scenarioId, sceneId, title, location, CancellationToken.None);
     }
 
     private async Task<SceneReorderResult> ReorderAsync(Guid campaignId, Guid caller, Guid scenarioId, params Guid[] sceneIds)
@@ -124,23 +124,23 @@ public class SceneServiceTests : IDisposable
     {
         var scenarioId = await ScenarioAsync();
         await _builder.CreateSceneAsync(_builder.CampaignId, scenarioId, "A");
-        var second = await _builder.CreateSceneAsync(_builder.CampaignId, scenarioId, "B");
+        var second = await _builder.CreateSceneAsync(_builder.CampaignId, scenarioId, "B", "Boston", Notes);
 
-        var result = await EditAsync(_builder.CampaignId, Keeper, scenarioId, second.Id, "B2", Notes);
+        var result = await EditAsync(_builder.CampaignId, Keeper, scenarioId, second.Id, "B2", "Elsewhere");
 
         Assert.Equal(SceneWriteOutcome.Saved, result.Outcome);
-        Assert.Equal(("B2", Notes), (result.Scene!.Title, result.Scene.KeeperNotes));
+        Assert.Equal(("B2", "Elsewhere", Notes, 0), (result.Scene!.Title, result.Scene.Location, result.Scene.KeeperNotes, result.Scene.NotesVersion));
         Assert.Equal([("A", 1), ("B2", 2)], await _builder.StoredScenePositionsAsync(scenarioId));
     }
 
     [Fact]
-    public async Task Given_an_invalid_title_or_notes_When_the_keeper_edits_Then_the_matching_outcome_is_returned_and_nothing_changes()
+    public async Task Given_an_invalid_title_or_location_When_the_keeper_edits_Then_the_matching_outcome_is_returned_and_nothing_changes()
     {
         var scenarioId = await ScenarioAsync();
         var scene = await _builder.CreateSceneAsync(_builder.CampaignId, scenarioId, "A", "Here");
 
         Assert.Equal(SceneWriteOutcome.InvalidTitle, (await EditAsync(_builder.CampaignId, Keeper, scenarioId, scene.Id, " ")).Outcome);
-        Assert.Equal(SceneWriteOutcome.InvalidKeeperNotes, (await EditAsync(_builder.CampaignId, Keeper, scenarioId, scene.Id, "B", "{}")).Outcome);
+        Assert.Equal(SceneWriteOutcome.InvalidLocation, (await EditAsync(_builder.CampaignId, Keeper, scenarioId, scene.Id, "B", new string('l', 201))).Outcome);
 
         using var context = _builder.Fixture.CreateContext();
         var stored = await _builder.CreateSceneService(context).GetAsync(_builder.CampaignId, Keeper, scenarioId, scene.Id, CancellationToken.None);
@@ -154,7 +154,7 @@ public class SceneServiceTests : IDisposable
         var scene = await _builder.CreateSceneAsync(_builder.CampaignId, scenarioId, "A");
         await _builder.PlayAsync(scene.Id, SceneStatus.Active);
 
-        var result = await EditAsync(_builder.CampaignId, Keeper, scenarioId, scene.Id, "A2", Notes);
+        var result = await EditAsync(_builder.CampaignId, Keeper, scenarioId, scene.Id, "A2");
 
         Assert.Equal((SceneWriteOutcome.Saved, SceneStatus.Active), (result.Outcome, result.Scene!.Status));
     }
@@ -277,7 +277,7 @@ public class SceneServiceTests : IDisposable
         Assert.Null(await service.ListAsync(campaignId, accountId, scenarioId, CancellationToken.None));
         Assert.Null(await service.GetAsync(campaignId, accountId, scenarioId, scene.Id, CancellationToken.None));
         Assert.Equal(SceneWriteOutcome.NotFound, (await service.CreateAsync(campaignId, accountId, scenarioId, "X", null, null, CancellationToken.None)).Outcome);
-        Assert.Equal(SceneWriteOutcome.NotFound, (await service.EditAsync(campaignId, accountId, scenarioId, scene.Id, "X", null, null, CancellationToken.None)).Outcome);
+        Assert.Equal(SceneWriteOutcome.NotFound, (await service.EditAsync(campaignId, accountId, scenarioId, scene.Id, "X", null, CancellationToken.None)).Outcome);
         Assert.Equal(SceneRemoveOutcome.NotFound, await service.RemoveAsync(campaignId, accountId, scenarioId, scene.Id, CancellationToken.None));
         Assert.Equal(SceneReorderOutcome.NotFound, (await service.ReorderAsync(campaignId, accountId, scenarioId, [scene.Id], CancellationToken.None)).Outcome);
         Assert.Empty(repository.Calls);
@@ -311,7 +311,7 @@ public class SceneServiceTests : IDisposable
         var service = _builder.CreateSceneService(context);
 
         Assert.Null(await service.GetAsync(_builder.CampaignId, Keeper, second, scene.Id, CancellationToken.None));
-        Assert.Equal(SceneWriteOutcome.NotFound, (await service.EditAsync(_builder.CampaignId, Keeper, second, scene.Id, "X", null, null, CancellationToken.None)).Outcome);
+        Assert.Equal(SceneWriteOutcome.NotFound, (await service.EditAsync(_builder.CampaignId, Keeper, second, scene.Id, "X", null, CancellationToken.None)).Outcome);
         Assert.Equal(SceneRemoveOutcome.NotFound, await service.RemoveAsync(_builder.CampaignId, Keeper, second, scene.Id, CancellationToken.None));
         Assert.Equal([("A", 1)], await _builder.StoredScenePositionsAsync(first));
     }

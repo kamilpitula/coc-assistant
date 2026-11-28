@@ -89,6 +89,10 @@ public class ScenarioPreparationDbContext : DbContext
 
             // The optimistic token that stops two starts of the same Scene, and a stale finish-then-start (ADR 0025).
             builder.Property(scene => scene.Version).IsConcurrencyToken();
+
+            // The Keeper notes' own version (ADR 0037): a plain column with a zero default, never a concurrency token,
+            // advanced only by the conditional notes update, so a notes save can never make a start or finish fail.
+            builder.Property(scene => scene.NotesVersion).IsRequired().HasDefaultValue(0);
         });
 
         // The Investigators present are a child collection of the Scene, kept after it finishes (ADR 0024). The Investigator id has

@@ -64,7 +64,7 @@ test.describe('Scene live updates', () => {
       await test.step('the Keeper renames the Scene in the first tab', async () => {
         await page.goto(`${scenarioUrl}/scenes/${sceneId}`)
         await expect(page.getByRole('heading', { level: 1, name: 'The Corbitt House' })).toBeVisible()
-        await page.getByRole('button', { name: 'Edit' }).click()
+        await page.getByRole('button', { name: 'Edit title and location' }).click()
         await sceneTitleField(page).fill('The Corbitt Cellar')
         await page.getByRole('button', { name: 'Save' }).click()
         await expect(page.getByRole('status').filter({ hasText: 'Scene saved.' })).toBeVisible()

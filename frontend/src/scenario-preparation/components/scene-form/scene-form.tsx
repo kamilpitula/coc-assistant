@@ -85,12 +85,15 @@ interface SceneFormProps {
   cancel: ReactNode
   /** Moves focus to the Title when the form appears (the Scene page's Edit). */
   autoFocusTitle?: boolean
+  /** Whether the form edits Keeper notes too; the Scene page's title and location edit passes false (ADR 0037). */
+  withKeeperNotes: boolean
   onSubmit: (values: SceneInput) => void
 }
 
 /**
- * The Title, Location, and Keeper notes form shared by creating and editing a Scene (specs/scenario-preparation/ux.md
- * section 13). Validates on submit, explains each invalid field next to it, and warns before leaving with unsaved edits.
+ * The Title, Location, and optionally Keeper notes form shared by creating a Scene and editing its title and location
+ * (specs/scenario-preparation/ux.md section 13). Validates on submit, explains each invalid field next to it, and
+ * warns before leaving with unsaved edits. Keeper notes on an existing Scene save through their own section instead.
  */
 export function SceneForm({
   initialValues,
@@ -101,6 +104,7 @@ export function SceneForm({
   serverErrors,
   cancel,
   autoFocusTitle = false,
+  withKeeperNotes,
   onSubmit,
 }: SceneFormProps) {
   const ids = {
@@ -141,10 +145,10 @@ export function SceneForm({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const result = validateSceneForm({ title, location, keeperNotes: notes.current })
+    const result = validateSceneForm({ title, location, keeperNotes: withKeeperNotes ? notes.current : null })
     if (result.success) {
       setClientErrors({})
-      onSubmit(result.data)
+      onSubmit(withKeeperNotes ? result.data : { ...result.data, keeperNotes: initialValues.keeperNotes })
       return
     }
 
@@ -173,26 +177,28 @@ export function SceneForm({
         hintId={ids.locationHint}
       />
 
-      <div className="flex flex-col gap-2">
-        <Label id={ids.notesLabel} htmlFor={ids.notes} onClick={() => document.getElementById(ids.notes)?.focus()}>
-          Keeper notes (optional)
-        </Label>
-        <RichTextEditor
-          id={ids.notes}
-          labelledBy={ids.notesLabel}
-          describedBy={errors.keeperNotes ? `${ids.notesHint} ${ids.notesError}` : ids.notesHint}
-          invalid={Boolean(errors.keeperNotes)}
-          initialValue={initialValues.keeperNotes}
-          onChange={(value) => {
-            notes.current = value
-            setNotesChanged(true)
-          }}
-        />
-        <p id={ids.notesHint} className="text-sm text-muted-foreground">
-          {NOTES_HINT}
-        </p>
-        <FieldError id={ids.notesError} message={errors.keeperNotes} />
-      </div>
+      {withKeeperNotes && (
+        <div className="flex flex-col gap-2">
+          <Label id={ids.notesLabel} htmlFor={ids.notes} onClick={() => document.getElementById(ids.notes)?.focus()}>
+            Keeper notes (optional)
+          </Label>
+          <RichTextEditor
+            id={ids.notes}
+            labelledBy={ids.notesLabel}
+            describedBy={errors.keeperNotes ? `${ids.notesHint} ${ids.notesError}` : ids.notesHint}
+            invalid={Boolean(errors.keeperNotes)}
+            initialValue={initialValues.keeperNotes}
+            onChange={(value) => {
+              notes.current = value
+              setNotesChanged(true)
+            }}
+          />
+          <p id={ids.notesHint} className="text-sm text-muted-foreground">
+            {NOTES_HINT}
+          </p>
+          <FieldError id={ids.notesError} message={errors.keeperNotes} />
+        </div>
+      )}
 
       {failureMessage && (
         <Alert variant="destructive" role="alert">

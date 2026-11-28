@@ -109,7 +109,8 @@ public class SceneApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, get.StatusCode);
         Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
         var edited = await edit.Content.ReadFromJsonAsync<SceneResponse>();
-        Assert.Equal(("Knott", "Boston"), (edited!.Title, edited.Location));
+        Assert.Equal(("Knott", "Boston", 0), (edited!.Title, edited.Location, edited.NotesVersion));
+        Assert.Null(await StoredNotesAsync(second.Id));
         Assert.Equal(["The Corbitt House", "Knott"], await TitlesAsync(client, campaignId, scenarioId, "scene-keeper-1"));
     }
 
@@ -130,7 +131,7 @@ public class SceneApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
             ["finishedAt", "id", "startedAt", "status", "title"],
             listDocument.RootElement.GetProperty("scenes")[0].EnumerateObject().Select(property => property.Name).Order());
         Assert.Equal(
-            ["finishedAt", "handouts", "id", "itemLinks", "keeperNotes", "location", "nonPlayerEntityLinks", "startedAt", "status", "title"],
+            ["finishedAt", "handouts", "id", "itemLinks", "keeperNotes", "location", "nonPlayerEntityLinks", "notesVersion", "startedAt", "status", "title"],
             detailDocument.RootElement.EnumerateObject().Select(property => property.Name).Order());
     }
 
@@ -155,7 +156,7 @@ public class SceneApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task Given_notes_that_are_null_or_absent_When_creating_and_editing_Then_both_mean_no_notes()
+    public async Task Given_notes_that_are_null_or_absent_When_creating_Then_both_mean_no_notes_and_editing_leaves_notes_untouched()
     {
         var client = _factory.CreateClient();
         var campaignId = (await CreateCampaignAsync(client, "scene-keeper-4")).Id;
@@ -163,14 +164,14 @@ public class SceneApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
         var withNotes = await CreateSceneAsync(client, campaignId, scenarioId, "scene-keeper-4", "A", null, ValidNotes);
 
         var absent = await client.SendAsync(BuildRequest(HttpMethod.Post, ScenesUri(campaignId, scenarioId), "scene-keeper-4", new { title = "B" }));
-        var cleared = await client.SendAsync(BuildRequest(
-            HttpMethod.Put, ScenesUri(campaignId, scenarioId, $"/{withNotes.Id}"), "scene-keeper-4", new { title = "A", keeperNotes = (string?)null }));
+        var edit = await client.SendAsync(BuildRequest(
+            HttpMethod.Put, ScenesUri(campaignId, scenarioId, $"/{withNotes.Id}"), "scene-keeper-4", new { title = "A2", keeperNotes = (string?)null }));
 
         Assert.Equal(HttpStatusCode.Created, absent.StatusCode);
         Assert.Null((await absent.Content.ReadFromJsonAsync<SceneResponse>())!.KeeperNotes);
-        Assert.Equal(HttpStatusCode.OK, cleared.StatusCode);
-        Assert.Null((await cleared.Content.ReadFromJsonAsync<SceneResponse>())!.KeeperNotes);
-        Assert.Null(await StoredNotesAsync(withNotes.Id));
+        Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
+        Assert.Equal(ValidNotes, (await edit.Content.ReadFromJsonAsync<SceneResponse>())!.KeeperNotes!.Value.GetRawText());
+        Assert.Equal(ValidNotes, await StoredNotesAsync(withNotes.Id));
     }
 
     [Theory]
@@ -190,7 +191,7 @@ public class SceneApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
     }
 
     [Fact]
-    public async Task Given_a_long_title_long_location_or_disallowed_notes_When_creating_and_editing_Then_each_is_a_bad_request_keyed_by_its_field()
+    public async Task Given_a_long_title_long_location_or_disallowed_notes_When_creating_Then_each_is_a_bad_request_keyed_by_its_field_and_editing_ignores_notes()
     {
         var client = _factory.CreateClient();
         var campaignId = (await CreateCampaignAsync(client, "scene-keeper-6")).Id;
@@ -210,8 +211,9 @@ public class SceneApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
 
         var edit = await client.SendAsync(BuildRequest(
             HttpMethod.Put, ScenesUri(campaignId, scenarioId, $"/{existing.Id}"), "scene-keeper-6", new { title = "T", keeperNotes = Json(ImageNotes) }));
-        Assert.Equal(["keeperNotes"], await ErrorKeysAsync(edit));
-        Assert.Equal(["Keep"], await TitlesAsync(client, campaignId, scenarioId, "scene-keeper-6"));
+        Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
+        Assert.Equal("T", (await edit.Content.ReadFromJsonAsync<SceneResponse>())!.Title);
+        Assert.Equal(["T"], await TitlesAsync(client, campaignId, scenarioId, "scene-keeper-6"));
         Assert.Null(await StoredNotesAsync(existing.Id));
     }
 
@@ -313,6 +315,7 @@ public class SceneApiTests : IClassFixture<IdentityApiFactory>, IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var edited = (await response.Content.ReadFromJsonAsync<SceneResponse>())!;
         Assert.Equal(("A2", "Active"), (edited.Title, edited.Status));
+        Assert.Null(await StoredNotesAsync(scene.Id));
         Assert.NotNull(edited.StartedAt);
         Assert.Null(edited.FinishedAt);
     }

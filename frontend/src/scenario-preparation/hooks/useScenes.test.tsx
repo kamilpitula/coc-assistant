@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { sceneQueryKeys, StaleSceneOrderError } from '@/scenario-preparation/services/sceneApi'
 import type { Scene, SceneSummary } from '@/scenario-preparation/types/Scene'
 
-import { useCreateScene, useEditScene, useRemoveScene, useReorderScenes, useScene, useScenes } from './useScenes'
+import { useCreateScene, useEditScene, useRemoveScene, useReorderScenes, useSaveKeeperNotes, useScene, useScenes } from './useScenes'
 
 // Design record: Keeper-gated queries, confirmed (not optimistic) updates, a refetch after a stale order.
 
@@ -17,6 +17,7 @@ const api = vi.hoisted(() => ({
   editScene: vi.fn(),
   removeScene: vi.fn(),
   reorderScenes: vi.fn(),
+  saveKeeperNotes: vi.fn(),
 }))
 
 vi.mock('@/shared/hooks/useAccessToken', () => ({ useAccessToken: () => async () => 'token' }))
@@ -25,8 +26,22 @@ vi.mock('@/scenario-preparation/services/sceneApi', async (importOriginal) => ({
   ...api,
 }))
 
+// Design record D3: the Keeper notes mutation never retries, so a 400, 404, or 409 surfaces at once.
+const mutationOptions = vi.hoisted(() => ({ current: null as { retry?: unknown } | null }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useMutation: (options: { retry?: unknown }, ...rest: Array<unknown>) => {
+      mutationOptions.current = { retry: options.retry }
+      return (actual.useMutation as (...args: Array<unknown>) => unknown)(options, ...rest)
+    },
+  }
+})
+
 const knott: SceneSummary = { id: 'a1', title: 'Meeting Knott', status: 'Prepared', startedAt: null, finishedAt: null }
-const detail: Scene = { ...knott, location: '', keeperNotes: null, nonPlayerEntityLinks: [], itemLinks: [], handouts: [] }
+const detail: Scene = { ...knott, location: '', keeperNotes: null, notesVersion: 0, nonPlayerEntityLinks: [], itemLinks: [], handouts: [] }
 const input = { title: 'Meeting Knott', location: '', keeperNotes: null }
 
 function setup() {
@@ -79,8 +94,9 @@ describe('Scene hooks', () => {
     const { client, wrapper } = setup()
 
     const { result } = renderHook(() => useEditScene('c1', 's1', 'a1'), { wrapper })
-    await act(() => result.current.mutateAsync(input))
+    await act(() => result.current.mutateAsync({ title: 'Knott', location: '' }))
 
+    expect(api.editScene).toHaveBeenCalledWith('token', 'c1', 's1', 'a1', { title: 'Knott', location: '' })
     expect(client.getQueryData(sceneQueryKeys.detail('c1', 's1', 'a1'))).toMatchObject({ title: 'Knott' })
   })
 
@@ -110,5 +126,29 @@ describe('Scene hooks', () => {
     api.reorderScenes.mockRejectedValueOnce(new StaleSceneOrderError())
     await act(() => result.current.mutateAsync(['a1']).catch(() => undefined))
     expect(invalidate).toHaveBeenCalledWith({ queryKey: sceneQueryKeys.list('c1', 's1') })
+  })
+
+  it('merges saved notes into the cached Scene without touching the list', async () => {
+    api.saveKeeperNotes.mockResolvedValue({ keeperNotes: null, notesVersion: 1 })
+    const { client, wrapper } = setup()
+    client.setQueryData(sceneQueryKeys.detail('c1', 's1', 'a1'), detail)
+    client.setQueryData(sceneQueryKeys.list('c1', 's1'), [knott])
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
+
+    const { result } = renderHook(() => useSaveKeeperNotes('c1', 's1', 'a1'), { wrapper })
+    await act(() => result.current.mutateAsync({ keeperNotes: null, notesVersion: 0 }))
+
+    expect(api.saveKeeperNotes).toHaveBeenCalledWith('token', 'c1', 's1', 'a1', null, 0)
+    expect(client.getQueryData(sceneQueryKeys.detail('c1', 's1', 'a1'))).toEqual({ ...detail, keeperNotes: null, notesVersion: 1 })
+    expect(client.getQueryData(sceneQueryKeys.list('c1', 's1'))).toEqual([knott])
+    expect(invalidate).not.toHaveBeenCalled()
+  })
+
+  it('never retries a Keeper notes save', () => {
+    const { wrapper } = setup()
+
+    renderHook(() => useSaveKeeperNotes('c1', 's1', 'a1'), { wrapper })
+
+    expect(mutationOptions.current).toEqual({ retry: false })
   })
 })

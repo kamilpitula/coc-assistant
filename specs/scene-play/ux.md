@@ -12,6 +12,8 @@ Human decisions at the PBI-SPL-002 UX gate (2026-10-29): Image and Map Handouts 
 
 Human decisions at the UX gate (2026-10-28): the Wall Entry text is "Scene started: {title}" and "Scene finished: {title}". A Scene is started only from its Scene page; the overview card has no "Start a Scene" entry.
 
+Keeper notes on Run (PBI-SPL-009 UX pass, built by PBI-SPL-010): **Option A, the Scene page's Keeper notes section with "Edit", autosave, and "Done"**, chosen 2026-11-24 with Option B (explicit save on the Scene page) and Option C (notes in the Scene form, conflict dialog) not selected ([scenario-preparation ux](../scenario-preparation/ux.md), intro and section 73). Finishing with unsaved notes saves them first, then finishes. Section 25. Design record: [docs/scene-play/issues/09-keeper-notes-endpoint.design.md](../../docs/scene-play/issues/09-keeper-notes-endpoint.design.md).
+
 Behavior and rules: [spec.md](spec.md). This document covers presentation only. Scene status, times, and the Scene page are in [scenario-preparation ux](../scenario-preparation/ux.md) sections 12 and 14; the overview order is in [campaign-overview ux](../campaign-overview/ux.md) section 3.
 
 ## 1. Information architecture
@@ -602,7 +604,7 @@ Scenario: The Haunting . Open in Scenario . Location Arkham, Boston Road
 
 - **Grid:** `lg:grid-cols-[minmax(0,1fr)_20rem]` with `grid-template-areas`. DOM order is Keeper notes, Investigators present, Wall; from 1024px the right column shows Wall above Investigators present. The regions are independent, so the visual reordering does not change meaning (1.3.2).
 - **Regions:** each is a `section` labelled by its `h2`, drawn as a bordered card.
-- **Keeper notes:** a `Collapsible` that starts **open**; the trigger reads "Hide Keeper notes" or "Show Keeper notes". Content and empty text as section 12.
+- **Keeper notes:** a `Collapsible` that starts **open**; the trigger reads "Hide Keeper notes" or "Show Keeper notes". Content and empty text as section 12. From PBI-SPL-010 the region is the `keeper-notes-section` of section 25, which keeps this Hide/Show trigger.
 - **Investigators present:** section 3, except that each name is followed by the button "Clues" (accessible name "{name}'s Clues"), which opens the `clues` side panel instead of navigating.
 - **Wall (PBI-SPL-007):** see 21.8.
 - **Future play tools** take the left column under Keeper notes. Nothing is rendered there now.
@@ -1173,3 +1175,62 @@ A Finished Scene can't be started again. Players will see that it has finished.
 - **SPL-UX-71** Unchecking an Investigator with Waiting rolls and saving shows "Investigators present saved. {n} waiting roll(s) cancelled.", and only that Investigator's rolls become "Cancelled". There is no warning before saving. (PBI-DICE-009) Declined pushes add " {d} push(es) declined." only when d > 0.
 - **SPL-UX-72** On the start page, while another Scene with waiting rolls is Active, the hint "{n} waiting roll(s) will be cancelled." shows under "Finish {title} first". Starting with it checked shows the finished Scene's rolls as "Cancelled". (PBI-DICE-009) The hint adds "{d} push(es) will be declined." only when d > 0.
 - **SPL-A11Y-27** The finish-dialog sentence is part of the dialog's accessible description. The start-page hint is linked to its checkbox with `aria-describedby`. Count updates never move focus (1.3.1, 4.1.2, 2.4.3).
+
+## 25. Keeper notes on Run (PBI-SPL-009 UX pass, PBI-SPL-010)
+
+Behavior: [spec.md](spec.md), Context (Run edits Keeper notes through Scenario Preparation's endpoint) and the Keeper notes scenarios. The section itself, its states, copy, and criteria are [scenario-preparation ux](../scenario-preparation/ux.md) section 73; this section adds only what differs on Run.
+
+### 25.1 Layout
+
+```
+Keeper notes          [Hide Keeper notes] [Edit]     (h2)     reading
+Keeper notes                                           (h2)     editing
+[toolbar] [editor]
+Saving...                                              [Done]
+```
+
+- Run's Keeper notes region (section 21.3) is `keeper-notes-section`. In the reading state it keeps "Hide Keeper notes" / "Show Keeper notes" and adds "Edit" after it. "Edit" is shown while collapsed too, and opening the editor expands the region.
+- In the editing state the Hide/Show trigger is hidden, so the editor can't be collapsed with unsaved text.
+- The region stays in the left column. The editor grows with its content, and the page scrolls.
+
+### 25.2 Finishing while the notes are being edited (human decision, 2026-11-24)
+
+- The Finish dialog (section 3 and 24.1) is unchanged; there is no extra warning.
+- **On "Finish Scene":** the button reads "Finishing...". If the notes have a waiting change or a save in flight, that save is sent at once, and the finish waits for its outcome for at most 5 seconds. The finish is then sent whatever the notes outcome. A notes save never blocks or fails a finish; the server accepts notes saves on a Finished Scene.
+- **Success with the notes saved, or with nothing unsaved:** as section 3, with the status "{title} finished.".
+- **Success with the notes not saved** (failed, offline, conflict, or still waiting after 5 seconds): the status "{title} finished." and, under it, an `Alert` (warning, `role=alert`) "Your latest Keeper notes weren't saved." with the link "Open {title} in Scenario" to the Finished Scene's page, where the notes can still be edited (scenario-preparation ux section 73.4).
+- **Finish refused or failed:** as section 3. The editor stays open with its state and text.
+- **The Scene finished from another window while editing:** before Run changes to the no-Active-Scene view (section 21.1), the same "save first" step runs. A save that is not confirmed shows the same `Alert` on that view.
+
+### 25.3 Leaving Run while editing
+
+- Moving to another sub-tab or page unmounts the editor. A waiting change is saved at once on unmount (a notes save never needs the Scene to be Active). `useUnsavedChangesPrompt` protects a tab close or reload while anything is unsaved.
+
+### 25.4 Live updates
+
+- Another Keeper window's save refreshes the reading state in place, silently. While editing, the text is never replaced; the next save conflicts (scenario-preparation ux section 73.3).
+- Keeper notes and their live signal never reach a Player. The Player view (section 4) is unchanged.
+
+### 25.5 UX acceptance criteria
+
+- **SPL-UX-78** On Run, "Edit" on the Keeper notes opens the editor. Typing "Lucy pocketed the key." saves without a Save action, and "Done" shows the notes read-only with the new text.
+- **SPL-UX-79** When another tab saved the notes first, Run shows "These Keeper notes were changed in another window." with "Reload newer notes" and "Keep mine". Keep mine saves the Keeper's text over the newer version.
+- **SPL-UX-80** A save in one Keeper tab updates the reading notes in the Keeper's other tabs without reloading, and never replaces text being edited.
+- **SPL-UX-81** Finishing the Scene with a change still waiting saves the notes first. The Scene is Finished, and its Scene page shows the new notes.
+- **SPL-UX-82** When that save is not confirmed (failed, offline, or conflict), the Scene still finishes, and the status is followed by "Your latest Keeper notes weren't saved." with a link to the Scene page.
+- **SPL-UX-83** While editing, the Hide/Show trigger is hidden. In the reading state "Edit" is available whether the notes are shown or hidden.
+
+### 25.6 Accessibility acceptance criteria (WCAG 2.2 AA)
+
+- **SPL-A11Y-30** Everything in scenario-preparation ux section 73.8 applies on Run.
+- **SPL-A11Y-31** After a finish, focus goes to the `h1` as in section 3. The unsaved-notes `Alert` is announced, and its link is the next focusable element (2.4.3, 4.1.3).
+- **SPL-A11Y-32** At 320px and 200% zoom, the reading-state trigger and "Edit" wrap under the heading without horizontal scrolling (1.4.10).
+
+### 25.7 Prototype validation
+
+- **Question:** which of Options A, B, and C should Keeper notes editing follow on the Scene page and on Run, and what should "Finish Scene" do when notes are unsaved?
+- **Branch of the prototype skill:** UI.
+- **Prototype:** `specs/scene-play/prototype/keeper-notes-prototype.html` on the throwaway branch `prototype/spl-009-keeper-notes` (commit 554378e), never merged. It is one HTML file with mock data only. It switches between Options A, B, and C, Run and the Scene page in each status, and simulates a failed save, offline, a stale version from another tab, and both Finish behaviors. Open it in a browser; this section and scenario-preparation ux section 73, not the prototype, are normative.
+- **Verdict:** Option A. Finish with unsaved notes follows (i): save the pending notes first, then finish whatever the outcome.
+- **Date:** 2026-11-24. **Decided by:** the human at the PBI-SPL-009 UX gate, relayed by the Orchestrator.
+- **Screenshots:** none recorded.

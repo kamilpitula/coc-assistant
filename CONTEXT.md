@@ -110,7 +110,7 @@ The Scene being played. A Campaign has at most one Active Scene.
 _Avoid_: Current scene, live scene, open scene
 
 **Finished Scene**:
-A Scene that has been played. It is read-only for everyone and is never reopened; returning to a place is a new Scene.
+A Scene that has been played. It is read-only for everyone and is never reopened, except that the Keeper may still edit its Keeper notes. Returning to a place is a new Scene.
 _Avoid_: Closed scene, past scene, archived scene
 
 **Handout**:

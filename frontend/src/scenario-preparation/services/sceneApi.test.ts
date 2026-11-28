@@ -7,8 +7,10 @@ import {
   editScene,
   getScene,
   getScenes,
+  KeeperNotesConflictError,
   removeScene,
   reorderScenes,
+  saveKeeperNotes,
   SceneFinishedError,
   SceneNotFoundError,
   SceneNotRemovableError,
@@ -35,7 +37,7 @@ const link = {
 }
 const itemLink = { id: 'i1', item: { id: 'k1', name: "Walter Corbitt's diary", holder: null, handouts: [] } }
 const handoutSummary = { id: 'h1', kind: 'ReadAloud', visibility: 'PlayerFacing', title: 'The front door' }
-const detail = { ...summary, location: 'Arkham', keeperNotes: notes, nonPlayerEntityLinks: [link], itemLinks: [itemLink], handouts: [handoutSummary] }
+const detail = { ...summary, location: 'Arkham', keeperNotes: notes, notesVersion: 0, nonPlayerEntityLinks: [link], itemLinks: [itemLink], handouts: [handoutSummary] }
 
 describe('scene API', () => {
   const fetchMock = vi.fn<typeof fetch>()
@@ -96,6 +98,17 @@ describe('scene API', () => {
         ['l2', 'HumanNpc', 'Mr. Knott', 'A shape in the cellar'],
       ])
       expect(scene?.nonPlayerEntityLinks[1].playerFacingDescription).toBeNull()
+    })
+
+    it('rejects a Scene without links, notes, or a notes version', async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...detail, keeperNotes: undefined }))
+      await expect(getScene('token', 'c1', 's1', 'a1')).rejects.toThrow()
+
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...detail, notesVersion: undefined }))
+      await expect(getScene('token', 'c1', 's1', 'a1')).rejects.toThrow()
+
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, { ...detail, notesVersion: -1 }))
+      await expect(getScene('token', 'c1', 's1', 'a1')).rejects.toThrow()
     })
 
     it('rejects a link that carries profile data beyond the reference, an unknown type, or a Scene without links', async () => {
@@ -208,12 +221,13 @@ describe('scene API', () => {
       expect(fetchMock.mock.calls[0][1]?.method).toBe('POST')
     })
 
-    it('puts to the Scene', async () => {
+    it('puts only the title and location to the Scene', async () => {
       fetchMock.mockResolvedValue(jsonResponse(200, detail))
 
-      await editScene('token', 'c1', 's1', 'a1', input)
+      await editScene('token', 'c1', 's1', 'a1', { title: 'T', location: 'Arkham' })
 
       expect(fetchMock).toHaveBeenCalledWith('/api/campaigns/c1/scenarios/s1/scenes/a1', expect.objectContaining({ method: 'PUT' }))
+      expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toEqual({ title: 'T', location: 'Arkham' })
     })
 
     it('maps a 400 to field errors in any casing', async () => {
@@ -231,13 +245,62 @@ describe('scene API', () => {
 
     it('maps 404 to not found, 409 to finished, and other statuses to a plain error', async () => {
       fetchMock.mockResolvedValueOnce(jsonResponse(404))
-      await expect(editScene('token', 'c1', 's1', 'a1', input)).rejects.toBeInstanceOf(SceneNotFoundError)
+      await expect(editScene('token', 'c1', 's1', 'a1', { title: 'T', location: '' })).rejects.toBeInstanceOf(SceneNotFoundError)
 
       fetchMock.mockResolvedValueOnce(jsonResponse(409))
-      await expect(editScene('token', 'c1', 's1', 'a1', input)).rejects.toBeInstanceOf(SceneFinishedError)
+      await expect(editScene('token', 'c1', 's1', 'a1', { title: 'T', location: '' })).rejects.toBeInstanceOf(SceneFinishedError)
 
       fetchMock.mockResolvedValueOnce(jsonResponse(500))
-      await expect(editScene('token', 'c1', 's1', 'a1', input)).rejects.toThrow('Failed to save the Scene (500)')
+      await expect(editScene('token', 'c1', 's1', 'a1', { title: 'T', location: '' })).rejects.toThrow('Failed to save the Scene (500)')
+    })
+  })
+
+  describe('saveKeeperNotes', () => {
+    it('puts the notes with their version to the Keeper notes endpoint and returns the saved notes', async () => {
+      fetchMock.mockResolvedValue(jsonResponse(200, { keeperNotes: notes, notesVersion: 3 }))
+
+      const saved = await saveKeeperNotes('token', 'c1', 's1', 'a1', notes, 2)
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/campaigns/c1/scenarios/s1/scenes/a1/keeper-notes',
+        expect.objectContaining({ method: 'PUT', body: JSON.stringify({ keeperNotes: notes, notesVersion: 2 }) }),
+      )
+      expect(saved).toEqual({ keeperNotes: notes, notesVersion: 3 })
+    })
+
+    it('sends null notes to clear them', async () => {
+      fetchMock.mockResolvedValue(jsonResponse(200, { keeperNotes: null, notesVersion: 1 }))
+
+      const saved = await saveKeeperNotes('token', 'c1', 's1', 'a1', null, 0)
+
+      expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toEqual({ keeperNotes: null, notesVersion: 0 })
+      expect(saved).toEqual({ keeperNotes: null, notesVersion: 1 })
+    })
+
+    it('maps 409 to a conflict carrying the current notes despite the problem envelope', async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse(409, { type: 'x', title: 'The Keeper notes have changed since they were read.', status: 409, keeperNotes: notes, notesVersion: 5 }),
+      )
+
+      const error = await saveKeeperNotes('token', 'c1', 's1', 'a1', notes, 4).catch((reason: unknown) => reason)
+
+      expect(error).toBeInstanceOf(KeeperNotesConflictError)
+      expect((error as KeeperNotesConflictError).current).toEqual({ keeperNotes: notes, notesVersion: 5 })
+    })
+
+    it('maps 400 to field errors, 404 to not found, and other statuses to a plain error', async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(400, { errors: { keeperNotes: ['x'] } }))
+      const refused = await saveKeeperNotes('token', 'c1', 's1', 'a1', notes, 0).catch((reason: unknown) => reason)
+      expect(refused).toBeInstanceOf(SceneValidationError)
+      expect((refused as SceneValidationError).fieldErrors).toEqual({
+        keeperNotes: "These Keeper notes can't be saved. Shorten them or remove unsupported content.",
+      })
+
+      fetchMock.mockResolvedValueOnce(jsonResponse(404))
+      await expect(saveKeeperNotes('token', 'c1', 's1', 'a1', notes, 0)).rejects.toBeInstanceOf(SceneNotFoundError)
+
+      fetchMock.mockResolvedValueOnce(jsonResponse(500))
+      await expect(saveKeeperNotes('token', 'c1', 's1', 'a1', notes, 0)).rejects.toThrow('Failed to save the Keeper notes (500)')
     })
   })
 

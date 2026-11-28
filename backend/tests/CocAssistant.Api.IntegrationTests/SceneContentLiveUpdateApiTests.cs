@@ -169,7 +169,10 @@ public class SceneContentLiveUpdateApiTests : IClassFixture<IdentityApiFactory>,
                 HttpMethod.Post, ScenesUri(table.CampaignId, table.ScenarioId), table.KeeperOid, new { title = "Edge of Darkness" })),
             "SceneEdit" => await table.Client.SendAsync(BuildRequest(
                 HttpMethod.Put, ScenesUri(table.CampaignId, table.ScenarioId, $"/{table.SceneA}"), table.KeeperOid,
-                new { title = "Renamed", location = "Arkham", keeperNotes = Json(Notes) })),
+                new { title = "Renamed", location = "Arkham" })),
+            "KeeperNotesSave" => await table.Client.SendAsync(BuildRequest(
+                HttpMethod.Put, ScenesUri(table.CampaignId, table.ScenarioId, $"/{table.SceneA}/keeper-notes"), table.KeeperOid,
+                new { keeperNotes = Json(Notes), notesVersion = 0 })),
             "SceneReorder" => await table.Client.SendAsync(BuildRequest(
                 HttpMethod.Put, ScenesUri(table.CampaignId, table.ScenarioId, "/order"), table.KeeperOid, new { sceneIds = new[] { table.SceneB, table.SceneA } })),
             "SceneRemove" => await table.Client.SendAsync(BuildRequest(
@@ -227,6 +230,7 @@ public class SceneContentLiveUpdateApiTests : IClassFixture<IdentityApiFactory>,
     [Theory]
     [InlineData("SceneCreate")]
     [InlineData("SceneEdit")]
+    [InlineData("KeeperNotesSave")]
     [InlineData("SceneReorder")]
     [InlineData("SceneRemove")]
     [InlineData("HandoutCreate")]
@@ -276,13 +280,40 @@ public class SceneContentLiveUpdateApiTests : IClassFixture<IdentityApiFactory>,
 
         var edit = await table.Client.SendAsync(BuildRequest(
             HttpMethod.Put, ScenesUri(table.CampaignId, table.ScenarioId, $"/{table.SceneA}"), table.KeeperOid,
-            new { title = "Renamed", location = "Arkham", keeperNotes = Json(Notes) }));
+            new { title = "Renamed", location = "Arkham" }));
         Assert.Equal(HttpStatusCode.Conflict, edit.StatusCode);
 
         var sentinel = await table.Client.SendAsync(BuildRequest(
             HttpMethod.Post, $"/api/campaigns/{table.CampaignId}/wall-entries", table.KeeperOid, new { text = "The lamp goes out.", visibility = "Public" }));
         Assert.Equal(HttpStatusCode.Created, sentinel.StatusCode);
 
+        Assert.Equal(["wallEntries"], await NextTopicsAsync(table.KeeperHub, table.CampaignId));
+        Assert.Equal(["wallEntries"], await NextTopicsAsync(table.HarveyHub, table.CampaignId));
+        Assert.Equal(["wallEntries"], await NextTopicsAsync(table.LucyHub, table.CampaignId));
+    }
+
+    [Fact]
+    public async Task Given_a_stale_notes_save_When_saving_Then_it_is_409_and_the_keeper_hears_only_the_sentinel()
+    {
+        var table = await TableAsync("notes-refused");
+        await using var _1 = table.KeeperHub;
+        await using var _2 = table.HarveyHub;
+        await using var _3 = table.LucyHub;
+
+        var first = await table.Client.SendAsync(BuildRequest(
+            HttpMethod.Put, ScenesUri(table.CampaignId, table.ScenarioId, $"/{table.SceneA}/keeper-notes"), table.KeeperOid,
+            new { keeperNotes = Json(Notes), notesVersion = 0 }));
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        var stale = await table.Client.SendAsync(BuildRequest(
+            HttpMethod.Put, ScenesUri(table.CampaignId, table.ScenarioId, $"/{table.SceneA}/keeper-notes"), table.KeeperOid,
+            new { keeperNotes = Json(Notes), notesVersion = 0 }));
+        Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
+
+        var sentinel = await table.Client.SendAsync(BuildRequest(
+            HttpMethod.Post, $"/api/campaigns/{table.CampaignId}/wall-entries", table.KeeperOid, new { text = "The lamp goes out.", visibility = "Public" }));
+        Assert.Equal(HttpStatusCode.Created, sentinel.StatusCode);
+
+        Assert.Equal(["scenes"], await NextTopicsAsync(table.KeeperHub, table.CampaignId));
         Assert.Equal(["wallEntries"], await NextTopicsAsync(table.KeeperHub, table.CampaignId));
         Assert.Equal(["wallEntries"], await NextTopicsAsync(table.HarveyHub, table.CampaignId));
         Assert.Equal(["wallEntries"], await NextTopicsAsync(table.LucyHub, table.CampaignId));

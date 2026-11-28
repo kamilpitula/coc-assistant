@@ -45,6 +45,26 @@ public sealed class RecordingSceneRepository : ISceneRepository
         return _inner.FindByIdAsync(campaignId, scenarioId, sceneId, cancellationToken);
     }
 
+    public Task<SceneKeeperNotesView?> FindKeeperNotesAsync(Guid campaignId, Guid scenarioId, Guid sceneId, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(FindKeeperNotesAsync));
+        return _inner.FindKeeperNotesAsync(campaignId, scenarioId, sceneId, cancellationToken);
+    }
+
+    /// <summary>When set, runs just before the conditional notes update, so a test can play a second tab that wins the race.</summary>
+    public Func<Task>? BeforeTryReplace { get; set; }
+
+    public async Task<bool> TryReplaceKeeperNotesAsync(Guid campaignId, Guid scenarioId, Guid sceneId, string? keeperNotes, int expectedNotesVersion, CancellationToken cancellationToken)
+    {
+        Calls.Add(nameof(TryReplaceKeeperNotesAsync));
+        if (BeforeTryReplace is not null)
+        {
+            await BeforeTryReplace();
+        }
+
+        return await _inner.TryReplaceKeeperNotesAsync(campaignId, scenarioId, sceneId, keeperNotes, expectedNotesVersion, cancellationToken);
+    }
+
     public Task<Scene?> FindForPlayAsync(Guid campaignId, Guid sceneId, CancellationToken cancellationToken)
     {
         Calls.Add(nameof(FindForPlayAsync));

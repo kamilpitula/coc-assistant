@@ -3,12 +3,16 @@ namespace CocAssistant.ScenarioPreparation.Application;
 /// <summary>A Scene as listed on its Scenario. Its Position is never exposed; clients use list order.</summary>
 public sealed record SceneSummaryView(Guid Id, string Title, SceneStatus Status, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt);
 
-/// <summary>A Scene with its location, Keeper notes (the stored Lexical JSON text, or null), Non-Player Entity links and Item links in the order linked, and Handout summaries in stored order.</summary>
+/// <summary>A Scene's Keeper notes with their own version (ADR 0037); null when the Scene is outside the Scenario and Campaign.</summary>
+public sealed record SceneKeeperNotesView(Guid Id, string? KeeperNotes, int NotesVersion);
+
+/// <summary>A Scene with its location, Keeper notes (the stored Lexical JSON text, or null), their own version (ADR 0037), Non-Player Entity links and Item links in the order linked, and Handout summaries in stored order.</summary>
 public sealed record SceneDetailView(
     Guid Id,
     string Title,
     string Location,
     string? KeeperNotes,
+    int NotesVersion,
     SceneStatus Status,
     DateTimeOffset? StartedAt,
     DateTimeOffset? FinishedAt,

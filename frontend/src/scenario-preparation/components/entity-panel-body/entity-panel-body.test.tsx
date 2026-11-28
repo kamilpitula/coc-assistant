@@ -54,6 +54,7 @@ const material = (links: NonPlayerEntityLink[]): Scene => ({
   finishedAt: null,
   location: '',
   keeperNotes: null,
+  notesVersion: 0,
   nonPlayerEntityLinks: links,
   itemLinks: [],
   handouts: [],

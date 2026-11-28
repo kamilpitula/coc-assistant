@@ -7,10 +7,12 @@ import {
   getScenes,
   removeScene,
   reorderScenes,
+  saveKeeperNotes,
   sceneQueryKeys,
   StaleSceneOrderError,
 } from '@/scenario-preparation/services/sceneApi'
-import type { SceneInput } from '@/scenario-preparation/types/Scene'
+import type { Scene, SceneEditInput, SceneInput } from '@/scenario-preparation/types/Scene'
+import type { RichTextDocument } from '@/shared/types/RichText'
 import { useAccessToken } from '@/shared/hooks/useAccessToken'
 
 /** The Scenario's Scenes in prepared order. Only the Keeper's screens enable it. */
@@ -49,16 +51,36 @@ export function useCreateScene(campaignId: string, scenarioId: string) {
   })
 }
 
-/** Saves a Scene's title, location, and notes; the confirmed Scene replaces the cached one. */
+/** Saves a Scene's title and location; the confirmed Scene replaces the cached one. Keeper notes keep their own save. */
 export function useEditScene(campaignId: string, scenarioId: string, sceneId: string) {
   const getAccessToken = useAccessToken()
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (input: SceneInput) => editScene(await getAccessToken(), campaignId, scenarioId, sceneId, input),
+    mutationFn: async (input: SceneEditInput) => editScene(await getAccessToken(), campaignId, scenarioId, sceneId, input),
     onSuccess: (scene) => {
       queryClient.setQueryData(sceneQueryKeys.detail(campaignId, scenarioId, sceneId), scene)
       return queryClient.invalidateQueries({ queryKey: sceneQueryKeys.list(campaignId, scenarioId) })
+    },
+  })
+}
+
+/**
+ * Saves the Keeper notes with the version they were based on; never retried, so a 400, 404, or 409 surfaces at once.
+ * A confirmed save merges the notes and their new version into the cached Scene; the list carries no notes.
+ */
+export function useSaveKeeperNotes(campaignId: string, scenarioId: string, sceneId: string) {
+  const getAccessToken = useAccessToken()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ keeperNotes, notesVersion }: { keeperNotes: RichTextDocument | null; notesVersion: number }) =>
+      saveKeeperNotes(await getAccessToken(), campaignId, scenarioId, sceneId, keeperNotes, notesVersion),
+    retry: false,
+    onSuccess: (saved) => {
+      queryClient.setQueryData<Scene>(sceneQueryKeys.detail(campaignId, scenarioId, sceneId), (cached) =>
+        cached === undefined ? cached : { ...cached, keeperNotes: saved.keeperNotes, notesVersion: saved.notesVersion },
+      )
     },
   })
 }

@@ -23,6 +23,7 @@ const prepared: Scene = {
   title: 'The Corbitt House',
   location: 'Arkham, Boston Road',
   keeperNotes: null,
+  notesVersion: 0,
   status: 'Prepared',
   startedAt: null,
   finishedAt: null,

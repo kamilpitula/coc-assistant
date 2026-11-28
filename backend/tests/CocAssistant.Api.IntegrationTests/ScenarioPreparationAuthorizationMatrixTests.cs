@@ -201,6 +201,7 @@ public class ScenarioPreparationAuthorizationMatrixTests : IClassFixture<Identit
             new("POST", scenes, Json(new { title = "Matrix", location = "Matrix" })),
             new("GET", scene, NoBody),
             new("PUT", scene, Json(new { title = "Matrix", location = "Matrix" })),
+            new("PUT", scene + "/keeper-notes", Json(new { keeperNotes = (string?)null, notesVersion = 0 })),
             new("DELETE", scene, NoBody),
             new("PUT", scenario + "/scenes/order", Json(new { sceneIds = new[] { SomeId } })),
             new("POST", scene + "/non-player-entity-links", Json(new { nonPlayerEntity = new { type = "HumanNpc", id = SomeId }, playerFacingName = "Matrix" })),

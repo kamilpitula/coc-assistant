@@ -28,6 +28,28 @@ public class EfSceneRepository : ISceneRepository
             scene => scene.CampaignId == campaignId && scene.ScenarioId == scenarioId && scene.Id == sceneId,
             cancellationToken);
 
+    public Task<SceneKeeperNotesView?> FindKeeperNotesAsync(Guid campaignId, Guid scenarioId, Guid sceneId, CancellationToken cancellationToken) =>
+        _dbContext.Scenes
+            .AsNoTracking()
+            .Where(scene => scene.CampaignId == campaignId && scene.ScenarioId == scenarioId && scene.Id == sceneId)
+            .Select(scene => new SceneKeeperNotesView(scene.Id, scene.KeeperNotes, scene.NotesVersion))
+            .SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<bool> TryReplaceKeeperNotesAsync(
+        Guid campaignId,
+        Guid scenarioId,
+        Guid sceneId,
+        string? keeperNotes,
+        int expectedNotesVersion,
+        CancellationToken cancellationToken) =>
+        await _dbContext.Scenes
+            .Where(scene => scene.CampaignId == campaignId && scene.ScenarioId == scenarioId && scene.Id == sceneId && scene.NotesVersion == expectedNotesVersion)
+            .ExecuteUpdateAsync(
+                update => update
+                    .SetProperty(scene => scene.KeeperNotes, keeperNotes)
+                    .SetProperty(scene => scene.NotesVersion, scene => scene.NotesVersion + 1),
+                cancellationToken) == 1;
+
     public Task<Scene?> FindForPlayAsync(Guid campaignId, Guid sceneId, CancellationToken cancellationToken) =>
         WithChildren().SingleOrDefaultAsync(scene => scene.CampaignId == campaignId && scene.Id == sceneId, cancellationToken);
 

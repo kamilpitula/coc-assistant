@@ -7,7 +7,7 @@ import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin'
 import { ListPlugin } from '@lexical/react/LexicalListPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type Ref } from 'react'
 
 import { RichTextLinkDialog } from '@/shared/components/rich-text-link-dialog/rich-text-link-dialog'
 import { RichTextToolbar, type ToolbarButton } from '@/shared/components/rich-text-toolbar/rich-text-toolbar'
@@ -35,6 +35,8 @@ const LINK_ATTRIBUTES = { target: RICH_TEXT_LINK_TARGET, rel: RICH_TEXT_LINK_REL
 interface RichTextEditorProps {
   /** The id of the editable area, for the label's `htmlFor`-like wiring and tests. */
   id: string
+  /** A ref to the editable area, for moving focus into the editor. */
+  editorRef?: Ref<HTMLDivElement>
   /** The id of the visible label that names the editable area. */
   labelledBy: string
   /** The ids of the hint and any error, in reading order. */
@@ -103,7 +105,7 @@ function ToolbarPlugin() {
  * editable area limited to the allowed nodes. Tab and Shift+Tab leave the editor (SP-A11Y-14), because no tab or
  * indentation plugin is registered.
  */
-export function RichTextEditor({ id, labelledBy, describedBy, invalid, initialValue, onChange }: RichTextEditorProps) {
+export function RichTextEditor({ id, editorRef, labelledBy, describedBy, invalid, initialValue, onChange }: RichTextEditorProps) {
   const [initialConfig] = useState(() => ({
     namespace: 'rich-text-editor',
     nodes: [...RICH_TEXT_NODES],
@@ -121,6 +123,7 @@ export function RichTextEditor({ id, labelledBy, describedBy, invalid, initialVa
         <RichTextPlugin
           contentEditable={
             <ContentEditable
+              ref={editorRef}
               id={id}
               aria-labelledby={labelledBy}
               aria-describedby={describedBy}

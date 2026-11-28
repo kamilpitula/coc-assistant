@@ -48,6 +48,7 @@ const material: Scene = {
   finishedAt: null,
   location: '',
   keeperNotes: null,
+  notesVersion: 0,
   nonPlayerEntityLinks: [],
   itemLinks: [{ id: 'story-link', item: { id: 'story-item', name: "Walter Corbitt's diary", holder: { investigatorId: 'story-investigator' }, handouts: item.handouts } }],
   handouts: [],

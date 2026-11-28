@@ -1,10 +1,11 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 
 import { useCampaign } from '@/campaign-play/hooks/useCampaign'
 import '@/campaign-play/types/navigationState'
 import { HandoutSection } from '@/scenario-preparation/components/handout-section/handout-section'
+import { KeeperNotesSection, type KeeperNotesSectionHandle } from '@/scenario-preparation/components/keeper-notes-section/keeper-notes-section'
 import { SceneItemSection } from '@/scenario-preparation/components/scene-item-section/scene-item-section'
 import { SceneLinkSection } from '@/scenario-preparation/components/scene-link-section/scene-link-section'
 import { ScenePanel } from '@/scenario-preparation/components/scene-panel/scene-panel'
@@ -16,11 +17,9 @@ import { SceneTimes } from '@/scenario-preparation/components/scene-times/scene-
 import { useEditScene, useRemoveScene, useScene } from '@/scenario-preparation/hooks/useScenes'
 import { SceneFinishedError, SceneNotRemovableError, SceneValidationError } from '@/scenario-preparation/services/sceneApi'
 import type { Scene } from '@/scenario-preparation/types/Scene'
-import { RichTextView } from '@/shared/components/rich-text-view/rich-text-view'
 import { SidePanelScopeProvider } from '@/shared/components/side-panel/side-panel-scope'
 import { Button, buttonVariants } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
-import { isEmptyRichText } from '@/shared/services/richText'
 
 interface ScenePageProps {
   campaignId: string
@@ -94,6 +93,7 @@ function SceneDetail({ campaignId, scenarioId, scene, sceneUpdatedAt, onRefetch 
   const [returnedFromEdit, setReturnedFromEdit] = useState(false)
   const editButtonRef = useRef<HTMLButtonElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const notesSectionRef = useRef<KeeperNotesSectionHandle | null>(null)
 
   // The Edit button is mounted again when the form closes, so focus goes back to it; a Scene finished meanwhile has none.
   useEffect(() => {
@@ -102,12 +102,32 @@ function SceneDetail({ campaignId, scenarioId, scene, sceneUpdatedAt, onRefetch 
     }
   }, [isEditing, returnedFromEdit])
 
+  const keeperNotesSection = (hideEdit: boolean) => (
+    <KeeperNotesSection
+      campaignId={campaignId}
+      scenarioId={scenarioId}
+      sceneId={scene.id}
+      keeperNotes={scene.keeperNotes}
+      notesVersion={scene.notesVersion}
+      hideEdit={hideEdit}
+      sectionRef={notesSectionRef}
+    />
+  )
+
+  // Opening the title form finishes an in-progress notes edit first (its Done semantics): the form opens only once
+  // the notes are back in their reading state, so typing is never lost and the section never unmounts mid-edit.
   const startEditing = () => {
-    edit.reset()
-    setJustSaved(false)
-    setUnlinkedMessage(null)
-    setReturnedFromEdit(false)
-    setIsEditing(true)
+    const finished = notesSectionRef.current?.finishEditing() ?? Promise.resolve(true)
+    void finished.then((reading) => {
+      if (!reading) {
+        return
+      }
+      edit.reset()
+      setJustSaved(false)
+      setUnlinkedMessage(null)
+      setReturnedFromEdit(false)
+      setIsEditing(true)
+    })
   }
 
   const stopEditing = (saved: boolean) => {
@@ -144,7 +164,10 @@ function SceneDetail({ campaignId, scenarioId, scene, sceneUpdatedAt, onRefetch 
         </div>
       </div>
       {isEditing ? (
-        <EditSceneForm scene={scene} edit={edit} onDone={stopEditing} />
+        <>
+          <EditSceneForm scene={scene} edit={edit} onDone={stopEditing} />
+          {keeperNotesSection(true)}
+        </>
       ) : (
         <SceneView
           campaignId={campaignId}
@@ -160,6 +183,7 @@ function SceneDetail({ campaignId, scenarioId, scene, sceneUpdatedAt, onRefetch 
           onEdit={startEditing}
           onUnlinked={(name) => setUnlinkedMessage(`${name} unlinked.`)}
           onRefetch={onRefetch}
+          notesSection={keeperNotesSection(false)}
         />
       )}
       </div>
@@ -195,12 +219,13 @@ function EditSceneForm({ scene, edit, onDone }: EditSceneFormProps) {
       failureMessage={failureMessageFor(edit.error)}
       serverErrors={validationError?.fieldErrors}
       autoFocusTitle
+      withKeeperNotes={false}
       cancel={
         <Button type="button" variant="outline" onClick={() => onDone(false)}>
           Cancel
         </Button>
       }
-      onSubmit={(values) => edit.mutate(values, { onSuccess: () => onDone(true) })}
+      onSubmit={(values) => edit.mutate({ title: values.title, location: values.location }, { onSuccess: () => onDone(true) })}
     />
   )
 }
@@ -219,6 +244,8 @@ interface SceneViewProps {
   onEdit: () => void
   onUnlinked: (playerFacingName: string) => void
   onRefetch: () => void
+  /** The Keeper notes section, reading with its Edit unless the title form asked to hide it. */
+  notesSection: ReactNode
 }
 
 function SceneView({
@@ -235,6 +262,7 @@ function SceneView({
   onEdit,
   onUnlinked,
   onRefetch,
+  notesSection,
 }: SceneViewProps) {
   return (
     <>
@@ -244,14 +272,7 @@ function SceneView({
           <dd className="break-words">{scene.location}</dd>
         </dl>
       )}
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">Keeper notes</h2>
-        {scene.keeperNotes && !isEmptyRichText(scene.keeperNotes) ? (
-          <RichTextView document={scene.keeperNotes} />
-        ) : (
-          <p className="text-sm text-muted-foreground">No Keeper notes yet.</p>
-        )}
-      </section>
+      {notesSection}
       <HandoutSection
         owner={{ type: 'scene', campaignId, scenarioId, sceneId: scene.id }}
         canChange={scene.status !== 'Finished'}
@@ -281,11 +302,11 @@ function SceneView({
         onRefetch={onRefetch}
       />
       {scene.status === 'Finished' ? (
-        <p className="text-sm text-muted-foreground">This Scene is finished and can&apos;t be changed.</p>
+        <p className="text-sm text-muted-foreground">This Scene is finished. You can still edit its Keeper notes.</p>
       ) : (
         <div className="flex flex-wrap items-center gap-3">
           <SceneRunLink campaignId={campaignId} scenarioId={scenarioId} sceneId={scene.id} status={scene.status} />
-          <Button ref={editButtonRef} type="button" variant="outline" onClick={onEdit}>
+          <Button ref={editButtonRef} type="button" variant="outline" aria-label="Edit title and location" onClick={onEdit}>
             Edit
           </Button>
           {scene.status === 'Prepared' && (

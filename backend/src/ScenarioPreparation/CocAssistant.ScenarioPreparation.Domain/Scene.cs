@@ -25,6 +25,12 @@ public class Scene
     /// <summary>The validated Lexical JSON text exactly as received (ADR 0015), or null when the Scene has no Keeper notes.</summary>
     public string? KeeperNotes { get; private set; }
 
+    /// <summary>
+    /// The Keeper notes' own version (ADR 0037). It is never incremented in memory and is never an EF concurrency token:
+    /// only the conditional notes update advances it, so a notes save can never make a start or finish fail.
+    /// </summary>
+    public int NotesVersion { get; private set; }
+
     public int Position { get; private set; }
     public SceneStatus Status { get; private set; }
     public DateTimeOffset? StartedAt { get; private set; }
@@ -83,26 +89,36 @@ public class Scene
     }
 
     /// <summary>
-    /// Replaces the fields under the creation rules while the Scene is Prepared or Active; a refused edit changes nothing.
-    /// Status is checked before the fields. Never touches Position.
+    /// Replaces the title and location under the creation rules while the Scene is Prepared or Active; a refused edit changes
+    /// nothing. Keeper notes are saved through their own versioned endpoint and are never touched here. Never touches Position.
     /// </summary>
-    public SceneFieldsOutcome Edit(string title, string? location, string? keeperNotes)
+    public SceneFieldsOutcome Edit(string title, string? location)
     {
         if (Status == SceneStatus.Finished)
         {
             return SceneFieldsOutcome.SceneFinished;
         }
 
-        var outcome = Validate(title, location, keeperNotes, out var trimmedTitle, out var trimmedLocation);
+        var outcome = ValidateFields(title, location, out var trimmedTitle, out var trimmedLocation);
         if (outcome == SceneFieldsOutcome.Accepted)
         {
             Title = trimmedTitle;
             Location = trimmedLocation;
-            KeeperNotes = keeperNotes;
         }
 
         return outcome;
     }
+
+    /// <summary>
+    /// Whether a Keeper notes save based on <paramref name="notesVersion"/> may proceed, without changing anything: the version
+    /// first, then the rich text, in every status including Finished (ADR 0037). Like <see cref="CheckStart"/>.
+    /// </summary>
+    public KeeperNotesSaveOutcome CheckKeeperNotesSave(string? keeperNotes, int notesVersion) =>
+        notesVersion != NotesVersion
+            ? KeeperNotesSaveOutcome.StaleNotesVersion
+            : KeeperNotesAreValid(keeperNotes)
+                ? KeeperNotesSaveOutcome.Accepted
+                : KeeperNotesSaveOutcome.InvalidKeeperNotes;
 
     /// <summary>
     /// Starts a Prepared Scene with the given Investigators present. Status is checked before the list, then the list: not
@@ -459,7 +475,7 @@ public class Scene
         _investigatorsPresent.AddRange(presentInvestigatorIds.Where(id => !kept.Contains(id)).Select(id => InvestigatorPresence.Create(Id, id)));
     }
 
-    private static SceneFieldsOutcome Validate(string title, string? location, string? keeperNotes, out string trimmedTitle, out string trimmedLocation)
+    private static SceneFieldsOutcome ValidateFields(string title, string? location, out string trimmedTitle, out string trimmedLocation)
     {
         trimmedTitle = title.Trim();
         trimmedLocation = location?.Trim() ?? string.Empty;
@@ -473,8 +489,17 @@ public class Scene
             return SceneFieldsOutcome.InvalidLocation;
         }
 
-        return keeperNotes is null || RichTextDocument.Validate(keeperNotes) == RichTextOutcome.Accepted
-            ? SceneFieldsOutcome.Accepted
+        return SceneFieldsOutcome.Accepted;
+    }
+
+    private static bool KeeperNotesAreValid(string? keeperNotes) =>
+        keeperNotes is null || RichTextDocument.Validate(keeperNotes) == RichTextOutcome.Accepted;
+
+    private static SceneFieldsOutcome Validate(string title, string? location, string? keeperNotes, out string trimmedTitle, out string trimmedLocation)
+    {
+        var outcome = ValidateFields(title, location, out trimmedTitle, out trimmedLocation);
+        return outcome != SceneFieldsOutcome.Accepted || KeeperNotesAreValid(keeperNotes)
+            ? outcome
             : SceneFieldsOutcome.InvalidKeeperNotes;
     }
 }

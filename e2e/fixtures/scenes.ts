@@ -23,9 +23,28 @@ export function sceneLocationField(page: Page): Locator {
   return page.getByLabel('Location (optional)')
 }
 
-/** The rich-text Keeper notes editor's editable area. */
+/** The rich-text Keeper notes editor's editable area on the Create Scene form. */
 export function keeperNotesEditor(page: Page): Locator {
   return page.getByRole('textbox', { name: 'Keeper notes (optional)' })
+}
+
+/** The Keeper notes section's editable area on the Scene page and Run (specs/scenario-preparation/ux.md section 73). */
+export function keeperNotesSectionEditor(page: Page): Locator {
+  return page.getByRole('textbox', { name: 'Keeper notes' })
+}
+
+/** The Keeper notes section, labelled by its heading. */
+export function keeperNotesSection(page: Page): Locator {
+  return page.locator('section').filter({ has: page.getByRole('heading', { level: 2, name: 'Keeper notes' }) })
+}
+
+/** The Keeper notes section's status row, which carries the visible save status next to Done. */
+export function keeperNotesStatusRow(page: Page): Locator {
+  // The inner locator is rooted at the page like keeperNotesSection: a candidate div can only match through a
+  // descendant Done button, never through the section itself.
+  return keeperNotesSection(page)
+    .locator('div')
+    .filter({ has: page.getByRole('button', { name: 'Done' }) })
 }
 
 /** A button of the editor's formatting toolbar, such as "Bold" or "Bulleted list". */

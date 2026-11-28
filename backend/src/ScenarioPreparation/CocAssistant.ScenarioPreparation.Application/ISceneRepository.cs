@@ -18,6 +18,22 @@ public interface ISceneRepository
 
     Task<Scene?> FindByIdAsync(Guid campaignId, Guid scenarioId, Guid sceneId, CancellationToken cancellationToken);
 
+    /// <summary>A Scene's Keeper notes with their version, read-only; null when the Scene is not in this Scenario and Campaign.</summary>
+    Task<SceneKeeperNotesView?> FindKeeperNotesAsync(Guid campaignId, Guid scenarioId, Guid sceneId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Replaces the Keeper notes and advances their version by one in a single conditional statement, but only when the stored
+    /// version still equals <paramref name="expectedNotesVersion"/> (ADR 0037). True when one row changed; false means stale or
+    /// gone, and the caller re-reads to tell the two apart. It never reads, writes, or checks <see cref="Scene.Version"/>.
+    /// </summary>
+    Task<bool> TryReplaceKeeperNotesAsync(
+        Guid campaignId,
+        Guid scenarioId,
+        Guid sceneId,
+        string? keeperNotes,
+        int expectedNotesVersion,
+        CancellationToken cancellationToken);
+
     /// <summary>The highest Position in the Scenario; 0 when it has no Scenes.</summary>
     Task<int> MaxPositionAsync(Guid scenarioId, CancellationToken cancellationToken);
 

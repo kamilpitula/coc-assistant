@@ -31,6 +31,7 @@ const material: Scene = {
   finishedAt: null,
   location: '',
   keeperNotes: null,
+  notesVersion: 0,
   itemLinks: [],
   nonPlayerEntityLinks: [
     {

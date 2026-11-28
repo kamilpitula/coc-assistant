@@ -49,6 +49,9 @@ public sealed class ScenarioPreparationTestBuilder : IDisposable
     public SceneService CreateSceneService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
         new(Keepers, new EfScenarioRepository(context), repository ?? new EfSceneRepository(context), new EfNonPlayerEntityDirectory(context), new EfItemRepository(context), FileStore, TimeProvider, SceneLogger, Signals);
 
+    public SceneKeeperNotesService CreateKeeperNotesService(ScenarioPreparationDbContext context, ISceneRepository? repository = null) =>
+        new(Keepers, repository ?? new EfSceneRepository(context), Signals);
+
     public static LinkedSceneGuard CreateLinkedSceneGuard(ScenarioPreparationDbContext context, ISceneRepository? scenes = null) =>
         new(scenes ?? new EfSceneRepository(context));
 

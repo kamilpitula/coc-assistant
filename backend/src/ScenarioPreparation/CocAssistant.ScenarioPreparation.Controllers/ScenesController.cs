@@ -66,13 +66,13 @@ public class ScenesController : ScenarioPreparationControllerBase
         return scene is null ? NotFound() : Ok(ToResponse(scene));
     }
 
-    /// <summary>Replaces a Scene's title, location, and Keeper notes; its place in the order is unchanged. 409 when Finished.</summary>
+    /// <summary>Replaces a Scene's title and location; its place in the order is unchanged. 409 when Finished.</summary>
     [HttpPut("{sceneId:guid}")]
     public async Task<ActionResult<SceneResponse>> Edit(
         Guid campaignId,
         Guid scenarioId,
         Guid sceneId,
-        SceneRequest request,
+        SceneEditRequest request,
         CancellationToken cancellationToken)
     {
         var accountId = await ResolveCallerAccountIdAsync(cancellationToken);
@@ -88,7 +88,6 @@ public class ScenesController : ScenarioPreparationControllerBase
             sceneId,
             request.Title ?? string.Empty,
             request.Location,
-            request.KeeperNotes?.GetRawText(),
             cancellationToken);
         return result.Outcome == SceneWriteOutcome.Saved ? Ok(ToResponse(result.Scene!)) : Failure(result.Outcome);
     }
@@ -167,6 +166,7 @@ public class ScenesController : ScenarioPreparationControllerBase
             view.Title,
             view.Location,
             RichTextJson.Parse(view.KeeperNotes),
+            view.NotesVersion,
             view.Status.ToString(),
             view.StartedAt,
             view.FinishedAt,
