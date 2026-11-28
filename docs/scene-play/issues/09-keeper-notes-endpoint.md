@@ -35,12 +35,11 @@ Read: [scenario-preparation spec](../../../specs/scenario-preparation/spec.md), 
 - [x] On a Finished Scene's preparation page only the Keeper notes are editable.
 - [x] CONTEXT.md and the new ADR are updated.
 - [x] Unit and integration tests cover the version check, every status, and the Scene version staying unchanged.
-- [ ] Playwright E2E covers the scenario-preparation scenarios "The Keeper edits a Finished Scene's Keeper notes" and "A stale Keeper notes save is refused". Deferred: see Follow-ups.
+- [x] Playwright E2E covers the scenario-preparation scenarios "The Keeper edits a Finished Scene's Keeper notes" and "A stale Keeper notes save is refused". (`e2e/tests/scenes.spec.ts`: Finished-notes edit, stale-save refused with Keep mine and Reload newer notes, and offline save; E2E shard 4/4 passed first try on PR #81 CI, run 46136420181 job 140952647411.)
 
 ## Refinement Protocol
 A change to the notes save updates the scenario-preparation spec, its ux.md, the notes-version ADR, CONTEXT.md if the Finished exception changes, and tests together.
 
 ## Follow-ups
 - Prototype: `prototype/spl-009-keeper-notes` (`554378e`, local, never merged); verdict in [specs/scene-play/ux.md](../../../specs/scene-play/ux.md) section 25.7. Design: [09-keeper-notes-endpoint.design.md](09-keeper-notes-endpoint.design.md).
-- E2E (deferred verification): the `e2e/tests/scenes.spec.ts` scenarios "The Keeper edits a Finished Scene's Keeper notes", "A stale Keeper notes save is refused", and "The Keeper's offline notes save once back online" are written but were not executed in this session: this environment lacks `COC_E2E_CERT_PASSWORD`, `e2e/node_modules`, and Playwright browsers, and the mock-OIDC stack is unreliable on low-memory machines (PBI-SPL-008 follow-ups). The stale-save and offline tests were reordered for determinism (conflicting save always lands first; offline starts before typing) by analysis only. Run them where the harness is available.
-- Backend suite: all green except the 6 Azurite-backed `AzureBlobHandoutFileStoreTests`, which need a running emulator (connection refused at 127.0.0.1:10000 on a Windows host without one; pre-existing, see PBI-SPL-008 follow-ups). Confirm green in CI.
+- E2E ran green in CI on first try (PR #81, run 46136420181; see Verification), so the local-harness gap (no `COC_E2E_CERT_PASSWORD`, browsers, or mock-OIDC here) needs no further action. The Azurite follow-up is dropped: Backend integration passed in the same CI run.
